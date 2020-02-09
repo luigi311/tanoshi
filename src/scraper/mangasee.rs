@@ -23,9 +23,6 @@ impl Scraping for Mangasee {
     fn get_mangas(&self, param: Params) -> Vec<Manga> {
         let mut mangas: Vec<Manga> = Vec::new();
 
-        let mut url = String::from(self.url);
-        url.push_str("/search/request.php");
-
         let params = vec![
             ("keyword".to_owned(), param.keyword.to_owned()),
             ("page".to_owned(), param.page.to_owned()),
@@ -35,7 +32,7 @@ impl Scraping for Mangasee {
 
         let urlencoded = serde_urlencoded::to_string(params).unwrap();
 
-        let resp = ureq::post(&url)
+        let resp = ureq::post(format!("{}/search/request.php", self.url).as_str())
             .set(
                 "Content-Type",
                 "application/x-www-form-urlencoded; charset=utf-8",
@@ -76,7 +73,7 @@ impl Scraping for Mangasee {
 
     fn get_latest_mangas(&self) -> Vec<Manga> {
         let resp = ureq::get("https://mangaseeonline.us").call();
-        let html = resp.into_string().unwrap();
+        let html = resp.into_string().expect("failed to get page");
 
         let document = scraper::Html::parse_document(&html);
         let selector = scraper::Selector::parse(".latestSeries").unwrap();
@@ -115,10 +112,7 @@ impl Scraping for Mangasee {
             chapter: HashMap::new(),
         };
 
-        let mut url = String::from(self.url);
-        url.push_str(&m.url);
-
-        let resp = ureq::get(&url).call();
+        let resp = ureq::get(format!("{}{}", self.url, m.url).as_str()).call();
         let html = resp.into_string().unwrap();
 
         let document = scraper::Html::parse_document(&html);
@@ -177,10 +171,7 @@ impl Scraping for Mangasee {
     }
 
     fn get_chapter(&self, chapter: &mut Chapter) {
-        let mut url = String::from(self.url);
-        url.push_str(&chapter.url);
-
-        let resp = ureq::get(&url).call();
+        let resp = ureq::get(format!("{}{}", self.url, chapter.url).as_str()).call();
         let html = resp.into_string().unwrap();
 
         let document = scraper::Html::parse_document(&html);
