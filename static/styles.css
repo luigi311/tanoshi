@@ -1,0 +1,24 @@
+.manga-cover {
+    width: 200px;
+    height: 284px;
+    object-fit: cover; /* Do not scale the image */
+    object-position: center; /* Center the image within the element */
+    box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.manga-cover-container {
+    margin: 15px;
+    position: relative;
+    width: 200px;
+}
+
+.manga-cover-title {
+    position: absolute;
+    bottom: 8px;
+    padding-left: 16px;
+    color: aliceblue;
+    background-color: rgba(0, 0, 0, 0.7);
+}
