@@ -26,6 +26,7 @@ console_error_panic_hook = { version = "*", optional = true }
 # Unfortunately, `wee_alloc` requires nightly Rust when targeting wasm for now.
 wee_alloc = { version = "*", optional = true }
 yew = "*"
+yew-router = "*"
 failure = "*"
 serde = "*"
 http = "*"

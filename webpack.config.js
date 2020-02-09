@@ -6,15 +6,22 @@ const distPath = path.resolve(__dirname, "dist");
 module.exports = (env, argv) => {
     return {
         devServer: {
+            historyApiFallback: {
+                index:'/'
+            },
             contentBase: distPath,
             compress: argv.mode === 'production',
-            port: 8000
+            port: 8000,
+            proxy: {
+                '/api': 'http://localhost:3030'
+            }
         },
         entry: './bootstrap.js',
         output: {
             path: distPath,
             filename: "tanoshi-web.js",
-            webassemblyModuleFilename: "tanoshi-web.wasm"
+            webassemblyModuleFilename: "tanoshi-web.wasm",
+            publicPath: "/"
         },
         plugins: [
             new CopyWebpackPlugin([
