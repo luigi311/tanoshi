@@ -89,11 +89,16 @@ impl Component for Detail {
                     <p>{self.manga.description.to_owned()}</p>
                 </div>
             </div>
-            <div class="pure-g detail">
+            <div class="pure-menu detail">
+                <span class="pure-menu-heading">{"Read Chapters"}</span>
+
+                    <ul class="pure-menu-list">
                 {
                     for self.manga.chapter.iter().map(|(chapter)| html!{
-                        <div class="pure-u-1-1">
-                        <a href={
+                        <div class="pure-menu-item">
+                        <a
+                        class="pure-menu-link" 
+                        href={
                             format!("/catalogue/{}/manga/{}/chapter/{}", 
                             self.source.to_owned(),
                             self.title.to_owned(),
@@ -104,6 +109,7 @@ impl Component for Detail {
                         </div>
                     })
                 }
+                </ul>
             </div>
             </>
         }
