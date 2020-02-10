@@ -22,3 +22,15 @@
     color: aliceblue;
     background-color: rgba(0, 0, 0, 0.7);
 }
+
+.catalogue-menu {
+    position: relative;
+    display: inline-block;
+}
+
+.catalogue-menu-list {
+    display: none;
+    position: absolute;
+}
+
+.catalogue-menu:hover .catalogue-menu-list {display: block;}
