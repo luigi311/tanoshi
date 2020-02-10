@@ -76,12 +76,34 @@ impl Component for Detail {
         html! {
             <>
             <TopBar />
-            <div class="pure-g">
-                <div class="pure-u-2-5"><img src=self.manga.thumbnail_url /></div>
-                <div class="pure-u-3-5">
-                    <div>{self.manga.title.to_owned()}</div>
-                    <div>{self.manga.description.to_owned()}</div>
+            <div class="pure-g detail">
+                <div class="pure-u-2-5">
+                    <div class="manga-cover-container">
+                        <img class="manga-cover" src=self.manga.thumbnail_url />
+                    </div>
                 </div>
+                <div class="pure-u-3-5">
+                    <h1>{self.manga.title.to_owned()}</h1>
+                    <h4>{self.manga.status.to_owned()}</h4>
+                    <h4>{self.manga.genre.join(", ").to_owned()}</h4>
+                    <p>{self.manga.description.to_owned()}</p>
+                </div>
+            </div>
+            <div class="pure-g detail">
+                {
+                    for self.manga.chapter.iter().map(|(chapter)| html!{
+                        <div class="pure-u-1-1">
+                        <a href={
+                            format!("/catalogue/{}/manga/{}/chapter/{}", 
+                            self.source.to_owned(),
+                            self.title.to_owned(),
+                            chapter.chapter.to_owned())
+                        }>
+                        {format!("Chapter {}", chapter.chapter.to_owned())}
+                        </a>
+                        </div>
+                    })
+                }
             </div>
             </>
         }

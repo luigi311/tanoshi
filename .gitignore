@@ -4,3 +4,7 @@ Cargo.lock
 bin/
 pkg/
 wasm-pack.log
+node_modules
+.idea/
+.DS_Store
+package-lock.json
