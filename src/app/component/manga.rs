@@ -44,11 +44,12 @@ impl Component for Manga {
         let title = self.title.to_owned();
         let thumbnail = self.thumbnail.to_owned();
         let path = self.path.to_owned();
+        let source = self.source.to_owned();
 
         html! {
             <div class="pure-u-lg-1-5">
                 <div class="manga-cover-container">
-                    <a href={format!("{}", path)}>
+                    <a href={format!("/catalogue/{}{}", source, path)}>
                         <img class="manga-cover" src=thumbnail />
                         <div class="manga-cover-title">{title}</div>
                     </a>

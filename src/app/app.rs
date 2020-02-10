@@ -6,9 +6,12 @@ use yew::html::{ChildrenRenderer, NodeRef, Properties};
 use yew::services::fetch::{FetchService, FetchTask, Request, Response};
 
 use super::catalogue::Catalogue;
+use super::detail::Detail;
 
 #[derive(Switch, Debug, Clone)]
 pub enum AppRoute {
+    #[to = "/catalogue/{source}/manga/{title}"]
+    Detail(String, String),
     #[to = "/catalogue/{source}"]
     Source(String),
 }
@@ -45,6 +48,7 @@ impl Component for App {
             <Router<AppRoute, ()>
             render = Router::render(|switch: AppRoute| {
             match switch {
+                AppRoute::Detail(source, title) => html!{<Detail source=source title=title/>},
                 AppRoute::Source(source) => html!{<Catalogue source=source/>},
             }
         })
