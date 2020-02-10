@@ -43,6 +43,7 @@ pub mod mangasee {
         url.push_str(".html");
         println!("{:?}", url);
         let mut chapter = Chapter {
+            chapter: chapter.to_owned(),
             url: url.to_owned(),
             pages: vec![],
         };
