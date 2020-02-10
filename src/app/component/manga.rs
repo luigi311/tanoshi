@@ -6,12 +6,16 @@ use yew::prelude::*;
 pub struct Props {
     pub title: String,
     pub thumbnail: String,
+    pub path: String,
+    pub source: String,
 }
 
 pub struct Manga {
     link: ComponentLink<Self>,
     title: String,
     thumbnail: String,
+    path: String,
+    pub source: String,
 }
 
 pub enum Msg {
@@ -27,6 +31,8 @@ impl Component for Manga {
             link: link,
             title: props.title,
             thumbnail: props.thumbnail,
+            path: props.path,
+            source: props.source,
         }
     }
 
@@ -37,11 +43,15 @@ impl Component for Manga {
     fn view(&self) -> Html {
         let title = self.title.to_owned();
         let thumbnail = self.thumbnail.to_owned();
+        let path = self.path.to_owned();
+
         html! {
             <div class="pure-u-lg-1-5">
                 <div class="manga-cover-container">
-                    <img class="manga-cover" src=thumbnail />
-                    <div class="manga-cover-title">{title}</div>
+                    <a href={format!("{}", path)}>
+                        <img class="manga-cover" src=thumbnail />
+                        <div class="manga-cover-title">{title}</div>
+                    </a>
                 </div>
             </div>
         }

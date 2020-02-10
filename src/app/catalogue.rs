@@ -10,6 +10,7 @@ use super::component::{Manga, TopBar};
 pub struct MangaModel {
     pub title: String,
     pub thumbnail_url: String,
+    pub url: String,
 }
 
 #[derive(Clone, Properties)]
@@ -69,7 +70,11 @@ impl Component for Catalogue {
             <TopBar />
             <div class="pure-g">
             { for self.mangas.iter().map(|manga|  html!{
-                <Manga title=manga.title.to_owned() thumbnail=manga.thumbnail_url.to_owned() />
+                <Manga
+                    title=manga.title.to_owned()
+                    thumbnail=manga.thumbnail_url.to_owned()
+                    path=manga.url.to_owned()
+                    source=self.source.to_owned() />
             }) }
             </div>
             </>
