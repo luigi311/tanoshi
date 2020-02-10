@@ -5,8 +5,12 @@ use yew::html::{ChildrenRenderer, NodeRef};
 use yew::services::fetch::{FetchService, FetchTask, Request, Response};
 use std::collections::HashMap;
 
+use yew_router::components::RouterAnchor;
+use yew::prelude::*;
+use crate::app::AppRoute;
+
 use super::component::{Manga, TopBar};
-use super::{MangaModel, Chapter};
+use super::{MangaModel, ChapterModel};
 
 #[derive(Clone, Properties)]
 pub struct Props {
@@ -60,7 +64,6 @@ impl Component for Detail {
         match msg {
             Msg::MangaReady(data) => {
                 self.manga = data;
-                info!("{:?}", self.manga);
             }
             Msg::FetchReady(data) => {
                 info!("fetch ready");
@@ -77,12 +80,12 @@ impl Component for Detail {
             <>
             <TopBar />
             <div class="pure-g detail">
-                <div class="pure-u-2-5">
+                <div class="pure-u-xl-2-5">
                     <div class="manga-cover-container">
                         <img class="manga-cover" src=self.manga.thumbnail_url />
                     </div>
                 </div>
-                <div class="pure-u-3-5">
+                <div class="pure-u-xl-3-5">
                     <h1>{self.manga.title.to_owned()}</h1>
                     <h4>{self.manga.status.to_owned()}</h4>
                     <h4>{self.manga.genre.join(", ").to_owned()}</h4>
@@ -96,16 +99,9 @@ impl Component for Detail {
                 {
                     for self.manga.chapter.iter().map(|(chapter)| html!{
                         <div class="pure-menu-item">
-                        <a
-                        class="pure-menu-link" 
-                        href={
-                            format!("/catalogue/{}/manga/{}/chapter/{}", 
-                            self.source.to_owned(),
-                            self.title.to_owned(),
-                            chapter.chapter.to_owned())
-                        }>
-                        {format!("Chapter {}", chapter.chapter.to_owned())}
-                        </a>
+                        <RouterAnchor<AppRoute> route=AppRoute::Chapter(self.source.to_owned(), self.title.to_owned(),chapter.chapter.to_owned())>
+                        <div class="pure-menu-link">{format!("Chapter {}", chapter.chapter.to_owned())}</div>
+                        </RouterAnchor<AppRoute>>
                         </div>
                     })
                 }

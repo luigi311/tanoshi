@@ -32,6 +32,7 @@ serde = "*"
 http = "*"
 log = "*"
 web_logger="*"
+stdweb ="*"
 
 [dev-dependencies]
 wasm-bindgen-test = "*"
@@ -39,3 +40,5 @@ wasm-bindgen-test = "*"
 [profile.release]
 # Tell `rustc` to optimize for small code size.
 opt-level = "s"
+lto = true
+

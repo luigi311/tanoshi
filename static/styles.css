@@ -1,8 +1,8 @@
 .manga-cover {
     width: 200px;
     height: 284px;
-    object-fit: cover; /* Do not scale the image */
-    object-position: center; /* Center the image within the element */
+    object-fit: cover;
+    object-position: center;
     box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
     display: block;
     margin-left: auto;
@@ -29,3 +29,42 @@
     margin-left: auto;
     margin-right: auto;
 }
+
+.manga-page-container {
+    display: flex;
+    height: 100%;
+    z-index: 0;
+    margin: auto;
+    width: fit-content;
+}
+
+.manga-page {
+    max-height: 100vh;
+    margin: 0;
+}
+
+.manga-reader-container {
+    position: relative;
+}
+
+.manga-navigate-right {
+    background: transparent;
+    border: none !important;
+    font-size:0;
+    height: 100vh;
+    width: 25%;
+    left: 75%;
+    position: absolute;
+    outline:none
+}
+
+.manga-navigate-left {
+    background: transparent;
+    border: none !important;
+    font-size:0;
+    height: 100vh;
+    width: 25%;
+    position: absolute;
+    outline:none
+}
+

@@ -4,7 +4,7 @@ use yew::format::{Json, Nothing, Text};
 use yew::html::{ChildrenRenderer, NodeRef};
 use yew::services::fetch::{FetchService, FetchTask, Request, Response};
 
-use super::component::Manga;
+use super::component::{Manga, TopBar};
 
 #[derive(Deserialize, Debug)]
 pub struct MangaModel {
@@ -35,7 +35,7 @@ impl Component for Home {
     type Properties = Props;
 
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
-        Catalogue {
+        Home {
             fetch_task: None,
             link,
             source: props.source,
@@ -59,17 +59,14 @@ impl Component for Home {
     }
 
     fn mounted(&mut self) -> ShouldRender {
-        self.fetch_mangas();
         true
     }
 
     fn view(&self) -> Html {
         html! {
-            <div class="pure-g">
-            { for self.mangas.iter().map(|manga|  html!{
-                <Manga title=manga.title.to_owned() thumbnail=manga.thumbnail_url.to_owned() />
-            }) }
-            </div>
+            <>
+                <TopBar />
+            </>
         }
     }
 }

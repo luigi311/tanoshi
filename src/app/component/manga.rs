@@ -1,5 +1,7 @@
 use yew::{Callback, ClickEvent, Component, ComponentLink, html, Html, Properties, ShouldRender};
+use yew_router::components::RouterAnchor;
 use yew::prelude::*;
+use crate::app::AppRoute;
 
 
 #[derive(Clone, PartialEq, Properties)]
@@ -49,10 +51,13 @@ impl Component for Manga {
         html! {
             <div class="pure-u-lg-1-5">
                 <div class="manga-cover-container">
-                    <a href={format!("/catalogue/{}{}", source, path)}>
+                    <RouterAnchor<AppRoute> route=AppRoute::Detail(source, path.replace("/manga/", ""))>
+                    { html!{
+                        <>
                         <img class="manga-cover" src=thumbnail />
-                        <div class="manga-cover-title">{title}</div>
-                    </a>
+                        </>
+                    }}
+                    </RouterAnchor<AppRoute>>
                 </div>
             </div>
         }
