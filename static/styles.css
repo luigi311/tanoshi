@@ -45,6 +45,7 @@
 
 .manga-reader-container {
     position: relative;
+    outline:none
 }
 
 .manga-navigate-right {

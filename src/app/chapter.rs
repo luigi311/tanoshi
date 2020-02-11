@@ -65,6 +65,12 @@ impl Component for Chapter {
 
     fn mounted(&mut self) -> ShouldRender {
         self.get_chapter();
+        let reader : HtmlElement = document().query_selector(".manga-reader-container")
+            .unwrap()
+            .expect("failed to get")
+            .try_into()
+            .unwrap();
+        reader.focus();
         true
     }
 
@@ -101,7 +107,13 @@ impl Component for Chapter {
         html! {
             <>
             <TopBar />
-            <div class="manga-reader-container">
+            <div class="manga-reader-container" tabindex="0" onkeydown=self.link.callback(|e: KeyDownEvent|
+                match e.key().as_str() {
+                    "ArrowRight" => Msg::PageForward,
+                    "ArrowLeft"  => Msg::PagePrevious,
+                    _ => Msg::Noop,
+                }
+            )>
                 <button class="manga-navigate-left" onclick=self.link.callback(|_| Msg::PagePrevious)/>
                 <button class="manga-navigate-right" onclick=self.link.callback(|_| Msg::PageForward)/>
                 <div class="manga-page-container">
