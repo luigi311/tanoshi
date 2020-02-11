@@ -1,7 +1,7 @@
 pub mod mangasee {
     use crate::scraper::{mangasee::Mangasee, Chapter, Manga, Params, Scraping};
+    use std::collections::BTreeMap;
     use std::convert::Infallible;
-    use warp::http::StatusCode;
 
     pub async fn list_mangas(
         param: Params,
@@ -15,18 +15,15 @@ pub mod mangasee {
         title: String,
         mangasee: Mangasee,
     ) -> Result<impl warp::Reply, Infallible> {
-        let mut url = String::from("/manga/");
-        url.push_str(&title);
-
         let manga = mangasee.get_manga_info(&Manga {
             title: "".to_string(),
             author: "".to_string(),
             genre: vec![],
             status: "".to_string(),
             description: "".to_string(),
-            url: url.to_owned(),
+            url: format!("/manga/{}", title),
             thumbnail_url: "".to_string(),
-            chapter: Default::default(),
+            chapter: BTreeMap::new(),
         });
         Ok(warp::reply::json(&manga))
     }
@@ -36,17 +33,14 @@ pub mod mangasee {
         chapter: String,
         mangasee: Mangasee,
     ) -> Result<impl warp::Reply, Infallible> {
-        let mut url = String::from("/read-online/");
-        url.push_str(&title);
-        url.push_str("-chapter-");
-        url.push_str(&chapter);
-        url.push_str(".html");
-        println!("{:?}", url);
         let mut chapter = Chapter {
+            prev_chapter: "".to_string(),
             chapter: chapter.to_owned(),
-            url: url.to_owned(),
+            next_chapter: "".to_string(),
+            url: format!("/read-online/{}-chapter-{}.html", title, chapter),
             pages: vec![],
         };
+
         mangasee.get_chapter(&mut chapter);
         Ok(warp::reply::json(&chapter))
     }

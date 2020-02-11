@@ -1,5 +1,7 @@
-use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap};
+use human_sort::compare;
+use serde::{Deserialize, Serialize, Serializer};
+use std::cmp::Ordering;
+use std::collections::BTreeMap;
 
 pub mod mangasee;
 
@@ -12,12 +14,14 @@ pub struct Manga {
     pub description: String,
     pub url: String,
     pub thumbnail_url: String,
-    pub chapter: Vec<Chapter>,
+    pub chapter: BTreeMap<ChapterNumber, Chapter>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Chapter {
+    pub prev_chapter: String,
     pub chapter: String,
+    pub next_chapter: String,
     pub url: String,
     pub pages: Vec<String>,
 }
@@ -28,6 +32,38 @@ pub struct Params {
     pub page: Option<String>,
     pub sort_order: Option<String>,
     pub sort_by: Option<String>,
+}
+
+#[derive(Eq, Debug, Deserialize, Clone)]
+pub struct ChapterNumber {
+    number: String,
+}
+
+impl Serialize for ChapterNumber {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&self.number)
+    }
+}
+
+impl Ord for ChapterNumber {
+    fn cmp(&self, other: &Self) -> Ordering {
+        compare(&self.number, &other.number)
+    }
+}
+
+impl PartialOrd for ChapterNumber {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl PartialEq for ChapterNumber {
+    fn eq(&self, other: &Self) -> bool {
+        self.number == other.number
+    }
 }
 
 pub trait Scraping {

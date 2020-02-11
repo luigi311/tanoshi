@@ -1,5 +1,6 @@
-use crate::scraper::{Chapter, Manga, Params, Scraping};
+use crate::scraper::{Chapter, ChapterNumber, Manga, Params, Scraping};
 use regex::Regex;
+use std::borrow::BorrowMut;
 use std::collections::BTreeMap;
 
 #[derive(Copy, Clone)]
@@ -52,7 +53,7 @@ impl Scraping for Mangasee {
                 description: String::from(""),
                 url: String::from(""),
                 thumbnail_url: String::from(""),
-                chapter: vec![],
+                chapter: BTreeMap::new(),
             };
 
             let sel = scraper::Selector::parse("img").unwrap();
@@ -92,7 +93,7 @@ impl Scraping for Mangasee {
                 description: String::from(""),
                 url: String::from(link).replace("read-online", "manga"),
                 thumbnail_url: String::from(""),
-                chapter: vec![],
+                chapter: Default::default(),
             };
             latest_mangas.push(manga)
         }
@@ -109,7 +110,7 @@ impl Scraping for Mangasee {
             description: "".to_string(),
             url: String::from(&manga.url),
             thumbnail_url: "".to_string(),
-            chapter: vec![],
+            chapter: Default::default(),
         };
 
         let resp = ureq::get(format!("{}{}", self.url, m.url).as_str()).call();
@@ -156,19 +157,33 @@ impl Scraping for Mangasee {
             }
         }
 
+        let mut next_chapter = "".to_string();
         let selector = scraper::Selector::parse(".mainWell .chapter-list a[chapter]").unwrap();
         for element in document.select(&selector) {
             let rank = String::from(element.value().attr("chapter").unwrap());
             let link = element.value().attr("href").unwrap();
-            let chapter = Chapter {
-                chapter: rank.to_owned(),
+
+            let mut chapter = Chapter {
+                prev_chapter: "".to_string(),
+                chapter: rank.clone(),
+                next_chapter: next_chapter.clone(),
                 url: link.replace("-page-1", ""),
                 pages: vec![],
             };
-            m.chapter.push(chapter);
-        }
-        m.chapter.reverse();
 
+            next_chapter = rank.clone();
+
+            if let Some(last_chapter) = m.chapter.iter_mut().next() {
+                last_chapter.1.prev_chapter = chapter.chapter.clone();
+            }
+
+            m.chapter.insert(
+                ChapterNumber {
+                    number: rank.clone(),
+                },
+                chapter,
+            );
+        }
         return m;
     }
 

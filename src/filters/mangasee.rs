@@ -1,6 +1,6 @@
 pub mod mangasee {
     use crate::handlers::mangasee::mangasee;
-    use crate::scraper::{mangasee::Mangasee, Manga, Params};
+    use crate::scraper::{mangasee::Mangasee, Params};
     use warp::Filter;
 
     pub fn mangasee(
