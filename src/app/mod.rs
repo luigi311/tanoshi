@@ -19,12 +19,11 @@ pub struct MangaModel {
     pub description: String,
     pub url: String,
     pub thumbnail_url: String,
-    pub chapter: Vec<ChapterModel>,
+    pub chapters: Vec<String>,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone, Default)]
 pub struct ChapterModel {
-    pub chapter: String,
-    pub url: String,
+    pub chapter_no: String,
     pub pages: Vec<String>,
 }

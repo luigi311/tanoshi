@@ -50,7 +50,7 @@ impl Component for Detail {
                 description: "".to_string(),
                 url: "".to_string(),
                 thumbnail_url: "".to_string(),
-                chapter: Default::default()
+                chapters: Default::default()
             },
         }
     }
@@ -97,10 +97,10 @@ impl Component for Detail {
 
                     <ul class="pure-menu-list">
                 {
-                    for self.manga.chapter.iter().map(|(chapter)| html!{
+                    for self.manga.chapters.iter().map(|(chapter)| html!{
                         <div class="pure-menu-item">
-                        <RouterAnchor<AppRoute> route=AppRoute::Chapter(self.source.to_owned(), self.title.to_owned(),chapter.chapter.to_owned())>
-                        <div class="pure-menu-link">{format!("Chapter {}", chapter.chapter.to_owned())}</div>
+                        <RouterAnchor<AppRoute> route=AppRoute::Chapter(self.source.to_owned(), self.title.to_owned(), chapter.to_owned())>
+                        <div class="pure-menu-link">{format!("Chapter {}", chapter.to_owned())}</div>
                         </RouterAnchor<AppRoute>>
                         </div>
                     })
