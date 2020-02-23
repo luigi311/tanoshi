@@ -1,16 +1,17 @@
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 use yew::{Component, ComponentLink, html, Html, Properties, ShouldRender};
 use yew::format::{Json, Nothing, Text};
 use yew::html::{ChildrenRenderer, NodeRef};
-use yew::services::fetch::{FetchService, FetchTask, Request, Response};
-use std::collections::HashMap;
-
-use yew_router::components::RouterAnchor;
 use yew::prelude::*;
+use yew::services::fetch::{FetchService, FetchTask, Request, Response};
+use yew_router::components::RouterAnchor;
+
 use crate::app::AppRoute;
 
+use super::{ChapterModel, MangaModel};
 use super::component::{Manga, TopBar};
-use super::{MangaModel, ChapterModel};
 
 #[derive(Clone, Properties)]
 pub struct Props {
@@ -42,7 +43,7 @@ impl Component for Detail {
             link,
             source: props.source,
             title: props.title,
-            manga: MangaModel{
+            manga: MangaModel {
                 title: "".to_string(),
                 author: "".to_string(),
                 genre: vec![],
@@ -50,7 +51,7 @@ impl Component for Detail {
                 description: "".to_string(),
                 url: "".to_string(),
                 thumbnail_url: "".to_string(),
-                chapters: Default::default()
+                chapters: Default::default(),
             },
         }
     }
@@ -77,37 +78,37 @@ impl Component for Detail {
 
     fn view(&self) -> Html {
         html! {
-            <>
-            <TopBar />
-            <div class="pure-g detail">
-                <div class="pure-u-xl-2-5">
+            <div class="container">
+            <div class="row justify-content-center">
+                <div class="col-sm-auto">
                     <div class="manga-cover-container">
                         <img class="manga-cover" src=self.manga.thumbnail_url />
                     </div>
                 </div>
-                <div class="pure-u-xl-3-5">
+                <div class="col-md">
                     <h1>{self.manga.title.to_owned()}</h1>
                     <h4>{self.manga.status.to_owned()}</h4>
                     <h4>{self.manga.genre.join(", ").to_owned()}</h4>
                     <p>{self.manga.description.to_owned()}</p>
                 </div>
             </div>
-            <div class="pure-menu detail">
-                <span class="pure-menu-heading">{"Read Chapters"}</span>
-
-                    <ul class="pure-menu-list">
-                {
-                    for self.manga.chapters.iter().map(|(chapter)| html!{
-                        <div class="pure-menu-item">
-                        <RouterAnchor<AppRoute> route=AppRoute::Chapter(self.source.to_owned(), self.title.to_owned(), chapter.to_owned())>
-                        <div class="pure-menu-link">{format!("Chapter {}", chapter.to_owned())}</div>
-                        </RouterAnchor<AppRoute>>
-                        </div>
-                    })
-                }
-                </ul>
+            <div class="row justify-content-center">
+                <div class="col-lg">
+                    <div class="card" style="width: 100%;">
+                        <div class="card-header">{"Read Chapter"}</div>
+                        <ul class="list-group">
+                        {
+                            for self.manga.chapters.iter().map(|(chapter)| html!{
+                                <RouterAnchor<AppRoute> route=AppRoute::Chapter(self.source.to_owned(), self.title.to_owned(), chapter.to_owned())>
+                                <li class="list-group-item list-group-item-action">{format!("Chapter {}", chapter.to_owned())}</li>
+                                </RouterAnchor<AppRoute>>
+                            })
+                        }
+                        </ul>
+                    </div>
+                </div>
             </div>
-            </>
+            </div>
         }
     }
 }

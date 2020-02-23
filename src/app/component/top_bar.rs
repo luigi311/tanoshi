@@ -33,34 +33,30 @@ impl Component for TopBar {
 
     fn view(&self) -> Html {
         html! {
-            <div class="pure-menu pure-menu-horizontal">
+            <div class="navbar navbar-expand-lg navbar-light bg-light">
                 <RouterAnchor<AppRoute> route=AppRoute::Home>
-                    <div class="pure-menu-heading pure-menu-link">{"Tanoshi"}</div>
+                    <div class="navbar-brand">{"Tanoshi"}</div>
                 </RouterAnchor<AppRoute>>
-                    <ul class="pure-menu-list">
-                        <li class="pure-menu-item"><a href="/updates" class="pure-menu-link">{"Updates"}</a></li>
-                        <li class="pure-menu-item pure-menu-has-children pure-menu-allow-hover">
-                            <a href="#" class="pure-menu-link">{"Catalogue"}</a>
-                            <ul class="pure-menu-children">
-                                <li class="pure-menu-item">
+                <div class="collapse navbar-collapse" id="navbarNav">
+                    <ul class="navbar-nav">
+                        <li class="nav-item"><a href="/updates" class="nav-link">{"Updates"}</a></li>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button"
+                            data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{"Catalogue"}</a>
+                            <div class="dropdown-menu" aria-labelledby="navbarDropdown">
                                     <RouterAnchor<AppRoute> route=AppRoute::Source("mangasee".to_string())>
-                                    <div class="pure-menu-link">{"Mangasee"}</div>
+                                    <a class="dropdown-item">{"Mangasee"}</a>
                                     </RouterAnchor<AppRoute>>
-                                </li>
-                                <li class="pure-menu-item">
                                     <RouterAnchor<AppRoute> route=AppRoute::Source("mangadex".to_string())>
-                                    <div class="pure-menu-link">{"Mangadex"}</div>
+                                    <a class="dropdown-item">{"Mangadex"}</a>
                                     </RouterAnchor<AppRoute>>
-                                    
-                                </li>
-                                <li class="pure-menu-item">
                                     <RouterAnchor<AppRoute> route=AppRoute::Source("mangaplus".to_string())>
-                                    <div class="pure-menu-link">{"Mangaplus"}</div></RouterAnchor<AppRoute>>
-                                </li>
-                            </ul>
+                                    <a class="dropdown-item">{"Mangaplus"}</a></RouterAnchor<AppRoute>>
+                            </div>
                         </li>
-                        <li class="pure-menu-item"><a href="/settings" class="pure-menu-link">{"Settings"}</a></li>
+                        <li class="nav-item"><a href="/settings" class="nav-link">{"Settings"}</a></li>
                     </ul>
+                </div>
             </div>
         }
     }

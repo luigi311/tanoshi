@@ -1,10 +1,7 @@
 use serde::{Deserialize, Serialize};
 use yew::{Component, ComponentLink, html, Html, Properties, ShouldRender};
 use yew::format::{Json, Nothing, Text};
-use yew::html::{ChildrenRenderer, NodeRef};
 use yew::services::fetch::{FetchService, FetchTask, Request, Response};
-
-use super::component::{Manga, TopBar};
 
 #[derive(Deserialize, Debug)]
 pub struct MangaModel {
@@ -65,7 +62,6 @@ impl Component for Home {
     fn view(&self) -> Html {
         html! {
             <>
-                <TopBar />
             </>
         }
     }

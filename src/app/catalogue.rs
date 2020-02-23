@@ -67,8 +67,7 @@ impl Component for Catalogue {
     fn view(&self) -> Html {
         html! {
             <>
-            <TopBar />
-            <div class="pure-g">
+            <div class=".container-fluid">
             { for self.mangas.iter().map(|manga|  html!{
                 <Manga
                     title=manga.title.to_owned()

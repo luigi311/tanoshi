@@ -1,14 +1,15 @@
-use yew_router::{router::Router, Switch};
 use serde::{Deserialize, Serialize};
 use yew::{Component, ComponentLink, html, Html, ShouldRender};
 use yew::format::{Json, Nothing, Text};
 use yew::html::{ChildrenRenderer, NodeRef, Properties};
 use yew::services::fetch::{FetchService, FetchTask, Request, Response};
+use yew_router::{router::Router, Switch};
 
 use super::catalogue::Catalogue;
-use super::detail::Detail;
 use super::chapter::Chapter;
+use super::detail::Detail;
 use super::home::Home;
+use super::component::TopBar;
 
 #[derive(Switch, Debug, Clone)]
 pub enum AppRoute {
@@ -51,6 +52,8 @@ impl Component for App {
 
     fn view(&self) -> Html {
         html! {
+        <>
+            <TopBar />
             <Router<AppRoute, ()>
             render = Router::render(|switch: AppRoute| {
             match switch {
@@ -61,6 +64,7 @@ impl Component for App {
             }
         })
     />
+    </>
         }
     }
 }

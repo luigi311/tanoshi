@@ -49,13 +49,13 @@ impl Component for Manga {
         let source = self.source.to_owned();
 
         html! {
-            <div class="pure-u-lg-1-5">
+            <div>
                 <div class="manga-cover-container">
                     <RouterAnchor<AppRoute> route=AppRoute::Detail(source, path.replace("/manga/", ""))>
                     { html!{
-                        <>
-                        <img class="manga-cover" src=thumbnail />
-                        </>
+                        <div>
+                        <img class="manga-cover" src=thumbnail/>
+                        </div>
                     }}
                     </RouterAnchor<AppRoute>>
                 </div>

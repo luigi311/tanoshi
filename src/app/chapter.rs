@@ -1,21 +1,15 @@
-use std::collections::HashMap;
-
-use serde::{Deserialize, Serialize};
 use stdweb::unstable::TryInto;
-use stdweb::web::{document, Document, IParentNode};
+use stdweb::web::{document, IParentNode};
 use stdweb::web::HtmlElement;
 use stdweb::web::IHtmlElement;
 use yew::{Component, ComponentLink, html, Html, Properties, ShouldRender};
 use yew::format::{Json, Nothing, Text};
-use yew::html::{ChildrenRenderer, NodeRef};
 use yew::prelude::*;
 use yew::services::fetch::{FetchService, FetchTask, Request, Response};
-use yew_router::components::RouterAnchor;
-
-use crate::app::AppRoute;
+use yew_router::{agent::RouteRequest, prelude::*};
 
 use super::{ChapterModel, MangaModel};
-use super::component::{Manga, TopBar};
+use std::borrow::Borrow;
 
 #[derive(Clone, Properties)]
 pub struct Props {
@@ -27,6 +21,7 @@ pub struct Props {
 pub struct Chapter {
     fetch_task: Option<FetchTask>,
     link: ComponentLink<Self>,
+    router: Box<dyn Bridge<RouteAgent>>,
     source: String,
     title: String,
     current_chapter: String,
@@ -41,6 +36,7 @@ pub enum Msg {
     ChapterReady(ChapterModel),
     PageForward,
     PagePrevious,
+    RouterCallback,
     Noop,
 }
 
@@ -49,9 +45,13 @@ impl Component for Chapter {
     type Properties = Props;
 
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
+        let callback = link.callback(|_| Msg::RouterCallback); // TODO use a dispatcher instead.
+        let router = RouteAgent::bridge(callback);
+
         Chapter {
             fetch_task: None,
             link,
+            router,
             source: props.source,
             title: props.title,
             current_chapter: props.chapter,
@@ -63,13 +63,7 @@ impl Component for Chapter {
     }
 
     fn mounted(&mut self) -> ShouldRender {
-        self.get_chapter();
-        let reader: HtmlElement = document().query_selector(".manga-reader-container")
-            .unwrap()
-            .expect("failed to get")
-            .try_into()
-            .unwrap();
-        reader.focus();
+        self.get_manga_info();
         true
     }
 
@@ -77,6 +71,7 @@ impl Component for Chapter {
         match msg {
             Msg::MangaReady(data) => {
                 self.chapter_list = data.chapters;
+                self.get_chapter();
             }
             Msg::ChapterReady(data) => {
                 self.chapter = data;
@@ -87,6 +82,9 @@ impl Component for Chapter {
             Msg::PagePrevious => {
                 self.prev_page_or_chapter();
             }
+            Msg::RouterCallback => {
+                self.get_chapter();
+            }
             Msg::Noop => {
                 info!("noop");
             }
@@ -96,50 +94,47 @@ impl Component for Chapter {
 
     fn view(&self) -> Html {
         html! {
-            <>
-            <TopBar />
-            <div class="manga-reader-container" tabindex="0" onkeydown=self.link.callback(|e: KeyDownEvent|
-                match e.key().as_str() {
-                    "ArrowRight" => Msg::PageForward,
-                    "ArrowLeft"  => Msg::PagePrevious,
-                    _ => Msg::Noop,
-                }
-            )>
-                <button class="manga-navigate-left" onclick=self.link.callback(|_| Msg::PagePrevious)/>
-                <button class="manga-navigate-right" onclick=self.link.callback(|_| Msg::PageForward)/>
-                <div class="manga-page-container">
+            <div class="container">
+            <div class="col-lg">
+            <div id="mangaviewer" class="carousel slide" data-ride="carousel">
+                 <ol class="carousel-indicators">
                     {
-                        if self.chapter.pages.len() > 0 {
-                            if self.double_page {
-                                html! {
-                                    <>
-                                        {
-                                            match self.chapter.pages.get(self.current_page+1) {
-                                                Some(page) => html! { <img class="manga-page" src=page/> },
-                                                None => html!{},
-                                            }
-                                        }
-
-                                        <img class="manga-page" src=self.chapter.pages[self.current_page]/>
-                                    </>
-                                }
-                            } else {
-                                html! {
-                                <>
-                                    <img class="manga-page" src=self.chapter.pages[self.current_page]/>
-                                </>
-                                }
-                            }
-                        } else {
-                            html! {
-                                <>
-                                </>
-                            }
-                        }
+                        for (0..self.chapter.pages.len()).map(|i|
+                             html! {
+                                <li data-target="#mangaviewer" data-slide-to={format!("{:?}", i)} class={if self.current_page == i {
+                                    "active"
+                                } else {
+                                    ""
+                                }}></li>
+                             }
+                        )
+                    }
+                </ol>
+                <div class="carousel-inner">
+                    {
+                        for (0..self.chapter.pages.len()).map(|i|
+                             html! {
+                                <div class={if self.current_page == i {
+                                    "carousel-item active"
+                                } else {
+                                    "carousel-item"
+                                }}>
+                                    <img src=self.chapter.pages[i].clone() class="d-block w-100" alt="..."/>
+                                </div>
+                             })
                     }
                 </div>
+                <a class="carousel-control-prev" href="#mangaviewer" role="button" data-slide="prev">
+                    <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                    <span class="sr-only">{"Previous"}</span>
+                </a>
+                <a class="carousel-control-next" href="#mangaviewer" role="button" data-slide="next">
+                    <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                    <span class="sr-only">{"Next"}</span>
+                </a>
             </div>
-            </>
+            </div>
+            </div>
         }
     }
 }
@@ -195,7 +190,7 @@ impl Chapter {
 
         if self.current_page == 0 {
             let next_chapter = match self.chapter_list.iter().position(|chapter| chapter == &self.current_chapter) {
-                Some(index) => index + 1,
+                Some(index) => index - 1,
                 None => 0,
             };
 
@@ -204,7 +199,10 @@ impl Chapter {
                 None => self.current_chapter.to_owned(),
             };
 
-            self.get_chapter();
+            let route = Route::from(format!("/catalogue/{}/manga/{}/chapter/{}", self.source, self.title, self.current_chapter));
+
+            info!("change route {:?}", route.borrow());
+            self.router.send(RouteRequest::ChangeRoute(route));
         }
     }
 
