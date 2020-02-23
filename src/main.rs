@@ -13,10 +13,8 @@ async fn main() {
     }
 
     let mangasee = Scraping::new("https://mangaseeonline.us");
-    let mangadex = Scraping::new("https://mangadex.org");
     let mangasee_api = filters::mangasee::mangasee::mangasee(mangasee);
-    let mangadex_api = filters::mangadex::mangadex::mangadex(mangadex);
-    let api = mangasee_api.or(mangadex_api);
+    let api = mangasee_api;
 
     let cors = warp::cors()
         .allow_origin("http://localhost:8000")

@@ -53,7 +53,7 @@ impl Scraping for Mangasee {
                 description: String::from(""),
                 url: String::from(""),
                 thumbnail_url: String::from(""),
-                chapter: BTreeMap::new(),
+                chapters: vec![],
             };
 
             let sel = scraper::Selector::parse("img").unwrap();
@@ -93,7 +93,7 @@ impl Scraping for Mangasee {
                 description: String::from(""),
                 url: String::from(link).replace("read-online", "manga"),
                 thumbnail_url: String::from(""),
-                chapter: Default::default(),
+                chapters: Default::default(),
             };
             latest_mangas.push(manga)
         }
@@ -101,19 +101,19 @@ impl Scraping for Mangasee {
         return latest_mangas;
     }
 
-    fn get_manga_info(&self, manga: &Manga) -> Manga {
+    fn get_manga_info(&self, path: String) -> Manga {
         let mut m = Manga {
             title: "".to_string(),
             author: "".to_string(),
             genre: vec![],
             status: "".to_string(),
             description: "".to_string(),
-            url: String::from(&manga.url),
+            url: path.to_owned(),
             thumbnail_url: "".to_string(),
-            chapter: Default::default(),
+            chapters: Default::default(),
         };
 
-        let resp = ureq::get(format!("{}{}", self.url, m.url).as_str()).call();
+        let resp = ureq::get(format!("{}{}", self.url, path.to_owned()).as_str()).call();
         let html = resp.into_string().unwrap();
 
         let document = scraper::Html::parse_document(&html);
@@ -163,35 +163,18 @@ impl Scraping for Mangasee {
             let rank = String::from(element.value().attr("chapter").unwrap());
             let link = element.value().attr("href").unwrap();
 
-            let mut chapter = Chapter {
-                prev_chapter: "".to_string(),
-                chapter: rank.clone(),
-                next_chapter: next_chapter.clone(),
-                url: link.replace("-page-1", ""),
-                pages: vec![],
-            };
-
-            next_chapter = rank.clone();
-
-            if let Some(last_chapter) = m.chapter.iter_mut().next() {
-                last_chapter.1.prev_chapter = chapter.chapter.clone();
-            }
-
-            m.chapter.insert(
-                ChapterNumber {
-                    number: rank.clone(),
-                },
-                chapter,
-            );
+            m.chapters.push(rank);
         }
         return m;
     }
 
-    fn get_chapter(&self, chapter: &mut Chapter) {
-        let resp = ureq::get(format!("{}{}", self.url, chapter.url).as_str()).call();
+    fn get_chapter(&self, path: String) -> Chapter {
+        let resp = ureq::get(format!("{}{}", self.url, path.to_owned()).as_str()).call();
         let html = resp.into_string().unwrap();
 
         let document = scraper::Html::parse_document(&html);
+
+        let mut chapter = Chapter::default();
 
         let selector = scraper::Selector::parse(".fullchapimage img").unwrap();
         for element in document.select(&selector) {
@@ -199,5 +182,6 @@ impl Scraping for Mangasee {
                 .pages
                 .push(String::from(element.value().attr("src").unwrap()));
         }
+        return chapter;
     }
 }

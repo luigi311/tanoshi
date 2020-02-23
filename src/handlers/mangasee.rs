@@ -15,16 +15,7 @@ pub mod mangasee {
         title: String,
         mangasee: Mangasee,
     ) -> Result<impl warp::Reply, Infallible> {
-        let manga = mangasee.get_manga_info(&Manga {
-            title: "".to_string(),
-            author: "".to_string(),
-            genre: vec![],
-            status: "".to_string(),
-            description: "".to_string(),
-            url: format!("/manga/{}", title),
-            thumbnail_url: "".to_string(),
-            chapter: BTreeMap::new(),
-        });
+        let manga = mangasee.get_manga_info(format!("/manga/{}", title));
         Ok(warp::reply::json(&manga))
     }
 
@@ -33,15 +24,8 @@ pub mod mangasee {
         chapter: String,
         mangasee: Mangasee,
     ) -> Result<impl warp::Reply, Infallible> {
-        let mut chapter = Chapter {
-            prev_chapter: "".to_string(),
-            chapter: chapter.to_owned(),
-            next_chapter: "".to_string(),
-            url: format!("/read-online/{}-chapter-{}.html", title, chapter),
-            pages: vec![],
-        };
-
-        mangasee.get_chapter(&mut chapter);
+        let chapter =
+            mangasee.get_chapter(format!("/read-online/{}-chapter-{}.html", title, chapter));
         Ok(warp::reply::json(&chapter))
     }
 }

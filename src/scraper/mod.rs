@@ -3,7 +3,6 @@ use serde::{Deserialize, Serialize, Serializer};
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
 
-pub mod mangadex;
 pub mod mangasee;
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -15,15 +14,12 @@ pub struct Manga {
     pub description: String,
     pub url: String,
     pub thumbnail_url: String,
-    pub chapter: BTreeMap<ChapterNumber, Chapter>,
+    pub chapters: Vec<String>,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone, Default)]
 pub struct Chapter {
-    pub prev_chapter: String,
-    pub chapter: String,
-    pub next_chapter: String,
-    pub url: String,
+    pub chapter_no: String,
     pub pages: Vec<String>,
 }
 
@@ -71,6 +67,6 @@ pub trait Scraping {
     fn new(url: &'static str) -> Self;
     fn get_mangas(&self, param: Params) -> Vec<Manga>;
     fn get_latest_mangas(&self) -> Vec<Manga>;
-    fn get_manga_info(&self, manga: &Manga) -> Manga;
-    fn get_chapter(&self, chapter: &mut Chapter);
+    fn get_manga_info(&self, path: String) -> Manga;
+    fn get_chapter(&self, path: String) -> Chapter;
 }
