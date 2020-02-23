@@ -57,7 +57,7 @@ impl Component for Chapter {
             current_chapter: props.chapter,
             chapter: Default::default(),
             current_page: 0,
-            double_page: true,
+            double_page: false,
             chapter_list: vec![],
         }
     }
@@ -107,33 +107,13 @@ impl Component for Chapter {
                 <button class="manga-navigate-right" onclick=self.link.callback(|_| Msg::PageForward)/>
                 <div class="manga-page-container">
                     {
-                        if self.chapter.pages.len() > 0 {
-                            if self.double_page {
-                                html! {
-                                    <>
-                                        {
-                                            match self.chapter.pages.get(self.current_page+1) {
-                                                Some(page) => html! { <img class="manga-page" src=page/> },
-                                                None => html!{},
-                                            }
-                                        }
-
-                                        <img class="manga-page" src=self.chapter.pages[self.current_page]/>
-                                    </>
-                                }
-                            } else {
-                                html! {
-                                <>
-                                    <img class="manga-page" src=self.chapter.pages[self.current_page]/>
-                                </>
-                                }
-                            }
+                        for (0..self.chapter.pages.len()).map(|i| html! {
+                        <img class={if (self.current_page == i) || (self.double_page && (self.current_page + 1 == i)) {
+                            "manga-page active"
                         } else {
-                            html! {
-                                <>
-                                </>
-                            }
-                        }
+                            "manga-page"
+                        }} src=self.chapter.pages[i]/>
+                        })
                     }
                 </div>
             </div>

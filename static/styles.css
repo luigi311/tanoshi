@@ -41,6 +41,13 @@
 .manga-page {
     max-height: 100vh;
     margin: 0;
+    display: none;
+}
+
+.manga-page.active {
+    max-height: 100vh;
+    margin: 0;
+    display: block;
 }
 
 .manga-reader-container {
@@ -53,8 +60,8 @@
     border: none !important;
     font-size:0;
     height: 100vh;
-    width: 25%;
-    left: 75%;
+    width: 50%;
+    left: 50%;
     position: absolute;
     outline:none
 }
@@ -64,7 +71,7 @@
     border: none !important;
     font-size:0;
     height: 100vh;
-    width: 25%;
+    width: 50%;
     position: absolute;
     outline:none
 }
