@@ -12,13 +12,16 @@ async fn main() {
         env::set_var("RUST_LOG", "mangas=info")
     }
 
-    let mangasee: scraper::mangasee::Mangasee = Scraping::new("https://mangaseeonline.us");
-    let api = filters::mangasee::mangasee::mangasee(mangasee);
+    let mangasee = Scraping::new("https://mangaseeonline.us");
+    let mangadex = Scraping::new("https://mangadex.org");
+    let mangasee_api = filters::mangasee::mangasee::mangasee(mangasee);
+    let mangadex_api = filters::mangadex::mangadex::mangadex(mangadex);
+    let api = mangasee_api.or(mangadex_api);
 
     let cors = warp::cors()
         .allow_origin("http://localhost:8000")
         .allow_methods(vec!["GET"]);
 
-    let routes = api.with(warp::log("mangasee")).with(cors);
+    let routes = api.with(warp::log("manga")).with(cors);
     warp::serve(routes).run(([127, 0, 0, 1], 3030)).await;
 }

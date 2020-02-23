@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize, Serializer};
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
 
+pub mod mangadex;
 pub mod mangasee;
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
