@@ -96,42 +96,46 @@ impl Component for Chapter {
         html! {
             <div class="container">
             <div class="col-lg">
-            <div id="mangaviewer" class="carousel slide" data-ride="carousel">
-                 <ol class="carousel-indicators">
+            <div class="manga-reader-container" tabindex="0" onkeydown=self.link.callback(|e: KeyDownEvent|
+                match e.key().as_str() {
+                    "ArrowRight" => Msg::PageForward,
+                    "ArrowLeft"  => Msg::PagePrevious,
+                    _ => Msg::Noop,
+                }
+            )>
+                <button class="manga-navigate-left" onclick=self.link.callback(|_| Msg::PagePrevious)/>
+                <button class="manga-navigate-right" onclick=self.link.callback(|_| Msg::PageForward)/>
+                <div class="manga-page-container">
                     {
-                        for (0..self.chapter.pages.len()).map(|i|
-                             html! {
-                                <li data-target="#mangaviewer" data-slide-to={format!("{:?}", i)} class={if self.current_page == i {
-                                    "active"
-                                } else {
-                                    ""
-                                }}></li>
-                             }
-                        )
-                    }
-                </ol>
-                <div class="carousel-inner">
-                    {
-                        for (0..self.chapter.pages.len()).map(|i|
-                             html! {
-                                <div class={if self.current_page == i {
-                                    "carousel-item active"
-                                } else {
-                                    "carousel-item"
-                                }}>
-                                    <img src=self.chapter.pages[i].clone() class="d-block w-100" alt="..."/>
-                                </div>
-                             })
+                        if self.chapter.pages.len() > 0 {
+                            if self.double_page {
+                                html! {
+                                    <>
+                                        {
+                                            match self.chapter.pages.get(self.current_page+1) {
+                                                Some(page) => html! { <img class="manga-page" src=page/> },
+                                                None => html!{},
+                                            }
+                                        }
+
+                                        <img class="manga-page" src=self.chapter.pages[self.current_page]/>
+                                    </>
+                                }
+                            } else {
+                                html! {
+                                <>
+                                    <img class="manga-page" src=self.chapter.pages[self.current_page]/>
+                                </>
+                                }
+                            }
+                        } else {
+                            html! {
+                                <>
+                                </>
+                            }
+                        }
                     }
                 </div>
-                <a class="carousel-control-prev" href="#mangaviewer" role="button" data-slide="prev">
-                    <span class="carousel-control-prev-icon" aria-hidden="true"></span>
-                    <span class="sr-only">{"Previous"}</span>
-                </a>
-                <a class="carousel-control-next" href="#mangaviewer" role="button" data-slide="next">
-                    <span class="carousel-control-next-icon" aria-hidden="true"></span>
-                    <span class="sr-only">{"Next"}</span>
-                </a>
             </div>
             </div>
             </div>
