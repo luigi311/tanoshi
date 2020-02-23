@@ -174,16 +174,17 @@ impl Chapter {
 
         if self.current_page == 0 {
             let next_chapter = match self.chapter_list.iter().position(|chapter| chapter == &self.current_chapter) {
-                Some(index) => index - 1,
+                Some(index) => index,
                 None => 0,
             };
 
-            self.current_chapter = match self.chapter_list.get(next_chapter) {
-                Some(chapter) => chapter.to_owned(),
-                None => self.current_chapter.to_owned(),
+            let routeString: String;
+            match next_chapter.checked_sub(1) {
+                Some(index) => routeString = format!("/catalogue/{}/manga/{}/chapter/{}", self.source, self.title, self.current_chapter),
+                None => routeString = format!("/catalogue/{}/manga/{}", self.source, self.title),
             };
 
-            let route = Route::from(format!("/catalogue/{}/manga/{}/chapter/{}", self.source, self.title, self.current_chapter));
+            let route = Route::from(routeString);
 
             info!("change route {:?}", route.borrow());
             self.router.send(RouteRequest::ChangeRoute(route));
