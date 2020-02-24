@@ -103,8 +103,8 @@ impl Component for Chapter {
                     _ => Msg::Noop,
                 }
             )>
-                <button class="manga-navigate-left" onclick=self.link.callback(|_| Msg::PagePrevious)/>
-                <button class="manga-navigate-right" onclick=self.link.callback(|_| Msg::PageForward)/>
+                <button class="manga-navigate-left" onmouseup=self.link.callback(|_| Msg::PagePrevious)/>
+                <button class="manga-navigate-right" onmouseup=self.link.callback(|_| Msg::PageForward)/>
                 <div class="manga-page-container">
                     {
                         for (0..self.chapter.pages.len()).map(|i| html! {
@@ -178,15 +178,21 @@ impl Chapter {
                 None => 0,
             };
 
-            let routeString: String;
-            match next_chapter.checked_sub(1) {
-                Some(index) => routeString = format!("/catalogue/{}/manga/{}/chapter/{}", self.source, self.title, self.current_chapter),
-                None => routeString = format!("/catalogue/{}/manga/{}", self.source, self.title),
+            let is_next = match next_chapter.checked_sub(1) {
+                Some(index) => {
+                    self.current_chapter = self.chapter_list[index].clone();
+                    true
+                },
+                None => false,
             };
 
-            let route = Route::from(routeString);
-
-            info!("change route {:?}", route.borrow());
+            let route_string: String;
+            if is_next {
+                route_string = format!("/catalogue/{}/manga/{}/chapter/{}", self.source, self.title, self.current_chapter);
+            } else {
+                route_string = format!("/catalogue/{}/manga/{}", self.source, self.title);
+            }
+            let route = Route::from(route_string);
             self.router.send(RouteRequest::ChangeRoute(route));
         }
     }
