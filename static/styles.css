@@ -10,7 +10,10 @@
 }
 
 .manga-cover-container {
-    margin: 15px;
+    margin-top: 15px;
+    margin-bottom: 15px;
+    margin-left: auto;
+    margin-right: auto;
     position: relative;
     width: 200px;
 }
@@ -35,25 +38,24 @@
     height: 100%;
     z-index: 0;
     margin: auto;
-    width: fit-content;
+    width: 100vw;
 }
 
 .manga-page {
-    max-height: 100vh;
-    margin: 0;
     display: none;
 }
 
 .manga-page.active {
     max-height: 100vh;
-    margin: 0;
+    max-width: 100vw;
+    margin: auto;
     display: block;
 }
 
 .manga-reader-container {
     position: relative;
     outline:none;
-    width: 100vh;
+    width: 99vh;
 }
 
 .manga-navigate-right {
