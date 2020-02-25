@@ -5,6 +5,8 @@ use yew::services::fetch::{FetchService, FetchTask, Request, Response};
 use yew_router::{agent::RouteRequest, prelude::*};
 
 use super::{ChapterModel, MangaModel};
+use stdweb::web::{document, IParentNode, HtmlElement, IHtmlElement};
+use stdweb::unstable::TryInto;
 
 #[derive(Clone, Properties)]
 pub struct Props {
@@ -59,6 +61,12 @@ impl Component for Chapter {
 
     fn mounted(&mut self) -> ShouldRender {
         self.get_manga_info();
+        let reader: HtmlElement = document().query_selector("#manga-reader")
+            .unwrap()
+            .expect("failed to get")
+            .try_into()
+            .unwrap();
+        reader.focus();
         true
     }
 
@@ -89,9 +97,7 @@ impl Component for Chapter {
 
     fn view(&self) -> Html {
         html! {
-            <div class="container">
-            <div class="col-lg">
-            <div class="manga-reader-container" tabindex="0" onkeydown=self.link.callback(|e: KeyDownEvent|
+            <div class="container-fluid" id="manga-reader" tabindex="0" onkeydown=self.link.callback(|e: KeyDownEvent|
                 match e.key().as_str() {
                     "ArrowRight" => Msg::PageForward,
                     "ArrowLeft"  => Msg::PagePrevious,
@@ -107,12 +113,10 @@ impl Component for Chapter {
                             "manga-page active"
                         } else {
                             "manga-page"
-                        }} src=self.chapter.pages[i]/>
+                        }} src=self.chapter.pages[i] page={i}/>
                         })
                     }
                 </div>
-            </div>
-            </div>
             </div>
         }
     }
@@ -189,6 +193,7 @@ impl Chapter {
             }
             let route = Route::from(route_string);
             self.router.send(RouteRequest::ChangeRoute(route));
+            self.chapter.pages.clear();
         }
     }
 
@@ -217,6 +222,7 @@ impl Chapter {
                 let route_string = format!("/catalogue/{}/manga/{}/chapter/{}", self.source, self.title, self.current_chapter);
                 let route = Route::from(route_string);
                 self.router.send(RouteRequest::ChangeRoute(route));
+                self.chapter.pages.clear();
             }
         }
     }

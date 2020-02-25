@@ -4,6 +4,10 @@ use yew::format::{Json, Nothing};
 use yew::services::fetch::{FetchService, FetchTask, Request, Response};
 
 use super::component::{Manga};
+use stdweb::web::{IEventTarget, window, document, IHtmlElement};
+use stdweb::web::event::ScrollEvent;
+use enclose::enclose;
+use std::borrow::BorrowMut;
 
 #[derive(Deserialize, Debug)]
 pub struct MangaModel {
@@ -21,11 +25,13 @@ pub struct Catalogue {
     fetch_task: Option<FetchTask>,
     link: ComponentLink<Self>,
     source: String,
+    page: i32,
     mangas: Vec<MangaModel>,
 }
 
 pub enum Msg {
     MangaReady(Vec<MangaModel>),
+    ScrolledDown,
     Noop,
 }
 
@@ -34,18 +40,34 @@ impl Component for Catalogue {
     type Properties = Props;
 
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
+        let scroll_callback = link.callback(move |_ : ScrollEvent| {
+            let current_scroll = window().page_y_offset() as i32 + window().inner_height();
+            let height = document().body().unwrap().offset_height();
+            if current_scroll >= height {
+               return Msg::ScrolledDown;
+            }
+            Msg::Noop
+        });
+        window().add_event_listener(enclose!((window) move |e: ScrollEvent| {
+            scroll_callback.emit(e)
+        }));
         Catalogue {
             fetch_task: None,
             link,
             source: props.source,
+            page: 1,
             mangas: vec![],
         }
     }
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
-            Msg::MangaReady(data) => {
-                self.mangas = data;
+            Msg::MangaReady(mut data) => {
+                self.mangas.append(&mut data);
+            }
+            Msg::ScrolledDown => {
+                self.page += 1;
+                self.fetch_mangas();
             }
             Msg::Noop => {
                 info!("noop");
@@ -78,7 +100,7 @@ impl Component for Catalogue {
 
 impl Catalogue {
     fn fetch_mangas(&mut self) {
-        let req = Request::get(format!("/api/source/{}?sort_by=popularity&sort_order=descending&page=1", self.source))
+        let req = Request::get(format!("/api/source/{}?sort_by=popularity&sort_order=descending&page={}", self.source, self.page))
             .body(Nothing)
             .expect("failed to build request");
 

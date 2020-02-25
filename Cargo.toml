@@ -33,6 +33,7 @@ http = "*"
 log = "*"
 web_logger="*"
 stdweb ="*"
+enclose = "*"
 
 [dev-dependencies]
 wasm-bindgen-test = "*"
