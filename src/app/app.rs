@@ -9,8 +9,8 @@ use super::component::TopBar;
 
 #[derive(Switch, Debug, Clone)]
 pub enum AppRoute {
-    #[to = "/catalogue/{source}/manga/{title}/chapter/{chapter}"]
-    Chapter(String, String, String),
+    #[to = "/catalogue/{source}/manga/{title}/chapter/{chapter}/page/{page}"]
+    Chapter(String, String, String, usize),
     #[to = "/catalogue/{source}/manga/{title}"]
     Detail(String, String),
     #[to = "/catalogue/{source}"]
@@ -45,7 +45,7 @@ impl Component for App {
             <Router<AppRoute, ()>
             render = Router::render(|switch: AppRoute| {
             match switch {
-                AppRoute::Chapter(source, title, chapter) => html!{<Chapter source=source title=title chapter=chapter/>},
+                AppRoute::Chapter(source, title, chapter, page) => html!{<Chapter source=source title=title chapter=chapter page=page/>},
                 AppRoute::Detail(source, title) => html!{<Detail source=source title=title/>},
                 AppRoute::Source(source) => html!{<Catalogue source=source/>},
                 AppRoute::Home => html!{<Home/>},

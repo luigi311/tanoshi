@@ -78,7 +78,7 @@ impl Component for Detail {
                 <div class="col-md">
                     <h1>{self.manga.title.to_owned()}</h1>
                     <h4>{self.manga.status.to_owned()}</h4>
-                    <h4>{self.manga.genre.join(", ").to_owned()}</h4>
+                    <h5>{self.manga.genre.join(", ").to_owned()}</h5>
                     <p>{self.manga.description.to_owned()}</p>
                 </div>
             </div>
@@ -89,7 +89,7 @@ impl Component for Detail {
                         <ul class="list-group">
                         {
                             for self.manga.chapters.iter().map(|(chapter)| html!{
-                                <RouterAnchor<AppRoute> route=AppRoute::Chapter(self.source.to_owned(), self.title.to_owned(), chapter.to_owned())>
+                                <RouterAnchor<AppRoute> route=AppRoute::Chapter(self.source.to_owned(), self.title.to_owned(), chapter.to_owned(), 1)>
                                 <li class="list-group-item list-group-item-action">{format!("Chapter {}", chapter.to_owned())}</li>
                                 </RouterAnchor<AppRoute>>
                             })

@@ -1,3 +1,5 @@
+use stdweb::unstable::TryInto;
+use stdweb::web::{document, HtmlElement, IHtmlElement, IParentNode};
 use yew::{Component, ComponentLink, html, Html, Properties, ShouldRender};
 use yew::format::{Json, Nothing};
 use yew::prelude::*;
@@ -5,14 +7,13 @@ use yew::services::fetch::{FetchService, FetchTask, Request, Response};
 use yew_router::{agent::RouteRequest, prelude::*};
 
 use super::{ChapterModel, MangaModel};
-use stdweb::web::{document, IParentNode, HtmlElement, IHtmlElement};
-use stdweb::unstable::TryInto;
 
 #[derive(Clone, Properties)]
 pub struct Props {
     pub source: String,
     pub title: String,
     pub chapter: String,
+    pub page: usize,
 }
 
 pub struct Chapter {
@@ -26,6 +27,7 @@ pub struct Chapter {
     current_page: usize,
     double_page: bool,
     chapter_list: Vec<String>,
+    previous_chapter_page: usize,
 }
 
 pub enum Msg {
@@ -53,9 +55,10 @@ impl Component for Chapter {
             title: props.title,
             current_chapter: props.chapter,
             chapter: Default::default(),
-            current_page: 0,
+            current_page: props.page - 1,
             double_page: false,
             chapter_list: vec![],
+            previous_chapter_page: 0,
         }
     }
 
@@ -171,6 +174,7 @@ impl Chapter {
             None => 0,
         };
 
+        let route_string: String;
         if self.current_page == 0 {
             let current_chapter_idx = match self.chapter_list.iter().position(|chapter| chapter == &self.current_chapter) {
                 Some(index) => index,
@@ -181,19 +185,25 @@ impl Chapter {
                 Some(index) => {
                     self.current_chapter = self.chapter_list[index].clone();
                     true
-                },
+                }
                 None => false,
             };
 
-            let route_string: String;
+
+            self.chapter.pages.clear();
+
             if is_next {
-                route_string = format!("/catalogue/{}/manga/{}/chapter/{}", self.source, self.title, self.current_chapter);
+                route_string = format!("/catalogue/{}/manga/{}/chapter/{}/page/1", self.source, self.title, self.current_chapter);
+                self.previous_chapter_page = self.current_page;
             } else {
                 route_string = format!("/catalogue/{}/manga/{}", self.source, self.title);
             }
             let route = Route::from(route_string);
             self.router.send(RouteRequest::ChangeRoute(route));
-            self.chapter.pages.clear();
+        } else {
+            route_string = format!("/catalogue/{}/manga/{}/chapter/{}/page/{}", self.source, self.title, self.current_chapter, self.current_page + 1);
+            let route = Route::from(route_string);
+            self.router.send(RouteRequest::ReplaceRouteNoBroadcast(route));
         }
     }
 
@@ -207,7 +217,7 @@ impl Chapter {
             Some(page) => {
                 self.current_page = page;
                 false
-            },
+            }
             None => true,
         };
 
@@ -217,13 +227,25 @@ impl Chapter {
                 None => 0,
             };
 
+            self.current_chapter = match self.chapter_list.get(current_chapter_idx) {
+                Some(chapter) => chapter.clone(),
+                None => self.current_chapter.clone(),
+            };
+            self.current_page = self.previous_chapter_page;
             if current_chapter_idx < self.chapter_list.len() {
-                self.current_chapter = self.chapter_list[current_chapter_idx].clone();
-                let route_string = format!("/catalogue/{}/manga/{}/chapter/{}", self.source, self.title, self.current_chapter);
+                self.chapter.pages.clear();
+                let route_string = format!("/catalogue/{}/manga/{}/chapter/{}/page/{}", self.source, self.title, self.current_chapter, self.current_page + 1);
                 let route = Route::from(route_string);
                 self.router.send(RouteRequest::ChangeRoute(route));
-                self.chapter.pages.clear();
+            } else {
+                let route_string = format!("/catalogue/{}/manga/{}", self.source, self.title);
+                let route = Route::from(route_string);
+                self.router.send(RouteRequest::ChangeRoute(route));
             }
+        } else {
+            let route_string = format!("/catalogue/{}/manga/{}/chapter/{}/page/{}", self.source, self.title, self.current_chapter, self.current_page + 1);
+            let route = Route::from(route_string);
+            self.router.send(RouteRequest::ReplaceRouteNoBroadcast(route));
         }
     }
 }
