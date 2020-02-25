@@ -33,10 +33,13 @@ impl Component for TopBar {
 
     fn view(&self) -> Html {
         html! {
-            <div class="navbar navbar-expand-lg navbar-light bg-light">
+            <div class="navbar navbar-expand-sm navbar-light bg-light">
                 <RouterAnchor<AppRoute> route=AppRoute::Home>
                     <div class="navbar-brand">{"Tanoshi"}</div>
                 </RouterAnchor<AppRoute>>
+                <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
                 <div class="collapse navbar-collapse" id="navbarNav">
                     <ul class="navbar-nav">
                         <li class="nav-item"><a href="/updates" class="nav-link">{"Updates"}</a></li>

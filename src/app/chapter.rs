@@ -173,12 +173,12 @@ impl Chapter {
         };
 
         if self.current_page == 0 {
-            let next_chapter = match self.chapter_list.iter().position(|chapter| chapter == &self.current_chapter) {
+            let current_chapter_idx = match self.chapter_list.iter().position(|chapter| chapter == &self.current_chapter) {
                 Some(index) => index,
                 None => 0,
             };
 
-            let is_next = match next_chapter.checked_sub(1) {
+            let is_next = match current_chapter_idx.checked_sub(1) {
                 Some(index) => {
                     self.current_chapter = self.chapter_list[index].clone();
                     true
@@ -202,9 +202,27 @@ impl Chapter {
         if self.double_page {
             num = 2;
         }
-        self.current_page = match self.current_page.checked_sub(num) {
-            Some(page) => page,
-            None => 0
+
+        let is_prev = match self.current_page.checked_sub(num) {
+            Some(page) => {
+                self.current_page = page;
+                false
+            },
+            None => true,
+        };
+
+        if is_prev {
+            let current_chapter_idx = match self.chapter_list.iter().position(|chapter| chapter == &self.current_chapter) {
+                Some(index) => index + 1,
+                None => 0,
+            };
+
+            if current_chapter_idx < self.chapter_list.len() {
+                self.current_chapter = self.chapter_list[current_chapter_idx].clone();
+                let route_string = format!("/catalogue/{}/manga/{}/chapter/{}", self.source, self.title, self.current_chapter);
+                let route = Route::from(route_string);
+                self.router.send(RouteRequest::ChangeRoute(route));
+            }
         }
     }
 }

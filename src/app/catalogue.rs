@@ -66,17 +66,17 @@ impl Component for Catalogue {
 
     fn view(&self) -> Html {
         html! {
-            <>
-            <div class=".container-fluid">
-            { for self.mangas.iter().map(|manga|  html!{
+            <div class="container">
+                <div class="row row-cols-3">
+                { for self.mangas.iter().map(|manga|  html!{
                 <Manga
                     title=manga.title.to_owned()
                     thumbnail=manga.thumbnail_url.to_owned()
                     path=manga.url.to_owned()
                     source=self.source.to_owned() />
-            }) }
+                }) }
+                </div>
             </div>
-            </>
         }
     }
 }
