@@ -1,10 +1,9 @@
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize};
 use yew::{Component, ComponentLink, html, Html, Properties, ShouldRender};
-use yew::format::{Json, Nothing, Text};
-use yew::html::{ChildrenRenderer, NodeRef};
+use yew::format::{Json, Nothing};
 use yew::services::fetch::{FetchService, FetchTask, Request, Response};
 
-use super::component::{Manga, TopBar};
+use super::component::{Manga};
 
 #[derive(Deserialize, Debug)]
 pub struct MangaModel {
@@ -27,7 +26,6 @@ pub struct Catalogue {
 
 pub enum Msg {
     MangaReady(Vec<MangaModel>),
-    FetchReady(Response<Text>),
     Noop,
 }
 
@@ -48,9 +46,6 @@ impl Component for Catalogue {
         match msg {
             Msg::MangaReady(data) => {
                 self.mangas = data;
-            }
-            Msg::FetchReady(data) => {
-                info!("fetch ready");
             }
             Msg::Noop => {
                 info!("noop");

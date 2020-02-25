@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
 pub mod app;
 pub use app::{App, AppRoute};

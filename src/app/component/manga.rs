@@ -1,6 +1,5 @@
-use yew::{Callback, ClickEvent, Component, ComponentLink, html, Html, Properties, ShouldRender};
+use yew::{Component, ComponentLink, html, Html, Properties, ShouldRender};
 use yew_router::components::RouterAnchor;
-use yew::prelude::*;
 use crate::app::AppRoute;
 
 
@@ -13,7 +12,6 @@ pub struct Props {
 }
 
 pub struct Manga {
-    link: ComponentLink<Self>,
     title: String,
     thumbnail: String,
     path: String,
@@ -21,16 +19,15 @@ pub struct Manga {
 }
 
 pub enum Msg {
-    Click
+
 }
 
 impl Component for Manga {
     type Message = Msg;
     type Properties = Props;
 
-    fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
+    fn create(props: Self::Properties, _: ComponentLink<Self>) -> Self {
         Manga {
-            link: link,
             title: props.title,
             thumbnail: props.thumbnail,
             path: props.path,
@@ -38,12 +35,12 @@ impl Component for Manga {
         }
     }
 
-    fn update(&mut self, msg: Self::Message) -> ShouldRender {
+    fn update(&mut self, _: Self::Message) -> ShouldRender {
         false
     }
 
     fn view(&self) -> Html {
-        let title = self.title.to_owned();
+        let _title = self.title.to_owned();
         let thumbnail = self.thumbnail.to_owned();
         let path = self.path.to_owned();
         let source = self.source.to_owned();

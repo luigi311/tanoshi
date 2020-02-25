@@ -1,15 +1,10 @@
-use stdweb::unstable::TryInto;
-use stdweb::web::{document, IParentNode};
-use stdweb::web::HtmlElement;
-use stdweb::web::IHtmlElement;
 use yew::{Component, ComponentLink, html, Html, Properties, ShouldRender};
-use yew::format::{Json, Nothing, Text};
+use yew::format::{Json, Nothing};
 use yew::prelude::*;
 use yew::services::fetch::{FetchService, FetchTask, Request, Response};
 use yew_router::{agent::RouteRequest, prelude::*};
 
 use super::{ChapterModel, MangaModel};
-use std::borrow::Borrow;
 
 #[derive(Clone, Properties)]
 pub struct Props {

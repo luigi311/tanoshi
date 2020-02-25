@@ -1,6 +1,5 @@
-use yew::{Callback, ClickEvent, Component, ComponentLink, html, Html, Properties, ShouldRender};
+use yew::{Component, ComponentLink, html, Html, Properties, ShouldRender};
 use yew_router::components::RouterAnchor;
-use yew::prelude::*;
 use crate::app::AppRoute;
 
 #[derive(Clone, PartialEq, Properties)]
@@ -10,24 +9,22 @@ pub struct Props {
 }
 
 pub struct TopBar {
-    link: ComponentLink<Self>,
 }
 
 pub enum Msg {
-    Click
 }
 
 impl Component for TopBar {
     type Message = Msg;
     type Properties = Props;
 
-    fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
+    fn create(_: Self::Properties, _: ComponentLink<Self>) -> Self {
         TopBar {
-            link: link,
+
         }
     }
 
-    fn update(&mut self, msg: Self::Message) -> ShouldRender {
+    fn update(&mut self, _: Self::Message) -> ShouldRender {
         false
     }
 

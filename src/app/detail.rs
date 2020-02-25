@@ -1,17 +1,11 @@
-use std::collections::HashMap;
-
-use serde::{Deserialize, Serialize};
 use yew::{Component, ComponentLink, html, Html, Properties, ShouldRender};
-use yew::format::{Json, Nothing, Text};
-use yew::html::{ChildrenRenderer, NodeRef};
-use yew::prelude::*;
+use yew::format::{Json, Nothing};
 use yew::services::fetch::{FetchService, FetchTask, Request, Response};
 use yew_router::components::RouterAnchor;
 
 use crate::app::AppRoute;
 
-use super::{ChapterModel, MangaModel};
-use super::component::{Manga, TopBar};
+use super::{MangaModel};
 
 #[derive(Clone, Properties)]
 pub struct Props {
@@ -29,7 +23,6 @@ pub struct Detail {
 
 pub enum Msg {
     MangaReady(MangaModel),
-    FetchReady(Response<Text>),
     Noop,
 }
 
@@ -65,9 +58,6 @@ impl Component for Detail {
         match msg {
             Msg::MangaReady(data) => {
                 self.manga = data;
-            }
-            Msg::FetchReady(data) => {
-                info!("fetch ready");
             }
             Msg::Noop => {
                 info!("noop");
