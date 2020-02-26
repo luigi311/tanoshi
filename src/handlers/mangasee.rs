@@ -1,6 +1,5 @@
 pub mod mangasee {
-    use crate::scraper::{mangasee::Mangasee, Chapter, Manga, Params, Scraping};
-    use std::collections::BTreeMap;
+    use crate::scraper::{mangasee::Mangasee, Params, Scraping};
     use std::convert::Infallible;
 
     pub async fn list_mangas(

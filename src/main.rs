@@ -1,10 +1,10 @@
 extern crate argon2;
 
-use crate::scraper::Scraping;
+use crate::scraper::mangasee::Mangasee;
 use pretty_env_logger;
-use std::env;
 use warp::Filter;
 
+mod auth;
 mod filters;
 mod handlers;
 mod scraper;
@@ -13,9 +13,14 @@ mod scraper;
 async fn main() {
     pretty_env_logger::init();
 
-    let mangasee = Scraping::new("https://mangaseeonline.us");
+    let tree = Box::from(sled::open("./tanoshi.db").unwrap());
+
+    let auth = auth::auth::Auth::new(tree);
+    let auth_api = filters::auth::auth::authentication(auth);
+
+    let mangasee = Mangasee::default();
     let mangasee_api = filters::mangasee::mangasee::mangasee(mangasee);
-    let api = mangasee_api;
+    let api = auth_api.or(mangasee_api);
     let static_files = warp::fs::dir("./dist");
 
     let cors = warp::cors()

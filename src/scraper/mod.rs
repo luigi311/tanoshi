@@ -1,6 +1,4 @@
-use serde::{Deserialize, Serialize, Serializer};
-use std::cmp::Ordering;
-use std::collections::BTreeMap;
+use serde::{Deserialize, Serialize};
 
 pub mod mangasee;
 

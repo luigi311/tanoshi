@@ -1,7 +1,5 @@
 use crate::scraper::{Chapter, Manga, Params, Scraping};
 use regex::Regex;
-use std::borrow::BorrowMut;
-use std::collections::BTreeMap;
 
 #[derive(Copy, Clone)]
 pub struct Mangasee {
