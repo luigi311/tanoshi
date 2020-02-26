@@ -2,6 +2,7 @@ use yew::{Component, ComponentLink, html, Html, Properties, ShouldRender};
 use yew::format::{Json, Nothing};
 use yew::services::fetch::{FetchService, FetchTask, Request, Response};
 use yew_router::components::RouterAnchor;
+use anyhow;
 
 use crate::app::AppRoute;
 
@@ -111,7 +112,7 @@ impl Detail {
 
         let task = FetchService::new().fetch(
             req,
-            self.link.callback(|response: Response<Json<Result<MangaModel, failure::Error>>>| {
+            self.link.callback(|response: Response<Json<Result<MangaModel, anyhow::Error>>>| {
                 if let (meta, Json(Ok(data))) = response.into_parts() {
                     if meta.status.is_success() {
                         return Msg::MangaReady(data);

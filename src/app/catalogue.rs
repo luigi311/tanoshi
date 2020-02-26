@@ -106,7 +106,7 @@ impl Catalogue {
 
         let task = FetchService::new().fetch(
             req,
-            self.link.callback(|response: Response<Json<Result<Vec<MangaModel>, failure::Error>>>| {
+            self.link.callback(|response: Response<Json<Result<Vec<MangaModel>, anyhow::Error>>>| {
                 if let (meta, Json(Ok(data))) = response.into_parts() {
                     if meta.status.is_success() {
                         return Msg::MangaReady(data);

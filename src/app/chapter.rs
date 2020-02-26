@@ -5,6 +5,7 @@ use yew::format::{Json, Nothing};
 use yew::prelude::*;
 use yew::services::fetch::{FetchService, FetchTask, Request, Response};
 use yew_router::{agent::RouteRequest, prelude::*};
+use anyhow;
 
 use super::{ChapterModel, MangaModel};
 
@@ -133,7 +134,7 @@ impl Chapter {
 
         let task = FetchService::new().fetch(
             req,
-            self.link.callback(|response: Response<Json<Result<MangaModel, failure::Error>>>| {
+            self.link.callback(|response: Response<Json<Result<MangaModel, anyhow::Error>>>| {
                 if let (meta, Json(Ok(data))) = response.into_parts() {
                     if meta.status.is_success() {
                         return Msg::MangaReady(data);
@@ -151,7 +152,7 @@ impl Chapter {
 
         let task = FetchService::new().fetch(
             req,
-            self.link.callback(|response: Response<Json<Result<ChapterModel, failure::Error>>>| {
+            self.link.callback(|response: Response<Json<Result<ChapterModel, anyhow::Error>>>| {
                 if let (meta, Json(Ok(data))) = response.into_parts() {
                     if meta.status.is_success() {
                         return Msg::ChapterReady(data);
