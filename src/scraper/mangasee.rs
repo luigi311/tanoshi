@@ -1,4 +1,4 @@
-use crate::scraper::{Chapter, ChapterNumber, Manga, Params, Scraping};
+use crate::scraper::{Chapter, Manga, Params, Scraping};
 use regex::Regex;
 use std::borrow::BorrowMut;
 use std::collections::BTreeMap;

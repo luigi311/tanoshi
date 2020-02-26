@@ -14,4 +14,5 @@ serde_urlencoded = "*"
 serde = { version = "*", features = ["derive"] }
 tokio = { version = "0.2", features = ["macros"] }
 warp = "0.2"
-human-sort="*"
+rust-argon2 = "0.8"
+pretty_env_logger = "*"
