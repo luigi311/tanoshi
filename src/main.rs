@@ -5,6 +5,7 @@ use pretty_env_logger;
 use warp::Filter;
 
 mod auth;
+mod favorites;
 mod filters;
 mod handlers;
 mod scraper;
@@ -13,14 +14,17 @@ mod scraper;
 async fn main() {
     pretty_env_logger::init();
 
-    let tree = Box::from(sled::open("./tanoshi.db").unwrap());
-
-    let auth = auth::auth::Auth::new(tree);
+    let auth = auth::auth::Auth::new();
     let auth_api = filters::auth::auth::authentication(auth);
 
     let mangasee = Mangasee::default();
     let mangasee_api = filters::mangasee::mangasee::mangasee(mangasee);
-    let api = auth_api.or(mangasee_api);
+
+    let fav = favorites::favorites::Favorites::new();
+    let fav_api = filters::favorites::favorites::favorites(fav);
+
+    let api = auth_api.or(fav_api).or(mangasee_api);
+
     let static_files = warp::fs::dir("./dist");
 
     let cors = warp::cors()

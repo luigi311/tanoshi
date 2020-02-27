@@ -1,4 +1,6 @@
+use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
+use std::error::Error;
 
 pub mod auth;
 
@@ -19,4 +21,14 @@ struct Claims {
     sub: String,
     company: String,
     exp: usize,
+}
+
+pub fn validate(token: String) -> Option<String> {
+    let token = decode::<Claims>(
+        &token,
+        &DecodingKey::from_secret("secretkey".as_ref()),
+        &Validation::default(),
+    )
+    .expect("token error");
+    Some(token.claims.sub)
 }

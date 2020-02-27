@@ -1,16 +1,19 @@
-use crate::auth::{User, UserResponse};
+use crate::auth::{Claims, User, UserResponse};
 use argon2::{self, Config};
+use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
 use rand;
 use rand::Rng;
 use sled::Db;
+use std::convert::TryInto;
 
 #[derive(Clone)]
 pub struct Auth {
-    db: Box<Db>,
+    db: Db,
 }
 
 impl Auth {
-    pub fn new(db: Box<Db>) -> Self {
+    pub fn new() -> Self {
+        let db = sled::open("./db/auth").unwrap();
         Auth { db }
     }
 
@@ -26,12 +29,15 @@ impl Auth {
             .unwrap()
         {
             Some(ok) => UserResponse {
-                status: "success".to_string(),
+                token: "".to_string(),
+                status: "username exists".to_string(),
             },
             None => UserResponse {
-                status: "failed".to_string(),
+                token: "".to_string(),
+                status: "success".to_string(),
             },
             _ => UserResponse {
+                token: "".to_string(),
                 status: "failed".to_string(),
             },
         }
@@ -45,23 +51,39 @@ impl Auth {
             .expect("user not exists");
 
         if self.verify(&hashed, user.password.as_bytes()) {
+            let key = b"secretkey";
+            let user_claims = Claims {
+                sub: user.username,
+                company: "tanoshi".to_string(),
+                exp: 10000000000,
+            };
+            let token = match encode(
+                &Header::default(),
+                &user_claims,
+                &EncodingKey::from_secret(key),
+            ) {
+                Ok(t) => t,
+                Err(_) => panic!(), // in practice you would return the error
+            };
             return UserResponse {
+                token: token,
                 status: "success".to_string(),
             };
         } else {
             return UserResponse {
+                token: "".to_string(),
                 status: "failed".to_string(),
             };
         }
     }
 
-    pub fn hash(&self, password: &[u8]) -> String {
+    fn hash(&self, password: &[u8]) -> String {
         let salt: [u8; 32] = rand::thread_rng().gen();
         let config = Config::default();
         return argon2::hash_encoded(password, &salt, &config).unwrap();
     }
 
-    pub fn verify(&self, hash: &[u8], password: &[u8]) -> bool {
+    fn verify(&self, hash: &[u8], password: &[u8]) -> bool {
         return argon2::verify_encoded(std::str::from_utf8(hash).unwrap(), password).unwrap();
     }
 }
