@@ -1,4 +1,7 @@
-use crate::scraper::{Chapter, Manga, Params, Scraping};
+use crate::scraper::{
+    Chapter, GetChaptersResponse, GetMangaResponse, GetMangasResponse, GetPagesResponse, Manga,
+    Params, Scraping,
+};
 use regex::Regex;
 
 #[derive(Copy, Clone)]
@@ -19,7 +22,7 @@ impl Scraping for Mangasee {
         return Mangasee { url: &url };
     }
 
-    fn get_mangas(&self, param: Params) -> Vec<Manga> {
+    fn get_mangas(&self, param: Params) -> GetMangasResponse {
         let mut mangas: Vec<Manga> = Vec::new();
 
         let params = vec![
@@ -49,9 +52,8 @@ impl Scraping for Mangasee {
                 genre: vec![],
                 status: String::from(""),
                 description: String::from(""),
-                url: String::from(""),
+                path: String::from(""),
                 thumbnail_url: String::from(""),
-                chapters: vec![],
             };
 
             let sel = scraper::Selector::parse("img").unwrap();
@@ -62,15 +64,15 @@ impl Scraping for Mangasee {
             let sel = scraper::Selector::parse(".resultLink").unwrap();
             for el in row.select(&sel) {
                 manga.title = el.inner_html();
-                manga.url = el.value().attr("href").unwrap().to_owned();
+                manga.path = el.value().attr("href").unwrap().to_owned();
             }
             mangas.push(manga);
         }
 
-        return mangas;
+        GetMangasResponse { mangas }
     }
 
-    fn get_latest_mangas(&self) -> Vec<Manga> {
+    fn get_latest_mangas(&self) -> GetMangasResponse {
         let resp = ureq::get("https://mangaseeonline.us").call();
         let html = resp.into_string().expect("failed to get page");
 
@@ -89,26 +91,26 @@ impl Scraping for Mangasee {
                 genre: vec![],
                 status: String::from(""),
                 description: String::from(""),
-                url: String::from(link).replace("read-online", "manga"),
+                path: String::from(link).replace("read-online", "manga"),
                 thumbnail_url: String::from(""),
-                chapters: Default::default(),
             };
             latest_mangas.push(manga)
         }
 
-        return latest_mangas;
+        GetMangasResponse {
+            mangas: latest_mangas,
+        }
     }
 
-    fn get_manga_info(&self, path: String) -> Manga {
+    fn get_manga_info(&self, path: String) -> GetMangaResponse {
         let mut m = Manga {
             title: "".to_string(),
             author: "".to_string(),
             genre: vec![],
             status: "".to_string(),
             description: "".to_string(),
-            url: path.to_owned(),
+            path: path.to_owned(),
             thumbnail_url: "".to_string(),
-            chapters: Default::default(),
         };
 
         let resp = ureq::get(format!("{}{}", self.url, path.to_owned()).as_str()).call();
@@ -154,32 +156,41 @@ impl Scraping for Mangasee {
                 m.description = String::from(text);
             }
         }
+        GetMangaResponse { manga: m }
+    }
 
-        let mut next_chapter = "".to_string();
+    fn get_chapters(&self, path: String) -> GetChaptersResponse {
+        let mut chapters: Vec<Chapter> = Vec::new();
+
+        let resp = ureq::get(format!("{}{}", self.url, path.to_owned()).as_str()).call();
+        let html = resp.into_string().unwrap();
+
+        let document = scraper::Html::parse_document(&html);
         let selector = scraper::Selector::parse(".mainWell .chapter-list a[chapter]").unwrap();
         for element in document.select(&selector) {
             let rank = String::from(element.value().attr("chapter").unwrap());
             let link = element.value().attr("href").unwrap();
 
-            m.chapters.push(rank);
+            chapters.push(Chapter {
+                no: rank,
+                url: link.replace("-page-1", ""),
+            });
         }
-        return m;
+        GetChaptersResponse { chapters }
     }
 
-    fn get_chapter(&self, path: String) -> Chapter {
+    fn get_pages(&self, path: String) -> GetPagesResponse {
         let resp = ureq::get(format!("{}{}", self.url, path.to_owned()).as_str()).call();
         let html = resp.into_string().unwrap();
 
         let document = scraper::Html::parse_document(&html);
 
-        let mut chapter = Chapter::default();
+        let mut pages = Vec::new();
 
         let selector = scraper::Selector::parse(".fullchapimage img").unwrap();
         for element in document.select(&selector) {
-            chapter
-                .pages
-                .push(String::from(element.value().attr("src").unwrap()));
+            pages.push(String::from(element.value().attr("src").unwrap()));
         }
-        return chapter;
+        GetPagesResponse { pages }
     }
 }

@@ -1,7 +1,6 @@
 pub mod auth {
     use crate::auth::{self, auth::Auth, User};
     use std::convert::Infallible;
-    use std::error::Error;
 
     pub async fn register(user: User, auth: Auth) -> Result<impl warp::Reply, Infallible> {
         let res = auth.register(user);

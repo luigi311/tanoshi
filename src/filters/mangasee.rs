@@ -8,7 +8,8 @@ pub mod mangasee {
     ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
         list_mangas(mangasee)
             .or(get_manga_info(mangasee))
-            .or(get_chapter(mangasee))
+            .or(get_chapters(mangasee))
+            .or(get_pages(mangasee))
     }
 
     pub fn list_mangas(
@@ -30,13 +31,22 @@ pub mod mangasee {
             .and_then(mangasee::get_manga_info)
     }
 
-    pub fn get_chapter(
+    pub fn get_chapters(
+        mangasee: Mangasee,
+    ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+        warp::path!("api" / "source" / "mangasee" / "manga" / String / "chapter")
+            .and(warp::get())
+            .and(with_mangasee(mangasee))
+            .and_then(mangasee::get_chapters)
+    }
+
+    pub fn get_pages(
         mangasee: Mangasee,
     ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
         warp::path!("api" / "source" / "mangasee" / "manga" / String / "chapter" / String)
             .and(warp::get())
             .and(with_mangasee(mangasee))
-            .and_then(mangasee::get_chapter)
+            .and_then(mangasee::get_pages)
     }
 
     fn with_mangasee(

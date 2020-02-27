@@ -9,15 +9,14 @@ pub struct Manga {
     pub genre: Vec<String>,
     pub status: String,
     pub description: String,
-    pub url: String,
+    pub path: String,
     pub thumbnail_url: String,
-    pub chapters: Vec<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, Default)]
 pub struct Chapter {
-    pub chapter_no: String,
-    pub pages: Vec<String>,
+    pub no: String,
+    pub url: String,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -28,10 +27,31 @@ pub struct Params {
     pub sort_by: Option<String>,
 }
 
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct GetMangasResponse {
+    mangas: Vec<Manga>,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct GetMangaResponse {
+    manga: Manga,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct GetChaptersResponse {
+    chapters: Vec<Chapter>,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct GetPagesResponse {
+    pages: Vec<String>,
+}
+
 pub trait Scraping {
     fn new(url: &'static str) -> Self;
-    fn get_mangas(&self, param: Params) -> Vec<Manga>;
-    fn get_latest_mangas(&self) -> Vec<Manga>;
-    fn get_manga_info(&self, path: String) -> Manga;
-    fn get_chapter(&self, path: String) -> Chapter;
+    fn get_mangas(&self, param: Params) -> GetMangasResponse;
+    fn get_latest_mangas(&self) -> GetMangasResponse;
+    fn get_manga_info(&self, path: String) -> GetMangaResponse;
+    fn get_chapters(&self, path: String) -> GetChaptersResponse;
+    fn get_pages(&self, path: String) -> GetPagesResponse;
 }

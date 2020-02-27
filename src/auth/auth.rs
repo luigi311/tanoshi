@@ -1,10 +1,9 @@
 use crate::auth::{Claims, User, UserResponse};
 use argon2::{self, Config};
-use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
+use jsonwebtoken::{encode, EncodingKey, Header};
 use rand;
 use rand::Rng;
 use sled::Db;
-use std::convert::TryInto;
 
 #[derive(Clone)]
 pub struct Auth {
@@ -28,17 +27,13 @@ impl Auth {
             )
             .unwrap()
         {
-            Some(ok) => UserResponse {
+            Some(_) => UserResponse {
                 token: "".to_string(),
                 status: "username exists".to_string(),
             },
             None => UserResponse {
                 token: "".to_string(),
                 status: "success".to_string(),
-            },
-            _ => UserResponse {
-                token: "".to_string(),
-                status: "failed".to_string(),
             },
         }
     }

@@ -18,13 +18,20 @@ pub mod mangasee {
         Ok(warp::reply::json(&manga))
     }
 
-    pub async fn get_chapter(
+    pub async fn get_chapters(
+        title: String,
+        mangasee: Mangasee,
+    ) -> Result<impl warp::Reply, Infallible> {
+        let chapter = mangasee.get_chapters(format!("/manga/{}", title));
+        Ok(warp::reply::json(&chapter))
+    }
+
+    pub async fn get_pages(
         title: String,
         chapter: String,
         mangasee: Mangasee,
     ) -> Result<impl warp::Reply, Infallible> {
-        let chapter =
-            mangasee.get_chapter(format!("/read-online/{}-chapter-{}.html", title, chapter));
-        Ok(warp::reply::json(&chapter))
+        let pages = mangasee.get_pages(format!("/read-online/{}-chapter-{}.html", title, chapter));
+        Ok(warp::reply::json(&pages))
     }
 }
