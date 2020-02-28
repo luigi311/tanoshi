@@ -8,13 +8,8 @@ use stdweb::web::{IEventTarget, window, document, IHtmlElement};
 use stdweb::web::event::ScrollEvent;
 use enclose::enclose;
 use std::borrow::BorrowMut;
+use crate::app::{GetMangasResponse, MangaModel};
 
-#[derive(Deserialize, Debug)]
-pub struct MangaModel {
-    pub title: String,
-    pub thumbnail_url: String,
-    pub url: String,
-}
 
 #[derive(Clone, Properties)]
 pub struct Props {
@@ -27,10 +22,11 @@ pub struct Catalogue {
     source: String,
     page: i32,
     mangas: Vec<MangaModel>,
+    is_fetching: bool,
 }
 
 pub enum Msg {
-    MangaReady(Vec<MangaModel>),
+    MangaReady(GetMangasResponse),
     ScrolledDown,
     Noop,
 }
@@ -44,6 +40,7 @@ impl Component for Catalogue {
             let current_scroll = window().page_y_offset() as i32 + window().inner_height();
             let height = document().body().unwrap().offset_height();
             if current_scroll >= height {
+                info!("scroll end");
                return Msg::ScrolledDown;
             }
             Msg::Noop
@@ -57,17 +54,22 @@ impl Component for Catalogue {
             source: props.source,
             page: 1,
             mangas: vec![],
+            is_fetching: false,
         }
     }
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
             Msg::MangaReady(mut data) => {
-                self.mangas.append(&mut data);
+                let mut mangas = data.mangas;
+                self.mangas.append(&mut mangas);
+                self.is_fetching = false;
             }
             Msg::ScrolledDown => {
-                self.page += 1;
-                self.fetch_mangas();
+                if !self.is_fetching {
+                    self.page += 1;
+                    self.fetch_mangas();
+                }
             }
             Msg::Noop => {
                 info!("noop");
@@ -89,7 +91,7 @@ impl Component for Catalogue {
                 <Manga
                     title=manga.title.to_owned()
                     thumbnail=manga.thumbnail_url.to_owned()
-                    path=manga.url.to_owned()
+                    path=manga.path.to_owned()
                     source=self.source.to_owned() />
                 }) }
                 </div>
@@ -106,7 +108,7 @@ impl Catalogue {
 
         let task = FetchService::new().fetch(
             req,
-            self.link.callback(|response: Response<Json<Result<Vec<MangaModel>, anyhow::Error>>>| {
+            self.link.callback(|response: Response<Json<Result<GetMangasResponse, anyhow::Error>>>| {
                 if let (meta, Json(Ok(data))) = response.into_parts() {
                     if meta.status.is_success() {
                         return Msg::MangaReady(data);
@@ -115,5 +117,6 @@ impl Catalogue {
                 Msg::Noop
             }));
         self.fetch_task = Some(task);
+        self.is_fetching = true;
     }
 }

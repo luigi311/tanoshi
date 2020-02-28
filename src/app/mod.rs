@@ -9,20 +9,39 @@ pub mod detail;
 pub mod chapter;
 pub mod home;
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct MangaModel {
     pub title: String,
     pub author: String,
     pub genre: Vec<String>,
     pub status: String,
     pub description: String,
-    pub url: String,
+    pub path: String,
     pub thumbnail_url: String,
-    pub chapters: Vec<String>,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, Default)]
+#[derive(Debug, Deserialize, Clone, Default)]
 pub struct ChapterModel {
-    pub chapter_no: String,
-    pub pages: Vec<String>,
+    pub no: String,
+    pub url: String,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct GetMangasResponse {
+    mangas: Vec<MangaModel>,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct GetMangaResponse {
+    manga: MangaModel,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct GetChaptersResponse {
+    chapters: Vec<ChapterModel>,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct GetPagesResponse {
+    pages: Vec<String>,
 }
