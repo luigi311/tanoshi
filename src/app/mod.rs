@@ -45,3 +45,22 @@ pub struct GetChaptersResponse {
 pub struct GetPagesResponse {
     pages: Vec<String>,
 }
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct GetFavoritesResponse {
+    pub favorites: Option<Vec<FavoriteManga>>,
+    pub status: String,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct AddFavoritesResponse {
+    pub status: String,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct FavoriteManga {
+    pub source: String,
+    pub title: String,
+    pub path: String,
+    pub thumbnail_url: String,
+}
