@@ -17,4 +17,5 @@ pub struct FavoriteManga {
     pub source: String,
     pub title: String,
     pub path: String,
+    pub thumbnail_url: String,
 }
