@@ -1,6 +1,6 @@
 use crate::auth::{Claims, User, UserResponse};
 use argon2::{self, Config};
-use jsonwebtoken::{encode, EncodingKey, Header};
+use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
 use rand;
 use rand::Rng;
 use sled::Db;
@@ -28,12 +28,14 @@ impl Auth {
             .unwrap()
         {
             Some(_) => UserResponse {
-                token: "".to_string(),
-                status: "username exists".to_string(),
+                claim: None,
+                token: None,
+                status: "success".to_string(),
             },
             None => UserResponse {
-                token: "".to_string(),
-                status: "success".to_string(),
+                claim: None,
+                token: None,
+                status: "failed".to_string(),
             },
         }
     }
@@ -61,15 +63,32 @@ impl Auth {
                 Err(_) => panic!(), // in practice you would return the error
             };
             return UserResponse {
-                token: token,
+                claim: Some(user_claims),
+                token: Some(token),
                 status: "success".to_string(),
             };
         } else {
             return UserResponse {
-                token: "".to_string(),
+                claim: None,
+                token: None,
                 status: "failed".to_string(),
             };
         }
+    }
+
+    pub fn validate(token: String) -> Option<Claims> {
+        let claim = {
+            if let Ok(claim) = decode::<Claims>(
+                &token,
+                &DecodingKey::from_secret("secretkey".as_ref()),
+                &Validation::default(),
+            ) {
+                Some(claim.claims)
+            } else {
+                None
+            }
+        };
+        claim
     }
 
     fn hash(&self, password: &[u8]) -> String {

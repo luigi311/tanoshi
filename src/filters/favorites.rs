@@ -16,7 +16,7 @@ pub mod favorites {
     ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
         warp::path!("api" / "favorites")
             .and(warp::get())
-            .and(with_authorization())
+            .and(auth_handler::validate())
             .and(with_favorites(fav))
             .and_then(favorite_handler::get_favorites)
     }
@@ -26,21 +26,10 @@ pub mod favorites {
     ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
         warp::path!("api" / "favorites")
             .and(warp::post())
-            .and(with_authorization())
+            .and(auth_handler::validate())
             .and(json_body())
             .and(with_favorites(fav))
             .and_then(favorite_handler::add_favorites)
-    }
-
-    fn with_authorization() -> impl Filter<Extract = (String,), Error = warp::Rejection> + Clone {
-        warp::any().and(
-            warp::header::header("authorization").map(|token: String| -> String {
-                match auth_handler::validate(token) {
-                    Some(username) => username,
-                    None => "".to_string(),
-                }
-            }),
-        )
     }
 
     fn with_favorites(

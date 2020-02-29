@@ -1,4 +1,3 @@
-use jsonwebtoken::{decode, DecodingKey, Validation};
 use serde::{Deserialize, Serialize};
 
 pub mod auth;
@@ -11,23 +10,14 @@ pub struct User {
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct UserResponse {
-    pub token: String,
+    pub claim: Option<Claims>,
+    pub token: Option<String>,
     pub status: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-struct Claims {
-    sub: String,
-    company: String,
-    exp: usize,
-}
-
-pub fn validate(token: String) -> Option<String> {
-    let token = decode::<Claims>(
-        &token,
-        &DecodingKey::from_secret("secretkey".as_ref()),
-        &Validation::default(),
-    )
-    .expect("token error");
-    Some(token.claims.sub)
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Claims {
+    pub sub: String,
+    pub company: String,
+    pub exp: usize,
 }
