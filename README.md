@@ -1,14 +1,18 @@
 # Tanoshi
 Tachiyomi-like web manga reader. Front-end for tanoshi
 
-## Login Page
+## Screenshots
+### Login Page
 ![login](screenshots/login.jpg)
 
-## Favorites
+### Favorites
 ![favorites](screenshots/favorites.jpg)
 
-## Catalogue
+### Catalogue
 ![catalogue](screenshots/catalogue.jpg)
 
-## Reader
+### Detail
+![detail](screenshots/detail.jpg)
+
+### Reader
 ![reader](screenshots/reader.jpg)
