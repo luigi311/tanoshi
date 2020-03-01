@@ -5,7 +5,10 @@ pub mod auth {
 
     pub async fn register(user: User, auth: Auth) -> Result<impl warp::Reply, Infallible> {
         let res = auth.register(user);
-        Ok(warp::reply::json(&res))
+        Ok(warp::reply::with_status(
+            warp::reply::json(&res),
+            warp::http::StatusCode::CREATED,
+        ))
     }
 
     pub async fn login(user: User, auth: Auth) -> Result<impl warp::Reply, Infallible> {
