@@ -6,9 +6,9 @@ pub mod mangasee {
     pub fn mangasee(
         mangasee: Mangasee,
     ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-        list_mangas(mangasee)
-            .or(get_manga_info(mangasee))
-            .or(get_chapters(mangasee))
+        list_mangas(mangasee.clone())
+            .or(get_manga_info(mangasee.clone()))
+            .or(get_chapters(mangasee.clone()))
             .or(get_pages(mangasee))
     }
 

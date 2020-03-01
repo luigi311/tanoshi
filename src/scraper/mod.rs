@@ -48,7 +48,6 @@ pub struct GetPagesResponse {
 }
 
 pub trait Scraping {
-    fn new(url: &'static str) -> Self;
     fn get_mangas(&self, param: Params) -> GetMangasResponse;
     fn get_latest_mangas(&self) -> GetMangasResponse;
     fn get_manga_info(&self, path: String) -> GetMangaResponse;
