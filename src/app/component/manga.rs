@@ -9,6 +9,7 @@ pub struct Props {
     pub thumbnail: String,
     pub path: String,
     pub source: String,
+    pub is_favorite: bool,
 }
 
 pub struct Manga {
@@ -16,6 +17,7 @@ pub struct Manga {
     thumbnail: String,
     path: String,
     pub source: String,
+    pub is_favorite: bool,
 }
 
 pub enum Msg {
@@ -32,6 +34,7 @@ impl Component for Manga {
             thumbnail: props.thumbnail,
             path: props.path,
             source: props.source,
+            is_favorite: props.is_favorite,
         }
     }
 
@@ -47,7 +50,7 @@ impl Component for Manga {
 
         html! {
                 <div class="col">
-                    <div class="manga-cover-container">
+                    <div class={if self.is_favorite {"manga-cover-container favorite"} else {"manga-cover-container"}}>
                         <RouterAnchor<AppRoute> route=AppRoute::Detail(source, path.replace("/manga/", ""))>
                         { html!{
                             <div>

@@ -9,6 +9,10 @@
     margin-right: auto;
 }
 
+.favorite {
+    filter: brightness(50%);
+}
+
 .manga-cover-container {
     margin-top: 15px;
     margin-bottom: 15px;
