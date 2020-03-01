@@ -92,7 +92,9 @@ impl Component for Detail {
             <div class="row justify-content-center">
                 <div class="col-lg">
                     <div class="card" style="width: 100%;">
-                        <div class="card-header">{"Read Chapter"}</div>
+                        <div class="card-header">
+                            {"Read Chapter"}
+                        </div>
                         <ul class="list-group">
                         {
                             for self.chapters.iter().map(|(chapter)| html!{

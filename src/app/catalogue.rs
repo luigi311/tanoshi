@@ -140,7 +140,7 @@ impl Catalogue {
 
     fn fetch_favorites(&mut self) {
         let req = Request::get("/api/favorites")
-            .header("Authorization", self.token.to_string())
+            .header("Authorization", self.token.clone())
             .body(Nothing).expect("failed to build request");
 
         let task = FetchService::new().fetch(
