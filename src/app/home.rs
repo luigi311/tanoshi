@@ -28,7 +28,7 @@ pub struct Home {
     fetch_task: Option<FetchTask>,
     link: ComponentLink<Self>,
     mangas: Vec<FavoriteManga>,
-    token: Token,
+    token: String,
 }
 
 pub enum Msg {
@@ -43,10 +43,10 @@ impl Component for Home {
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
         let storage = StorageService::new(Area::Local);
         let token = {
-          if let Json(Ok(token)) = storage.restore("token") {
+          if let Ok(token) = storage.restore("token") {
               token
           }   else {
-                Token{token: "".to_string()}
+                "".to_string()
             }
         };
 
@@ -78,7 +78,7 @@ impl Component for Home {
     fn view(&self) -> Html {
         html! {
            <div class="container-fluid">
-                <div class="row row-cols-sm-1 row-cols-md-3 row-cols-lg-4 row-cols-xl-5">
+                <div class="row row-cols-sm-1 row-cols-md-3 row-cols-lg-5 row-cols-xl-6">
                 { for self.mangas.iter().map(|manga|  html!{
                 <Manga
                     title=manga.title.to_owned()
@@ -95,7 +95,7 @@ impl Component for Home {
 impl Home {
     fn fetch_favorites(&mut self) {
         let req = Request::get("/api/favorites")
-            .header("Authorization", self.token.token.to_string())
+            .header("Authorization", self.token.to_string())
             .body(Nothing).expect("failed to build request");
 
         let task = FetchService::new().fetch(

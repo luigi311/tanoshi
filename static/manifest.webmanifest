@@ -1,0 +1,8 @@
+{
+  "short_name": "Tanoshi",
+  "name": "Tanoshi",
+  "description": "Manga Reader",
+  "start_url": "/",
+  "display": "standalone",
+  "scope": "/",
+}

@@ -112,7 +112,7 @@ impl Component for Chapter {
 
     fn view(&self) -> Html {
         html! {
-            <div class="container-fluid" id="manga-reader" tabindex="0" onkeydown=self.link.callback(|e: KeyDownEvent|
+            <div class="container-fluid p-0" id="manga-reader" tabindex="0" onkeydown=self.link.callback(|e: KeyDownEvent|
                 match e.key().as_str() {
                     "ArrowRight" => Msg::PageForward,
                     "ArrowLeft"  => Msg::PagePrevious,
@@ -121,7 +121,7 @@ impl Component for Chapter {
             )>
                 <button class="manga-navigate-left" onmouseup=self.link.callback(|_| Msg::PagePrevious)/>
                 <button class="manga-navigate-right" onmouseup=self.link.callback(|_| Msg::PageForward)/>
-                <div class="manga-page-container">
+                <div class="manga-page-container m-0">
                     {
                         for (0..self.pages.len()).map(|i| html! {
                         <img class={if (self.current_page == i) || (self.double_page && (self.current_page + 1 == i)) {

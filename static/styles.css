@@ -1,6 +1,6 @@
 .manga-cover {
-    width: 200px;
-    height: 284px;
+    width: 150px;
+    height: 213px;
     object-fit: cover;
     object-position: center;
     box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
@@ -15,7 +15,6 @@
     margin-left: auto;
     margin-right: auto;
     position: relative;
-    width: 200px;
 }
 
 .manga-cover-title {
@@ -38,7 +37,7 @@
     height: 100%;
     z-index: 0;
     margin: auto;
-    width: 100vw;
+    width: 95vw;
 }
 
 .manga-page {

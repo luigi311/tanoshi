@@ -1,4 +1,4 @@
-#![recursion_limit="512"]
+#![recursion_limit="1024"]
 #[macro_use]
 extern crate log;
 extern crate web_logger;

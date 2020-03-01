@@ -8,6 +8,8 @@ pub mod catalogue;
 pub mod detail;
 pub mod chapter;
 pub mod home;
+pub mod login;
+pub mod logout;
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct MangaModel {

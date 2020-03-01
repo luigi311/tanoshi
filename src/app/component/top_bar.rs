@@ -55,6 +55,11 @@ impl Component for TopBar {
                             </div>
                         </li>
                         <li class="nav-item"><a href="/settings" class="nav-link">{"Settings"}</a></li>
+                        <li class="nav-item">
+                            <RouterAnchor<AppRoute> route=AppRoute::Logout>
+                            <a href="/logout" class="nav-link">{"Logout"}</a>
+                            </RouterAnchor<AppRoute>>
+                        </li>
                     </ul>
                 </div>
             </div>
