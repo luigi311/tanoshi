@@ -88,6 +88,7 @@ impl Component for Catalogue {
                     self.fetch_mangas();
                 }
             }
+
             Msg::Noop => {
                 info!("noop");
             }

@@ -46,7 +46,7 @@ pub struct Login {
 pub enum Msg {
     UsernameChange(InputData),
     PasswordChange(InputData),
-    Submit(ClickEvent),
+    Submit(SubmitEvent),
     LoggedIn(UserResponse),
     Noop,
 }
@@ -80,6 +80,7 @@ impl Component for Login {
                 self.user.password = e.value;
             }
             Msg::Submit(e) => {
+                e.prevent_default();
                 self.login();
             }
             Msg::LoggedIn(res) => {
@@ -109,11 +110,11 @@ impl Component for Login {
                 </div>
                 <div class="row">
                     <div class="col">
-                        <form>
+                        <form onsubmit=self.link.callback(|e| Msg::Submit(e))>
                             <div class="form-group">
                                 <label for="inputEmail">{"Email address"}</label>
                                 <input type="email" class="form-control" id="inputEmail"
-                                aria-describedby="emailHelp" value=self.user.username.to_owned()
+                                 value=self.user.username.to_owned()
                                 oninput=self.link.callback(|e| Msg::UsernameChange(e)) />
                             </div>
                             <div class="form-group">
@@ -122,7 +123,7 @@ impl Component for Login {
                                 value=self.user.password.to_owned()
                                 oninput=self.link.callback(|e| Msg::PasswordChange(e))/>
                             </div>
-                            <button type="submit" class="btn btn-primary" onclick=self.link.callback(|e| Msg::Submit(e))>{"Submit"}</button>
+                            <button type="submit" class="btn btn-primary">{"Submit"}</button>
                         </form>
                     </div>
                 </div>

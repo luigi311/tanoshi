@@ -60,7 +60,7 @@ impl Component for App {
         if let Err(_) = self.storage.restore("token") {
             self.router.send(RouteRequest::ChangeRoute(Route::from("/login".to_string())));
         } else {
-            self.router.send(RouteRequest::ChangeRoute(Route::from("/".to_string())));
+            self.router.send(RouteRequest::GetCurrentRoute);
         }
         true
     }
@@ -93,7 +93,7 @@ impl App {
                     AppRoute::Chapter(source, title, chapter, page) => html!{<Chapter source=source title=title chapter=chapter page=page/>},
                     AppRoute::Detail(source, title) => html!{<Detail source=source title=title/>},
                     AppRoute::Source(source) => html!{<Catalogue source=source/>},
-                    AppRoute::Login => html!{<Login />},
+                    AppRoute::Login => html!{},
                     AppRoute::Logout => html!{<Logout />},
                     AppRoute::Home => html!{<Home/>},
                 }})/>

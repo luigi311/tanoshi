@@ -1,16 +1,17 @@
 use serde::{Deserialize, Serialize};
 use stdweb::web::event::IEvent;
 use wasm_bindgen::__rt::core::time::Duration;
-use yew::{Component, ComponentLink, html, Html, MouseDownEvent, MouseUpEvent, Properties, ShouldRender, TouchEnd, TouchStart, ClickEvent};
+use yew::{Component, ComponentLink, html, Html, MouseDownEvent, MouseUpEvent, Properties, ShouldRender, TouchEnd, TouchStart, ClickEvent, Bridge, Bridged, TouchMove};
 use yew::format::{Json, Text, Nothing};
 use yew::services::{FetchService, StorageService, Task, TimeoutService};
 use yew::services::fetch::{FetchTask, Request, Response};
 use yew::services::storage::Area;
-use yew_router::components::RouterAnchor;
 
 use crate::app::{AppRoute, GetChaptersResponse};
 use crate::app::home::Msg::FavoritesReady;
 use stdweb::web::document;
+use yew_router::agent::{RouteAgent, RouteRequest};
+use yew_router::prelude::*;
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct FavoriteManga {
@@ -39,12 +40,14 @@ pub struct Manga {
     link: ComponentLink<Self>,
     timeout: TimeoutService,
     job: Option<Box<dyn Task>>,
+    router: Box<dyn Bridge<RouteAgent>>,
     title: String,
     thumbnail: String,
     path: String,
     pub source: String,
     pub is_favorite: bool,
     token: String,
+    is_dragging: bool,
 }
 
 pub enum Msg {
@@ -54,7 +57,9 @@ pub enum Msg {
     MouseDownTimeout,
     TouchStart(TouchStart),
     TouchEnd(TouchEnd),
+    TouchMove(TouchMove),
     Favorited(AddFavoritesResponse),
+    Unfavorited(AddFavoritesResponse),
     Noop,
 }
 
@@ -71,17 +76,21 @@ impl Component for Manga {
                 "".to_string()
             }
         };
+        let callback = link.callback(|_| Msg::Noop);
+        let router = RouteAgent::bridge(callback);
         Manga {
             fetch_task: None,
             link,
             timeout: TimeoutService::new(),
             job: None,
+            router,
             title: props.title,
             thumbnail: props.thumbnail,
             path: props.path,
             source: props.source,
             is_favorite: props.is_favorite,
             token,
+            is_dragging: false,
         }
     }
 
@@ -91,28 +100,44 @@ impl Component for Manga {
                 e.prevent_default();
             }
             Msg::MouseDown(e) => {
-                info!("mouse down");
-                let handle = self.timeout.spawn(
-                    Duration::from_secs(1),
-                    self.link.callback(|_| Msg::MouseDownTimeout));
-                self.job = Some(Box::new(handle));
+                self.start_timer();
             }
             Msg::MouseUp(e) => {
                 e.prevent_default();
-                info!("mouse up");
-                if !self.job.is_none() {
-
-                    self.job = None;
+                self.to_detail();
+            }
+            Msg::TouchStart(e) => {
+                self.start_timer();
+                self.is_dragging = false;
+            }
+            Msg::TouchEnd(e) => {
+                e.prevent_default();
+                if !self.is_dragging {
+                    self.to_detail();
                 }
+            }
+            Msg::TouchMove(e) => {
+                self.is_dragging = true;
             }
             Msg::MouseDownTimeout => {
                 info!("timeout");
-                self.favorite();
+                if !self.is_dragging {
+                    if self.is_favorite {
+                        self.unfavorite();
+                    } else {
+                        self.favorite();
+                    }
+                }
                 self.job = None;
             }
             Msg::Favorited(data) => {
                 if data.status == "success" {
-                    self.is_favorite = !self.is_favorite;
+                    self.is_favorite = true;
+                }
+            }
+            Msg::Unfavorited(data) => {
+                if data.status == "success" {
+                    self.is_favorite = false;
                 }
             }
             Msg::Noop => {}
@@ -133,6 +158,9 @@ impl Component for Manga {
                     class={if self.is_favorite {"manga-cover-container favorite"} else {"manga-cover-container"}}
                     onmousedown=self.link.callback(|e| Msg::MouseDown(e))
                     onmouseup=self.link.callback(|e| Msg::MouseUp(e))
+                    ontouchstart=self.link.callback(|e| Msg::TouchStart(e))
+                    ontouchend=self.link.callback(|e| Msg::TouchEnd(e))
+                    ontouchmove=self.link.callback(|e| Msg::TouchMove(e))
                     onclick=self.link.callback(|e| Msg::Click(e))
                     >
                         <img class="manga-cover" src=thumbnail/>
@@ -171,9 +199,17 @@ impl Manga {
     }
 
     fn unfavorite(&mut self) {
-        let req = Request::delete(format!("/api/favorites/source/{}/title/{}", self.title.clone(), self.title.clone()))
+        let fav = FavoriteManga {
+            source: self.source.clone(),
+            title: self.title.clone(),
+            path: self.path.clone(),
+            thumbnail_url: self.thumbnail.clone(),
+        };
+
+        let req = Request::delete("/api/favorites")
             .header("Authorization", self.token.to_owned())
-            .body(Nothing)
+            .header("Content-Type", "application/json")
+            .body(Json(&fav))
             .expect("failed to build request");
 
         let task = FetchService::new().fetch(
@@ -181,11 +217,28 @@ impl Manga {
             self.link.callback(|response: Response<Json<Result<AddFavoritesResponse, anyhow::Error>>>| {
                 if let (meta, Json(Ok(data))) = response.into_parts() {
                     if meta.status.is_success() {
-                        return Msg::Favorited(data);
+                        return Msg::Unfavorited(data);
                     }
                 }
                 Msg::Noop
             }));
         self.fetch_task = Some(task);
+    }
+    fn start_timer(&mut self) {
+        let handle = self.timeout.spawn(
+            Duration::from_secs(1),
+            self.link.callback(|_| Msg::MouseDownTimeout));
+        self.job = Some(Box::new(handle));
+    }
+
+    fn to_detail(&mut self) {
+        if !self.job.is_none() {
+            let splitted: Vec<_> = self.path.split("/").collect();
+            let path = splitted.last().unwrap();
+            self.router.send(
+                RouteRequest::ChangeRoute(
+                    Route::from(format!("/catalogue/{}/manga/{}", self.source.clone(), path.to_string()))));
+            self.job = None;
+        }
     }
 }
