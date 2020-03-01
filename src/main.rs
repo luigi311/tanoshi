@@ -8,6 +8,7 @@ mod auth;
 mod favorites;
 mod filters;
 mod handlers;
+mod history;
 mod scraper;
 
 #[tokio::main]
@@ -23,7 +24,10 @@ async fn main() {
     let fav = favorites::favorites::Favorites::new();
     let fav_api = filters::favorites::favorites::favorites(fav);
 
-    let api = auth_api.or(fav_api).or(mangasee_api);
+    let history = history::history::History::default();
+    let history_api = filters::history::history::history(history);
+
+    let api = auth_api.or(fav_api).or(history_api).or(mangasee_api);
 
     let static_files = warp::fs::dir("./dist");
 
