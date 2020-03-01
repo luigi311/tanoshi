@@ -9,14 +9,12 @@ use crate::scraper::{
 #[derive(Clone)]
 pub struct Mangasee {
     pub url: &'static str,
-    pub db: Db,
 }
 
 impl Default for Mangasee {
     fn default() -> Self {
         return Mangasee {
             url: "https://mangaseeonline.us",
-            db: sled::open("./db/scraper/mangasee").unwrap(),
         };
     }
 }
@@ -102,9 +100,9 @@ impl Scraping for Mangasee {
         }
     }
 
-    fn get_manga_info(&self, path: String) -> GetMangaResponse {
+    fn get_manga_info(&self, path: String, db: Db) -> GetMangaResponse {
         let key = format!("scraper:manga:{}:{}", self.url, path.to_owned());
-        let m = match self.db.get(&key).unwrap() {
+        let m = match db.get(&key).unwrap() {
             Some(bytes) => serde_json::from_slice(&bytes).unwrap(),
             None => {
                 let mut m = Manga {
@@ -160,9 +158,7 @@ impl Scraping for Mangasee {
                         m.description = String::from(text);
                     }
                 }
-                self.db
-                    .insert(&key, serde_json::to_vec(&m).unwrap())
-                    .unwrap();
+                db.insert(&key, serde_json::to_vec(&m).unwrap()).unwrap();
                 m
             }
         };
@@ -170,9 +166,9 @@ impl Scraping for Mangasee {
         GetMangaResponse { manga: m }
     }
 
-    fn get_chapters(&self, path: String) -> GetChaptersResponse {
+    fn get_chapters(&self, path: String, db: Db) -> GetChaptersResponse {
         let key = format!("scraper:chapter:{}:{}", self.url, path.to_owned());
-        let chapters = match self.db.get(&key).unwrap() {
+        let chapters = match db.get(&key).unwrap() {
             Some(bytes) => serde_json::from_slice(&bytes).unwrap(),
             None => {
                 let mut chapters: Vec<Chapter> = Vec::new();
@@ -191,8 +187,7 @@ impl Scraping for Mangasee {
                         url: link.replace("-page-1", ""),
                     });
                 }
-                self.db
-                    .insert(&key, serde_json::to_vec(&chapters).unwrap())
+                db.insert(&key, serde_json::to_vec(&chapters).unwrap())
                     .unwrap();
                 chapters
             }
@@ -201,9 +196,9 @@ impl Scraping for Mangasee {
         GetChaptersResponse { chapters }
     }
 
-    fn get_pages(&self, path: String) -> GetPagesResponse {
+    fn get_pages(&self, path: String, db: Db) -> GetPagesResponse {
         let key = format!("scraper:pages:{}:{}", self.url, path.to_owned());
-        let pages = match self.db.get(&key).unwrap() {
+        let pages = match db.get(&key).unwrap() {
             Some(bytes) => serde_json::from_slice(&bytes).unwrap(),
             None => {
                 let mut pages = Vec::new();
@@ -216,8 +211,7 @@ impl Scraping for Mangasee {
                 for element in document.select(&selector) {
                     pages.push(String::from(element.value().attr("src").unwrap()));
                 }
-                self.db
-                    .insert(&key, serde_json::to_vec(&pages).unwrap())
+                db.insert(&key, serde_json::to_vec(&pages).unwrap())
                     .unwrap();
                 pages
             }

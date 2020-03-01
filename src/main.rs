@@ -15,17 +15,19 @@ mod scraper;
 async fn main() {
     pretty_env_logger::init();
 
+    let db = sled::open("./db").unwrap();
+
     let auth = auth::auth::Auth::new();
-    let auth_api = filters::auth::auth::authentication(auth);
+    let auth_api = filters::auth::auth::authentication(auth, db.clone());
 
     let mangasee = Mangasee::default();
-    let mangasee_api = filters::mangasee::mangasee::mangasee(mangasee);
+    let mangasee_api = filters::mangasee::mangasee::mangasee(mangasee, db.clone());
 
     let fav = favorites::favorites::Favorites::new();
-    let fav_api = filters::favorites::favorites::favorites(fav);
+    let fav_api = filters::favorites::favorites::favorites(fav, db.clone());
 
     let history = history::history::History::default();
-    let history_api = filters::history::history::history(history);
+    let history_api = filters::history::history::history(history, db.clone());
 
     let api = auth_api.or(fav_api).or(history_api).or(mangasee_api);
 

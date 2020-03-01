@@ -1,13 +1,15 @@
 pub mod favorites {
     use crate::auth::Claims;
     use crate::favorites::{favorites::Favorites, FavoriteManga};
+    use sled::Db;
     use std::convert::Infallible;
 
     pub async fn get_favorites(
         claim: Claims,
         fav: Favorites,
+        db: Db,
     ) -> Result<impl warp::Reply, Infallible> {
-        let res = fav.get_favorites(claim.sub);
+        let res = fav.get_favorites(claim.sub, db);
         Ok(warp::reply::json(&res))
     }
 
@@ -15,8 +17,9 @@ pub mod favorites {
         claim: Claims,
         manga: FavoriteManga,
         fav: Favorites,
+        db: Db,
     ) -> Result<impl warp::Reply, Infallible> {
-        let res = fav.add_favorite(claim.sub, manga);
+        let res = fav.add_favorite(claim.sub, manga, db);
         Ok(warp::reply::json(&res))
     }
 
@@ -24,8 +27,9 @@ pub mod favorites {
         claim: Claims,
         manga: FavoriteManga,
         fav: Favorites,
+        db: Db,
     ) -> Result<impl warp::Reply, Infallible> {
-        let res = fav.remove_favorites(claim.sub, manga);
+        let res = fav.remove_favorites(claim.sub, manga, db);
         Ok(warp::reply::json(&res))
     }
 }

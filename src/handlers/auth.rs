@@ -1,18 +1,19 @@
 pub mod auth {
     use crate::auth::{auth::Auth, Claims, User};
+    use sled::Db;
     use std::convert::Infallible;
     use warp::Filter;
 
-    pub async fn register(user: User, auth: Auth) -> Result<impl warp::Reply, Infallible> {
-        let res = auth.register(user);
+    pub async fn register(user: User, auth: Auth, db: Db) -> Result<impl warp::Reply, Infallible> {
+        let res = auth.register(user, db);
         Ok(warp::reply::with_status(
             warp::reply::json(&res),
             warp::http::StatusCode::CREATED,
         ))
     }
 
-    pub async fn login(user: User, auth: Auth) -> Result<impl warp::Reply, Infallible> {
-        let res = auth.login(user);
+    pub async fn login(user: User, auth: Auth, db: Db) -> Result<impl warp::Reply, Infallible> {
+        let res = auth.login(user, db);
         Ok(warp::reply::json(&res))
     }
 

@@ -6,21 +6,17 @@ use rand::Rng;
 use sled::Db;
 
 #[derive(Clone)]
-pub struct Auth {
-    db: Db,
-}
+pub struct Auth {}
 
 impl Auth {
     pub fn new() -> Self {
-        let db = sled::open("./db/auth").unwrap();
-        Auth { db }
+        Auth {}
     }
 
-    pub fn register(&self, user: User) -> UserResponse {
+    pub fn register(&self, user: User, db: Db) -> UserResponse {
         let hashed = self.hash(user.password.as_bytes());
         let hashed = hashed.as_bytes();
-        match self
-            .db
+        match db
             .insert(
                 format!("user:{}:password", user.username),
                 Vec::from(hashed),
@@ -40,9 +36,8 @@ impl Auth {
         }
     }
 
-    pub fn login(&self, user: User) -> UserResponse {
-        let hashed = self
-            .db
+    pub fn login(&self, user: User, db: Db) -> UserResponse {
+        let hashed = db
             .get(format!("user:{}:password", user.username))
             .unwrap()
             .expect("user not exists");

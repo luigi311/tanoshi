@@ -3,45 +3,53 @@ pub mod favorites {
     use crate::favorites::FavoriteManga;
     use crate::handlers::auth::auth as auth_handler;
     use crate::handlers::favorites::favorites as favorite_handler;
+    use sled::Db;
     use warp::Filter;
 
     pub(crate) fn favorites(
         fav: Favorites,
+        db: Db,
     ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-        get_favorites(fav.clone())
-            .or(add_favorites(fav.clone()))
-            .or(remove_favorites(fav))
+        get_favorites(fav.clone(), db.clone())
+            .or(add_favorites(fav.clone(), db.clone()))
+            .or(remove_favorites(fav, db))
     }
 
     fn get_favorites(
         fav: Favorites,
+        db: Db,
     ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
         warp::path!("api" / "favorites")
             .and(warp::get())
             .and(auth_handler::validate())
             .and(with_favorites(fav))
+            .and(with_db(db))
             .and_then(favorite_handler::get_favorites)
     }
 
     fn add_favorites(
         fav: Favorites,
+        db: Db,
     ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
         warp::path!("api" / "favorites")
             .and(warp::post())
             .and(auth_handler::validate())
             .and(json_body())
             .and(with_favorites(fav))
+            .and(with_db(db))
             .and_then(favorite_handler::add_favorites)
     }
 
     fn remove_favorites(
         fav: Favorites,
+        db: Db,
     ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
         warp::path!("api" / "favorites")
             .and(warp::delete())
             .and(auth_handler::validate())
             .and(json_body())
             .and(with_favorites(fav))
+            .and(with_db(db))
             .and_then(favorite_handler::remove_favorites)
     }
 
@@ -49,6 +57,10 @@ pub mod favorites {
         fav: Favorites,
     ) -> impl Filter<Extract = (Favorites,), Error = std::convert::Infallible> + Clone {
         warp::any().map(move || fav.clone())
+    }
+
+    fn with_db(db: Db) -> impl Filter<Extract = (Db,), Error = std::convert::Infallible> + Clone {
+        warp::any().map(move || db.clone())
     }
 
     fn json_body() -> impl Filter<Extract = (FavoriteManga,), Error = warp::Rejection> + Clone {

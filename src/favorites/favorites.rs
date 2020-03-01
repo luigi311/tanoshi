@@ -2,33 +2,32 @@ use crate::favorites::{AddFavoritesResponse, FavoriteManga, GetFavoritesResponse
 use sled::Db;
 
 #[derive(Clone)]
-pub struct Favorites {
-    db: Db,
-}
+pub struct Favorites {}
 
 impl Favorites {
     pub fn new() -> Self {
-        let db = sled::open("./db/favorites").unwrap();
-        Favorites { db }
+        Favorites {}
     }
 
-    pub fn get_favorites(&self, username: String) -> GetFavoritesResponse {
-        let mangas: Vec<FavoriteManga> = match self
-            .db
-            .get(format!("favorites:{}:mangas", username))
-            .unwrap()
-        {
-            Some(bytes) => serde_json::from_slice(&bytes).unwrap(),
-            None => vec![],
-        };
+    pub fn get_favorites(&self, username: String, db: Db) -> GetFavoritesResponse {
+        let mangas: Vec<FavoriteManga> =
+            match db.get(format!("favorites:{}:mangas", username)).unwrap() {
+                Some(bytes) => serde_json::from_slice(&bytes).unwrap(),
+                None => vec![],
+            };
         GetFavoritesResponse {
             favorites: Some(mangas),
             status: "success".to_string(),
         }
     }
 
-    pub fn add_favorite(&self, username: String, manga: FavoriteManga) -> AddFavoritesResponse {
-        let status = match self.db.fetch_and_update(
+    pub fn add_favorite(
+        &self,
+        username: String,
+        manga: FavoriteManga,
+        db: Db,
+    ) -> AddFavoritesResponse {
+        let status = match db.fetch_and_update(
             format!("favorites:{}:mangas", username),
             |fav: Option<&[u8]>| {
                 let mut mangas: Vec<FavoriteManga> = match fav {
@@ -50,8 +49,13 @@ impl Favorites {
         AddFavoritesResponse { status }
     }
 
-    pub fn remove_favorites(&self, username: String, manga: FavoriteManga) -> AddFavoritesResponse {
-        let status = match self.db.fetch_and_update(
+    pub fn remove_favorites(
+        &self,
+        username: String,
+        manga: FavoriteManga,
+        db: Db,
+    ) -> AddFavoritesResponse {
+        let status = match db.fetch_and_update(
             format!("favorites:{}:mangas", username),
             |fav: Option<&[u8]>| {
                 let mut mangas: Vec<FavoriteManga> = match fav {

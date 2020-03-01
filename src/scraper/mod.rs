@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use sled::Db;
 
 pub mod mangasee;
 
@@ -50,7 +51,7 @@ pub struct GetPagesResponse {
 pub trait Scraping {
     fn get_mangas(&self, param: Params) -> GetMangasResponse;
     fn get_latest_mangas(&self) -> GetMangasResponse;
-    fn get_manga_info(&self, path: String) -> GetMangaResponse;
-    fn get_chapters(&self, path: String) -> GetChaptersResponse;
-    fn get_pages(&self, path: String) -> GetPagesResponse;
+    fn get_manga_info(&self, path: String, db: Db) -> GetMangaResponse;
+    fn get_chapters(&self, path: String, db: Db) -> GetChaptersResponse;
+    fn get_pages(&self, path: String, db: Db) -> GetPagesResponse;
 }

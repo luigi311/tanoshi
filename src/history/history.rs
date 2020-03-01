@@ -3,15 +3,11 @@ use sled::Db;
 use crate::history::{HistoryChapter, HistoryManga, HistoryResponse};
 
 #[derive(Clone)]
-pub struct History {
-    db: Db,
-}
+pub struct History {}
 
 impl Default for History {
     fn default() -> Self {
-        History {
-            db: sled::open("./db/history").unwrap(),
-        }
+        History {}
     }
 }
 
@@ -22,9 +18,10 @@ impl History {
         source: String,
         title: String,
         chapter: HistoryChapter,
+        db: Db,
     ) -> HistoryResponse {
         let key = format!("history:{}:{}:{}:", username, source, title);
-        let history = self.db.fetch_and_update(key, |fav: Option<&[u8]>| {
+        let history = db.fetch_and_update(key, |fav: Option<&[u8]>| {
             let mut history: Vec<HistoryChapter> = match fav {
                 Some(bytes) => {
                     let history: Vec<HistoryChapter> = serde_json::from_slice(bytes).unwrap();
@@ -54,9 +51,15 @@ impl History {
         }
     }
 
-    pub fn get_history(&self, username: String, source: String, title: String) -> HistoryResponse {
+    pub fn get_history(
+        &self,
+        username: String,
+        source: String,
+        title: String,
+        db: Db,
+    ) -> HistoryResponse {
         let key = format!("history:{}:{}:{}:", username, source, title);
-        let history = match self.db.get(&key).unwrap() {
+        let history = match db.get(&key).unwrap() {
             Some(bytes) => serde_json::from_slice(&bytes).unwrap(),
             None => None,
         };

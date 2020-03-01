@@ -1,6 +1,7 @@
 pub mod history {
     use crate::auth::Claims;
     use crate::history::{history::History, HistoryChapter};
+    use sled::Db;
     use std::convert::Infallible;
 
     pub async fn get_history(
@@ -8,8 +9,9 @@ pub mod history {
         title: String,
         claim: Claims,
         history: History,
+        db: Db,
     ) -> Result<impl warp::Reply, Infallible> {
-        let res = history.get_history(claim.sub, source, title);
+        let res = history.get_history(claim.sub, source, title, db);
         Ok(warp::reply::json(&res))
     }
 
@@ -19,8 +21,9 @@ pub mod history {
         claim: Claims,
         chapter: HistoryChapter,
         history: History,
+        db: Db,
     ) -> Result<impl warp::Reply, Infallible> {
-        let res = history.add_history(claim.sub, source, title, chapter);
+        let res = history.add_history(claim.sub, source, title, chapter, db);
         Ok(warp::reply::json(&res))
     }
 }
