@@ -31,10 +31,6 @@ async fn main() {
 
     let static_files = warp::fs::dir("./dist");
 
-    let cors = warp::cors()
-        .allow_origin("http://localhost:8000")
-        .allow_methods(vec!["GET"]);
-
-    let routes = api.or(static_files).with(cors).with(warp::log("manga"));
-    warp::serve(routes).run(([127, 0, 0, 1], 3030)).await;
+    let routes = api.or(static_files).with(warp::log("manga"));
+    warp::serve(routes).run(([0, 0, 0, 0], 3030)).await;
 }

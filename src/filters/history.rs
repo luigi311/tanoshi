@@ -14,7 +14,7 @@ pub mod history {
     fn get_history(
         history: History,
     ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-        warp::path!("api" / "history" / "source" / String / "title" / String)
+        warp::path!("api" / "history" / "source" / String / "manga" / String)
             .and(warp::get())
             .and(auth_handler::validate())
             .and(with_history(history))
@@ -24,7 +24,7 @@ pub mod history {
     fn add_history(
         history: History,
     ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-        warp::path!("api" / "history" / "source" / String / "title" / String)
+        warp::path!("api" / "history" / "source" / String / "manga" / String)
             .and(warp::post())
             .and(auth_handler::validate())
             .and(json_body())

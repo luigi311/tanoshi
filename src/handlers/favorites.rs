@@ -19,4 +19,13 @@ pub mod favorites {
         let res = fav.add_favorite(claim.sub, manga);
         Ok(warp::reply::json(&res))
     }
+
+    pub async fn remove_favorites(
+        claim: Claims,
+        manga: FavoriteManga,
+        fav: Favorites,
+    ) -> Result<impl warp::Reply, Infallible> {
+        let res = fav.remove_favorites(claim.sub, manga);
+        Ok(warp::reply::json(&res))
+    }
 }

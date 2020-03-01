@@ -19,3 +19,13 @@ pub struct FavoriteManga {
     pub path: String,
     pub thumbnail_url: String,
 }
+
+impl PartialEq for FavoriteManga {
+    fn eq(&self, other: &Self) -> bool {
+        self.source == other.source
+            && self.title == other.title
+            && self.path == other.path
+            && self.thumbnail_url == self.thumbnail_url
+    }
+}
+impl Eq for FavoriteManga {}

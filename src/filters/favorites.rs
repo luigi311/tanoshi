@@ -8,7 +8,9 @@ pub mod favorites {
     pub(crate) fn favorites(
         fav: Favorites,
     ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-        get_favorites(fav.clone()).or(add_favorites(fav))
+        get_favorites(fav.clone())
+            .or(add_favorites(fav.clone()))
+            .or(remove_favorites(fav))
     }
 
     fn get_favorites(
@@ -30,6 +32,17 @@ pub mod favorites {
             .and(json_body())
             .and(with_favorites(fav))
             .and_then(favorite_handler::add_favorites)
+    }
+
+    fn remove_favorites(
+        fav: Favorites,
+    ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+        warp::path!("api" / "favorites")
+            .and(warp::delete())
+            .and(auth_handler::validate())
+            .and(json_body())
+            .and(with_favorites(fav))
+            .and_then(favorite_handler::remove_favorites)
     }
 
     fn with_favorites(
