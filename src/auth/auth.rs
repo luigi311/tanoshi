@@ -6,11 +6,14 @@ use rand::Rng;
 use sled::Db;
 
 #[derive(Clone)]
-pub struct Auth {}
+pub struct Auth {
+    secret: String,
+}
 
 impl Auth {
     pub fn new() -> Self {
-        Auth {}
+        let secret = std::env::var("TOKEN_SECRET_KEY").unwrap();
+        Auth { secret }
     }
 
     pub fn register(&self, user: User, db: Db) -> UserResponse {
@@ -43,7 +46,6 @@ impl Auth {
             .expect("user not exists");
 
         if self.verify(&hashed, user.password.as_bytes()) {
-            let key = b"secretkey";
             let user_claims = Claims {
                 sub: user.username,
                 company: "tanoshi".to_string(),
@@ -52,7 +54,7 @@ impl Auth {
             let token = match encode(
                 &Header::default(),
                 &user_claims,
-                &EncodingKey::from_secret(key),
+                &EncodingKey::from_secret(self.secret.as_bytes()),
             ) {
                 Ok(t) => t,
                 Err(_) => panic!(), // in practice you would return the error
@@ -71,11 +73,11 @@ impl Auth {
         }
     }
 
-    pub fn validate(token: String) -> Option<Claims> {
+    pub fn validate(&self, token: String) -> Option<Claims> {
         let claim = {
             if let Ok(claim) = decode::<Claims>(
                 &token,
-                &DecodingKey::from_secret("secretkey".as_ref()),
+                &DecodingKey::from_secret(self.secret.as_bytes()),
                 &Validation::default(),
             ) {
                 Some(claim.claims)

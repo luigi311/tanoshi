@@ -1,4 +1,6 @@
 pub mod history {
+    use crate::auth::auth::Auth;
+    use crate::auth::Claims;
     use crate::handlers::auth::auth as auth_handler;
     use crate::handlers::history::history as history_handler;
     use crate::history::history::History;
@@ -8,18 +10,20 @@ pub mod history {
 
     pub(crate) fn history(
         history: History,
+        auth: Auth,
         db: Db,
     ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-        get_history(history.clone(), db.clone()).or(add_history(history, db))
+        get_history(history.clone(), auth.clone(), db.clone()).or(add_history(history, auth, db))
     }
 
     fn get_history(
         history: History,
+        auth: Auth,
         db: Db,
     ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
         warp::path!("api" / "history" / "source" / String / "manga" / String)
             .and(warp::get())
-            .and(auth_handler::validate())
+            .and(with_authorization(auth))
             .and(with_history(history))
             .and(with_db(db))
             .and_then(history_handler::get_history)
@@ -27,15 +31,23 @@ pub mod history {
 
     fn add_history(
         history: History,
+        auth: Auth,
         db: Db,
     ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
         warp::path!("api" / "history" / "source" / String / "manga" / String)
             .and(warp::post())
-            .and(auth_handler::validate())
+            .and(with_authorization(auth))
             .and(json_body())
             .and(with_history(history))
             .and(with_db(db))
             .and_then(history_handler::add_history)
+    }
+
+    fn with_authorization(
+        auth: Auth,
+    ) -> impl Filter<Extract = (Claims,), Error = warp::reject::Rejection> + Clone {
+        warp::header::header("authorization")
+            .map(move |token: String| auth_handler::validate(token, auth.clone()).unwrap())
     }
 
     fn with_history(

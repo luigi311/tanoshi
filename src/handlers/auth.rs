@@ -2,7 +2,6 @@ pub mod auth {
     use crate::auth::{auth::Auth, Claims, User};
     use sled::Db;
     use std::convert::Infallible;
-    use warp::Filter;
 
     pub async fn register(user: User, auth: Auth, db: Db) -> Result<impl warp::Reply, Infallible> {
         let res = auth.register(user, db);
@@ -17,13 +16,7 @@ pub mod auth {
         Ok(warp::reply::json(&res))
     }
 
-    pub fn validate() -> impl Filter<Extract = (Claims,), Error = warp::Rejection> + Clone {
-        warp::header::header("authorization").and_then(|token: String| async move {
-            if let Some(claim) = Auth::validate(token) {
-                Ok(claim)
-            } else {
-                Err(warp::reject())
-            }
-        })
+    pub fn validate(token: String, auth: Auth) -> Option<Claims> {
+        auth.validate(token)
     }
 }

@@ -1,4 +1,6 @@
 pub mod favorites {
+    use crate::auth::auth::Auth;
+    use crate::auth::Claims;
     use crate::favorites::favorites::Favorites;
     use crate::favorites::FavoriteManga;
     use crate::handlers::auth::auth as auth_handler;
@@ -8,20 +10,22 @@ pub mod favorites {
 
     pub(crate) fn favorites(
         fav: Favorites,
+        auth: Auth,
         db: Db,
     ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-        get_favorites(fav.clone(), db.clone())
-            .or(add_favorites(fav.clone(), db.clone()))
-            .or(remove_favorites(fav, db))
+        get_favorites(fav.clone(), auth.clone(), db.clone())
+            .or(add_favorites(fav.clone(), auth.clone(), db.clone()))
+            .or(remove_favorites(fav, auth.clone(), db))
     }
 
     fn get_favorites(
         fav: Favorites,
+        auth: Auth,
         db: Db,
     ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
         warp::path!("api" / "favorites")
             .and(warp::get())
-            .and(auth_handler::validate())
+            .and(with_authorization(auth))
             .and(with_favorites(fav))
             .and(with_db(db))
             .and_then(favorite_handler::get_favorites)
@@ -29,11 +33,12 @@ pub mod favorites {
 
     fn add_favorites(
         fav: Favorites,
+        auth: Auth,
         db: Db,
     ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
         warp::path!("api" / "favorites")
             .and(warp::post())
-            .and(auth_handler::validate())
+            .and(with_authorization(auth))
             .and(json_body())
             .and(with_favorites(fav))
             .and(with_db(db))
@@ -42,15 +47,23 @@ pub mod favorites {
 
     fn remove_favorites(
         fav: Favorites,
+        auth: Auth,
         db: Db,
     ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
         warp::path!("api" / "favorites")
             .and(warp::delete())
-            .and(auth_handler::validate())
+            .and(with_authorization(auth))
             .and(json_body())
             .and(with_favorites(fav))
             .and(with_db(db))
             .and_then(favorite_handler::remove_favorites)
+    }
+
+    fn with_authorization(
+        auth: Auth,
+    ) -> impl Filter<Extract = (Claims,), Error = warp::reject::Rejection> + Clone {
+        warp::header::header("authorization")
+            .map(move |token: String| auth_handler::validate(token, auth.clone()).unwrap())
     }
 
     fn with_favorites(
