@@ -39,7 +39,7 @@ impl Component for TopBar {
                 </button>
                 <div class="collapse navbar-collapse" id="navbarNav">
                     <ul class="navbar-nav">
-                        <li class="nav-item"><a href="/updates" class="nav-link">{"Updates"}</a></li>
+                        <li class="nav-item"><a href="#" class="nav-link">{"Updates"}</a></li>
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button"
                             data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{"Catalogue"}</a>
@@ -54,10 +54,10 @@ impl Component for TopBar {
                                     <a class="dropdown-item">{"Mangaplus"}</a></RouterAnchor<AppRoute>>
                             </div>
                         </li>
-                        <li class="nav-item"><a href="/settings" class="nav-link">{"Settings"}</a></li>
+                        <li class="nav-item"><a href="#" class="nav-link">{"Settings"}</a></li>
                         <li class="nav-item">
                             <RouterAnchor<AppRoute> route=AppRoute::Logout>
-                            <a href="/logout" class="nav-link">{"Logout"}</a>
+                            <a href="#" class="nav-link">{"Logout"}</a>
                             </RouterAnchor<AppRoute>>
                         </li>
                     </ul>
