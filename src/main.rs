@@ -10,6 +10,7 @@ mod filters;
 mod handlers;
 mod history;
 mod scraper;
+mod settings;
 
 #[tokio::main]
 async fn main() {
@@ -27,9 +28,16 @@ async fn main() {
     let fav_api = filters::favorites::favorites::favorites(fav, auth.clone(), db.clone());
 
     let history = history::history::History::default();
-    let history_api = filters::history::history::history(history, auth, db.clone());
+    let history_api = filters::history::history::history(history, auth.clone(), db.clone());
 
-    let api = auth_api.or(fav_api).or(history_api).or(mangasee_api);
+    let settings = settings::settings::Settings::default();
+    let settings_api = filters::settings::settings::settings(settings, auth, db);
+
+    let api = auth_api
+        .or(fav_api)
+        .or(history_api)
+        .or(settings_api)
+        .or(mangasee_api);
 
     let static_files = warp::fs::dir("./dist");
 

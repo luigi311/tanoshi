@@ -44,7 +44,7 @@ impl Favorites {
             },
         ) {
             Ok(_) => "success".to_string(),
-            Err(_) => "failed".to_string(),
+            Err(e) => format!("failed add favorite, msg: {}", e.to_string()),
         };
         AddFavoritesResponse { status }
     }
