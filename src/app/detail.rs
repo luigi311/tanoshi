@@ -2,11 +2,11 @@ use yew::{Component, ComponentLink, html, Html, Properties, ShouldRender};
 use yew::format::{Json, Nothing};
 use yew::services::fetch::{FetchService, FetchTask, Request, Response};
 use yew_router::components::RouterAnchor;
+
+use crate::app::AppRoute;
+use super::component::model::{MangaModel, ChapterModel, GetMangaResponse, GetChaptersResponse};
+
 use anyhow;
-
-use crate::app::{AppRoute, ChapterModel, GetMangaResponse, GetChaptersResponse};
-
-use super::{MangaModel};
 
 #[derive(Clone, Properties)]
 pub struct Props {

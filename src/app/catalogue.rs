@@ -8,7 +8,7 @@ use stdweb::web::{IEventTarget, window, document, IHtmlElement};
 use stdweb::web::event::ScrollEvent;
 use enclose::enclose;
 use std::borrow::BorrowMut;
-use crate::app::{GetMangasResponse, MangaModel, GetFavoritesResponse, FavoriteManga};
+use super::component::model::{GetMangasResponse, MangaModel, GetFavoritesResponse, FavoriteManga};
 use yew::services::StorageService;
 use yew::services::storage::Area;
 

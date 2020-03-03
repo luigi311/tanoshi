@@ -3,10 +3,10 @@ use yew::{Component, ComponentLink, html, Html, Properties, ShouldRender};
 use yew::format::{Json, Nothing, Text};
 use yew::services::fetch::{Request, Response, FetchTask};
 use yew::services::{FetchService, StorageService};
-use super::component::{Manga};
-
-use crate::app::{GetMangasResponse, GetFavoritesResponse, FavoriteManga};
 use yew::services::storage::Area;
+
+use super::component::{Manga};
+use super::component::model::{GetMangasResponse, GetFavoritesResponse, FavoriteManga};
 
 #[derive(Deserialize, Debug)]
 pub struct MangaModel {
@@ -58,6 +58,11 @@ impl Component for Home {
         }
     }
 
+    fn mounted(&mut self) -> ShouldRender {
+        self.fetch_favorites();
+        true
+    }
+
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
             Msg::FavoritesReady(data) => {
@@ -67,11 +72,6 @@ impl Component for Home {
                 return false;
             },
         };
-        true
-    }
-
-    fn mounted(&mut self) -> ShouldRender {
-        self.fetch_favorites();
         true
     }
 

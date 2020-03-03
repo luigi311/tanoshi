@@ -1,15 +1,17 @@
+use serde::{Deserialize, Serialize};
+
 use yew::{Component, ComponentLink, html, Html, Properties, ShouldRender, SubmitEvent, InputData, Bridge, Bridged};
-use yew_router::components::RouterAnchor;
-use crate::app::AppRoute;
-use stdweb::web::event::{IEvent, ClickEvent};
 use yew::format::Json;
 use yew::services::fetch::{FetchService, FetchTask, Request, Response};
-use serde::{Deserialize, Serialize};
-use yew::services::StorageService;
-use yew::services::storage::Area;
+use yew::services::{StorageService, storage::Area};
+
+use yew_router::{prelude::*, agent::RouteRequest};
+use yew_router::components::RouterAnchor;
+
 use stdweb::web::document;
-use yew_router::prelude::*;
-use yew_router::agent::RouteRequest;
+use stdweb::web::event::{IEvent, ClickEvent};
+
+use crate::app::AppRoute;
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct User {

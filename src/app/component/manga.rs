@@ -7,9 +7,12 @@ use yew::services::{FetchService, StorageService, Task, TimeoutService};
 use yew::services::fetch::{FetchTask, Request, Response};
 use yew::services::storage::Area;
 
-use crate::app::{AppRoute, GetChaptersResponse};
-use crate::app::home::Msg::FavoritesReady;
+use crate::app::AppRoute;
+use super::model::GetChaptersResponse;
+
 use stdweb::web::document;
+
+
 use yew_router::agent::{RouteAgent, RouteRequest};
 use yew_router::prelude::*;
 

@@ -7,7 +7,7 @@ use yew::services::fetch::{FetchService, FetchTask, Request, Response};
 use yew_router::{agent::RouteRequest, prelude::*};
 use anyhow;
 
-use super::{ChapterModel, MangaModel, GetPagesResponse, GetChaptersResponse, GetMangaResponse};
+use super::component::model::{ChapterModel, MangaModel, GetPagesResponse, GetChaptersResponse, GetMangaResponse};
 
 #[derive(Clone, Properties)]
 pub struct Props {
