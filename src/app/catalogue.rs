@@ -29,6 +29,7 @@ pub struct Catalogue {
     favorites: Vec<String>,
     is_fetching: bool,
     token: String,
+    closure: Closure<dyn Fn()>,
 }
 
 pub enum Msg {
@@ -43,18 +44,6 @@ impl Component for Catalogue {
     type Properties = Props;
 
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
-        let scroll_callback = link.callback(|_| {
-            let current_scroll = window().scroll_y().expect("error get scroll y");
-            let height = window().inner_height().unwrap().as_f64().unwrap();
-            if current_scroll >= height {
-                info!("scroll end");
-                return Msg::ScrolledDown;
-            }
-            Msg::Noop
-        });
-        let closure = Closure::wrap(Box::new(move || scroll_callback.emit("")) as Box<dyn Fn()>);
-
-        window().set_onscroll(Some(closure.as_ref().unchecked_ref()));
         let storage = StorageService::new(Area::Local).unwrap();
         let token = {
             if let Ok(token) = storage.restore("token") {
@@ -63,6 +52,15 @@ impl Component for Catalogue {
                 "".to_string()
             }
         };
+        let tmp_link = link.clone();
+        let closure = Closure::wrap(Box::new(move || {
+            let current_scroll = window().scroll_y().expect("error get scroll y")
+                + window().inner_height().unwrap().as_f64().unwrap();
+            let height = document().body().unwrap().offset_height() as f64;
+            if current_scroll >= height {
+                tmp_link.send_message(Msg::ScrolledDown);
+            }
+        }) as Box<dyn Fn()>);
         Catalogue {
             fetch_task: None,
             link,
@@ -72,7 +70,14 @@ impl Component for Catalogue {
             favorites: vec![],
             is_fetching: false,
             token,
+            closure,
         }
+    }
+
+    fn mounted(&mut self) -> ShouldRender {
+        window().set_onscroll(Some(self.closure.as_ref().unchecked_ref()));
+        self.fetch_favorites();
+        true
     }
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
@@ -105,11 +110,6 @@ impl Component for Catalogue {
         true
     }
 
-    fn mounted(&mut self) -> ShouldRender {
-        self.fetch_favorites();
-        true
-    }
-
     fn view(&self) -> Html {
         html! {
             <div class="container-fluid">
@@ -125,6 +125,10 @@ impl Component for Catalogue {
                 </div>
             </div>
         }
+    }
+
+    fn destroy(&mut self) {
+        window().set_onscroll(None);
     }
 }
 
