@@ -105,7 +105,7 @@ impl Component for Login {
 
     fn view(&self) -> Html {
         html! {
-            <div class="container">
+            <div class="container" id="container">
                 <div class="row">
                     <div class="col">
                         <img src="/assets/img/tanoshi.png"  class="rounded mx-auto d-block"/>

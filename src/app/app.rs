@@ -1,13 +1,13 @@
-use yew::{Bridge, Bridged, Component, ComponentLink, html, Html, ShouldRender};
 use yew::services::storage::Area;
 use yew::services::StorageService;
-use yew_router::{router::Router, Switch};
+use yew::{html, Bridge, Bridged, Component, ComponentLink, Html, ShouldRender};
 use yew_router::agent::RouteRequest;
 use yew_router::prelude::{Route, RouteAgent};
+use yew_router::{router::Router, Switch};
 
 use super::catalogue::Catalogue;
 use super::chapter::Chapter;
-use super::component::TopBar;
+use super::component::{BottomBar, TopBar};
 use super::detail::Detail;
 use super::home::Home;
 use super::login::Login;
@@ -58,7 +58,8 @@ impl Component for App {
 
     fn mounted(&mut self) -> ShouldRender {
         if let Err(_) = self.storage.restore("token") {
-            self.router.send(RouteRequest::ChangeRoute(Route::from("/login".to_string())));
+            self.router
+                .send(RouteRequest::ChangeRoute(Route::from("/login".to_string())));
         } else {
             self.router.send(RouteRequest::GetCurrentRoute);
         }
@@ -83,21 +84,24 @@ impl Component for App {
 
 impl App {
     fn login_or_app(&self) -> Html {
-        if self.route == "/login" { return html! {<Login />}; }
+        if self.route == "/login" {
+            return html! {<Login />};
+        }
         return html! {
-                <>
-                <TopBar />
-                <Router<AppRoute, ()>
-                render = Router::render(|switch: AppRoute| {
-                match switch {
-                    AppRoute::Chapter(source, title, chapter, page) => html!{<Chapter source=source title=title chapter=chapter page=page/>},
-                    AppRoute::Detail(source, title) => html!{<Detail source=source title=title/>},
-                    AppRoute::Source(source) => html!{<Catalogue source=source/>},
-                    AppRoute::Login => html!{},
-                    AppRoute::Logout => html!{<Logout />},
-                    AppRoute::Home => html!{<Home/>},
-                }})/>
-                </>
-                };
+        <>
+            <TopBar />
+            <BottomBar/>
+            <Router<AppRoute, ()>
+            render = Router::render(|switch: AppRoute| {
+            match switch {
+                AppRoute::Chapter(source, title, chapter, page) => html!{<Chapter source=source title=title chapter=chapter page=page/>},
+                AppRoute::Detail(source, title) => html!{<Detail source=source title=title/>},
+                AppRoute::Source(source) => html!{<Catalogue source=source/>},
+                AppRoute::Login => html!{},
+                AppRoute::Logout => html!{<Logout />},
+                AppRoute::Home => html!{<Home/>},
+            }}) />
+        </>
+        };
     }
 }

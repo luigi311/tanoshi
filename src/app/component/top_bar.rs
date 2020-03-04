@@ -23,13 +23,10 @@ impl Component for TopBar {
 
     fn view(&self) -> Html {
         html! {
-            <div class="navbar navbar-expand-sm navbar-light bg-light">
+            <nav class="navbar navbar-expand-sm fixed-top navbar-light border-top-0" id="navbar" style="background-color: cornflowerblue;">
                 <RouterAnchor<AppRoute> route=AppRoute::Home>
                     <div class="navbar-brand">{"Tanoshi"}</div>
                 </RouterAnchor<AppRoute>>
-                <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
                 <div class="collapse navbar-collapse" id="navbarNav">
                     <ul class="navbar-nav">
                         <li class="nav-item"><a href="#" class="nav-link">{"Updates"}</a></li>
@@ -55,7 +52,7 @@ impl Component for TopBar {
                         </li>
                     </ul>
                 </div>
-            </div>
+            </nav>
         }
     }
 }

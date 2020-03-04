@@ -4,6 +4,50 @@ body {
     -webkit-touch-callout: none;
 }
 
+@media (max-width: 575.98px) {
+    .bottom-bar {
+        width: 100%; /* Full-width */
+        background-color: whitesmoke; /* Dark-grey background */
+        position: fixed;
+        left: 0;
+        bottom: 0;
+        display: block;
+        padding-bottom: env(safe-area-inset-bottom);
+        z-index: 10;
+    }
+
+    .bottom-bar a {
+        float: left; /* Float links side by side */
+        text-align: center; /* Center-align text */
+        width: 20%; /* Equal width (5 icons with 20% width each = 100%) */
+        padding: 5px 0; /* Some top and bottom padding */
+        transition: all 0.3s ease; /* Add transition for hover effects */
+        color: white; /* White text color */
+        font-size: 32px; /* Increased font size */
+    }
+
+    .navbar-nav {
+        display: none;
+    }
+}
+@media (min-width: 576px) {
+    .bottom-bar {
+        display: none;
+    }
+}
+
+#navbar {
+    padding-top: env(safe-area-inset-top);
+}
+
+.container {
+    margin-top: env(safe-area-inset-top);
+}
+
+.container-fluid {
+    margin-top: env(safe-area-inset-top);
+}
+
 .manga-cover {
     width: 150px;
     height: 213px;
@@ -65,6 +109,7 @@ body {
     position: relative;
     outline:none;
     width: 99vh;
+    margin-top: env(safe-area-inset-top);
 }
 
 .manga-navigate-right {

@@ -1,0 +1,11 @@
+{
+  "short_name": "Tanoshi",
+  "name": "Tanoshi - selfhosted tachiyomi-like web manga reader",
+  "description": "Read manga online for free from various site",
+  "start_url": "/",
+  "scope": "/",
+  "background_color": "#2e3439",
+  "display": "standalone",
+  "theme_color": "#f79421",
+  "version": "3.0"
+  }
