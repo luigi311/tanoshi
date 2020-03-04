@@ -2,6 +2,9 @@
 Tachiyomi-like web manga reader. Front-end for tanoshi
 
 ## Screenshots
+## Mobile Screenshots
+![favorites](screenshots/mobile.png)
+
 ### Login Page
 ![login](screenshots/login.jpg)
 
