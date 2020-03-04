@@ -1,20 +1,22 @@
 use serde::{Deserialize, Serialize};
-use stdweb::web::event::IEvent;
 use wasm_bindgen::__rt::core::time::Duration;
-use yew::{Component, ComponentLink, html, Html, MouseDownEvent, MouseUpEvent, Properties, ShouldRender, TouchEnd, TouchStart, ClickEvent, Bridge, Bridged, TouchMove};
-use yew::format::{Json, Text, Nothing};
-use yew::services::{FetchService, StorageService, Task, TimeoutService};
+use yew::format::{Json, Nothing, Text};
 use yew::services::fetch::{FetchTask, Request, Response};
 use yew::services::storage::Area;
+use yew::services::{FetchService, StorageService, Task, TimeoutService};
+use yew::{html, Bridge, Bridged, Component, ComponentLink, Html, Properties, ShouldRender};
 
-use crate::app::AppRoute;
+use yew::prelude::*;
+
 use super::model::GetChaptersResponse;
-
-use stdweb::web::document;
-
+use crate::app::AppRoute;
 
 use yew_router::agent::{RouteAgent, RouteRequest};
 use yew_router::prelude::*;
+
+use wasm_bindgen::prelude::*;
+use wasm_bindgen::JsCast;
+use web_sys::{Document, Element, HtmlElement, Window};
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct FavoriteManga {
@@ -54,13 +56,13 @@ pub struct Manga {
 }
 
 pub enum Msg {
-    Click(ClickEvent),
-    MouseDown(MouseDownEvent),
-    MouseUp(MouseUpEvent),
+    Click(MouseEvent),
+    MouseDown(MouseEvent),
+    MouseUp(MouseEvent),
     MouseDownTimeout,
-    TouchStart(TouchStart),
-    TouchEnd(TouchEnd),
-    TouchMove(TouchMove),
+    TouchStart(TouchEvent),
+    TouchEnd(TouchEvent),
+    TouchMove(TouchEvent),
     Favorited(AddFavoritesResponse),
     Unfavorited(AddFavoritesResponse),
     Noop,
@@ -71,7 +73,7 @@ impl Component for Manga {
     type Properties = Props;
 
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
-        let storage = StorageService::new(Area::Local);
+        let storage = StorageService::new(Area::Local).unwrap();
         let token = {
             if let Ok(token) = storage.restore("token") {
                 token
@@ -188,17 +190,21 @@ impl Manga {
             .body(Json(&fav))
             .expect("failed to build request");
 
-        let task = FetchService::new().fetch(
+        if let Ok(task) = FetchService::new().fetch(
             req,
-            self.link.callback(|response: Response<Json<Result<AddFavoritesResponse, anyhow::Error>>>| {
-                if let (meta, Json(Ok(data))) = response.into_parts() {
-                    if meta.status.is_success() {
-                        return Msg::Favorited(data);
+            self.link.callback(
+                |response: Response<Json<Result<AddFavoritesResponse, anyhow::Error>>>| {
+                    if let (meta, Json(Ok(data))) = response.into_parts() {
+                        if meta.status.is_success() {
+                            return Msg::Favorited(data);
+                        }
                     }
-                }
-                Msg::Noop
-            }));
-        self.fetch_task = Some(task);
+                    Msg::Noop
+                },
+            ),
+        ) {
+            self.fetch_task = Some(FetchTask::from(task));
+        }
     }
 
     fn unfavorite(&mut self) {
@@ -215,22 +221,27 @@ impl Manga {
             .body(Json(&fav))
             .expect("failed to build request");
 
-        let task = FetchService::new().fetch(
+        if let Ok(task) = FetchService::new().fetch(
             req,
-            self.link.callback(|response: Response<Json<Result<AddFavoritesResponse, anyhow::Error>>>| {
-                if let (meta, Json(Ok(data))) = response.into_parts() {
-                    if meta.status.is_success() {
-                        return Msg::Unfavorited(data);
+            self.link.callback(
+                |response: Response<Json<Result<AddFavoritesResponse, anyhow::Error>>>| {
+                    if let (meta, Json(Ok(data))) = response.into_parts() {
+                        if meta.status.is_success() {
+                            return Msg::Unfavorited(data);
+                        }
                     }
-                }
-                Msg::Noop
-            }));
-        self.fetch_task = Some(task);
+                    Msg::Noop
+                },
+            ),
+        ) {
+            self.fetch_task = Some(FetchTask::from(task));
+        }
     }
     fn start_timer(&mut self) {
         let handle = self.timeout.spawn(
             Duration::from_secs(1),
-            self.link.callback(|_| Msg::MouseDownTimeout));
+            self.link.callback(|_| Msg::MouseDownTimeout),
+        );
         self.job = Some(Box::new(handle));
     }
 
@@ -238,9 +249,12 @@ impl Manga {
         if !self.job.is_none() {
             let splitted: Vec<_> = self.path.split("/").collect();
             let path = splitted.last().unwrap();
-            self.router.send(
-                RouteRequest::ChangeRoute(
-                    Route::from(format!("/catalogue/{}/manga/{}", self.source.clone(), path.to_string()))));
+            self.router
+                .send(RouteRequest::ChangeRoute(Route::from(format!(
+                    "/catalogue/{}/manga/{}",
+                    self.source.clone(),
+                    path.to_string()
+                ))));
             self.job = None;
         }
     }

@@ -1,16 +1,19 @@
-use serde::{Deserialize};
-use yew::{Component, ComponentLink, html, Html, Properties, ShouldRender};
+use super::component::Manga;
+use serde::Deserialize;
 use yew::format::{Json, Nothing};
-use yew::services::fetch::{FetchService, FetchTask, Request, Response};
+use yew::prelude::*;
+use yew::services::fetch::{FetchService, FetchTask};
+use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 
-use super::component::{Manga};
-use stdweb::web::{IEventTarget, window, document, IHtmlElement};
-use stdweb::web::event::ScrollEvent;
-use enclose::enclose;
+use super::component::model::{FavoriteManga, GetFavoritesResponse, GetMangasResponse, MangaModel};
+use http::{Request, Response};
 use std::borrow::BorrowMut;
-use super::component::model::{GetMangasResponse, MangaModel, GetFavoritesResponse, FavoriteManga};
-use yew::services::StorageService;
 use yew::services::storage::Area;
+use yew::services::StorageService;
+use yew::utils::{document, window};
+
+use wasm_bindgen::prelude::*;
+use wasm_bindgen::JsCast;
 
 #[derive(Clone, Properties)]
 pub struct Props {
@@ -40,23 +43,23 @@ impl Component for Catalogue {
     type Properties = Props;
 
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
-        let scroll_callback = link.callback(move |_ : ScrollEvent| {
-            let current_scroll = window().page_y_offset() as i32 + window().inner_height();
-            let height = document().body().unwrap().offset_height();
+        let scroll_callback = link.callback(|_| {
+            let current_scroll = window().scroll_y().expect("error get scroll y");
+            let height = window().inner_height().unwrap().as_f64().unwrap();
             if current_scroll >= height {
                 info!("scroll end");
-               return Msg::ScrolledDown;
+                return Msg::ScrolledDown;
             }
             Msg::Noop
         });
-        window().add_event_listener(enclose!((window) move |e: ScrollEvent| {
-            scroll_callback.emit(e)
-        }));
-        let storage = StorageService::new(Area::Local);
+        let closure = Closure::wrap(Box::new(move || scroll_callback.emit("")) as Box<dyn Fn()>);
+
+        window().set_onscroll(Some(closure.as_ref().unchecked_ref()));
+        let storage = StorageService::new(Area::Local).unwrap();
         let token = {
             if let Ok(token) = storage.restore("token") {
                 token
-            }   else {
+            } else {
                 "".to_string()
             }
         };
@@ -74,12 +77,18 @@ impl Component for Catalogue {
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
-            Msg::MangaReady(mut data) => {
+            Msg::MangaReady(data) => {
                 let mut mangas = data.mangas;
                 self.mangas.append(&mut mangas);
                 self.is_fetching = false;
-            }Msg::FavoritesReady(data) => {
-                self.favorites = data.favorites.unwrap().iter().map(|ch| ch.title.clone()).collect();
+            }
+            Msg::FavoritesReady(data) => {
+                self.favorites = data
+                    .favorites
+                    .unwrap()
+                    .iter()
+                    .map(|ch| ch.title.clone())
+                    .collect();
                 self.fetch_mangas();
             }
             Msg::ScrolledDown => {
@@ -121,39 +130,51 @@ impl Component for Catalogue {
 
 impl Catalogue {
     fn fetch_mangas(&mut self) {
-        let req = Request::get(format!("/api/source/{}?sort_by=popularity&sort_order=descending&page={}", self.source, self.page))
-            .body(Nothing)
-            .expect("failed to build request");
+        let req = Request::get(format!(
+            "/api/source/{}?sort_by=popularity&sort_order=descending&page={}",
+            self.source, self.page
+        ))
+        .body(Nothing)
+        .expect("failed to build request");
 
-        let task = FetchService::new().fetch(
+        if let Ok(task) = FetchService::new().fetch(
             req,
-            self.link.callback(|response: Response<Json<Result<GetMangasResponse, anyhow::Error>>>| {
-                if let (meta, Json(Ok(data))) = response.into_parts() {
-                    if meta.status.is_success() {
-                        return Msg::MangaReady(data);
+            self.link.callback(
+                |response: Response<Json<Result<GetMangasResponse, anyhow::Error>>>| {
+                    if let (meta, Json(Ok(data))) = response.into_parts() {
+                        if meta.status.is_success() {
+                            return Msg::MangaReady(data);
+                        }
                     }
-                }
-                Msg::Noop
-            }));
-        self.fetch_task = Some(task);
-        self.is_fetching = true;
+                    Msg::Noop
+                },
+            ),
+        ) {
+            self.fetch_task = Some(FetchTask::from(task));
+            self.is_fetching = true;
+        }
     }
 
     fn fetch_favorites(&mut self) {
         let req = Request::get("/api/favorites")
             .header("Authorization", self.token.clone())
-            .body(Nothing).expect("failed to build request");
+            .body(Nothing)
+            .expect("failed to build request");
 
-        let task = FetchService::new().fetch(
+        if let Ok(task) = FetchService::new().fetch(
             req,
-            self.link.callback(|response: Response<Json<Result<GetFavoritesResponse, anyhow::Error>>>| {
-                if let (meta, Json(Ok(data))) = response.into_parts() {
-                    if meta.status.is_success() {
-                        return Msg::FavoritesReady(data);
+            self.link.callback(
+                |response: Response<Json<Result<GetFavoritesResponse, anyhow::Error>>>| {
+                    if let (meta, Json(Ok(data))) = response.into_parts() {
+                        if meta.status.is_success() {
+                            return Msg::FavoritesReady(data);
+                        }
                     }
-                }
-                Msg::Noop
-            }));
-        self.fetch_task = Some(task);
+                    Msg::Noop
+                },
+            ),
+        ) {
+            self.fetch_task = Some(FetchTask::from(task));
+        }
     }
 }

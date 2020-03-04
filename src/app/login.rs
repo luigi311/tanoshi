@@ -1,15 +1,16 @@
 use serde::{Deserialize, Serialize};
 
-use yew::{Component, ComponentLink, html, Html, Properties, ShouldRender, SubmitEvent, InputData, Bridge, Bridged};
 use yew::format::Json;
 use yew::services::fetch::{FetchService, FetchTask, Request, Response};
-use yew::services::{StorageService, storage::Area};
+use yew::services::{storage::Area, StorageService};
+use yew::{
+    html, Bridge, Bridged, Component, ComponentLink, Html, InputData, Properties, ShouldRender,
+};
 
-use yew_router::{prelude::*, agent::RouteRequest};
 use yew_router::components::RouterAnchor;
+use yew_router::{agent::RouteRequest, prelude::*};
 
-use stdweb::web::document;
-use stdweb::web::event::{IEvent, ClickEvent};
+use web_sys::{Event, HtmlElement};
 
 use crate::app::AppRoute;
 
@@ -34,8 +35,7 @@ pub struct UserResponse {
 }
 
 #[derive(Clone, PartialEq, Properties)]
-pub struct Props {
-}
+pub struct Props {}
 
 pub struct Login {
     fetch_task: Option<FetchTask>,
@@ -48,7 +48,7 @@ pub struct Login {
 pub enum Msg {
     UsernameChange(InputData),
     PasswordChange(InputData),
-    Submit(SubmitEvent),
+    Submit(Event),
     LoggedIn(UserResponse),
     Noop,
 }
@@ -58,7 +58,7 @@ impl Component for Login {
     type Properties = Props;
 
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
-        let storage = StorageService::new(Area::Local);
+        let storage = StorageService::new(Area::Local).unwrap();
         let callback = link.callback(|_| Msg::Noop);
         let router = RouteAgent::bridge(callback);
         Login {
@@ -69,7 +69,7 @@ impl Component for Login {
             user: User {
                 username: "".to_string(),
                 password: "".to_string(),
-            }
+            },
         }
     }
 
@@ -85,19 +85,20 @@ impl Component for Login {
                 e.prevent_default();
                 self.login();
             }
-            Msg::LoggedIn(res) => {
-                match res.token {
-                    Some(token) => {
-                        self.storage.store("token", Ok(token));
-                        self.router.send(RouteRequest::ChangeRoute(Route::from("/".to_string())));
-                    },
-                    None => {return false;}
+            Msg::LoggedIn(res) => match res.token {
+                Some(token) => {
+                    self.storage.store("token", Ok(token));
+                    self.router
+                        .send(RouteRequest::ChangeRoute(Route::from("/".to_string())));
                 }
-            }
+                None => {
+                    return false;
+                }
+            },
             Msg::Noop => {
                 info!("noop");
                 return false;
-            },
+            }
         }
         true
     }
@@ -138,18 +139,23 @@ impl Login {
     fn login(&mut self) {
         let req = Request::post("/api/login")
             .header("Content-Type", "application/json")
-            .body(Json(&self.user)).expect("failed to build request");
+            .body(Json(&self.user))
+            .expect("failed to build request");
 
-        let task = FetchService::new().fetch(
+        if let Ok(task) = FetchService::new().fetch(
             req,
-            self.link.callback(|response: Response<Json<Result<UserResponse, anyhow::Error>>>| {
-                if let (meta, Json(Ok(data))) = response.into_parts() {
-                    if meta.status.is_success() {
-                        return Msg::LoggedIn(data);
+            self.link.callback(
+                |response: Response<Json<Result<UserResponse, anyhow::Error>>>| {
+                    if let (meta, Json(Ok(data))) = response.into_parts() {
+                        if meta.status.is_success() {
+                            return Msg::LoggedIn(data);
+                        }
                     }
-                }
-                Msg::Noop
-            }));
-        self.fetch_task = Some(task);
+                    Msg::Noop
+                },
+            ),
+        ) {
+            self.fetch_task = Some(FetchTask::from(task));
+        }
     }
 }

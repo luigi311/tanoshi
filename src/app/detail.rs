@@ -1,10 +1,10 @@
-use yew::{Component, ComponentLink, html, Html, Properties, ShouldRender};
 use yew::format::{Json, Nothing};
 use yew::services::fetch::{FetchService, FetchTask, Request, Response};
+use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 use yew_router::components::RouterAnchor;
 
+use super::component::model::{ChapterModel, GetChaptersResponse, GetMangaResponse, MangaModel};
 use crate::app::AppRoute;
-use super::component::model::{MangaModel, ChapterModel, GetMangaResponse, GetChaptersResponse};
 
 use anyhow;
 
@@ -20,7 +20,7 @@ pub struct Detail {
     source: String,
     title: String,
     manga: MangaModel,
-    chapters : Vec<ChapterModel>
+    chapters: Vec<ChapterModel>,
 }
 
 pub enum Msg {
@@ -118,34 +118,45 @@ impl Detail {
             .body(Nothing)
             .expect("failed to build request");
 
-        let task = FetchService::new().fetch(
+        if let Ok(task) = FetchService::new().fetch(
             req,
-            self.link.callback(|response: Response<Json<Result<GetMangaResponse, anyhow::Error>>>| {
-                if let (meta, Json(Ok(data))) = response.into_parts() {
-                    if meta.status.is_success() {
-                        return Msg::MangaReady(data);
+            self.link.callback(
+                |response: Response<Json<Result<GetMangaResponse, anyhow::Error>>>| {
+                    if let (meta, Json(Ok(data))) = response.into_parts() {
+                        if meta.status.is_success() {
+                            return Msg::MangaReady(data);
+                        }
                     }
-                }
-                Msg::Noop
-            }));
-        self.fetch_task = Some(task);
+                    Msg::Noop
+                },
+            ),
+        ) {
+            self.fetch_task = Some(FetchTask::from(task));
+        }
     }
 
     fn get_chapters(&mut self) {
-        let req = Request::get(format!("/api/source/{}/manga/{}/chapter", self.source, self.title))
-            .body(Nothing)
-            .expect("failed to build request");
+        let req = Request::get(format!(
+            "/api/source/{}/manga/{}/chapter",
+            self.source, self.title
+        ))
+        .body(Nothing)
+        .expect("failed to build request");
 
-        let task = FetchService::new().fetch(
+        if let Ok(task) = FetchService::new().fetch(
             req,
-            self.link.callback(|response: Response<Json<Result<GetChaptersResponse, anyhow::Error>>>| {
-                if let (meta, Json(Ok(data))) = response.into_parts() {
-                    if meta.status.is_success() {
-                        return Msg::ChapterReady(data);
+            self.link.callback(
+                |response: Response<Json<Result<GetChaptersResponse, anyhow::Error>>>| {
+                    if let (meta, Json(Ok(data))) = response.into_parts() {
+                        if meta.status.is_success() {
+                            return Msg::ChapterReady(data);
+                        }
                     }
-                }
-                Msg::Noop
-            }));
-        self.fetch_task = Some(task);
+                    Msg::Noop
+                },
+            ),
+        ) {
+            self.fetch_task = Some(FetchTask::from(task));
+        }
     }
 }

@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use yew::{Component, ComponentLink, html, Html, Properties, ShouldRender, SubmitEvent, InputData, Bridge, Bridged};
+use yew::{Component, ComponentLink, html, Html, Properties, ShouldRender, InputData, Bridge, Bridged};
 use yew::format::Json;
 use yew::services::fetch::{FetchService, FetchTask, Request, Response};
 use yew::services::{StorageService, storage::Area};
@@ -7,8 +7,6 @@ use yew::services::{StorageService, storage::Area};
 use yew_router::{prelude::*,agent::RouteRequest};
 use yew_router::components::RouterAnchor;
 
-use stdweb::web::document;
-use stdweb::web::event::{IEvent, ClickEvent};
 
 use crate::app::AppRoute;
 
@@ -32,7 +30,7 @@ impl Component for Logout {
     type Properties = Props;
 
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
-        let storage = StorageService::new(Area::Local);
+        let storage = StorageService::new(Area::Local).unwrap();
         let callback = link.callback(|_| Msg::Noop);
         let router = RouteAgent::bridge(callback);
         Logout {

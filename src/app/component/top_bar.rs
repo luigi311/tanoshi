@@ -1,27 +1,20 @@
-use yew::{Component, ComponentLink, html, Html, Properties, ShouldRender};
-use yew_router::components::RouterAnchor;
 use crate::app::AppRoute;
+use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
+use yew_router::components::RouterAnchor;
 
 #[derive(Clone, PartialEq, Properties)]
-pub struct Props {
-    pub title: String,
-    pub thumbnail: String,
-}
+pub struct Props {}
 
-pub struct TopBar {
-}
+pub struct TopBar {}
 
-pub enum Msg {
-}
+pub enum Msg {}
 
 impl Component for TopBar {
     type Message = Msg;
     type Properties = Props;
 
     fn create(_: Self::Properties, _: ComponentLink<Self>) -> Self {
-        TopBar {
-
-        }
+        TopBar {}
     }
 
     fn update(&mut self, _: Self::Message) -> ShouldRender {

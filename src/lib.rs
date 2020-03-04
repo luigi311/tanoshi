@@ -2,6 +2,7 @@
 #[macro_use]
 extern crate log;
 extern crate web_logger;
+
 mod utils;
 
 use wasm_bindgen::prelude::*;

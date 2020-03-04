@@ -1,13 +1,21 @@
-use stdweb::unstable::TryInto;
-use stdweb::web::{document, HtmlElement, IHtmlElement, IParentNode};
-use yew::{Component, ComponentLink, html, Html, Properties, ShouldRender};
+use anyhow;
+use std::convert::TryInto;
 use yew::format::{Json, Nothing};
 use yew::prelude::*;
 use yew::services::fetch::{FetchService, FetchTask, Request, Response};
+use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 use yew_router::{agent::RouteRequest, prelude::*};
-use anyhow;
 
-use super::component::model::{ChapterModel, MangaModel, GetPagesResponse, GetChaptersResponse, GetMangaResponse};
+use super::component::model::{
+    ChapterModel, GetChaptersResponse, GetMangaResponse, GetPagesResponse, MangaModel,
+};
+
+use wasm_bindgen::prelude::*;
+use wasm_bindgen::JsCast;
+
+use web_sys::HtmlElement;
+use yew::prelude::*;
+use yew::utils::document;
 
 #[derive(Clone, Properties)]
 pub struct Props {
@@ -68,23 +76,25 @@ impl Component for Chapter {
 
     fn mounted(&mut self) -> ShouldRender {
         self.get_chapters();
-        let reader: HtmlElement = document().query_selector("#manga-reader")
-            .unwrap()
-            .expect("failed to get")
-            .try_into()
-            .unwrap();
-        reader.focus();
+        document()
+            .get_element_by_id("manga-reader")
+            .expect("should have manga reader")
+            .dyn_ref::<HtmlElement>()
+            .expect("should load HtmlElement")
+            .focus();
         true
     }
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
-            Msg::MangaReady(data) => {
-
-            }
+            Msg::MangaReady(data) => {}
             Msg::ChapterReady(data) => {
                 self.chapters = data.chapters.clone();
-                let idx = match self.chapters.iter().position(|chapter| chapter.no == self.current_chapter) {
+                let idx = match self
+                    .chapters
+                    .iter()
+                    .position(|chapter| chapter.no == self.current_chapter)
+                {
                     Some(index) => index,
                     None => 0,
                 };
@@ -112,7 +122,7 @@ impl Component for Chapter {
 
     fn view(&self) -> Html {
         html! {
-            <div class="container-fluid p-0" id="manga-reader" tabindex="0" onkeydown=self.link.callback(|e: KeyDownEvent|
+            <div class="container-fluid p-0" id="manga-reader" tabindex="0" onkeydown=self.link.callback(|e: KeyboardEvent|
                 match e.key().as_str() {
                     "ArrowRight" => Msg::PageForward,
                     "ArrowLeft"  => Msg::PagePrevious,
@@ -139,39 +149,53 @@ impl Component for Chapter {
 
 impl Chapter {
     fn get_chapters(&mut self) {
-        let req = Request::get(format!("/api/source/{}/manga/{}/chapter", self.source, self.title))
-            .body(Nothing)
-            .expect("failed to build request");
+        let req = Request::get(format!(
+            "/api/source/{}/manga/{}/chapter",
+            self.source, self.title
+        ))
+        .body(Nothing)
+        .expect("failed to build request");
 
-        let task = FetchService::new().fetch(
+        if let Ok(task) = FetchService::new().fetch(
             req,
-            self.link.callback(|response: Response<Json<Result<GetChaptersResponse, anyhow::Error>>>| {
-                if let (meta, Json(Ok(data))) = response.into_parts() {
-                    if meta.status.is_success() {
-                        return Msg::ChapterReady(data);
+            self.link.callback(
+                |response: Response<Json<Result<GetChaptersResponse, anyhow::Error>>>| {
+                    if let (meta, Json(Ok(data))) = response.into_parts() {
+                        if meta.status.is_success() {
+                            return Msg::ChapterReady(data);
+                        }
                     }
-                }
-                Msg::Noop
-            }));
-        self.fetch_task = Some(task);
+                    Msg::Noop
+                },
+            ),
+        ) {
+            self.fetch_task = Some(FetchTask::from(task));
+        }
     }
 
     fn get_pages(&mut self) {
-        let req = Request::get(format!("/api/source/{}/manga/{}/chapter/{}", self.source, self.title, self.current_chapter))
-            .body(Nothing)
-            .expect("failed to build request");
+        let req = Request::get(format!(
+            "/api/source/{}/manga/{}/chapter/{}",
+            self.source, self.title, self.current_chapter
+        ))
+        .body(Nothing)
+        .expect("failed to build request");
 
-        let task = FetchService::new().fetch(
+        if let Ok(task) = FetchService::new().fetch(
             req,
-            self.link.callback(|response: Response<Json<Result<GetPagesResponse, anyhow::Error>>>| {
-                if let (meta, Json(Ok(data))) = response.into_parts() {
-                    if meta.status.is_success() {
-                        return Msg::PagesReady(data);
+            self.link.callback(
+                |response: Response<Json<Result<GetPagesResponse, anyhow::Error>>>| {
+                    if let (meta, Json(Ok(data))) = response.into_parts() {
+                        if meta.status.is_success() {
+                            return Msg::PagesReady(data);
+                        }
                     }
-                }
-                Msg::Noop
-            }));
-        self.fetch_task = Some(task);
+                    Msg::Noop
+                },
+            ),
+        ) {
+            self.fetch_task = Some(FetchTask::from(task));
+        }
     }
 
     fn next_page_or_chapter(&mut self) {
@@ -188,7 +212,11 @@ impl Chapter {
 
         let route_string: String;
         if self.current_page == 0 {
-            let current_chapter_idx = match self.chapters.iter().position(|chapter| chapter.no == self.current_chapter) {
+            let current_chapter_idx = match self
+                .chapters
+                .iter()
+                .position(|chapter| chapter.no == self.current_chapter)
+            {
                 Some(index) => index,
                 None => 0,
             };
@@ -201,11 +229,13 @@ impl Chapter {
                 None => false,
             };
 
-
             self.pages.clear();
 
             if is_next {
-                route_string = format!("/catalogue/{}/manga/{}/chapter/{}/page/1", self.source, self.title, self.current_chapter);
+                route_string = format!(
+                    "/catalogue/{}/manga/{}/chapter/{}/page/1",
+                    self.source, self.title, self.current_chapter
+                );
                 self.previous_chapter_page = self.current_page;
             } else {
                 route_string = format!("/catalogue/{}/manga/{}", self.source, self.title);
@@ -213,9 +243,16 @@ impl Chapter {
             let route = Route::from(route_string);
             self.router.send(RouteRequest::ChangeRoute(route));
         } else {
-            route_string = format!("/catalogue/{}/manga/{}/chapter/{}/page/{}", self.source, self.title, self.current_chapter, self.current_page + 1);
+            route_string = format!(
+                "/catalogue/{}/manga/{}/chapter/{}/page/{}",
+                self.source,
+                self.title,
+                self.current_chapter,
+                self.current_page + 1
+            );
             let route = Route::from(route_string);
-            self.router.send(RouteRequest::ReplaceRouteNoBroadcast(route));
+            self.router
+                .send(RouteRequest::ReplaceRouteNoBroadcast(route));
         }
     }
 
@@ -234,7 +271,11 @@ impl Chapter {
         };
 
         if is_prev {
-            let current_chapter_idx = match self.chapters.iter().position(|chapter| chapter.no == self.current_chapter) {
+            let current_chapter_idx = match self
+                .chapters
+                .iter()
+                .position(|chapter| chapter.no == self.current_chapter)
+            {
                 Some(index) => index + 1,
                 None => 0,
             };
@@ -246,7 +287,13 @@ impl Chapter {
             self.current_page = self.previous_chapter_page;
             if current_chapter_idx < self.chapters.len() {
                 self.pages.clear();
-                let route_string = format!("/catalogue/{}/manga/{}/chapter/{}/page/{}", self.source, self.title, self.current_chapter, self.current_page + 1);
+                let route_string = format!(
+                    "/catalogue/{}/manga/{}/chapter/{}/page/{}",
+                    self.source,
+                    self.title,
+                    self.current_chapter,
+                    self.current_page + 1
+                );
                 let route = Route::from(route_string);
                 self.router.send(RouteRequest::ChangeRoute(route));
             } else {
@@ -255,9 +302,16 @@ impl Chapter {
                 self.router.send(RouteRequest::ChangeRoute(route));
             }
         } else {
-            let route_string = format!("/catalogue/{}/manga/{}/chapter/{}/page/{}", self.source, self.title, self.current_chapter, self.current_page + 1);
+            let route_string = format!(
+                "/catalogue/{}/manga/{}/chapter/{}/page/{}",
+                self.source,
+                self.title,
+                self.current_chapter,
+                self.current_page + 1
+            );
             let route = Route::from(route_string);
-            self.router.send(RouteRequest::ReplaceRouteNoBroadcast(route));
+            self.router
+                .send(RouteRequest::ReplaceRouteNoBroadcast(route));
         }
     }
 }

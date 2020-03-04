@@ -1,12 +1,12 @@
 use serde::Deserialize;
-use yew::{Component, ComponentLink, html, Html, Properties, ShouldRender};
 use yew::format::{Json, Nothing, Text};
-use yew::services::fetch::{Request, Response, FetchTask};
-use yew::services::{FetchService, StorageService};
+use yew::services::fetch::{FetchTask, Request, Response};
 use yew::services::storage::Area;
+use yew::services::{FetchService, StorageService};
+use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 
-use super::component::{Manga};
-use super::component::model::{GetMangasResponse, GetFavoritesResponse, FavoriteManga};
+use super::component::model::{FavoriteManga, GetFavoritesResponse, GetMangasResponse};
+use super::component::Manga;
 
 #[derive(Deserialize, Debug)]
 pub struct MangaModel {
@@ -15,9 +15,7 @@ pub struct MangaModel {
 }
 
 #[derive(Clone, Properties)]
-pub struct Props {
-
-}
+pub struct Props {}
 
 #[derive(Deserialize)]
 pub struct Token {
@@ -41,11 +39,11 @@ impl Component for Home {
     type Properties = Props;
 
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
-        let storage = StorageService::new(Area::Local);
+        let storage = StorageService::new(Area::Local).unwrap();
         let token = {
-          if let Ok(token) = storage.restore("token") {
-              token
-          }   else {
+            if let Ok(token) = storage.restore("token") {
+                token
+            } else {
                 "".to_string()
             }
         };
@@ -70,7 +68,7 @@ impl Component for Home {
             }
             Noop => {
                 return false;
-            },
+            }
         };
         true
     }
@@ -84,7 +82,8 @@ impl Component for Home {
                     title=manga.title.to_owned()
                     thumbnail=manga.thumbnail_url.to_owned()
                     path=manga.path.to_owned()
-                    source=manga.source.to_owned() />
+                    source=manga.source.to_owned()
+                    is_favorite={false} />
                 }) }
                 </div>
             </div>
@@ -96,18 +95,23 @@ impl Home {
     fn fetch_favorites(&mut self) {
         let req = Request::get("/api/favorites")
             .header("Authorization", self.token.to_string())
-            .body(Nothing).expect("failed to build request");
+            .body(Nothing)
+            .expect("failed to build request");
 
-        let task = FetchService::new().fetch(
+        if let Ok(task) = FetchService::new().fetch(
             req,
-            self.link.callback(|response: Response<Json<Result<GetFavoritesResponse, anyhow::Error>>>| {
-                if let (meta, Json(Ok(data))) = response.into_parts() {
-                    if meta.status.is_success() {
-                        return Msg::FavoritesReady(data);
+            self.link.callback(
+                |response: Response<Json<Result<GetFavoritesResponse, anyhow::Error>>>| {
+                    if let (meta, Json(Ok(data))) = response.into_parts() {
+                        if meta.status.is_success() {
+                            return Msg::FavoritesReady(data);
+                        }
                     }
-                }
-                Msg::Noop
-            }));
-        self.fetch_task = Some(task);
+                    Msg::Noop
+                },
+            ),
+        ) {
+            self.fetch_task = Some(FetchTask::from(task));
+        }
     }
 }

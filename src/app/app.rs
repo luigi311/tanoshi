@@ -45,7 +45,7 @@ impl Component for App {
     type Properties = ();
 
     fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self {
-        let storage = StorageService::new(Area::Local);
+        let storage = StorageService::new(Area::Local).unwrap();
         let callback = link.callback(|route| Msg::RouterCallback(route));
         let router = RouteAgent::bridge(callback);
         App {
