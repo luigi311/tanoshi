@@ -10,7 +10,7 @@ module.exports = (env, argv) => {
                 index:'/'
             },
             contentBase: distPath,
-            compress: false,
+            compress: argv.mode === "production",
             host: '0.0.0.0',
             port: 8000,
             proxy: {
@@ -33,6 +33,6 @@ module.exports = (env, argv) => {
                 extraArgs: "--no-typescript",
             })
         ],
-        watch: true
+        watch: argv.mode !== "production"
     };
 };
