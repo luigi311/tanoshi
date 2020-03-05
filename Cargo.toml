@@ -24,6 +24,7 @@ log = "*"
 web_logger="*"
 enclose = "*"
 anyhow = "1.0.2"
+quote = "=1.0.2"
 
 [dependencies.web-sys]
 version = "0.3.4"
