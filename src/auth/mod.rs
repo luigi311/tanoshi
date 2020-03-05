@@ -15,7 +15,7 @@ pub struct UserResponse {
     pub status: String,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct Claims {
     pub sub: String,
     pub company: String,

@@ -62,8 +62,10 @@ pub mod favorites {
     fn with_authorization(
         auth: Auth,
     ) -> impl Filter<Extract = (Claims,), Error = warp::reject::Rejection> + Clone {
-        warp::header::header("authorization")
-            .map(move |token: String| auth_handler::validate(token, auth.clone()).unwrap())
+        warp::header::header("authorization").map(move |token: String| {
+            let claim = auth_handler::validate(token, auth.clone());
+            claim.unwrap_or(Claims::default())
+        })
     }
 
     fn with_favorites(

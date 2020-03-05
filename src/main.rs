@@ -16,7 +16,8 @@ mod settings;
 async fn main() {
     pretty_env_logger::init();
 
-    let db = sled::open("./db").unwrap();
+    let db_path = std::env::var("DB_PATH").unwrap_or("./db".to_string());
+    let db = sled::open(db_path).unwrap();
 
     let auth = auth::auth::Auth::new();
     let auth_api = filters::auth::auth::authentication(auth.clone(), db.clone());
@@ -39,7 +40,8 @@ async fn main() {
         .or(settings_api)
         .or(mangasee_api);
 
-    let static_files = warp::fs::dir("./dist");
+    let static_path = std::env::var("STATIC_FILES_PATH").unwrap_or("./dist".to_string());
+    let static_files = warp::fs::dir(static_path);
 
     let routes = api.or(static_files).with(warp::log("manga"));
     warp::serve(routes).run(([0, 0, 0, 0], 3030)).await;
