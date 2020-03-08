@@ -75,7 +75,7 @@ impl Component for Detail {
 
     fn view(&self) -> Html {
         html! {
-            <div class="container" id="container">
+            <div class="container-fluid">
             <div class="row justify-content-center">
                 <div class="col-sm-auto">
                     <div class="manga-cover-container">

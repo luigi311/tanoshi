@@ -1,6 +1,7 @@
-use crate::app::AppRoute;
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 use yew_router::components::RouterAnchor;
+
+use crate::app::AppRoute;
 
 #[derive(Clone, PartialEq, Properties)]
 pub struct Props {}
@@ -23,31 +24,22 @@ impl Component for TopBar {
 
     fn view(&self) -> Html {
         html! {
-            <nav class="navbar navbar-expand-sm fixed-top navbar-light border-top-0" id="navbar" style="background-color: cornflowerblue;">
+            <nav class="navbar navbar-expand-sm fixed-top navbar-light border-top-0 bg-dark" id="navbar" >
                 <RouterAnchor<AppRoute> route=AppRoute::Home>
-                    <div class="navbar-brand">{"Tanoshi"}</div>
+                    <div class="text-light">{"Home"}</div>
                 </RouterAnchor<AppRoute>>
                 <div class="collapse navbar-collapse" id="navbarNav">
                     <ul class="navbar-nav">
                         <li class="nav-item"><a href="#" class="nav-link">{"Updates"}</a></li>
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button"
-                            data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{"Catalogue"}</a>
-                            <div class="dropdown-menu" aria-labelledby="navbarDropdown">
-                                    <RouterAnchor<AppRoute> route=AppRoute::Source("mangasee".to_string())>
-                                    <a class="dropdown-item">{"Mangasee"}</a>
-                                    </RouterAnchor<AppRoute>>
-                                    <RouterAnchor<AppRoute> route=AppRoute::Source("mangadex".to_string())>
-                                    <a class="dropdown-item">{"Mangadex"}</a>
-                                    </RouterAnchor<AppRoute>>
-                                    <RouterAnchor<AppRoute> route=AppRoute::Source("mangaplus".to_string())>
-                                    <a class="dropdown-item">{"Mangaplus"}</a></RouterAnchor<AppRoute>>
-                            </div>
+                        <li class="nav-item">
+                           <RouterAnchor<AppRoute> route=AppRoute::Source("mangasee".to_string())>
+                           {"Catalogue"}
+                           </RouterAnchor<AppRoute>>
                         </li>
-                        <li class="nav-item"><a href="#" class="nav-link">{"Settings"}</a></li>
+                        <li class="nav-item"><a href="#" class="nav-item">{"Settings"}</a></li>
                         <li class="nav-item">
                             <RouterAnchor<AppRoute> route=AppRoute::Logout>
-                            <a href="#" class="nav-link">{"Logout"}</a>
+                            {"Logout"}
                             </RouterAnchor<AppRoute>>
                         </li>
                     </ul>

@@ -113,7 +113,7 @@ impl Component for Catalogue {
     fn view(&self) -> Html {
         html! {
             <div class="container-fluid">
-                <div class="row row-cols-sm-2 row-cols-md-3 row-cols-lg-5 row-cols-xl-6">
+                <div class="row row-cols-sm-2 row-cols-md-3 row-cols-lg-5 row-cols-xl-6" style="height: 100%;">
                 { for self.mangas.iter().map(|manga| html!{
                 <Manga
                     title=manga.title.to_owned()

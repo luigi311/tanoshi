@@ -91,6 +91,7 @@ impl App {
         <>
             <TopBar />
             <BottomBar/>
+            <div class="app">
             <Router<AppRoute, ()>
             render = Router::render(|switch: AppRoute| {
             match switch {
@@ -101,6 +102,7 @@ impl App {
                 AppRoute::Logout => html!{<Logout />},
                 AppRoute::Home => html!{<Home/>},
             }}) />
+            </div>
         </>
         };
     }

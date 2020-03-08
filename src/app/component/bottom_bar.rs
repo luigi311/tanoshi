@@ -25,19 +25,34 @@ impl Component for BottomBar {
         html! {
            <div class="bottom-bar">
                <RouterAnchor<AppRoute> route=AppRoute::Home>
-                   <img src="/assets/img/star-fill.svg" alt="" width="32" height="32" title="Favorites"/>
+                   <div>
+                        <img class="icon" src="/assets/img/star-fill.svg" alt="" width="32" height="32" title="Favorites"/>
+                        <p>{"Favorites"}</p>
+                   </div>
                </RouterAnchor<AppRoute>>
                <RouterAnchor<AppRoute> route=AppRoute::Source("mangasee".to_string())>
-                   <img src="/assets/img/list.svg" alt="" width="32" height="32" title="Updates"/>
+                   <div>
+                        <img class="icon" src="/assets/img/list.svg" alt="" width="32" height="32" title="Catalogue"/>
+                        <p>{"Catalogue"}</p>
+                   </div>
                </RouterAnchor<AppRoute>>
                <a href="#">
-                   <img src="/assets/img/clock-fill.svg" alt="" width="32" height="32" title="Updates"/>
+                   <div>
+                        <img class="icon" src="/assets/img/clock-fill.svg" alt="" width="32" height="32" title="Updates"/>
+                        <p>{"Updates"}</p>
+                   </div>
                </a>
                <a href="#">
-                   <img src="/assets/img/gear-wide-connected.svg" alt="" width="32" height="32" title="Settings"/>
+                    <div>
+                        <img class="icon" src="/assets/img/gear-wide-connected.svg" alt="" width="32" height="32" title="Settings"/>
+                        <p>{"Settings"}</p>
+                    </div>
                </a>
                <a href="#">
-                   <img src="/assets/img/person-fill.svg" alt="" width="32" height="32" title="Settings"/>
+                    <div>
+                        <img class="icon" src="/assets/img/person-fill.svg" alt="" width="32" height="32" title="Account"/>
+                        <p>{"Account"}</p>
+                    </div>
                </a>
            </div>
         }
