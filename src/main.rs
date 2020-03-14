@@ -2,6 +2,7 @@ extern crate argon2;
 
 use crate::scraper::mangasee::Mangasee;
 use pretty_env_logger;
+use std::str::FromStr;
 use warp::Filter;
 
 mod auth;
@@ -17,7 +18,17 @@ async fn main() {
     pretty_env_logger::init();
 
     let db_path = std::env::var("DB_PATH").unwrap_or("./db".to_string());
-    let db = sled::open(db_path).unwrap();
+    let cache_capacity: u64 = u64::from_str(
+        std::env::var("DB_CACHE")
+            .unwrap_or("100000000".to_string())
+            .as_str(),
+    )
+    .unwrap_or(10_000_000_000);
+    let db = sled::Config::default()
+        .cache_capacity(cache_capacity)
+        .path(db_path)
+        .open()
+        .unwrap();
 
     let auth = auth::auth::Auth::new();
     let auth_api = filters::auth::auth::authentication(auth.clone(), db.clone());
