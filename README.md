@@ -1,5 +1,5 @@
 # Tanoshi
-Tachiyomi-like web manga reader. Front-end for [https://github.com/fadhlika/tanoshi](tanoshi)
+Tachiyomi-like web manga reader. Front-end for [tanoshi](https://github.com/fadhlika/tanoshi)
 
 ## Goals
 After switching to iOS from android, I really missing tachiyomi for reading manga.
