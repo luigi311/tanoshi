@@ -1,10 +1,10 @@
 mod manga;
 pub use self::manga::Manga;
 
-mod top_bar;
-pub use self::top_bar::TopBar;
+mod navigation_bar;
+pub use self::navigation_bar::NavigationBar;
 
-mod bottom_bar;
-pub use self::bottom_bar::BottomBar;
+mod spinner;
+pub use self::spinner::Spinner;
 
 pub mod model;

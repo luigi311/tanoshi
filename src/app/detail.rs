@@ -4,6 +4,7 @@ use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 use yew_router::components::RouterAnchor;
 
 use super::component::model::{ChapterModel, GetChaptersResponse, GetMangaResponse, MangaModel};
+use super::component::Spinner;
 use crate::app::AppRoute;
 
 use anyhow;
@@ -21,6 +22,8 @@ pub struct Detail {
     title: String,
     manga: MangaModel,
     chapters: Vec<ChapterModel>,
+    is_fetching_manga: bool,
+    is_fetching_chapter: bool,
 }
 
 pub enum Msg {
@@ -49,6 +52,8 @@ impl Component for Detail {
                 thumbnail_url: "".to_string(),
             },
             chapters: vec![],
+            is_fetching_manga: false,
+            is_fetching_chapter: false,
         }
     }
 
@@ -61,10 +66,12 @@ impl Component for Detail {
         match msg {
             Msg::MangaReady(data) => {
                 self.manga = data.manga;
-                self.get_chapters()
+                self.get_chapters();
+                self.is_fetching_manga = false;
             }
             Msg::ChapterReady(data) => {
                 self.chapters = data.chapters;
+                self.is_fetching_chapter = false;
             }
             Msg::Noop => {
                 info!("noop");
@@ -75,36 +82,45 @@ impl Component for Detail {
 
     fn view(&self) -> Html {
         html! {
-            <div class="container-fluid">
-            <div class="row justify-content-center">
-                <div class="col-sm-auto">
+            <div class="container">
+            <Spinner is_active={self.is_fetching_manga || self.is_fetching_chapter} />
+            <div class="w-2/3 mx-auto flex">
+                <div class="flex-none m-w">
                     <div class="manga-cover-container">
                         <img class="manga-cover" src=self.manga.thumbnail_url />
                     </div>
                 </div>
-                <div class="col-md">
-                    <h1>{self.manga.title.to_owned()}</h1>
-                    <h4>{self.manga.status.to_owned()}</h4>
-                    <h5>{self.manga.genre.join(", ").to_owned()}</h5>
+                <div class="flex flex-col m-2 p-4">
+                    <span class="text-2xl font-bold">{self.manga.title.to_owned()}</span>
+                    <span class="font-semibold">{self.manga.status.to_owned()}</span>
+                    <span class="font-medium">{self.manga.genre.join(", ").to_owned()}</span>
                     <p>{self.manga.description.to_owned()}</p>
                 </div>
             </div>
-            <div class="row justify-content-center">
-                <div class="col-lg">
-                    <div class="card" style="width: 100%;">
-                        <div class="card-header">
+            <div class="w-2/3 mx-auto">
+                <div class="bg-white shadow-md rounded my-6">
+                    <table class="text-left w-full border-collapse">
+                    <thead>
+                        <tr>
+                         <th class="py-4 px-6 bg-grey-lightest font-bold uppercase text-sm text-grey-dark border-b border-grey-light">
                             {"Read Chapter"}
-                        </div>
-                        <ul class="list-group">
+                         </th>
+                        </tr>
+                    </thead>
+                    <tbody>
                         {
                             for self.chapters.iter().map(|(chapter)| html!{
-                                <RouterAnchor<AppRoute> route=AppRoute::Chapter(self.source.to_owned(), self.title.to_owned(), chapter.no.to_owned(), 1)>
-                                    <li class="list-group-item list-group-item-action">{format!("Chapter {}", chapter.no.to_owned())}</li>
-                                </RouterAnchor<AppRoute>>
+                                <tr class="hover:bg-grey-lighter">
+                                    <td class="py-4 px-6 border-b border-grey-light">
+                                        <RouterAnchor<AppRoute>  route=AppRoute::Chapter(self.source.to_owned(), self.title.to_owned(), chapter.no.to_owned(), 1)>
+                                            {format!("Chapter {}", chapter.no.to_owned())}
+                                        </RouterAnchor<AppRoute>>
+                                    </td>
+                                </tr>
                             })
                         }
-                        </ul>
-                    </div>
+                    </tbody>
+                    </table>
                 </div>
             </div>
             </div>
@@ -132,6 +148,7 @@ impl Detail {
             ),
         ) {
             self.fetch_task = Some(FetchTask::from(task));
+            self.is_fetching_manga = true;
         }
     }
 
@@ -157,6 +174,7 @@ impl Detail {
             ),
         ) {
             self.fetch_task = Some(FetchTask::from(task));
+            self.is_fetching_chapter = true;
         }
     }
 }

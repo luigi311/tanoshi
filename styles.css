@@ -1,3 +1,10 @@
+@import "tailwindcss/base";
+
+@import "tailwindcss/components";
+
+@import "tailwindcss/utilities";
+
+
 body {
     -webkit-user-select: none;
     -webkit-tap-highlight-color: transparent;
@@ -124,14 +131,6 @@ body {
     margin-right: auto;
 }
 
-.manga-page-container {
-    display: flex;
-    height: 100%;
-    z-index: 0;
-    margin: auto;
-    width: 95vw;
-}
-
 .manga-page {
     display: none;
 }
@@ -164,18 +163,6 @@ body {
     outline:none
 }
 
-.loader {
-    border: 16px solid #f3f3f3; /* Light grey */
-    border-top: 16px solid #3498db; /* Blue */
-    border-radius: 50%;
-    width: 60px;
-    height: 60px;
-    object-fit: none;
-    object-position: center;
-    animation: spin 2s linear infinite;
-}
-
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+.safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
 }
