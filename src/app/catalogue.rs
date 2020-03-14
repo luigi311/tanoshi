@@ -123,7 +123,7 @@ impl Component for Catalogue {
 
     fn view(&self) -> Html {
         html! {
-            <div class="container mx-auto">
+            <div class="container mx-auto pb-10">
                 <Spinner is_active=self.is_fetching />
                 <div class="flex flex-wrap" id="catalogue">
                 { for self.mangas.iter().map(|manga| html!{

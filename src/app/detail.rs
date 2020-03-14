@@ -82,9 +82,9 @@ impl Component for Detail {
 
     fn view(&self) -> Html {
         html! {
-            <div class="container">
+            <div class="container pb-10">
             <Spinner is_active={self.is_fetching_manga || self.is_fetching_chapter} />
-            <div class="w-2/3 mx-auto flex">
+            <div class="w-2/3 mx-auto flex sm:flex-wrap">
                 <div class="flex-none m-w">
                     <div class="manga-cover-container">
                         <img class="manga-cover" src=self.manga.thumbnail_url />

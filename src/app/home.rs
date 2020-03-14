@@ -6,7 +6,7 @@ use yew::services::{FetchService, StorageService};
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 
 use super::component::model::{FavoriteManga, GetFavoritesResponse, GetMangasResponse};
-use super::component::Manga;
+use super::component::{Manga, Spinner};
 
 #[derive(Deserialize, Debug)]
 pub struct MangaModel {
@@ -27,6 +27,7 @@ pub struct Home {
     link: ComponentLink<Self>,
     mangas: Vec<FavoriteManga>,
     token: String,
+    is_fetching: bool,
 }
 
 pub enum Msg {
@@ -53,6 +54,7 @@ impl Component for Home {
             link,
             mangas: vec![],
             token,
+            is_fetching: false,
         }
     }
 
@@ -65,6 +67,7 @@ impl Component for Home {
         match msg {
             Msg::FavoritesReady(data) => {
                 self.mangas = data.favorites.unwrap();
+                self.is_fetching = false;
             }
             Noop => {
                 return false;
@@ -75,8 +78,9 @@ impl Component for Home {
 
     fn view(&self) -> Html {
         html! {
-           <div class="container mx-auto" >
-                <div class="flex flex-wrap">
+           <div class="container mx-auto pb-10" >
+                <Spinner is_active=self.is_fetching />
+                <div class="flex content-between flex-wrap pb-5">
                 { for self.mangas.iter().map(|manga|  html!{
                 <Manga
                     title=manga.title.to_owned()
@@ -112,6 +116,7 @@ impl Home {
             ),
         ) {
             self.fetch_task = Some(FetchTask::from(task));
+            self.is_fetching = true;
         }
     }
 }
