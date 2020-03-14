@@ -89,6 +89,7 @@ impl App {
         }
         return html! {
         <div class="w-full h-screen">
+            <div class="block fixed inset-x-0 top-0 z-50 bg-blue-500 safe-top z-50"></div>
             <NavigationBar/>
             <Router<AppRoute, ()>
             render = Router::render(|switch: AppRoute| {

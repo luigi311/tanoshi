@@ -46,7 +46,7 @@ impl Component for Spinner {
     fn view(&self) -> Html {
         html! {
                 <div class={if !self.is_active {"hidden"} else {"w-full h-full fixed block top-0 left-0 bg-white opacity-75 z-10"}}>
-                  <span class="text-green-500 opacity-75 top-1/2 my-0 mx-auto block relative w-0 h-0" style="top: 50%;">
+                  <span class="text-green-500 opacity-75 top-1/2 my-0 mx-auto block relative w-20 h-20" style="top: 50%;">
                     <i class="fas fa-circle-notch fa-spin fa-5x"></i>
                   </span>
                 </div>
