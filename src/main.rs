@@ -55,5 +55,9 @@ async fn main() {
     let static_files = warp::fs::dir(static_path);
 
     let routes = api.or(static_files).with(warp::log("manga"));
-    warp::serve(routes).run(([0, 0, 0, 0], 3030)).await;
+
+    let port = std::env::var("PORT").unwrap_or("80".to_string());
+    warp::serve(routes)
+        .run(std::net::SocketAddrV4::from_str(format!("0.0.0.0:{}", port).as_str()).unwrap())
+        .await;
 }
