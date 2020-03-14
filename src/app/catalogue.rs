@@ -1,11 +1,13 @@
 use super::component::Manga;
 use serde::Deserialize;
+use web_sys::HtmlElement;
 use yew::format::{Json, Nothing};
 use yew::prelude::*;
 use yew::services::fetch::{FetchService, FetchTask};
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 
 use super::component::model::{FavoriteManga, GetFavoritesResponse, GetMangasResponse, MangaModel};
+use super::component::Spinner;
 use http::{Request, Response};
 use std::borrow::BorrowMut;
 use yew::services::storage::Area;
@@ -56,7 +58,16 @@ impl Component for Catalogue {
         let closure = Closure::wrap(Box::new(move || {
             let current_scroll = window().scroll_y().expect("error get scroll y")
                 + window().inner_height().unwrap().as_f64().unwrap();
-            let height = document().body().unwrap().offset_height() as f64;
+            let height = document()
+                .get_element_by_id("catalogue")
+                .expect("should have catalogue")
+                .dyn_ref::<HtmlElement>()
+                .unwrap()
+                .offset_height() as f64;
+            info!(
+                "body scroll: {}, document scroll: {}",
+                current_scroll, height
+            );
             if current_scroll >= height {
                 tmp_link.send_message(Msg::ScrolledDown);
             }
@@ -112,8 +123,8 @@ impl Component for Catalogue {
 
     fn view(&self) -> Html {
         html! {
-            <div class="container-fluid">
-                <div class="row row-cols-sm-2 row-cols-md-3 row-cols-lg-5 row-cols-xl-6" style="height: 100%;">
+            <div class="container mx-auto">
+                <div class="flex flex-wrap" id="catalogue">
                 { for self.mangas.iter().map(|manga| html!{
                 <Manga
                     title=manga.title.to_owned()
@@ -122,6 +133,7 @@ impl Component for Catalogue {
                     source=self.source.to_owned()
                     is_favorite={if self.favorites.contains(&manga.title.to_owned()){true} else {false}}/>
                 }) }
+                <Spinner is_active=self.is_fetching />
                 </div>
             </div>
         }

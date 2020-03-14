@@ -17,7 +17,7 @@ module.exports = (env, argv) => {
                 '/api': 'http://127.0.0.1:3030'
             }
         },
-        entry: './bootstrap.js',
+        entry: './index.js',
         output: {
             path: distPath,
             filename: "tanoshi-web.js",
@@ -31,8 +31,30 @@ module.exports = (env, argv) => {
             new WasmPackPlugin({
                 crateDirectory: ".",
                 extraArgs: "--no-typescript",
-            })
+            }),
         ],
-        watch: argv.mode !== "production"
+        watch: argv.mode !== "production",
+        module: {
+            rules: [
+                {
+                    test: /\.css$/,
+                    exclude: /node_modules/,
+                    use: [
+                        {
+                            loader: 'style-loader',
+                        },
+                        {
+                            loader: 'css-loader',
+                            options: {
+                                importLoaders: 1,
+                            }
+                        },
+                        {
+                            loader: 'postcss-loader'
+                        }
+                    ]
+                }
+            ]
+        }
     };
 };

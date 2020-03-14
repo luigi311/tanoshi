@@ -6,9 +6,12 @@ use yew::services::fetch::{FetchService, FetchTask, Request, Response};
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 use yew_router::{agent::RouteRequest, prelude::*};
 
+use crate::app::AppRoute;
+
 use super::component::model::{
     ChapterModel, GetChaptersResponse, GetMangaResponse, GetPagesResponse, MangaModel,
 };
+use super::component::Spinner;
 
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
@@ -38,6 +41,7 @@ pub struct Chapter {
     chapters: Vec<ChapterModel>,
     previous_chapter_page: usize,
     pages: Vec<String>,
+    is_fetching: bool,
 }
 
 pub enum Msg {
@@ -71,6 +75,7 @@ impl Component for Chapter {
             chapters: vec![],
             previous_chapter_page: 0,
             pages: vec![],
+            is_fetching: false,
         }
     }
 
@@ -103,6 +108,7 @@ impl Component for Chapter {
             }
             Msg::PagesReady(data) => {
                 self.pages = data.pages;
+                self.is_fetching = false;
             }
             Msg::PageForward => {
                 self.next_page_or_chapter();
@@ -122,16 +128,21 @@ impl Component for Chapter {
 
     fn view(&self) -> Html {
         html! {
-            <div class="container-fluid p-0" id="manga-reader" tabindex="0" onkeydown=self.link.callback(|e: KeyboardEvent|
+            <div class="container mx-auto outline-none" id="manga-reader" tabindex="0" onkeydown=self.link.callback(|e: KeyboardEvent|
                 match e.key().as_str() {
                     "ArrowRight" => Msg::PageForward,
                     "ArrowLeft"  => Msg::PagePrevious,
                     _ => Msg::Noop,
                 }
             )>
-                <button class="manga-navigate-left" onmouseup=self.link.callback(|_| Msg::PagePrevious)/>
-                <button class="manga-navigate-right" onmouseup=self.link.callback(|_| Msg::PageForward)/>
-                <div class="manga-page-container m-0">
+                <RouterAnchor<AppRoute> classes="fixed" route=AppRoute::Detail(self.source.to_owned(), self.title.to_owned())>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+                        <path class="heroicon-ui" d="M5.41 11H21a1 1 0 0 1 0 2H5.41l5.3 5.3a1 1 0 0 1-1.42 1.4l-7-7a1 1 0 0 1 0-1.4l7-7a1 1 0 0 1 1.42 1.4L5.4 11z"/>
+                    </svg>
+               </RouterAnchor<AppRoute>>
+                <button class="manga-navigate-left outline-none" onmouseup=self.link.callback(|_| Msg::PagePrevious)/>
+                <button class="manga-navigate-right outline-none" onmouseup=self.link.callback(|_| Msg::PageForward)/>
+                <div class="outline-none">
                     {
                         for (0..self.pages.len()).map(|i| html! {
                         <img class={if (self.current_page == i) || (self.double_page && (self.current_page + 1 == i)) {
@@ -142,6 +153,7 @@ impl Component for Chapter {
                         })
                     }
                 </div>
+                <Spinner is_active=self.is_fetching />
             </div>
         }
     }
@@ -195,6 +207,7 @@ impl Chapter {
             ),
         ) {
             self.fetch_task = Some(FetchTask::from(task));
+            self.is_fetching = true;
         }
     }
 

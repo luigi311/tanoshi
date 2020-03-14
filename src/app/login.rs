@@ -105,31 +105,48 @@ impl Component for Login {
 
     fn view(&self) -> Html {
         html! {
-            <div class="container" id="container">
-                <div class="row">
-                    <div class="col">
-                        <img src="/assets/img/tanoshi.png"  class="rounded mx-auto d-block"/>
-                    </div>
-                </div>
-                <div class="row">
-                    <div class="col">
-                        <form onsubmit=self.link.callback(|e| Msg::Submit(e))>
-                            <div class="form-group">
-                                <label for="inputEmail">{"Email address"}</label>
-                                <input type="email" class="form-control" id="inputEmail"
-                                 value=self.user.username.to_owned()
-                                oninput=self.link.callback(|e| Msg::UsernameChange(e)) />
+            <div class="container mx-auto">
+                <div class="flex justify-center px-6 my-12">
+                <div class="w-full xl:w-3/4 lg:w-11/12 flex">
+                    <div class="w-full  bg-white p-5 rounded-lg lg:rounded-l-none">
+                        <h3 class="pt-4 text-2xl text-center">{"Welcome Back!"}</h3>
+                        <form class="px-8 pt-6 pb-8 mb-4 bg-white rounded" onsubmit=self.link.callback(|e| Msg::Submit(e))>
+                            <div class="mb-4">
+                                <label class="block mb-2 text-sm font-bold text-gray-700" for="username">
+                                    {"Username"}
+                                </label>
+                                <input
+                                    class="w-full px-3 py-2 text-sm leading-tight text-gray-700 border rounded shadow appearance-none focus:outline-none focus:shadow-outline"
+                                    id="username"
+                                    type="text"
+                                    value=self.user.username.to_owned()
+                                    oninput=self.link.callback(|e| Msg::UsernameChange(e))
+                                />
                             </div>
-                            <div class="form-group">
-                                <label for="inputPassword">{"Password"}</label>
-                                <input type="password" class="form-control" id="inputPassword"
-                                value=self.user.password.to_owned()
-                                oninput=self.link.callback(|e| Msg::PasswordChange(e))/>
+                            <div class="mb-4">
+                                <label class="block mb-2 text-sm font-bold text-gray-700" for="password">
+                                    {"Password"}
+                                </label>
+                                <input
+                                    class="w-full px-3 py-2 mb-3 text-sm leading-tight text-gray-700 border rounded shadow appearance-none focus:outline-none focus:shadow-outline"
+                                    id="password"
+                                    type="password"
+                                    value=self.user.password.to_owned()
+                                    oninput=self.link.callback(|e| Msg::PasswordChange(e))
+                                />
                             </div>
-                            <button type="submit" class="btn btn-primary">{"Submit"}</button>
+                            <div class="mb-6 text-center">
+                                <button
+                                    class="w-full px-4 py-2 font-bold text-white bg-blue-500 rounded-full hover:bg-blue-700 focus:outline-none focus:shadow-outline"
+                                    type="button"
+                                >
+                                    {"Sign In"}
+                                </button>
+                            </div>
                         </form>
                     </div>
                 </div>
+            </div>
             </div>
         }
     }

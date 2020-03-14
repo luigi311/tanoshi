@@ -7,7 +7,7 @@ use yew_router::{router::Router, Switch};
 
 use super::catalogue::Catalogue;
 use super::chapter::Chapter;
-use super::component::{BottomBar, TopBar};
+use super::component::NavigationBar;
 use super::detail::Detail;
 use super::home::Home;
 use super::login::Login;
@@ -88,10 +88,8 @@ impl App {
             return html! {<Login />};
         }
         return html! {
-        <>
-            <TopBar />
-            <BottomBar/>
-            <div class="app">
+        <div class="w-full h-screen">
+            <NavigationBar/>
             <Router<AppRoute, ()>
             render = Router::render(|switch: AppRoute| {
             match switch {
@@ -102,8 +100,7 @@ impl App {
                 AppRoute::Logout => html!{<Logout />},
                 AppRoute::Home => html!{<Home/>},
             }}) />
-            </div>
-        </>
+        </div>
         };
     }
 }
