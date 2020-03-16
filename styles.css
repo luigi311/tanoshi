@@ -101,8 +101,8 @@ body {
     border: none !important;
     font-size:0;
     height: 100vh;
-    width: 50%;
-    left: 50%;
+    width: 33%;
+    left: 66%;
     position: absolute;
     outline:none
 }
@@ -112,7 +112,18 @@ body {
     border: none !important;
     font-size:0;
     height: 100vh;
-    width: 50%;
+    width: 33%;
+    position: absolute;
+    outline:none
+}
+
+.manga-navigate-center {
+    background: transparent;
+    border: none !important;
+    font-size:0;
+    height: 100vh;
+    width: 33%;
+    left: 33%;
     position: absolute;
     outline:none
 }

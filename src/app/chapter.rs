@@ -3,8 +3,10 @@ use std::convert::TryInto;
 use yew::format::{Json, Nothing};
 use yew::prelude::*;
 use yew::services::fetch::{FetchService, FetchTask, Request, Response};
-use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
+use yew::{html, Component, ComponentLink, Html, InputData, Properties, ShouldRender};
 use yew_router::{agent::RouteRequest, prelude::*};
+
+use js_sys;
 
 use crate::app::{browse::BrowseRoute, AppRoute};
 
@@ -16,6 +18,7 @@ use super::component::Spinner;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 
+use std::str::FromStr;
 use web_sys::HtmlElement;
 use yew::prelude::*;
 use yew::utils::document;
@@ -42,6 +45,8 @@ pub struct Chapter {
     previous_chapter_page: usize,
     pages: Vec<String>,
     is_fetching: bool,
+    refs: Vec<NodeRef>,
+    is_bar_visible: bool,
 }
 
 pub enum Msg {
@@ -50,6 +55,8 @@ pub enum Msg {
     PagesReady(GetPagesResponse),
     PageForward,
     PagePrevious,
+    ToggleBar,
+    PageSliderChange(usize),
     RouterCallback,
     Noop,
 }
@@ -76,6 +83,8 @@ impl Component for Chapter {
             previous_chapter_page: 0,
             pages: vec![],
             is_fetching: false,
+            refs: vec![NodeRef::default(), NodeRef::default()],
+            is_bar_visible: true,
         }
     }
 
@@ -116,6 +125,34 @@ impl Component for Chapter {
             Msg::PagePrevious => {
                 self.prev_page_or_chapter();
             }
+            Msg::PageSliderChange(page) => {
+                self.move_to_page(page);
+            }
+            Msg::ToggleBar => {
+                if self.is_bar_visible {
+                    if let Some(bar) = self.refs[0].cast::<HtmlElement>() {
+                        bar.class_list().remove_1("slideInDown");
+                        bar.class_list().add_1("slideOutUp");
+                        self.is_bar_visible = false;
+                    }
+                    if let Some(bar) = self.refs[1].cast::<HtmlElement>() {
+                        bar.class_list().remove_1("slideInUp");
+                        bar.class_list().add_1("slideOutDown");
+                        self.is_bar_visible = false;
+                    }
+                } else {
+                    if let Some(bar) = self.refs[0].cast::<HtmlElement>() {
+                        bar.class_list().remove_1("slideOutUp");
+                        bar.class_list().add_1("slideInDown");
+                        self.is_bar_visible = true;
+                    }
+                    if let Some(bar) = self.refs[1].cast::<HtmlElement>() {
+                        bar.class_list().remove_1("slideOutDown");
+                        bar.class_list().add_1("slideInUp");
+                        self.is_bar_visible = true;
+                    }
+                }
+            }
             Msg::RouterCallback => {
                 self.get_pages();
             }
@@ -128,6 +165,17 @@ impl Component for Chapter {
 
     fn view(&self) -> Html {
         html! {
+        <>
+            <div
+            ref=self.refs[0].clone()
+            class="animated slideInDown faster block fixed inset-x-0 top-0 z-50 bg-gray-900 z-50 content-end flex opacity-75"
+            style="padding-top: calc(env(safe-area-inset-top) + .5rem)">
+                <RouterAnchor<AppRoute> classes="z-50 ml-2 mb-2 text-white" route=AppRoute::Browse(BrowseRoute::Detail(self.source.to_owned(), self.title.to_owned()))>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" class="fill-current inline-block mb-1">
+                        <path class="heroicon-ui" d="M5.41 11H21a1 1 0 0 1 0 2H5.41l5.3 5.3a1 1 0 0 1-1.42 1.4l-7-7a1 1 0 0 1 0-1.4l7-7a1 1 0 0 1 1.42 1.4L5.4 11z"/>
+                    </svg>
+               </RouterAnchor<AppRoute>>
+            </div>
             <div class="container mx-auto h-screen outline-none" id="manga-reader" tabindex="0" onkeydown=self.link.callback(|e: KeyboardEvent|
                 match e.key().as_str() {
                     "ArrowRight" => Msg::PageForward,
@@ -135,12 +183,8 @@ impl Component for Chapter {
                     _ => Msg::Noop,
                 }
             )>
-                <RouterAnchor<AppRoute> classes="fixed left-0 top-0 z-50 ml-5 mt-5" route=AppRoute::Browse(BrowseRoute::Detail(self.source.to_owned(), self.title.to_owned()))>
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
-                        <path class="heroicon-ui" d="M5.41 11H21a1 1 0 0 1 0 2H5.41l5.3 5.3a1 1 0 0 1-1.42 1.4l-7-7a1 1 0 0 1 0-1.4l7-7a1 1 0 0 1 1.42 1.4L5.4 11z"/>
-                    </svg>
-               </RouterAnchor<AppRoute>>
                 <button class="manga-navigate-left outline-none" onmouseup=self.link.callback(|_| Msg::PagePrevious)/>
+                <button class="manga-navigate-center outline-none" onmouseup=self.link.callback(|_| Msg::ToggleBar)/>
                 <button class="manga-navigate-right outline-none" onmouseup=self.link.callback(|_| Msg::PageForward)/>
                 <div class="flex">
                     {
@@ -155,6 +199,27 @@ impl Component for Chapter {
                 </div>
                 <Spinner is_active=self.is_fetching />
             </div>
+            <div ref=self.refs[1].clone()
+            class="animated slideInUp faster block fixed inset-x-0 bottom-0 z-50 bg-gray-900 opacity-75 shadow safe-bottom">
+                <div class="flex p-4 justify-center">
+                    {
+                        for (0..self.pages.len()).map(|i| html!{
+                            <div
+                            onclick=self.link.callback(move |_| Msg::PageSliderChange(i))
+                            class={
+                                if self.current_page == i {
+                                    "flex-grow flex-shrink z-50 px-1 py-2 border border-black bg-gray-700 cursor-pointer"
+                                } else {
+                                    "flex-grow flex-shrink z-50 px-1 py-2 border border-black bg-gray-500 cursor-pointer"
+                                }
+                            }
+                            >
+                            </div>
+                        })
+                    }
+                </div>
+            </div>
+        </>
         }
     }
 }
@@ -209,6 +274,17 @@ impl Chapter {
             self.fetch_task = Some(FetchTask::from(task));
             self.is_fetching = true;
         }
+    }
+
+    fn move_to_page(&mut self, page: usize) {
+        self.current_page = page;
+        let route_string = format!(
+            "/catalogue/{}/manga/{}/chapter/{}/page/{}",
+            self.source, self.title, self.current_chapter, self.current_page
+        );
+        let route = Route::from(route_string);
+        self.router
+            .send(RouteRequest::ReplaceRouteNoBroadcast(route));
     }
 
     fn next_page_or_chapter(&mut self) {
