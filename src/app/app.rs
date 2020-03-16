@@ -1,9 +1,11 @@
 use yew::services::storage::Area;
 use yew::services::StorageService;
-use yew::{html, Bridge, Bridged, Component, ComponentLink, Html, ShouldRender};
+use yew::{html, Bridge, Bridged, Component, ComponentLink, Html, NodeRef, ShouldRender};
 use yew_router::agent::RouteRequest;
 use yew_router::prelude::{Route, RouteAgent};
 use yew_router::{router::Router, Switch};
+
+use web_sys::HtmlElement;
 
 use super::catalogue::Catalogue;
 use super::chapter::Chapter;
@@ -34,6 +36,7 @@ pub struct App {
     storage: StorageService,
     router: Box<dyn Bridge<RouteAgent>>,
     route: String,
+    refs: Vec<NodeRef>,
 }
 
 pub enum Msg {
@@ -53,6 +56,7 @@ impl Component for App {
             storage,
             router,
             route: "/".to_string(),
+            refs: vec![NodeRef::default(), NodeRef::default()],
         }
     }
 
@@ -77,31 +81,31 @@ impl Component for App {
 
     fn view(&self) -> Html {
         html! {
-            {self.login_or_app()}
+            <div class="w-full h-screen">
+                <div ref=self.refs[0].clone() class="block fixed inset-x-0 top-0 z-50 bg-blue-500 safe-top z-50"></div>
+                <NavigationBar ref=self.refs[1].clone()/>
+                <Router<AppRoute, ()>
+                render = Router::render(|switch: AppRoute| {
+                match switch {
+                    AppRoute::Chapter(source, title, chapter, page) => html!{<Chapter source=source title=title chapter=chapter page=page/>},
+                    AppRoute::Detail(source, title) => html!{<Detail source=source title=title/>},
+                    AppRoute::Source(source) => html!{<Catalogue source=source/>},
+                    AppRoute::Login => html!{<Login />},
+                    AppRoute::Logout => html!{<Logout />},
+                    AppRoute::Home => html!{<Home/>},
+                }}) />
+            </div>
         }
     }
 }
 
 impl App {
-    fn login_or_app(&self) -> Html {
-        if self.route == "/login" {
-            return html! {<Login />};
+    fn hide(&self) {
+        if let Some(top_bar) = self.refs[0].cast::<HtmlElement>() {
+            top_bar.set_hidden(true);
         }
-        return html! {
-        <div class="w-full h-screen">
-            <div class="block fixed inset-x-0 top-0 z-50 bg-blue-500 safe-top z-50"></div>
-            <NavigationBar/>
-            <Router<AppRoute, ()>
-            render = Router::render(|switch: AppRoute| {
-            match switch {
-                AppRoute::Chapter(source, title, chapter, page) => html!{<Chapter source=source title=title chapter=chapter page=page/>},
-                AppRoute::Detail(source, title) => html!{<Detail source=source title=title/>},
-                AppRoute::Source(source) => html!{<Catalogue source=source/>},
-                AppRoute::Login => html!{},
-                AppRoute::Logout => html!{<Logout />},
-                AppRoute::Home => html!{<Home/>},
-            }}) />
-        </div>
-        };
+        if let Some(nav_bar) = self.refs[0].cast::<HtmlElement>() {
+            nav_bar.set_hidden(true);
+        }
     }
 }
