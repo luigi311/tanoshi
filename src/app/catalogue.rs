@@ -123,9 +123,9 @@ impl Component for Catalogue {
 
     fn view(&self) -> Html {
         html! {
-            <div class="container mx-auto pb-10">
+            <div class="container mx-auto pb-10"  style="padding-top: calc(env(safe-area-inset-top) + .5rem)">
                 <Spinner is_active=self.is_fetching />
-                <div class="flex flex-wrap" id="catalogue">
+                <div class="flex flex-wrap justify-around" id="catalogue">
                 { for self.mangas.iter().map(|manga| html!{
                 <Manga
                     title=manga.title.to_owned()
@@ -133,7 +133,8 @@ impl Component for Catalogue {
                     path=manga.path.to_owned()
                     source=self.source.to_owned()
                     is_favorite={if self.favorites.contains(&manga.title.to_owned()){true} else {false}}/>
-                }) }
+                })
+                }
                 </div>
             </div>
         }

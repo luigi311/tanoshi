@@ -128,21 +128,21 @@ impl Component for Chapter {
 
     fn view(&self) -> Html {
         html! {
-            <div class="container mx-auto outline-none" id="manga-reader" tabindex="0" onkeydown=self.link.callback(|e: KeyboardEvent|
+            <div class="container mx-auto h-screen outline-none" id="manga-reader" tabindex="0" onkeydown=self.link.callback(|e: KeyboardEvent|
                 match e.key().as_str() {
                     "ArrowRight" => Msg::PageForward,
                     "ArrowLeft"  => Msg::PagePrevious,
                     _ => Msg::Noop,
                 }
             )>
-                <RouterAnchor<AppRoute> classes="fixed" route=AppRoute::Detail(self.source.to_owned(), self.title.to_owned())>
+                <RouterAnchor<AppRoute> classes="fixed left-0 top-0 z-50 ml-5 mt-5" route=AppRoute::Detail(self.source.to_owned(), self.title.to_owned())>
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
                         <path class="heroicon-ui" d="M5.41 11H21a1 1 0 0 1 0 2H5.41l5.3 5.3a1 1 0 0 1-1.42 1.4l-7-7a1 1 0 0 1 0-1.4l7-7a1 1 0 0 1 1.42 1.4L5.4 11z"/>
                     </svg>
                </RouterAnchor<AppRoute>>
                 <button class="manga-navigate-left outline-none" onmouseup=self.link.callback(|_| Msg::PagePrevious)/>
                 <button class="manga-navigate-right outline-none" onmouseup=self.link.callback(|_| Msg::PageForward)/>
-                <div class="outline-none">
+                <div class="flex">
                     {
                         for (0..self.pages.len()).map(|i| html! {
                         <img class={if (self.current_page == i) || (self.double_page && (self.current_page + 1 == i)) {

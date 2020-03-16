@@ -12,78 +12,47 @@ body {
 }
 
 @media (max-width: 575.98px) {
-    .bottom-bar {
-        display: flex;
-        flex-direction: row;
-        width: 100%; /* Full-width */
-        background-color: whitesmoke; /* Dark-grey background */
-        position: fixed;
-        left: 0;
-        bottom: 0;
-        right: 0;
-        padding-bottom: env(safe-area-inset-bottom);
-        z-index: 10;
-        border-top: darkgray 1px solid;
+    .manga-cover {
+        width: 106px;
+        height: 150px;
+        object-fit: cover;
+        object-position: center;
+        box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+        display: block;
+        margin-left: auto;
+        margin-right: auto;
     }
 
-    .bottom-bar a {
-        float: left; /* Float links side by side */
-        text-align: center; /* Center-align text */
-        width: 20%; /* Equal width (5 icons with 20% width each = 100%) */
-        padding: 5px 0; /* Some top and bottom padding */
-        transition: all 0.3s ease; /* Add transition for hover effects */
-        color: white; /* White text color */
-        font-size: 24px; /* Increased font size */
-    }
-
-    .navbar-nav {
-        display: none;
-    }
-
-    #navbar {
-        padding-top: env(safe-area-inset-top);
-    }
-
-    .app {
-        min-height: 100vh;
-        padding-top: calc(env(safe-area-inset-top) + 2.5rem);
-        padding-bottom: calc(env(safe-area-inset-bottom) + 3.5rem);
+    .manga-cover-none {
+        width: 106px;
+        height: 150px;
+        object-fit: cover;
+        object-position: center;
+        display: block;
+        margin-left: auto;
+        margin-right: auto;
     }
 }
 @media (min-width: 576px) {
-    #navbar {
-        display: none;
+    .manga-cover {
+        width: 150px;
+        height: 213px;
+        object-fit: cover;
+        object-position: center;
+        box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+        display: block;
+        margin-left: auto;
+        margin-right: auto;
     }
 
-    .bottom-bar {
-        display: flex;
-        flex-direction: column;
-        height: 100%; /* Full-width */
-        background-color: whitesmoke; /* Dark-grey background */
-        position: fixed;
-        left: 0;
-        bottom: 0;
-        padding-left: calc(env(safe-area-inset-left) + 1rem);
-        padding-right: 1rem;
-        padding-top: 1rem;
-        z-index: 10;
-        border-right: darkgray 1px solid;
-    }
-
-    .bottom-bar a {
-        float: left; /* Float links side by side */
-        text-align: center; /* Center-align text */
-        height: 20%; /* Equal width (5 icons with 20% width each = 100%) */
-        padding: 5px 0; /* Some top and bottom padding */
-        transition: all 0.3s ease; /* Add transition for hover effects */
-        color: white; /* White text color */
-        font-size: 24px; /* Increased font size */
-    }
-
-    .app {
-        min-height: 100vh;
-        padding-left: 5rem;
-        overflow: auto;
+    .manga-cover-none {
+        width: 106px;
+        height: 150px;
+        object-fit: cover;
+        object-position: center;
+        display: block;
+        margin-left: auto;
+        margin-right: auto;
     }
 }
 
@@ -91,17 +60,6 @@ body {
     color: black;
     font-size: 8pt;
     margin-bottom: 0;
-}
-
-.manga-cover {
-    width: 150px;
-    height: 213px;
-    object-fit: cover;
-    object-position: center;
-    box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
-    display: block;
-    margin-left: auto;
-    margin-right: auto;
 }
 
 .favorite {
