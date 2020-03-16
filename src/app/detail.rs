@@ -29,6 +29,7 @@ pub struct Detail {
 pub enum Msg {
     MangaReady(GetMangaResponse),
     ChapterReady(GetChaptersResponse),
+    Refresh,
     Noop,
 }
 
@@ -66,12 +67,15 @@ impl Component for Detail {
         match msg {
             Msg::MangaReady(data) => {
                 self.manga = data.manga;
-                self.get_chapters();
+                self.get_chapters(false);
                 self.is_fetching_manga = false;
             }
             Msg::ChapterReady(data) => {
                 self.chapters = data.chapters;
                 self.is_fetching_chapter = false;
+            }
+            Msg::Refresh => {
+                self.get_chapters(true);
             }
             Msg::Noop => {
                 info!("noop");
@@ -91,15 +95,27 @@ impl Component for Detail {
                     </div>
                 </div>
                 <div class="flex flex-col m-2">
-                    <p class="lg:text-2xl sm:text-bas font-bold">{self.manga.title.to_owned()}</p>
-                    <p class="lg:text-2xl sm:text-sm font-semibold">{self.manga.status.to_owned()}</p>
-                    <p class="lg:text-2xl sm:text-sm font-medium break-normal">{self.manga.genre.join(", ").to_owned()}</p>
-                    <p class="break-normal sm:text-xs">{self.manga.description.to_owned()}</p>
+                    <p class="md:text-xl sm:text-base font-bold">{self.manga.title.to_owned()}</p>
+                    <p class="md:text-xl sm:text-sm font-semibold">{self.manga.status.to_owned()}</p>
+                    <p class="md:text-xl sm:text-sm font-medium break-normal">{self.manga.genre.join(", ").to_owned()}</p>
+                    <p class="break-normal md:text-base sm:text-xs">{self.manga.description.to_owned()}</p>
+                    <div class="inline-flex my-2">
+                        <button class="mr-2 inline-flex items-center bg-white hover:bg-gray-100 text-gray-800 font-semibold py-1 px-2 border border-gray-400 rounded shadow">
+                            <svg class="fill-current w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path class="heroicon-ui" d="M6.1 21.98a1 1 0 0 1-1.45-1.06l1.03-6.03-4.38-4.26a1 1 0 0 1 .56-1.71l6.05-.88 2.7-5.48a1 1 0 0 1 1.8 0l2.7 5.48 6.06.88a1 1 0 0 1 .55 1.7l-4.38 4.27 1.04 6.03a1 1 0 0 1-1.46 1.06l-5.4-2.85-5.42 2.85zm4.95-4.87a1 1 0 0 1 .93 0l4.08 2.15-.78-4.55a1 1 0 0 1 .29-.88l3.3-3.22-4.56-.67a1 1 0 0 1-.76-.54l-2.04-4.14L9.47 9.4a1 1 0 0 1-.75.54l-4.57.67 3.3 3.22a1 1 0 0 1 .3.88l-.79 4.55 4.09-2.15z"/></svg>
+                            <span>{"Favorite"}</span>
+                        </button>
+                        <button
+                        onclick=self.link.callback(|_| Msg::Refresh)
+                        class="ml-2 inline-flex items-center bg-white hover:bg-gray-100 text-gray-800 font-semibold py-1 px-2 border border-gray-400 rounded shadow">
+                            <svg class="fill-current w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path class="heroicon-ui" d="M6 18.7V21a1 1 0 0 1-2 0v-5a1 1 0 0 1 1-1h5a1 1 0 1 1 0 2H7.1A7 7 0 0 0 19 12a1 1 0 1 1 2 0 9 9 0 0 1-15 6.7zM18 5.3V3a1 1 0 0 1 2 0v5a1 1 0 0 1-1 1h-5a1 1 0 0 1 0-2h2.9A7 7 0 0 0 5 12a1 1 0 1 1-2 0 9 9 0 0 1 15-6.7z"/></svg>
+                            <span>{"Refresh"}</span>
+                        </button>
+                    </div>
                 </div>
             </div>
             <div class="w-6/7 mx-2">
                 <div class="bg-white shadow-md rounded my-6">
-                    <table class="text-left w-full border-collapse">
+                    <table class="text-left w-full border-collapse hover:bg-grey-lighter">
                     <thead>
                         <tr>
                          <th class="py-4 px-6 bg-grey-lightest font-bold uppercase text-sm text-grey-dark border-b border-grey-light">
@@ -111,8 +127,10 @@ impl Component for Detail {
                         {
                             for self.chapters.iter().map(|(chapter)| html!{
                                 <tr class="hover:bg-grey-lighter">
-                                    <td class="py-4 px-6 border-b border-grey-light">
-                                        <RouterAnchor<AppRoute>  route=AppRoute::Chapter(self.source.to_owned(), self.title.to_owned(), chapter.no.to_owned(), 1)>
+                                    <td class="border-b border-grey-light">
+                                        <RouterAnchor<AppRoute>
+                                        classes="px-6 py-4 block"
+                                        route=AppRoute::Chapter(self.source.to_owned(), self.title.to_owned(), chapter.no.to_owned(), 1)>
                                             {format!("Chapter {}", chapter.no.to_owned())}
                                         </RouterAnchor<AppRoute>>
                                     </td>
@@ -152,10 +170,10 @@ impl Detail {
         }
     }
 
-    fn get_chapters(&mut self) {
+    fn get_chapters(&mut self, refresh: bool) {
         let req = Request::get(format!(
-            "/api/source/{}/manga/{}/chapter",
-            self.source, self.title
+            "/api/source/{}/manga/{}/chapter?refresh={}",
+            self.source, self.title, refresh
         ))
         .body(Nothing)
         .expect("failed to build request");
