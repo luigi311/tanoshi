@@ -1,5 +1,5 @@
 pub mod mangasee {
-    use crate::scraper::{mangasee::Mangasee, Params, Scraping};
+    use crate::scraper::{mangasee::Mangasee, GetParams, Params, Scraping};
     use sled::Db;
     use std::convert::Infallible;
 
@@ -22,21 +22,24 @@ pub mod mangasee {
 
     pub async fn get_chapters(
         title: String,
+        param: GetParams,
         mangasee: Mangasee,
         db: Db,
     ) -> Result<impl warp::Reply, Infallible> {
-        let chapter = mangasee.get_chapters(format!("/manga/{}", title), db);
+        let chapter = mangasee.get_chapters(format!("/manga/{}", title), param, db);
         Ok(warp::reply::json(&chapter))
     }
 
     pub async fn get_pages(
         title: String,
         chapter: String,
+        param: GetParams,
         mangasee: Mangasee,
         db: Db,
     ) -> Result<impl warp::Reply, Infallible> {
         let pages = mangasee.get_pages(
             format!("/read-online/{}-chapter-{}.html", title, chapter),
+            param,
             db,
         );
         Ok(warp::reply::json(&pages))

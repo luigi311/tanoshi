@@ -29,6 +29,11 @@ pub struct Params {
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct GetParams {
+    pub refresh: Option<bool>,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct GetMangasResponse {
     mangas: Vec<Manga>,
 }
@@ -52,6 +57,6 @@ pub trait Scraping {
     fn get_mangas(&self, param: Params) -> GetMangasResponse;
     fn get_latest_mangas(&self) -> GetMangasResponse;
     fn get_manga_info(&self, path: String, db: Db) -> GetMangaResponse;
-    fn get_chapters(&self, path: String, db: Db) -> GetChaptersResponse;
-    fn get_pages(&self, path: String, db: Db) -> GetPagesResponse;
+    fn get_chapters(&self, path: String, param: GetParams, db: Db) -> GetChaptersResponse;
+    fn get_pages(&self, path: String, param: GetParams, db: Db) -> GetPagesResponse;
 }

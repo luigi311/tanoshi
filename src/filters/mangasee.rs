@@ -1,6 +1,6 @@
 pub mod mangasee {
     use crate::handlers::mangasee::mangasee;
-    use crate::scraper::{mangasee::Mangasee, Params};
+    use crate::scraper::{mangasee::Mangasee, GetParams, Params};
     use sled::Db;
     use warp::Filter;
 
@@ -41,6 +41,7 @@ pub mod mangasee {
     ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
         warp::path!("api" / "source" / "mangasee" / "manga" / String / "chapter")
             .and(warp::get())
+            .and(warp::query::<GetParams>())
             .and(with_mangasee(mangasee))
             .and(with_db(db))
             .and_then(mangasee::get_chapters)
@@ -52,6 +53,7 @@ pub mod mangasee {
     ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
         warp::path!("api" / "source" / "mangasee" / "manga" / String / "chapter" / String)
             .and(warp::get())
+            .and(warp::query::<GetParams>())
             .and(with_mangasee(mangasee))
             .and(with_db(db))
             .and_then(mangasee::get_pages)
