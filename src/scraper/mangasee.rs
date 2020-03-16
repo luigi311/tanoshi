@@ -179,7 +179,9 @@ impl Scraping for Mangasee {
         let key = format!("scraper:chapter:{}:{}", self.url, path.to_owned());
 
         if let Some(refresh) = param.refresh {
-            db.remove(key.clone());
+            if refresh {
+                db.remove(key.clone());
+            }
         }
 
         let chapters = match db.get(&key).unwrap() {
@@ -214,7 +216,9 @@ impl Scraping for Mangasee {
         let key = format!("scraper:pages:{}:{}", self.url, path.to_owned());
 
         if let Some(refresh) = param.refresh {
-            db.remove(key.clone());
+            if refresh {
+                db.remove(key.clone());
+            }
         }
 
         let pages = match db.get(&key).unwrap() {
