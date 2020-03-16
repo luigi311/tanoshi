@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Deserialize, Debug, Clone, Default)]
 pub struct MangaModel {
     pub title: String,
     pub author: String,
@@ -48,7 +48,7 @@ pub struct AddFavoritesResponse {
     pub status: String,
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, Default)]
 pub struct FavoriteManga {
     pub source: String,
     pub title: String,

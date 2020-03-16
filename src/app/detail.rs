@@ -82,22 +82,22 @@ impl Component for Detail {
 
     fn view(&self) -> Html {
         html! {
-            <div class="container pb-10">
+            <div class="container pb-10" style="padding-top: calc(env(safe-area-inset-top) + .5rem)">
             <Spinner is_active={self.is_fetching_manga || self.is_fetching_chapter} />
-            <div class="w-2/3 mx-auto flex sm:flex-wrap">
-                <div class="flex-none m-w">
-                    <div class="manga-cover-container">
+            <div class="m-2 flex lg:flex-row sm:flex-col">
+                <div class="flex-shrink-0 lg:m-2 sm:mx-auto sm:my-2">
+                    <div class="manga-cover-container my-4">
                         <img class="manga-cover" src=self.manga.thumbnail_url />
                     </div>
                 </div>
-                <div class="flex flex-col m-2 p-4">
-                    <span class="text-2xl font-bold">{self.manga.title.to_owned()}</span>
-                    <span class="font-semibold">{self.manga.status.to_owned()}</span>
-                    <span class="font-medium">{self.manga.genre.join(", ").to_owned()}</span>
-                    <p>{self.manga.description.to_owned()}</p>
+                <div class="flex flex-col m-2">
+                    <p class="lg:text-2xl sm:text-bas font-bold">{self.manga.title.to_owned()}</p>
+                    <p class="lg:text-2xl sm:text-sm font-semibold">{self.manga.status.to_owned()}</p>
+                    <p class="lg:text-2xl sm:text-sm font-medium break-normal">{self.manga.genre.join(", ").to_owned()}</p>
+                    <p class="break-normal sm:text-xs">{self.manga.description.to_owned()}</p>
                 </div>
             </div>
-            <div class="w-2/3 mx-auto">
+            <div class="w-6/7 mx-2">
                 <div class="bg-white shadow-md rounded my-6">
                     <table class="text-left w-full border-collapse">
                     <thead>

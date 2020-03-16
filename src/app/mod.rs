@@ -1,10 +1,11 @@
 pub mod app;
 pub use app::{App, AppRoute};
 
-pub mod component;
+pub mod browse;
 pub mod catalogue;
-pub mod detail;
 pub mod chapter;
+pub mod component;
+pub mod detail;
 pub mod home;
 pub mod login;
 pub mod logout;

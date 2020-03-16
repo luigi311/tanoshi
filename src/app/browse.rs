@@ -1,30 +1,59 @@
 use yew::services::storage::Area;
 use yew::services::StorageService;
-use yew::{html, Bridge, Bridged, Component, ComponentLink, Html, NodeRef, ShouldRender};
+use yew::{
+    html, Bridge, Bridged, Component, ComponentLink, Html, NodeRef, Properties, ShouldRender,
+};
 use yew_router::agent::RouteRequest;
 use yew_router::prelude::{Route, RouteAgent};
 use yew_router::{router::Router, Switch};
 
 use web_sys::HtmlElement;
 
-use super::browse::{self, Browse, BrowseRoute};
+use super::catalogue::Catalogue;
 use super::chapter::Chapter;
+use super::component::NavigationBar;
+use super::detail::Detail;
+use super::home::Home;
 use super::login::Login;
 use super::logout::Logout;
 
 #[derive(Switch, Debug, Clone)]
-pub enum AppRoute {
-    #[to = "/catalogue/{source}/manga/{title}/chapter/{chapter}/page/{page}"]
-    Chapter(String, String, String, usize),
-    #[to = "/login"]
-    Login,
-    #[to = "/logout"]
-    Logout,
-    #[to = "{*:path}"]
-    Browse(BrowseRoute),
+pub enum BrowseRoute {
+    #[to = "/catalogue/{source}/manga/{title}"]
+    Detail(String, String),
+    #[to = "/catalogue/{source}"]
+    Source(String),
+    #[to = "/"]
+    Home,
 }
 
-pub struct App {
+#[derive(Clone, PartialEq, Properties)]
+pub struct Props {
+    pub source: Option<String>,
+    pub title: Option<String>,
+}
+
+impl Into<Props> for BrowseRoute {
+    fn into(self) -> Props {
+        match self {
+            BrowseRoute::Detail(source, title) => Props {
+                source: Some(source),
+                title: Some(title),
+            },
+            BrowseRoute::Source(source) => Props {
+                source: Some(source),
+                title: None,
+            },
+            BrowseRoute::Home => Props {
+                source: None,
+                title: None,
+            },
+        }
+    }
+}
+
+pub struct Browse {
+    props: Props,
     link: ComponentLink<Self>,
     storage: StorageService,
     router: Box<dyn Bridge<RouteAgent>>,
@@ -36,15 +65,16 @@ pub enum Msg {
     RouterCallback(Route),
 }
 
-impl Component for App {
+impl Component for Browse {
     type Message = Msg;
-    type Properties = ();
+    type Properties = Props;
 
-    fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self {
+    fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
         let storage = StorageService::new(Area::Local).unwrap();
         let callback = link.callback(|route| Msg::RouterCallback(route));
         let router = RouteAgent::bridge(callback);
-        App {
+        Browse {
+            props,
             link,
             storage,
             router,
@@ -74,24 +104,22 @@ impl Component for App {
 
     fn view(&self) -> Html {
         html! {
-            <div class="w-full h-screen">
-                <Router<AppRoute, ()>
-                render = Router::render(|switch: AppRoute| {
+            <>
+                <div ref=self.refs[0].clone() class="block fixed inset-x-0 top-0 z-50 bg-blue-500 safe-top z-50"></div>
+                <NavigationBar ref=self.refs[1].clone()/>
+                <Router<BrowseRoute, ()>
+                render = Router::render(|switch: BrowseRoute| {
                 match switch {
-                    AppRoute::Chapter(source, title, chapter, page) => html!{<Chapter source=source title=title chapter=chapter page=page/>},
-                    AppRoute::Login => html!{<Login />},
-                    AppRoute::Logout => html!{<Logout />},
-                    AppRoute::Browse(route) => {
-                        let route: browse::Props = route.into();
-                        html!{<Browse with route/>}
-                    },
+                    BrowseRoute::Detail(source, title) => html!{<Detail source=source title=title/>},
+                    BrowseRoute::Source(source) => html!{<Catalogue source=source/>},
+                    BrowseRoute::Home => html!{<Home/>},
                 }}) />
-            </div>
+            </>
         }
     }
 }
 
-impl App {
+impl Browse {
     fn hide(&self) {
         if let Some(top_bar) = self.refs[0].cast::<HtmlElement>() {
             top_bar.set_hidden(true);

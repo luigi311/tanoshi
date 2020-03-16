@@ -78,9 +78,9 @@ impl Component for Home {
 
     fn view(&self) -> Html {
         html! {
-           <div class="container mx-auto pb-10" >
+           <div class="container mx-auto pb-10" style="padding-top: calc(env(safe-area-inset-top) + .5rem)">
                 <Spinner is_active=self.is_fetching />
-                <div class="flex content-between flex-wrap pb-5">
+                <div class="flex flex-wrap justify-around">
                 { for self.mangas.iter().map(|manga|  html!{
                 <Manga
                     title=manga.title.to_owned()

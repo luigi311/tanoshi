@@ -158,7 +158,7 @@ impl Component for Manga {
         let source = self.source.to_owned();
 
         html! {
-                <div class="md:w-1/5 sm:w-1/2 my-2 mx-auto">
+                <div class="m-2">
                     <div
                     class={if self.is_favorite {"manga-cover-container cursor-pointer favorite"} else {"manga-cover-container cursor-pointer"}}
                     onmousedown=self.link.callback(|e| Msg::MouseDown(e))
@@ -168,7 +168,7 @@ impl Component for Manga {
                     ontouchmove=self.link.callback(|e| Msg::TouchMove(e))
                     onclick=self.link.callback(|e| Msg::Click(e))
                     >
-                        <img class="manga-cover" src=thumbnail/>
+                        <img class={if thumbnail == "" {"manga-cover-none"} else {"manga-cover"}} src=thumbnail/>
                     </div>
                 </div>
         }
