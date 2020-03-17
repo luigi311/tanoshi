@@ -56,17 +56,9 @@ CMD ["tanoshi"]
 ## Mobile Screenshots
 ![favorites](screenshots/mobile.png)
 
-### Login Page
-![login](screenshots/login.jpg)
-
-### Favorites
-![favorites](screenshots/favorites.jpg)
-
-### Catalogue
-![catalogue](screenshots/catalogue.jpg)
-
-### Detail
-![detail](screenshots/detail.jpg)
-
-### Reader
-![reader](screenshots/reader.jpg)
+### Desktop
+![login](screenshots/login.png)
+![favorites](screenshots/favorites.png)
+![catalogue](screenshots/catalogue.png)
+![detail](screenshots/detail.png)
+![reader](screenshots/reader.png)
