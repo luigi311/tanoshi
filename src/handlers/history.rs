@@ -1,7 +1,8 @@
 pub mod history {
     use crate::auth::Claims;
-    use crate::history::{history::History, HistoryChapter};
+    use crate::history::{history::History, HistoryRequest};
     use sled::Db;
+    use std::collections::BTreeMap;
     use std::convert::Infallible;
 
     pub async fn get_history(
@@ -19,7 +20,7 @@ pub mod history {
         source: String,
         title: String,
         claim: Claims,
-        chapter: HistoryChapter,
+        chapter: HistoryRequest,
         history: History,
         db: Db,
     ) -> Result<impl warp::Reply, Infallible> {

@@ -1,4 +1,5 @@
 use regex::Regex;
+use serde_json::json;
 use sled::Db;
 
 use crate::scraper::{
@@ -80,7 +81,7 @@ impl Scraping for Mangasee {
     }
 
     fn get_latest_mangas(&self) -> GetMangasResponse {
-        let resp = ureq::get("https://mangaseeonline.us").call();
+        let resp = ureq::get(self.url).call();
         let html = resp.into_string().expect("failed to get page");
 
         let document = scraper::Html::parse_document(&html);
@@ -110,7 +111,7 @@ impl Scraping for Mangasee {
     }
 
     fn get_manga_info(&self, path: String, db: Db) -> GetMangaResponse {
-        let key = format!("scraper:manga:{}:{}", self.url, path.to_owned());
+        let key = format!("mangasee#{}", path);
         let m = match db.get(&key).unwrap() {
             Some(bytes) => serde_json::from_slice(&bytes).unwrap(),
             None => {
@@ -176,7 +177,7 @@ impl Scraping for Mangasee {
     }
 
     fn get_chapters(&self, path: String, param: GetParams, db: Db) -> GetChaptersResponse {
-        let key = format!("scraper:chapter:{}:{}", self.url, path.to_owned());
+        let key = format!("mangasee#{}#chapter", path);
 
         if let Some(refresh) = param.refresh {
             if refresh {
@@ -213,7 +214,7 @@ impl Scraping for Mangasee {
     }
 
     fn get_pages(&self, path: String, param: GetParams, db: Db) -> GetPagesResponse {
-        let key = format!("scraper:pages:{}:{}", self.url, path.to_owned());
+        let key = format!("mangasee#{}#pages", path.clone());
 
         if let Some(refresh) = param.refresh {
             if refresh {

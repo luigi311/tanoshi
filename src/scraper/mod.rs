@@ -3,7 +3,7 @@ use sled::Db;
 
 pub mod mangasee;
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone, Default)]
 pub struct Manga {
     pub title: String,
     pub author: String,
@@ -56,7 +56,7 @@ pub struct GetPagesResponse {
 pub trait Scraping {
     fn get_mangas(&self, param: Params) -> GetMangasResponse;
     fn get_latest_mangas(&self) -> GetMangasResponse;
-    fn get_manga_info(&self, path: String, db: Db) -> GetMangaResponse;
+    fn get_manga_info(&self, title: String, db: Db) -> GetMangaResponse;
     fn get_chapters(&self, path: String, param: GetParams, db: Db) -> GetChaptersResponse;
     fn get_pages(&self, path: String, param: GetParams, db: Db) -> GetPagesResponse;
 }

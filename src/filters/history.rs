@@ -3,8 +3,7 @@ pub mod history {
     use crate::auth::Claims;
     use crate::handlers::auth::auth as auth_handler;
     use crate::handlers::history::history as history_handler;
-    use crate::history::history::History;
-    use crate::history::HistoryChapter;
+    use crate::history::{history::History, HistoryRequest};
     use sled::Db;
     use warp::Filter;
 
@@ -60,7 +59,7 @@ pub mod history {
         warp::any().map(move || db.clone())
     }
 
-    fn json_body() -> impl Filter<Extract = (HistoryChapter,), Error = warp::Rejection> + Clone {
+    fn json_body() -> impl Filter<Extract = (HistoryRequest,), Error = warp::Rejection> + Clone {
         warp::body::content_length_limit(1024 * 16).and(warp::body::json())
     }
 }

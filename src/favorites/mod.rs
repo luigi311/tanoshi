@@ -1,9 +1,11 @@
+use crate::model::Manga;
 use serde::{Deserialize, Serialize};
+
 pub mod favorites;
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct GetFavoritesResponse {
-    pub favorites: Option<Vec<FavoriteManga>>,
+    pub favorites: Vec<FavoriteManga>,
     pub status: String,
 }
 
@@ -19,13 +21,3 @@ pub struct FavoriteManga {
     pub path: String,
     pub thumbnail_url: String,
 }
-
-impl PartialEq for FavoriteManga {
-    fn eq(&self, other: &Self) -> bool {
-        self.source == other.source
-            && self.title == other.title
-            && self.path == other.path
-            && self.thumbnail_url == self.thumbnail_url
-    }
-}
-impl Eq for FavoriteManga {}

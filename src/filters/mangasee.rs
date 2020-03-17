@@ -1,4 +1,7 @@
 pub mod mangasee {
+    use crate::auth::auth::Auth;
+    use crate::auth::Claims;
+    use crate::filters::settings::settings::auth_handler;
     use crate::handlers::mangasee::mangasee;
     use crate::scraper::{mangasee::Mangasee, GetParams, Params};
     use sled::Db;
@@ -6,6 +9,7 @@ pub mod mangasee {
 
     pub fn mangasee(
         mangasee: Mangasee,
+        auth: Auth,
         db: Db,
     ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
         list_mangas(mangasee.clone())
