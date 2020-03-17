@@ -1,22 +1,18 @@
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
+
 pub mod history;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct HistoryManga {
-    pub source: String,
-    pub title: String,
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct HistoryChapter {
-    path: String,
-    read: usize,
-    len: usize,
+pub struct HistoryRequest {
+    chapter: Option<String>,
+    read: Option<i32>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct HistoryResponse {
-    manga: Option<HistoryManga>,
-    chapters: Option<Vec<HistoryChapter>>,
+    pub source: String,
+    pub title: String,
+    history: Option<BTreeMap<String, i32>>,
     pub(crate) status: String,
 }
