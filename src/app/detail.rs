@@ -90,8 +90,8 @@ impl Component for Detail {
             <Spinner is_active={self.is_fetching_manga || self.is_fetching_chapter} />
             <div class="m-2 flex lg:flex-row sm:flex-col">
                 <div class="flex-shrink-0 lg:m-2 sm:mx-auto sm:my-2">
-                    <div class="manga-cover-container my-4">
-                        <img class="manga-cover" src=self.manga.thumbnail_url />
+                    <div class="relative my-4">
+                        <img class="manga-cover sm:cover cover-sm" src=self.manga.thumbnail_url />
                     </div>
                 </div>
                 <div class="flex flex-col m-2">

@@ -60,7 +60,7 @@ impl Component for Home {
 
     fn mounted(&mut self) -> ShouldRender {
         self.fetch_favorites();
-        true
+        false
     }
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
@@ -80,7 +80,7 @@ impl Component for Home {
         html! {
            <div class="container mx-auto pb-20" style="padding-top: calc(env(safe-area-inset-top) + .5rem)">
                 <Spinner is_active=self.is_fetching />
-                <div class="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-7 gap-2">
+                <div class="grid grid-cols-3 md:grid-cols-6 gap-2">
                 {
                 for self.mangas.iter().map(|manga|  html!{
                 <Manga

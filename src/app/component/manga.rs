@@ -165,7 +165,9 @@ impl Component for Manga {
             ontouchmove=self.link.callback(|e| Msg::TouchMove(e))
             onclick=self.link.callback(|e| Msg::Click(e))
             >
-                <img class={if thumbnail == "" {"manga-cover-none"} else {"manga-cover"}} src=thumbnail/>
+                <div class="manga-cover sm:cover cover-sm bg-center bg-cover relative" style={format!("background-image: url({})",thumbnail)}>
+                    <span class="absolute sm:title title-sm bottom-0 sm:text-sm text-xs bg-black opacity-75 text-white p-1 truncate">{self.title.clone()}</span>
+                </div>
             </div>
         }
     }
@@ -173,7 +175,7 @@ impl Component for Manga {
 
 impl Manga {
     fn classes(&self) -> Vec<&str> {
-        let mut classes = vec!["manga-cover-container", "cursor-pointer"];
+        let mut classes = vec!["relative", "cursor-pointer"];
         if self.is_favorite {
             classes.push("favorite");
         }
