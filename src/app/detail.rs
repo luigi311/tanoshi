@@ -114,31 +114,25 @@ impl Component for Detail {
                 </div>
             </div>
             <div class="w-6/7 mx-2">
-                <div class="bg-white shadow-md rounded my-6">
-                    <table class="text-left w-full border-collapse hover:bg-grey-lighter">
-                    <thead>
-                        <tr>
-                         <th class="py-4 px-6 bg-grey-lightest font-bold uppercase text-sm text-grey-dark border-b border-grey-light">
-                            {"Read Chapter"}
-                         </th>
-                        </tr>
-                    </thead>
-                    <tbody>
+                <div class="shadow-md rounded my-6">
+                    <div class="text-left w-full border-collapse">
+                        <div class="py-4 px-6 font-bold uppercase text-sm text-grey-dark border-b border-grey-light">
+                           {"Read Chapter"}
+                        </div>
+                    </div>
+                    <div>
                         {
                             for self.chapters.iter().map(|(chapter)| html!{
-                                <tr class="hover:bg-grey-lighter">
-                                    <td class="border-b border-grey-light">
-                                        <RouterAnchor<AppRoute>
-                                        classes="px-6 py-4 block"
-                                        route=AppRoute::Chapter(self.source.to_owned(), self.title.to_owned(), chapter.no.to_owned(), 1)>
-                                            {format!("Chapter {}", chapter.no.to_owned())}
-                                        </RouterAnchor<AppRoute>>
-                                    </td>
-                                </tr>
+                                <div class="border-b border-grey-light">
+                                    <RouterAnchor<AppRoute>
+                                    classes="px-6 py-4 block hover:shadow"
+                                    route=AppRoute::Chapter(self.source.to_owned(), self.title.to_owned(), chapter.no.to_owned(), 1)>
+                                        {format!("Chapter {}", chapter.no.to_owned())}
+                                    </RouterAnchor<AppRoute>>
+                                </div>
                             })
                         }
-                    </tbody>
-                    </table>
+                    </div>
                 </div>
             </div>
             </div>

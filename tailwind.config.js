@@ -5,6 +5,9 @@ module.exports = {
             center: true,
         },
     },
-    variants: {},
+    variants: {
+        backgroundColor: ['responsive', 'hover', 'focus', 'active', 'group-hover'],
+        tableLayout: ['responsive', 'hover', 'focus'],
+    },
     plugins: [],
 }
