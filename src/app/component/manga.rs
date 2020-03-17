@@ -1,22 +1,20 @@
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::__rt::core::time::Duration;
+use wasm_bindgen::prelude::*;
+use wasm_bindgen::JsCast;
+use web_sys::{Document, Element, HtmlElement, Window};
 use yew::format::{Json, Nothing, Text};
+use yew::prelude::*;
 use yew::services::fetch::{FetchTask, Request, Response};
 use yew::services::storage::Area;
 use yew::services::{FetchService, StorageService, Task, TimeoutService};
 use yew::{html, Bridge, Bridged, Component, ComponentLink, Html, Properties, ShouldRender};
-
-use yew::prelude::*;
-
-use super::model::GetChaptersResponse;
-use crate::app::AppRoute;
-
 use yew_router::agent::{RouteAgent, RouteRequest};
 use yew_router::prelude::*;
 
-use wasm_bindgen::prelude::*;
-use wasm_bindgen::JsCast;
-use web_sys::{Document, Element, HtmlElement, Window};
+use crate::app::AppRoute;
+
+use super::model::GetChaptersResponse;
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct FavoriteManga {
@@ -158,24 +156,30 @@ impl Component for Manga {
         let source = self.source.to_owned();
 
         html! {
-                <div class="m-2">
-                    <div
-                    class={if self.is_favorite {"manga-cover-container cursor-pointer favorite"} else {"manga-cover-container cursor-pointer"}}
-                    onmousedown=self.link.callback(|e| Msg::MouseDown(e))
-                    onmouseup=self.link.callback(|e| Msg::MouseUp(e))
-                    ontouchstart=self.link.callback(|e| Msg::TouchStart(e))
-                    ontouchend=self.link.callback(|e| Msg::TouchEnd(e))
-                    ontouchmove=self.link.callback(|e| Msg::TouchMove(e))
-                    onclick=self.link.callback(|e| Msg::Click(e))
-                    >
-                        <img class={if thumbnail == "" {"manga-cover-none"} else {"manga-cover"}} src=thumbnail/>
-                    </div>
-                </div>
+            <div
+            class=self.classes()
+            onmousedown=self.link.callback(|e| Msg::MouseDown(e))
+            onmouseup=self.link.callback(|e| Msg::MouseUp(e))
+            ontouchstart=self.link.callback(|e| Msg::TouchStart(e))
+            ontouchend=self.link.callback(|e| Msg::TouchEnd(e))
+            ontouchmove=self.link.callback(|e| Msg::TouchMove(e))
+            onclick=self.link.callback(|e| Msg::Click(e))
+            >
+                <img class={if thumbnail == "" {"manga-cover-none"} else {"manga-cover"}} src=thumbnail/>
+            </div>
         }
     }
 }
 
 impl Manga {
+    fn classes(&self) -> Vec<&str> {
+        let mut classes = vec!["manga-cover-container", "cursor-pointer"];
+        if self.is_favorite {
+            classes.push("favorite");
+        }
+        return classes;
+    }
+
     fn favorite(&mut self) {
         let fav = FavoriteManga {
             source: self.source.clone(),

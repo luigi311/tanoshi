@@ -105,7 +105,7 @@ impl Component for Browse {
     fn view(&self) -> Html {
         html! {
             <>
-                <div ref=self.refs[0].clone() class="block fixed inset-x-0 top-0 z-50 bg-teal-200 safe-top z-50"></div>
+                <div ref=self.refs[0].clone() class="block fixed inset-x-0 top-0 z-50 bg-teal-500 safe-top z-50"></div>
                 <NavigationBar ref=self.refs[1].clone()/>
                 <Router<BrowseRoute, ()>
                 render = Router::render(|switch: BrowseRoute| {

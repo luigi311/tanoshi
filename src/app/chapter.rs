@@ -1,27 +1,25 @@
 use anyhow;
-use std::convert::TryInto;
-use yew::format::{Json, Nothing};
+use js_sys;
+use wasm_bindgen::prelude::*;
+use wasm_bindgen::JsCast;
+use web_sys::HtmlElement;
+use yew::format::{Json, Nothing, Text};
+use yew::prelude::*;
 use yew::prelude::*;
 use yew::services::fetch::{FetchService, FetchTask, Request, Response};
+use yew::utils::document;
 use yew::{html, Component, ComponentLink, Html, InputData, Properties, ShouldRender};
 use yew_router::{agent::RouteRequest, prelude::*};
 
-use js_sys;
+use serde_json::json;
 
+use crate::app::component::model::{HistoryRequest, HistoryResponse};
 use crate::app::{browse::BrowseRoute, AppRoute};
 
 use super::component::model::{
     ChapterModel, GetChaptersResponse, GetMangaResponse, GetPagesResponse, MangaModel,
 };
 use super::component::Spinner;
-
-use wasm_bindgen::prelude::*;
-use wasm_bindgen::JsCast;
-
-use std::str::FromStr;
-use web_sys::HtmlElement;
-use yew::prelude::*;
-use yew::utils::document;
 
 #[derive(Clone, Properties)]
 pub struct Props {
@@ -401,6 +399,34 @@ impl Chapter {
             let route = Route::from(route_string);
             self.router
                 .send(RouteRequest::ReplaceRouteNoBroadcast(route));
+        }
+    }
+
+    fn set_history(&mut self) {
+        let h = HistoryRequest {
+            chapter: Some(self.current_chapter.clone()),
+            read: Some(self.current_page as i32),
+        };
+
+        let req = Request::get(format!(
+            "/api/history/source/{}/manga/{}",
+            self.source, self.title
+        ))
+        .body(Json(&h))
+        .expect("failed to build request");
+
+        if let Ok(task) = FetchService::new().fetch(
+            req,
+            self.link.callback(|response: Response<Text>| {
+                if let (meta, Ok(data)) = response.into_parts() {
+                    if meta.status.is_success() {
+                        return Msg::Noop;
+                    }
+                }
+                Msg::Noop
+            }),
+        ) {
+            self.fetch_task = Some(FetchTask::from(task));
         }
     }
 }

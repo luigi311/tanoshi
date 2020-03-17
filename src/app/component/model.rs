@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 
 #[derive(Deserialize, Debug, Clone, Default)]
 pub struct MangaModel {
@@ -84,5 +85,19 @@ pub struct GetSettingsResponse {
 
 #[derive(Deserialize, Serialize, Clone)]
 pub struct SetSettingsResponse {
+    pub status: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct HistoryRequest {
+    pub chapter: Option<String>,
+    pub read: Option<i32>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct HistoryResponse {
+    pub source: String,
+    pub title: String,
+    pub history: Option<BTreeMap<String, i32>>,
     pub status: String,
 }

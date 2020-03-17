@@ -78,17 +78,19 @@ impl Component for Home {
 
     fn view(&self) -> Html {
         html! {
-           <div class="container mx-auto pb-10" style="padding-top: calc(env(safe-area-inset-top) + .5rem)">
+           <div class="container mx-auto pb-20" style="padding-top: calc(env(safe-area-inset-top) + .5rem)">
                 <Spinner is_active=self.is_fetching />
-                <div class="flex flex-wrap justify-around">
-                { for self.mangas.iter().map(|manga|  html!{
+                <div class="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-7 gap-2">
+                {
+                for self.mangas.iter().map(|manga|  html!{
                 <Manga
                     title=manga.title.to_owned()
                     thumbnail=manga.thumbnail_url.to_owned()
                     path=manga.path.to_owned()
                     source=manga.source.to_owned()
                     is_favorite={false} />
-                }) }
+                })
+                }
                 </div>
             </div>
         }
@@ -96,6 +98,11 @@ impl Component for Home {
 }
 
 impl Home {
+    fn remainder(&self, len: usize) -> Vec<i32> {
+        let end = (3 - (len % 3)) as i32;
+        return (0..end).collect();
+    }
+
     fn fetch_favorites(&mut self) {
         let req = Request::get("/api/favorites")
             .header("Authorization", self.token.to_string())

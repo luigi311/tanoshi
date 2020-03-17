@@ -86,7 +86,7 @@ impl Component for Detail {
 
     fn view(&self) -> Html {
         html! {
-            <div class="container pb-10" style="padding-top: calc(env(safe-area-inset-top) + .5rem)">
+            <div class="container pb-20" style="padding-top: calc(env(safe-area-inset-top) + .5rem)">
             <Spinner is_active={self.is_fetching_manga || self.is_fetching_chapter} />
             <div class="m-2 flex lg:flex-row sm:flex-col">
                 <div class="flex-shrink-0 lg:m-2 sm:mx-auto sm:my-2">
@@ -113,27 +113,18 @@ impl Component for Detail {
                     </div>
                 </div>
             </div>
-            <div class="w-6/7 mx-2">
-                <div class="shadow-md rounded my-6">
-                    <div class="text-left w-full border-collapse">
-                        <div class="py-4 px-6 font-bold uppercase text-sm text-grey-dark border-b border-grey-light">
-                           {"Read Chapter"}
+            <div class="w-6/7 mx-2 grid grid-cols-4 lg:grid-cols-8">
+                {
+                    for self.chapters.iter().map(|(chapter)| html!{
+                        <div class="rounded-lg border border-grey-light m-2">
+                            <RouterAnchor<AppRoute>
+                            classes="px-2 py-2 text-center block hover:shadow"
+                            route=AppRoute::Chapter(self.source.to_owned(), self.title.to_owned(), chapter.no.to_owned(), 1)>
+                                {chapter.no.to_owned()}
+                            </RouterAnchor<AppRoute>>
                         </div>
-                    </div>
-                    <div>
-                        {
-                            for self.chapters.iter().map(|(chapter)| html!{
-                                <div class="border-b border-grey-light">
-                                    <RouterAnchor<AppRoute>
-                                    classes="px-6 py-4 block hover:shadow"
-                                    route=AppRoute::Chapter(self.source.to_owned(), self.title.to_owned(), chapter.no.to_owned(), 1)>
-                                        {format!("Chapter {}", chapter.no.to_owned())}
-                                    </RouterAnchor<AppRoute>>
-                                </div>
-                            })
-                        }
-                    </div>
-                </div>
+                    })
+                }
             </div>
             </div>
         }
