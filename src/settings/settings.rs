@@ -7,7 +7,7 @@ pub struct Settings {}
 impl Settings {
     pub fn set(&self, username: String, s: SettingParams, db: Db) -> SetSettingsResponse {
         match db.insert(
-            format!("settings:{}", username),
+            format!("{}#settings", username),
             serde_json::to_vec(&s).unwrap(),
         ) {
             Ok(_) => SetSettingsResponse {
@@ -19,7 +19,7 @@ impl Settings {
         }
     }
     pub fn get(&self, username: String, db: Db) -> GetSettingsResponse {
-        let result = db.get(format!("settings:{}", username));
+        let result = db.get(format!("{}#settings", username));
         match result {
             Ok(bytes) => GetSettingsResponse {
                 settings: match bytes {

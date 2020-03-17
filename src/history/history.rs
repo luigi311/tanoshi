@@ -1,6 +1,7 @@
 use sled::Db;
 
 use crate::history::{HistoryRequest, HistoryResponse};
+use crate::model::{Chapter, Manga};
 use std::collections::BTreeMap;
 
 #[derive(Clone)]
@@ -21,35 +22,40 @@ impl History {
         chapter: HistoryRequest,
         db: Db,
     ) -> HistoryResponse {
-        let key = format!("history:{}:{}:{}:", username, source, title);
-        let history = db.fetch_and_update(key, |fav: Option<&[u8]>| {
-            let mut history: BTreeMap<String, i32> = match fav {
-                Some(bytes) => {
-                    let history: BTreeMap<String, i32> = serde_json::from_slice(bytes).unwrap();
-                    history
+        let mut history = db.fetch_and_update(
+            format!("history#{}#{}#{}", username, source, title),
+            |fav: Option<&[u8]>| {
+                let mut history: Vec<Chapter> = match fav {
+                    Some(bytes) => serde_json::from_slice(bytes).unwrap(),
+                    None => vec![],
+                };
+
+                match history.iter().position(|ch| ch.path == chapter.path) {
+                    Some(idx) => {
+                        history[idx].read = chapter.read;
+                        history[idx].len = chapter.len;
+                    }
+                    None => {
+                        history.push(Chapter {
+                            path: chapter.path.clone(),
+                            read: chapter.read,
+                            len: chapter.len,
+                        });
+                    }
                 }
-                None => BTreeMap::default(),
-            };
 
-            history.insert(
-                chapter.chapter.as_ref().unwrap().to_string(),
-                *chapter.read.as_ref().unwrap(),
-            );
-            serde_json::to_vec(&history).ok()
-        });
+                serde_json::to_vec(&history).ok()
+            },
+        );
 
-        match history.unwrap() {
-            Some(bytes) => HistoryResponse {
-                source,
-                title,
-                history: serde_json::from_slice(&bytes).ok(),
+        match history {
+            Ok(_) => HistoryResponse {
+                history: vec![],
                 status: "success".to_string(),
             },
-            None => HistoryResponse {
-                source,
-                title,
-                history: Some(BTreeMap::default()),
-                status: "failed".to_string(),
+            Err(e) => HistoryResponse {
+                history: vec![],
+                status: format!("failed set history, reason: {}", e.to_string()),
             },
         }
     }
@@ -61,14 +67,13 @@ impl History {
         title: String,
         db: Db,
     ) -> HistoryResponse {
-        let key = format!("history:{}:{}:{}:", username, source, title);
-        let history = match db.get(&key).unwrap() {
+        let key = format!("history#{}#{}#{}", username, source, title);
+        let history: Vec<Chapter> = match db.get(&key).unwrap() {
             Some(bytes) => serde_json::from_slice(&bytes).unwrap(),
-            None => None,
+            None => vec![],
         };
+
         HistoryResponse {
-            source,
-            title,
             history,
             status: "success".to_string(),
         }

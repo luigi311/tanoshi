@@ -1,4 +1,5 @@
 pub mod mangasee {
+    use crate::auth::Claims;
     use crate::scraper::{mangasee::Mangasee, GetParams, Params, Scraping};
     use sled::Db;
     use std::convert::Infallible;

@@ -10,6 +10,7 @@ mod favorites;
 mod filters;
 mod handlers;
 mod history;
+mod model;
 mod scraper;
 mod settings;
 
@@ -34,7 +35,7 @@ async fn main() {
     let auth_api = filters::auth::auth::authentication(auth.clone(), db.clone());
 
     let mangasee = Mangasee::default();
-    let mangasee_api = filters::mangasee::mangasee::mangasee(mangasee, db.clone());
+    let mangasee_api = filters::mangasee::mangasee::mangasee(mangasee, auth.clone(), db.clone());
 
     let fav = favorites::favorites::Favorites::new();
     let fav_api = filters::favorites::favorites::favorites(fav, auth.clone(), db.clone());
