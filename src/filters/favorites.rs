@@ -3,6 +3,7 @@ pub mod favorites {
     use crate::auth::Claims;
     use crate::favorites::favorites::Favorites;
     use crate::favorites::FavoriteManga;
+    use crate::filters::with_db;
     use crate::handlers::auth::auth as auth_handler;
     use crate::handlers::favorites::favorites as favorite_handler;
     use sled::Db;
@@ -72,10 +73,6 @@ pub mod favorites {
         fav: Favorites,
     ) -> impl Filter<Extract = (Favorites,), Error = std::convert::Infallible> + Clone {
         warp::any().map(move || fav.clone())
-    }
-
-    fn with_db(db: Db) -> impl Filter<Extract = (Db,), Error = std::convert::Infallible> + Clone {
-        warp::any().map(move || db.clone())
     }
 
     fn json_body() -> impl Filter<Extract = (FavoriteManga,), Error = warp::Rejection> + Clone {

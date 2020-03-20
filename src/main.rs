@@ -31,11 +31,13 @@ async fn main() {
         .open()
         .unwrap();
 
+    db.insert("mangasee", "https://mangaseeonline.us")
+        .expect("failed to insert sorce");
+
     let auth = auth::auth::Auth::new();
     let auth_api = filters::auth::auth::authentication(auth.clone(), db.clone());
 
-    let mangasee = Mangasee::default();
-    let mangasee_api = filters::mangasee::mangasee::mangasee(mangasee, auth.clone(), db.clone());
+    let manga_api = filters::manga::manga::manga(db.clone());
 
     let fav = favorites::favorites::Favorites::new();
     let fav_api = filters::favorites::favorites::favorites(fav, auth.clone(), db.clone());
@@ -50,7 +52,7 @@ async fn main() {
         .or(fav_api)
         .or(history_api)
         .or(settings_api)
-        .or(mangasee_api);
+        .or(manga_api);
 
     let static_path = std::env::var("STATIC_FILES_PATH").unwrap_or("./dist".to_string());
     let static_files = warp::fs::dir(static_path);

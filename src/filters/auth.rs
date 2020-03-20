@@ -1,6 +1,7 @@
 pub mod auth {
     use crate::auth::auth::Auth;
     use crate::auth::User;
+    use crate::filters::with_db;
     use crate::handlers::auth::auth as auth_handler;
     use sled::Db;
     use warp::Filter;
@@ -40,10 +41,6 @@ pub mod auth {
         auth: Auth,
     ) -> impl Filter<Extract = (Auth,), Error = std::convert::Infallible> + Clone {
         warp::any().map(move || auth.clone())
-    }
-
-    fn with_db(db: Db) -> impl Filter<Extract = (Db,), Error = std::convert::Infallible> + Clone {
-        warp::any().map(move || db.clone())
     }
 
     fn json_body() -> impl Filter<Extract = (User,), Error = warp::Rejection> + Clone {
