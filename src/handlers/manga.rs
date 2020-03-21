@@ -1,7 +1,7 @@
 pub mod manga {
     use std::convert::Infallible;
 
-    use sled::{Batch, Db};
+    use sled::{Batch, Tree};
 
     use crate::auth::Claims;
     use crate::scraper::{mangasee::Mangasee, GetParams, Params, Scraping};
@@ -10,7 +10,7 @@ pub mod manga {
     pub async fn list_mangas(
         source: String,
         param: Params,
-        db: Db,
+        db: Tree,
     ) -> Result<impl warp::Reply, Rejection> {
         match get_source_url(source.clone(), db.clone()) {
             Ok(url) => {
@@ -30,7 +30,7 @@ pub mod manga {
     pub async fn get_manga_info(
         source: String,
         title: String,
-        db: Db,
+        db: Tree,
     ) -> Result<impl warp::Reply, Rejection> {
         match get_manga_url(source, title, db) {
             Ok(url) => {
@@ -45,7 +45,7 @@ pub mod manga {
         source: String,
         title: String,
         param: GetParams,
-        db: Db,
+        db: Tree,
     ) -> Result<impl warp::Reply, Rejection> {
         match get_manga_url(source.clone(), title.clone(), db.clone()) {
             Ok(url) => {
@@ -67,7 +67,7 @@ pub mod manga {
         title: String,
         chapter: String,
         param: GetParams,
-        db: Db,
+        db: Tree,
     ) -> Result<impl warp::Reply, Rejection> {
         match get_chapter_url(source, title, chapter, db) {
             Ok(url) => {
@@ -78,14 +78,14 @@ pub mod manga {
         }
     }
 
-    fn get_source_url(source: String, db: Db) -> Result<String, String> {
+    fn get_source_url(source: String, db: Tree) -> Result<String, String> {
         match db.get(source) {
             Ok(res) => Ok(String::from_utf8(res.unwrap().to_vec()).unwrap()),
             Err(e) => Err(e.to_string()),
         }
     }
 
-    fn get_manga_url(source: String, title: String, db: Db) -> Result<String, String> {
+    fn get_manga_url(source: String, title: String, db: Tree) -> Result<String, String> {
         let base_url = match get_source_url(source.clone(), db.clone()) {
             Ok(res) => res,
             Err(e) => return Err(e.to_string()),
@@ -105,7 +105,7 @@ pub mod manga {
         source: String,
         title: String,
         chapter: String,
-        db: Db,
+        db: Tree,
     ) -> Result<String, String> {
         let base_url = match get_source_url(source.clone(), db.clone()) {
             Ok(res) => res,

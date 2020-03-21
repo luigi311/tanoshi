@@ -1,6 +1,5 @@
 use regex::Regex;
 use serde_json::json;
-use sled::Db;
 
 use crate::scraper::{
     Chapter, GetChaptersResponse, GetMangaResponse, GetMangasResponse, GetPagesResponse, GetParams,

@@ -1,7 +1,8 @@
-use sled::Db;
+use sled::Tree;
 
 use crate::history::{HistoryRequest, HistoryResponse};
-use crate::model::{Chapter, Manga};
+use crate::model::{Chapter, Document, History as HistoryModel, Manga};
+use crate::scraper::mangasee::Mangasee;
 use std::collections::BTreeMap;
 
 #[derive(Clone)]
@@ -17,46 +18,54 @@ impl History {
     pub fn add_history(
         &self,
         username: String,
-        source: String,
-        title: String,
-        chapter: HistoryRequest,
-        db: Db,
+        request: HistoryRequest,
+        library_tree: Tree,
+        scraper_tree: Tree,
     ) -> HistoryResponse {
-        let mut history = db.fetch_and_update(
-            format!("history#{}#{}#{}", username, source, title),
-            |fav: Option<&[u8]>| {
-                let mut history: Vec<Chapter> = match fav {
-                    Some(bytes) => serde_json::from_slice(bytes).unwrap(),
-                    None => vec![],
-                };
-
-                match history.iter().position(|ch| ch.path == chapter.path) {
-                    Some(idx) => {
-                        history[idx].read = chapter.read;
-                        history[idx].len = chapter.len;
-                    }
-                    None => {
-                        history.push(Chapter {
-                            path: chapter.path.clone(),
-                            read: chapter.read,
-                            len: chapter.len,
-                        });
-                    }
-                }
-
-                serde_json::to_vec(&history).ok()
+        let chapter = match scraper_tree
+            .get(format!(
+                "{}:{}:{}",
+                request.source.clone(),
+                request.title.clone(),
+                request.chapter.clone()
+            ))
+            .unwrap()
+        {
+            Some(ret) => Chapter {
+                path: String::from_utf8(ret.to_vec()).unwrap_or("".to_string()),
+                read: request.read,
+                len: request.len,
             },
+            None => {
+                return HistoryResponse {
+                    history: vec![],
+                    status: "Chapter not found".to_string(),
+                }
+            }
+        };
+
+        let history = HistoryModel {
+            path: chapter.path.clone(),
+            timestamp: request.at,
+        };
+
+        let key = format!(
+            "{}:{}:{}",
+            username,
+            request.source.clone(),
+            request.title.clone()
         );
 
-        match history {
-            Ok(_) => HistoryResponse {
-                history: vec![],
-                status: "success".to_string(),
-            },
-            Err(e) => HistoryResponse {
-                history: vec![],
-                status: format!("failed set history, reason: {}", e.to_string()),
-            },
+        library_tree
+            .merge(&key, serde_json::to_vec(&chapter).unwrap())
+            .unwrap();
+        library_tree
+            .merge(&key, serde_json::to_vec(&history).unwrap())
+            .unwrap();
+
+        HistoryResponse {
+            history: vec![],
+            status: "success".to_string(),
         }
     }
 
@@ -65,16 +74,16 @@ impl History {
         username: String,
         source: String,
         title: String,
-        db: Db,
+        library_tree: Tree,
     ) -> HistoryResponse {
-        let key = format!("history#{}#{}#{}", username, source, title);
-        let history: Vec<Chapter> = match db.get(&key).unwrap() {
+        let key = format!("{}:{}:{}", username, source, title);
+        let doc: Document = match library_tree.get(&key).unwrap() {
             Some(bytes) => serde_json::from_slice(&bytes).unwrap(),
-            None => vec![],
+            None => Document::default(),
         };
 
         HistoryResponse {
-            history,
+            history: doc.chapters.clone(),
             status: "success".to_string(),
         }
     }

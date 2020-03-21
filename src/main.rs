@@ -1,9 +1,11 @@
 extern crate argon2;
 
-use crate::scraper::mangasee::Mangasee;
-use pretty_env_logger;
 use std::str::FromStr;
+
+use pretty_env_logger;
 use warp::Filter;
+
+use crate::scraper::mangasee::Mangasee;
 
 mod auth;
 mod favorites;
@@ -13,6 +15,8 @@ mod history;
 mod model;
 mod scraper;
 mod settings;
+
+mod utils;
 
 #[tokio::main]
 async fn main() {
@@ -31,22 +35,41 @@ async fn main() {
         .open()
         .unwrap();
 
-    db.insert("mangasee", "https://mangaseeonline.us")
+    let user_tree = db.open_tree("user").expect("failed to open tree");
+
+    let library_tree = db.open_tree("library").expect("failed to open tree");
+
+    let scraper_tree = db.open_tree("scraper").expect("failed to open tree");
+
+    library_tree.set_merge_operator(utils::merge_library);
+
+    scraper_tree
+        .insert("mangasee", "https://mangaseeonline.us")
         .expect("failed to insert sorce");
 
     let auth = auth::auth::Auth::new();
-    let auth_api = filters::auth::auth::authentication(auth.clone(), db.clone());
+    let auth_api = filters::auth::auth::authentication(auth.clone(), user_tree.clone());
 
-    let manga_api = filters::manga::manga::manga(db.clone());
+    let manga_api = filters::manga::manga::manga(scraper_tree.clone());
 
     let fav = favorites::favorites::Favorites::new();
-    let fav_api = filters::favorites::favorites::favorites(fav, auth.clone(), db.clone());
+    let fav_api = filters::favorites::favorites::favorites(
+        fav,
+        auth.clone(),
+        library_tree.clone(),
+        scraper_tree.clone(),
+    );
 
     let history = history::history::History::default();
-    let history_api = filters::history::history::history(history, auth.clone(), db.clone());
+    let history_api = filters::history::history::history(
+        history,
+        auth.clone(),
+        library_tree.clone(),
+        scraper_tree.clone(),
+    );
 
     let settings = settings::settings::Settings::default();
-    let settings_api = filters::settings::settings::settings(settings, auth, db);
+    let settings_api = filters::settings::settings::settings(settings, auth, user_tree);
 
     let api = auth_api
         .or(fav_api)

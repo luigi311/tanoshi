@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use sled::Db;
 
 pub mod mangasee;
 

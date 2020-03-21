@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, Default)]
 pub struct Manga {
     pub path: String,
     pub title: String,
@@ -14,7 +14,7 @@ impl PartialEq for Manga {
 }
 impl Eq for Manga {}
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, Default)]
 pub struct Chapter {
     pub path: String,
     pub read: i32,
@@ -28,7 +28,7 @@ impl PartialEq for Chapter {
 }
 impl Eq for Chapter {}
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, Default)]
 pub struct Track {
     pub title: String,
     pub url: String,
@@ -41,7 +41,7 @@ impl PartialEq for Track {
 }
 impl Eq for Track {}
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, Default)]
 pub struct History {
     pub path: String,
     pub timestamp: u32,
@@ -54,7 +54,7 @@ impl PartialEq for History {
 }
 impl Eq for History {}
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, Default)]
 pub struct Document {
     pub manga: Manga,
     pub chapters: Vec<Chapter>,

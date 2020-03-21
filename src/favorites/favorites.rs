@@ -1,9 +1,11 @@
-use crate::favorites::{AddFavoritesResponse, FavoriteManga, GetFavoritesResponse};
-use crate::model::Manga;
-use crate::scraper::Manga as ScrapedManga;
-use serde_json::json;
-use sled::{Db, IVec};
 use std::collections::BTreeMap;
+
+use serde_json::json;
+use sled::{IVec, Tree};
+
+use crate::favorites::{AddFavoritesResponse, FavoriteManga, GetFavoritesResponse};
+use crate::model::{Document, Manga};
+use crate::scraper::Manga as ScrapedManga;
 
 #[derive(Clone)]
 pub struct Favorites {}
@@ -13,7 +15,7 @@ impl Favorites {
         Favorites {}
     }
 
-    pub fn get_favorites(&self, username: String, db: Db) -> GetFavoritesResponse {
+    pub fn get_favorites(&self, username: String, db: Tree) -> GetFavoritesResponse {
         let mangas: Vec<Manga> = match db.get(format!("manga#{}", username)).unwrap() {
             Some(bytes) => serde_json::from_slice(&bytes).unwrap(),
             None => vec![],
@@ -46,7 +48,7 @@ impl Favorites {
         &self,
         username: String,
         manga: FavoriteManga,
-        db: Db,
+        db: Tree,
     ) -> AddFavoritesResponse {
         let manga = Manga {
             path: manga.path,
@@ -76,7 +78,7 @@ impl Favorites {
         &self,
         username: String,
         manga: FavoriteManga,
-        db: Db,
+        db: Tree,
     ) -> AddFavoritesResponse {
         let manga = Manga {
             path: manga.path,

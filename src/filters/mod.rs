@@ -1,7 +1,7 @@
 use crate::auth::auth::Auth;
 use crate::auth::Claims;
 use crate::filters::settings::settings::auth_handler;
-use sled::Db;
+use sled::Tree;
 use warp::Filter;
 
 pub mod auth;
@@ -10,7 +10,9 @@ pub mod history;
 pub mod manga;
 pub mod settings;
 
-pub fn with_db(db: Db) -> impl Filter<Extract = (Db,), Error = std::convert::Infallible> + Clone {
+pub fn with_db(
+    db: Tree,
+) -> impl Filter<Extract = (Tree,), Error = std::convert::Infallible> + Clone {
     warp::any().map(move || db.clone())
 }
 

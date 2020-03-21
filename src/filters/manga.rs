@@ -5,11 +5,11 @@ pub mod manga {
     use crate::filters::with_db;
     use crate::handlers::manga::manga;
     use crate::scraper::{mangasee::Mangasee, GetParams, Params};
-    use sled::Db;
+    use sled::Tree;
     use warp::Filter;
 
     pub fn manga(
-        db: Db,
+        db: Tree,
     ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
         list_mangas(db.clone())
             .or(get_manga_info(db.clone()))
@@ -18,7 +18,7 @@ pub mod manga {
     }
 
     pub fn list_mangas(
-        db: Db,
+        db: Tree,
     ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
         warp::path!("api" / "source" / String)
             .and(warp::get())
@@ -28,7 +28,7 @@ pub mod manga {
     }
 
     pub fn get_manga_info(
-        db: Db,
+        db: Tree,
     ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
         warp::path!("api" / "source" / String / "manga" / String)
             .and(warp::get())
@@ -37,7 +37,7 @@ pub mod manga {
     }
 
     pub fn get_chapters(
-        db: Db,
+        db: Tree,
     ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
         warp::path!("api" / "source" / String / "manga" / String / "chapter")
             .and(warp::get())
@@ -47,7 +47,7 @@ pub mod manga {
     }
 
     pub fn get_pages(
-        db: Db,
+        db: Tree,
     ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
         warp::path!("api" / "source" / String / "manga" / String / "chapter" / String)
             .and(warp::get())
