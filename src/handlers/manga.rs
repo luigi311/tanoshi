@@ -92,7 +92,6 @@ pub mod manga {
         };
 
         let key = format!("{}:{}", source, title);
-        println!("get key {}", key.clone());
         let path = match db.get(key) {
             Ok(res) => String::from_utf8(res.unwrap().to_vec()).unwrap(),
             Err(e) => return Err(e.to_string()),

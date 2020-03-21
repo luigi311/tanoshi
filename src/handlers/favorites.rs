@@ -17,10 +17,10 @@ pub mod favorites {
         claim: Claims,
         manga: FavoriteManga,
         fav: Favorites,
-        db: Tree,
+        library_tree: Tree,
         scraper_tree: Tree,
     ) -> Result<impl warp::Reply, Infallible> {
-        let res = fav.add_favorite(claim.sub, manga, db);
+        let res = fav.add_favorite(claim.sub, manga, library_tree, scraper_tree);
         Ok(warp::reply::json(&res))
     }
 

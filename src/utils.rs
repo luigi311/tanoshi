@@ -23,6 +23,8 @@ pub fn merge_library(
             Some(idx) => old.history[idx] = history,
             None => old.history.push(history),
         };
+    } else if let Ok(manga) = serde_json::from_slice::<Manga>(&merged_bytes) {
+        old.manga = manga;
     }
 
     Some(serde_json::to_vec(&old).unwrap())

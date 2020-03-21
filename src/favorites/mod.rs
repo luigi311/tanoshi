@@ -1,11 +1,11 @@
-use crate::model::Manga;
+use crate::model::{Document, Manga};
 use serde::{Deserialize, Serialize};
 
 pub mod favorites;
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct GetFavoritesResponse {
-    pub favorites: Vec<FavoriteManga>,
+    pub favorites: Vec<Document>,
     pub status: String,
 }
 
@@ -18,6 +18,4 @@ pub struct AddFavoritesResponse {
 pub struct FavoriteManga {
     pub source: String,
     pub title: String,
-    pub path: String,
-    pub thumbnail_url: String,
 }

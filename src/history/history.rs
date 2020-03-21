@@ -1,9 +1,10 @@
+use std::collections::BTreeMap;
+
 use sled::Tree;
 
 use crate::history::{HistoryRequest, HistoryResponse};
 use crate::model::{Chapter, Document, History as HistoryModel, Manga};
 use crate::scraper::mangasee::Mangasee;
-use std::collections::BTreeMap;
 
 #[derive(Clone)]
 pub struct History {}
@@ -22,6 +23,26 @@ impl History {
         library_tree: Tree,
         scraper_tree: Tree,
     ) -> HistoryResponse {
+        let manga = match scraper_tree
+            .get(format!(
+                "{}:{}",
+                request.source.clone(),
+                request.title.clone()
+            ))
+            .unwrap()
+        {
+            Some(ret) => Manga {
+                path: String::from_utf8(ret.to_vec()).unwrap(),
+                title: String::from_utf8(base64::decode(&request.title).unwrap()).unwrap(),
+                source: request.source.clone(),
+            },
+            None => {
+                return HistoryResponse {
+                    history: vec![],
+                    status: "Chapter not found".to_string(),
+                };
+            }
+        };
         let chapter = match scraper_tree
             .get(format!(
                 "{}:{}:{}",
@@ -40,7 +61,7 @@ impl History {
                 return HistoryResponse {
                     history: vec![],
                     status: "Chapter not found".to_string(),
-                }
+                };
             }
         };
 
@@ -49,13 +70,21 @@ impl History {
             timestamp: request.at,
         };
 
-        let key = format!(
-            "{}:{}:{}",
+        let mut key = format!(
+            "{}:favorites:{}:{}",
             username,
             request.source.clone(),
             request.title.clone()
         );
-
+        if !library_tree.contains_key(&key).unwrap() {
+            key = format!(
+                "{}:{}:{}",
+                username,
+                request.source.clone(),
+                request.title.clone()
+            );
+        }
+        library_tree.merge(&key, serde_json::to_vec(&manga).unwrap());
         library_tree
             .merge(&key, serde_json::to_vec(&chapter).unwrap())
             .unwrap();
@@ -76,7 +105,10 @@ impl History {
         title: String,
         library_tree: Tree,
     ) -> HistoryResponse {
-        let key = format!("{}:{}:{}", username, source, title);
+        let mut key = format!("{}:favorites:{}:{}", username, source, title);
+        if !library_tree.contains_key(&key).unwrap() {
+            key = format!("{}:{}:{}", username, source, title);
+        }
         let doc: Document = match library_tree.get(&key).unwrap() {
             Some(bytes) => serde_json::from_slice(&bytes).unwrap(),
             None => Document::default(),
