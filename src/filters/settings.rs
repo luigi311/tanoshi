@@ -1,17 +1,18 @@
 pub mod settings {
     use crate::auth::auth::Auth;
     use crate::auth::Claims;
+    use crate::filters::with_db;
     pub use crate::handlers::auth::auth as auth_handler;
     pub use crate::handlers::settings::settings as settings_handler;
     pub use crate::settings::settings::Settings;
     use crate::settings::SettingParams;
-    use sled::Db;
+    use sled::Tree;
     use warp::Filter;
 
     pub(crate) fn settings(
         settings: Settings,
         auth: Auth,
-        db: Db,
+        db: Tree,
     ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
         get_settings(settings.clone(), auth.clone(), db.clone())
             .or(set_settings(settings, auth, db))
@@ -20,7 +21,7 @@ pub mod settings {
     fn get_settings(
         settings: Settings,
         auth: Auth,
-        db: Db,
+        db: Tree,
     ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
         warp::path!("api" / "settings")
             .and(warp::get())
@@ -33,7 +34,7 @@ pub mod settings {
     fn set_settings(
         settings: Settings,
         auth: Auth,
-        db: Db,
+        db: Tree,
     ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
         warp::path!("api" / "settings")
             .and(warp::post())
@@ -55,10 +56,6 @@ pub mod settings {
         settings: Settings,
     ) -> impl Filter<Extract = (Settings,), Error = std::convert::Infallible> + Clone {
         warp::any().map(move || settings.clone())
-    }
-
-    fn with_db(db: Db) -> impl Filter<Extract = (Db,), Error = std::convert::Infallible> + Clone {
-        warp::any().map(move || db.clone())
     }
 
     fn json_body() -> impl Filter<Extract = (SettingParams,), Error = warp::Rejection> + Clone {

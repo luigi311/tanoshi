@@ -6,9 +6,12 @@ pub mod history;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct HistoryRequest {
-    path: String,
+    source: String,
+    title: String,
+    chapter: String,
     read: i32,
     len: i32,
+    at: u32,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]

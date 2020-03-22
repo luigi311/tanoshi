@@ -1,11 +1,11 @@
 use crate::settings::{GetSettingsResponse, SetSettingsResponse, SettingParams};
-use sled::Db;
+use sled::Tree;
 
 #[derive(Clone, Default)]
 pub struct Settings {}
 
 impl Settings {
-    pub fn set(&self, username: String, s: SettingParams, db: Db) -> SetSettingsResponse {
+    pub fn set(&self, username: String, s: SettingParams, db: Tree) -> SetSettingsResponse {
         match db.insert(
             format!("{}#settings", username),
             serde_json::to_vec(&s).unwrap(),
@@ -18,7 +18,7 @@ impl Settings {
             },
         }
     }
-    pub fn get(&self, username: String, db: Db) -> GetSettingsResponse {
+    pub fn get(&self, username: String, db: Tree) -> GetSettingsResponse {
         let result = db.get(format!("{}#settings", username));
         match result {
             Ok(bytes) => GetSettingsResponse {

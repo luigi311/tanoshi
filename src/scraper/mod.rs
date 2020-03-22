@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use sled::Db;
 
 pub mod mangasee;
 
@@ -35,28 +34,27 @@ pub struct GetParams {
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct GetMangasResponse {
-    mangas: Vec<Manga>,
+    pub mangas: Vec<Manga>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct GetMangaResponse {
-    manga: Manga,
+    pub manga: Manga,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct GetChaptersResponse {
-    chapters: Vec<Chapter>,
+    pub chapters: Vec<Chapter>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct GetPagesResponse {
-    pages: Vec<String>,
+    pub pages: Vec<String>,
 }
 
 pub trait Scraping {
-    fn get_mangas(&self, param: Params) -> GetMangasResponse;
-    fn get_latest_mangas(&self) -> GetMangasResponse;
-    fn get_manga_info(&self, title: String, db: Db) -> GetMangaResponse;
-    fn get_chapters(&self, path: String, param: GetParams, db: Db) -> GetChaptersResponse;
-    fn get_pages(&self, path: String, param: GetParams, db: Db) -> GetPagesResponse;
+    fn get_mangas(url: String, param: Params) -> GetMangasResponse;
+    fn get_manga_info(url: String) -> GetMangaResponse;
+    fn get_chapters(url: String) -> GetChaptersResponse;
+    fn get_pages(url: String) -> GetPagesResponse;
 }

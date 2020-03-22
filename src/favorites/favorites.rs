@@ -1,9 +1,11 @@
-use crate::favorites::{AddFavoritesResponse, FavoriteManga, GetFavoritesResponse};
-use crate::model::Manga;
-use crate::scraper::Manga as ScrapedManga;
-use serde_json::json;
-use sled::{Db, IVec};
 use std::collections::BTreeMap;
+
+use serde_json::json;
+use sled::{IVec, Tree};
+
+use crate::favorites::{AddFavoritesResponse, FavoriteManga, GetFavoritesResponse};
+use crate::model::{Document, Manga};
+use crate::scraper::Manga as ScrapedManga;
 
 #[derive(Clone)]
 pub struct Favorites {}
@@ -13,31 +15,18 @@ impl Favorites {
         Favorites {}
     }
 
-    pub fn get_favorites(&self, username: String, db: Db) -> GetFavoritesResponse {
-        let mangas: Vec<Manga> = match db.get(format!("manga#{}", username)).unwrap() {
-            Some(bytes) => serde_json::from_slice(&bytes).unwrap(),
-            None => vec![],
-        };
-
-        let mut favs = vec![];
-        for m in mangas {
-            let key = format!("{}#{}", m.source.clone(), m.path.clone());
-            let res = db.get(key).unwrap();
-            let res: ScrapedManga = match res {
-                Some(bytes) => serde_json::from_slice(&bytes).unwrap(),
-                None => ScrapedManga::default(),
-            };
-
-            favs.push(FavoriteManga {
-                source: m.source,
-                title: m.title,
-                path: m.path,
-                thumbnail_url: res.thumbnail_url,
+    pub fn get_favorites(&self, username: String, db: Tree) -> GetFavoritesResponse {
+        let favorites: Vec<Manga> = db
+            .scan_prefix(format!("{}:favorites", username))
+            .map(|el| {
+                let (_, v) = el.unwrap();
+                let m: Document = serde_json::from_slice(&v).unwrap();
+                m.manga
             })
-        }
+            .collect();
 
         GetFavoritesResponse {
-            favorites: favs,
+            favorites,
             status: "success".to_string(),
         }
     }
@@ -45,43 +34,68 @@ impl Favorites {
     pub fn add_favorite(
         &self,
         username: String,
-        manga: FavoriteManga,
-        db: Db,
+        request: FavoriteManga,
+        library_tree: Tree,
+        scraper_tree: Tree,
     ) -> AddFavoritesResponse {
-        let manga = Manga {
-            path: manga.path,
-            title: manga.title,
-            source: manga.source,
+        let manga_path: String = match scraper_tree
+            .get(format!("{}:{}:path", &request.source, &request.title))
+            .expect("failed to get manga")
+        {
+            Some(ret) => String::from_utf8(ret.to_vec()).unwrap(),
+            None => {
+                return AddFavoritesResponse {
+                    status: "Not found".to_string(),
+                }
+            }
         };
 
-        let status =
-            match db.fetch_and_update(format!("manga#{}", username), |result: Option<&[u8]>| {
-                let mut value: Vec<Manga> = match result {
-                    Some(val) => serde_json::from_slice(val).unwrap(),
-                    None => vec![],
-                };
-
-                if !value.contains(&manga.clone()) {
-                    value.push(manga.clone());
+        let manga_thumbnail: String = match scraper_tree
+            .get(format!("{}:{}:thumbnail", &request.source, &request.title))
+            .expect("failed to get manga")
+        {
+            Some(ret) => String::from_utf8(ret.to_vec()).unwrap(),
+            None => {
+                return AddFavoritesResponse {
+                    status: "Not found".to_string(),
                 }
-                serde_json::to_vec(&value).ok()
-            }) {
-                Ok(_) => "success".to_string(),
-                Err(e) => format!("failed add favorite, msg: {}", e.to_string()),
-            };
-        AddFavoritesResponse { status }
+            }
+        };
+
+        let m = Manga {
+            path: manga_path,
+            title: String::from_utf8(
+                base64::decode_config(&request.title, base64::URL_SAFE_NO_PAD).unwrap(),
+            )
+            .unwrap(),
+            source: request.source.clone(),
+            thumbnail_url: manga_thumbnail,
+        };
+
+        library_tree.merge(
+            format!(
+                "{}:favorites:{}:{}",
+                username, &request.source, &request.title
+            ),
+            serde_json::to_vec(&m).unwrap(),
+        );
+
+        AddFavoritesResponse {
+            status: "success".to_string(),
+        }
     }
 
     pub fn remove_favorites(
         &self,
         username: String,
         manga: FavoriteManga,
-        db: Db,
+        db: Tree,
     ) -> AddFavoritesResponse {
         let manga = Manga {
-            path: manga.path,
+            path: "".to_string(),
             title: manga.title,
             source: manga.source,
+            thumbnail_url: "".to_string(),
         };
         let status =
             match db.fetch_and_update(format!("manga#{}", username), move |fav: Option<&[u8]>| {

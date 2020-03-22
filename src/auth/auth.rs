@@ -3,7 +3,7 @@ use argon2::{self, Config};
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
 use rand;
 use rand::Rng;
-use sled::Db;
+use sled::Tree;
 
 #[derive(Clone)]
 pub struct Auth {
@@ -16,7 +16,7 @@ impl Auth {
         Auth { secret }
     }
 
-    pub fn register(&self, user: User, db: Db) -> UserResponse {
+    pub fn register(&self, user: User, db: Tree) -> UserResponse {
         let hashed = self.hash(user.password.as_bytes());
         let hashed = hashed.as_bytes();
         match db
@@ -39,7 +39,7 @@ impl Auth {
         }
     }
 
-    pub fn login(&self, user: User, db: Db) -> UserResponse {
+    pub fn login(&self, user: User, db: Tree) -> UserResponse {
         let hashed = db
             .get(format!("user:{}:password", user.username))
             .unwrap()
