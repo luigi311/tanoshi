@@ -12,7 +12,7 @@ pub struct Mangasee {
 }
 
 impl Scraping for Mangasee {
-    fn get_mangas(url: String, param: Params) -> GetMangasResponse {
+    fn get_mangas(url: &String, param: Params) -> GetMangasResponse {
         let mut mangas: Vec<Manga> = Vec::new();
 
         let params = vec![
@@ -62,7 +62,7 @@ impl Scraping for Mangasee {
         GetMangasResponse { mangas }
     }
 
-    fn get_manga_info(url: String) -> GetMangaResponse {
+    fn get_manga_info(url: &String) -> GetMangaResponse {
         let mut m = Manga {
             title: "".to_string(),
             author: "".to_string(),
@@ -120,7 +120,7 @@ impl Scraping for Mangasee {
         GetMangaResponse { manga: m }
     }
 
-    fn get_chapters(url: String) -> GetChaptersResponse {
+    fn get_chapters(url: &String) -> GetChaptersResponse {
         let mut chapters: Vec<Chapter> = Vec::new();
         let resp = ureq::get(url.as_str()).call();
         let html = resp.into_string().unwrap();
@@ -140,7 +140,7 @@ impl Scraping for Mangasee {
         GetChaptersResponse { chapters }
     }
 
-    fn get_pages(url: String) -> GetPagesResponse {
+    fn get_pages(url: &String) -> GetPagesResponse {
         let mut pages = Vec::new();
         let resp = ureq::get(url.as_str()).call();
         let html = resp.into_string().unwrap();
