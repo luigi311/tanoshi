@@ -17,8 +17,18 @@ pub mod manga {
                 let mangas = Mangasee::get_mangas(url, param);
                 let mut batch = Batch::default();
                 for m in mangas.clone().mangas {
-                    let key = format!("{}:{}", source.clone(), base64::encode(m.title));
+                    let key = format!(
+                        "{}:{}:path",
+                        source.clone(),
+                        base64::encode_config(&m.title, base64::URL_SAFE_NO_PAD)
+                    );
                     batch.insert(key.as_str(), m.path.as_str());
+                    let key = format!(
+                        "{}:{}:thumbnail",
+                        source.clone(),
+                        base64::encode_config(&m.title, base64::URL_SAFE_NO_PAD)
+                    );
+                    batch.insert(key.as_str(), m.thumbnail_url.as_str());
                 }
                 db.apply_batch(batch).expect("failed to insert mangas");
                 Ok(warp::reply::json(&mangas))
@@ -91,7 +101,7 @@ pub mod manga {
             Err(e) => return Err(e.to_string()),
         };
 
-        let key = format!("{}:{}", source, title);
+        let key = format!("{}:{}:path", source, title);
         let path = match db.get(key) {
             Ok(res) => String::from_utf8(res.unwrap().to_vec()).unwrap(),
             Err(e) => return Err(e.to_string()),

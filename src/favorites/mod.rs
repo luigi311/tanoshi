@@ -5,7 +5,7 @@ pub mod favorites;
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct GetFavoritesResponse {
-    pub favorites: Vec<Document>,
+    pub favorites: Vec<Manga>,
     pub status: String,
 }
 

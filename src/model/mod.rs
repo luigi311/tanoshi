@@ -5,6 +5,7 @@ pub struct Manga {
     pub path: String,
     pub title: String,
     pub source: String,
+    pub thumbnail_url: String,
 }
 
 impl PartialEq for Manga {

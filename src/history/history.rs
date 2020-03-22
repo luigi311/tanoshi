@@ -33,8 +33,12 @@ impl History {
         {
             Some(ret) => Manga {
                 path: String::from_utf8(ret.to_vec()).unwrap(),
-                title: String::from_utf8(base64::decode(&request.title).unwrap()).unwrap(),
+                title: String::from_utf8(
+                    base64::decode_config(&request.title, base64::URL_SAFE_NO_PAD).unwrap(),
+                )
+                .unwrap(),
                 source: request.source.clone(),
+                thumbnail_url: "".to_string(),
             },
             None => {
                 return HistoryResponse {

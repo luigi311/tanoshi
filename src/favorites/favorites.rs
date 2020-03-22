@@ -16,11 +16,12 @@ impl Favorites {
     }
 
     pub fn get_favorites(&self, username: String, db: Tree) -> GetFavoritesResponse {
-        let favorites: Vec<Document> = db
+        let favorites: Vec<Manga> = db
             .scan_prefix(format!("{}:favorites", username))
             .map(|el| {
                 let (_, v) = el.unwrap();
-                serde_json::from_slice(&v).unwrap()
+                let m: Document = serde_json::from_slice(&v).unwrap();
+                m.manga
             })
             .collect();
 
@@ -38,7 +39,19 @@ impl Favorites {
         scraper_tree: Tree,
     ) -> AddFavoritesResponse {
         let manga_path: String = match scraper_tree
-            .get(format!("{}:{}", &request.source, &request.title))
+            .get(format!("{}:{}:path", &request.source, &request.title))
+            .expect("failed to get manga")
+        {
+            Some(ret) => String::from_utf8(ret.to_vec()).unwrap(),
+            None => {
+                return AddFavoritesResponse {
+                    status: "Not found".to_string(),
+                }
+            }
+        };
+
+        let manga_thumbnail: String = match scraper_tree
+            .get(format!("{}:{}:thumbnail", &request.source, &request.title))
             .expect("failed to get manga")
         {
             Some(ret) => String::from_utf8(ret.to_vec()).unwrap(),
@@ -51,8 +64,12 @@ impl Favorites {
 
         let m = Manga {
             path: manga_path,
-            title: String::from_utf8(base64::decode(&request.title).unwrap()).unwrap(),
+            title: String::from_utf8(
+                base64::decode_config(&request.title, base64::URL_SAFE_NO_PAD).unwrap(),
+            )
+            .unwrap(),
             source: request.source.clone(),
+            thumbnail_url: manga_thumbnail,
         };
 
         library_tree.merge(
@@ -78,6 +95,7 @@ impl Favorites {
             path: "".to_string(),
             title: manga.title,
             source: manga.source,
+            thumbnail_url: "".to_string(),
         };
         let status =
             match db.fetch_and_update(format!("manga#{}", username), move |fav: Option<&[u8]>| {
