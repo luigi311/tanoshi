@@ -1,15 +1,17 @@
 pub mod manga {
-    use crate::auth::auth::Auth;
-    use crate::auth::Claims;
-    use crate::filters::settings::settings::auth_handler;
-    use crate::filters::with_db;
+    // use crate::auth::auth::Auth;
+    // use crate::auth::Claims;
+    // use crate::filters::settings::settings::auth_handler;
+    // use crate::filters::with_db;
+    use crate::filters::{with_authorization, with_db};
     use crate::handlers::manga::manga;
     use crate::scraper::{mangasee::Mangasee, GetParams, Params};
-    use sled::Tree;
+    use rusqlite::Connection;
+    use std::sync::{Arc, Mutex};
     use warp::Filter;
 
     pub fn manga(
-        db: Tree,
+        db: Arc<Mutex<Connection>>,
     ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
         list_mangas(db.clone())
             .or(get_manga_info(db.clone()))
@@ -18,7 +20,7 @@ pub mod manga {
     }
 
     pub fn list_mangas(
-        db: Tree,
+        db: Arc<Mutex<Connection>>,
     ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
         warp::path!("api" / "source" / String)
             .and(warp::get())
@@ -28,7 +30,7 @@ pub mod manga {
     }
 
     pub fn get_manga_info(
-        db: Tree,
+        db: Arc<Mutex<Connection>>,
     ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
         warp::path!("api" / "source" / String / "manga" / String)
             .and(warp::get())
@@ -37,7 +39,7 @@ pub mod manga {
     }
 
     pub fn get_chapters(
-        db: Tree,
+        db: Arc<Mutex<Connection>>,
     ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
         warp::path!("api" / "source" / String / "manga" / String / "chapter")
             .and(warp::get())
@@ -47,7 +49,7 @@ pub mod manga {
     }
 
     pub fn get_pages(
-        db: Tree,
+        db: Arc<Mutex<Connection>>,
     ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
         warp::path!("api" / "source" / String / "manga" / String / "chapter" / String)
             .and(warp::get())

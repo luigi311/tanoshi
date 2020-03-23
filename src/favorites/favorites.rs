@@ -1,11 +1,10 @@
-use std::collections::BTreeMap;
-
 use serde_json::json;
-use sled::{IVec, Tree};
 
 use crate::favorites::{AddFavoritesResponse, FavoriteManga, GetFavoritesResponse};
 use crate::model::{Document, Manga};
 use crate::scraper::Manga as ScrapedManga;
+use rusqlite::{params, Connection};
+use std::sync::{Arc, Mutex};
 
 #[derive(Clone)]
 pub struct Favorites {}
@@ -15,15 +14,36 @@ impl Favorites {
         Favorites {}
     }
 
-    pub fn get_favorites(&self, username: String, db: Tree) -> GetFavoritesResponse {
-        let favorites: Vec<Manga> = db
-            .scan_prefix(format!("{}:favorites", username))
-            .map(|el| {
-                let (_, v) = el.unwrap();
-                let m: Document = serde_json::from_slice(&v).unwrap();
-                m.manga
+    pub fn get_favorites(
+        &self,
+        username: String,
+        db: Arc<Mutex<Connection>>,
+    ) -> GetFavoritesResponse {
+        let conn = db.lock().unwrap();
+        let mut stmt = conn
+            .prepare(
+                "SELECT manga.path, manga.title, source.name, manga.thumbnail_url FROM favorite
+            JOIN user ON user.id = favorite.user_id
+            JOIN manga ON manga.id = favorite.manga_id
+            JOIN source ON source.id = manga.source_id
+            WHERE user.username = ?1",
+            )
+            .unwrap();
+        let fav_iter = stmt
+            .query_map(params![username], |row| {
+                Ok(Manga {
+                    path: row.get(0)?,
+                    title: row.get(1)?,
+                    source: row.get(2)?,
+                    thumbnail_url: row.get(3)?,
+                })
             })
-            .collect();
+            .unwrap();
+
+        let mut favorites = vec![];
+        for manga in fav_iter {
+            favorites.push(manga.unwrap());
+        }
 
         GetFavoritesResponse {
             favorites,
@@ -35,87 +55,45 @@ impl Favorites {
         &self,
         username: String,
         request: FavoriteManga,
-        library_tree: Tree,
-        scraper_tree: Tree,
+        db: Arc<Mutex<Connection>>,
     ) -> AddFavoritesResponse {
-        let manga_path: String = match scraper_tree
-            .get(format!("{}:{}:path", &request.source, &request.title))
-            .expect("failed to get manga")
-        {
-            Some(ret) => String::from_utf8(ret.to_vec()).unwrap(),
-            None => {
-                return AddFavoritesResponse {
-                    status: "Not found".to_string(),
-                }
-            }
-        };
-
-        let manga_thumbnail: String = match scraper_tree
-            .get(format!("{}:{}:thumbnail", &request.source, &request.title))
-            .expect("failed to get manga")
-        {
-            Some(ret) => String::from_utf8(ret.to_vec()).unwrap(),
-            None => {
-                return AddFavoritesResponse {
-                    status: "Not found".to_string(),
-                }
-            }
-        };
-
-        let m = Manga {
-            path: manga_path,
-            title: String::from_utf8(
-                base64::decode_config(&request.title, base64::URL_SAFE_NO_PAD).unwrap(),
-            )
-            .unwrap(),
-            source: request.source.clone(),
-            thumbnail_url: manga_thumbnail,
-        };
-
-        library_tree.merge(
-            format!(
-                "{}:favorites:{}:{}",
-                username, &request.source, &request.title
-            ),
-            serde_json::to_vec(&m).unwrap(),
-        );
-
-        AddFavoritesResponse {
-            status: "success".to_string(),
+        let conn = db.lock().unwrap();
+        match conn.execute(
+            "INSERT INTO favorite(user_id, manga_id) \
+        VALUES(
+            (SELECT id FROM user WHERE username = ?1),
+            (SELECT manga.id FROM manga JOIN source ON source.id = manga.source_id 
+            WHERE source.name = ?2 AND manga.title = ?3)
+        )",
+            params![username, request.source, request.title],
+        ) {
+            Ok(_) => AddFavoritesResponse {
+                status: "success".to_string(),
+            },
+            Err(e) => AddFavoritesResponse {
+                status: format!("failed, reason: {}", e.to_string()),
+            },
         }
     }
 
     pub fn remove_favorites(
         &self,
         username: String,
-        manga: FavoriteManga,
-        db: Tree,
+        source: String,
+        title: String,
+        db: Arc<Mutex<Connection>>,
     ) -> AddFavoritesResponse {
-        let manga = Manga {
-            path: "".to_string(),
-            title: manga.title,
-            source: manga.source,
-            thumbnail_url: "".to_string(),
-        };
-        let status =
-            match db.fetch_and_update(format!("manga#{}", username), move |fav: Option<&[u8]>| {
-                let mut mangas: Vec<Manga> = match fav {
-                    Some(bytes) => {
-                        let manga_fav: Vec<Manga> = serde_json::from_slice(bytes).unwrap();
-                        manga_fav
-                    }
-                    None => vec![],
-                };
-
-                match mangas.iter().position(|m| m.clone() == manga.clone()) {
-                    Some(index) => Some(mangas.remove(index)),
-                    None => None,
-                };
-                serde_json::to_vec(&mangas).ok()
-            }) {
-                Ok(_) => "success".to_string(),
-                Err(_) => "failed".to_string(),
-            };
-        AddFavoritesResponse { status }
+        let conn = db.lock().unwrap();
+        match conn.execute("DELETE FROM favorite 
+        WHERE user_id = (SELECT id FROM user WHERE username = ?1)
+        AND manga_id = (SELECT manga.id FROM manga JOIN source ON source.id = manga.source_id WHERE source.name = ?2 AND manga.title = ?3)",
+        params![username, source, title]) {
+            Ok(_) => AddFavoritesResponse {
+                status: "success".to_string(),
+            },
+            Err(e) => AddFavoritesResponse {
+                status: format!("failed, reason: {}", e.to_string()),
+            }
+        }
     }
 }

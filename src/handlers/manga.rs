@@ -1,38 +1,38 @@
 pub mod manga {
-    use crate::scraper::{mangasee::Mangasee, GetParams, Params, Scraping};
+    use std::sync::{Arc, Mutex};
+
+    use rusqlite::{params, Connection};
     use sled::{Batch, Tree};
     use warp::Rejection;
+
+    use crate::auth::Claims;
+    use crate::scraper::{mangasee::Mangasee, GetParams, Params, Scraping};
 
     pub async fn list_mangas(
         source: String,
         param: Params,
-        db: Tree,
+        db: Arc<Mutex<Connection>>,
     ) -> Result<impl warp::Reply, Rejection> {
         if let Ok(url) = get_source_url(source.clone(), db.clone()) {
             let mangas = Mangasee::get_mangas(&url, param);
-            db.insert(
-                &url,
-                serde_json::to_vec(&mangas).expect("failed to serialize data"),
-            )
-            .unwrap();
 
-            let mut batch = Batch::default();
+            let conn = db.lock().unwrap();
             for m in mangas.clone().mangas {
-                let key = format!(
-                    "{}:{}:path",
-                    source.clone(),
-                    base64::encode_config(&m.title, base64::URL_SAFE_NO_PAD)
-                );
-                batch.insert(key.as_str(), m.path.as_str());
-                let key = format!(
-                    "{}:{}:thumbnail",
-                    source.clone(),
-                    base64::encode_config(&m.title, base64::URL_SAFE_NO_PAD)
-                );
-                batch.insert(key.as_str(), m.thumbnail_url.as_str());
+                conn.execute(
+                    "INSERT INTO manga(
+                    source_id, 
+                    title, 
+                    path, 
+                    thumbnail_url
+                    ) VALUES (
+                    (SELECT id FROM source WHERE name = ?1), 
+                    ?2, 
+                    ?3, 
+                    ?4)",
+                    params![source.clone(), m.title, m.path, m.thumbnail_url],
+                )
+                .unwrap();
             }
-            db.apply_batch(batch).expect("failed to insert mangas");
-
             return Ok(warp::reply::json(&mangas));
         }
         Err(warp::reject())
@@ -41,21 +41,29 @@ pub mod manga {
     pub async fn get_manga_info(
         source: String,
         title: String,
-        db: Tree,
+        db: Arc<Mutex<Connection>>,
     ) -> Result<impl warp::Reply, Rejection> {
+        let title = decode_title(title);
         if let Ok(url) = get_manga_url(source.clone(), title.clone(), db.clone()) {
-            let manga = match db.get(&url).unwrap() {
-                Some(bytes) => serde_json::from_slice(&bytes).expect("failed to deserialize data"),
-                None => {
-                    let manga = Mangasee::get_manga_info(&url);
-                    db.insert(
-                        &url,
-                        serde_json::to_vec(&manga).expect("failed to serialize data"),
-                    )
-                    .unwrap();
-                    manga
-                }
-            };
+            let manga = Mangasee::get_manga_info(&url);
+
+            let conn = db.lock().unwrap();
+            conn.execute(
+                "UPDATE manga SET author = ?1, status = ?2, description = ?3
+                WHERE manga.source_id = (
+                SELECT source.id FROM source
+                WHERE source.name = ?4)
+                AND manga.title = ?5",
+                params![
+                    manga.manga.author.clone(),
+                    manga.manga.status.clone(),
+                    manga.manga.description.clone(),
+                    source.clone(),
+                    title.clone()
+                ],
+            )
+            .unwrap();
+
             return Ok(warp::reply::json(&manga));
         }
         Err(warp::reject())
@@ -65,29 +73,26 @@ pub mod manga {
         source: String,
         title: String,
         param: GetParams,
-        db: Tree,
+        db: Arc<Mutex<Connection>>,
     ) -> Result<impl warp::Reply, Rejection> {
+        let title = decode_title(title);
         if let Ok(url) = get_manga_url(source.clone(), title.clone(), db.clone()) {
-            let key = format!("{}:chapters", &url);
-            let chapter = match db.get(&key).unwrap() {
-                Some(bytes) => serde_json::from_slice(&bytes).expect("failed to deserialize data"),
-                None => {
-                    let chapter = Mangasee::get_chapters(&url);
-                    db.insert(
-                        &key,
-                        serde_json::to_vec(&chapter).expect("failed to serialize data"),
-                    )
-                    .unwrap();
+            let chapter = Mangasee::get_chapters(&url);
 
-                    let mut batch = Batch::default();
-                    for c in chapter.clone().chapters {
-                        let key = format!("{}:{}:{}", source.clone(), title.clone(), c.no.clone());
-                        batch.insert(key.as_str(), c.url.as_str());
-                    }
-                    db.apply_batch(batch).expect("failed to insert mangas");
-                    chapter
-                }
-            };
+            let conn = db.lock().unwrap();
+            for c in chapter.clone().chapters {
+                conn.execute(
+                    "INSERT INTO chapter(manga_id, number, path)
+                VALUES(
+                (SELECT manga.id FROM manga 
+                JOIN source ON source.id = manga.source_id 
+                WHERE source.name = ?1 AND title = ?2 ), 
+                ?3, 
+                ?4)",
+                    params![&source, &title, &c.no, &c.url],
+                )
+                .unwrap();
+            }
             return Ok(warp::reply::json(&chapter));
         }
         Err(warp::reject())
@@ -98,65 +103,92 @@ pub mod manga {
         title: String,
         chapter: String,
         param: GetParams,
-        db: Tree,
+        db: Arc<Mutex<Connection>>,
     ) -> Result<impl warp::Reply, Rejection> {
+        let title = decode_title(title);
         if let Ok(url) = get_chapter_url(source.clone(), title.clone(), chapter.clone(), db.clone())
         {
-            let pages = match db.get(&url).unwrap() {
-                Some(bytes) => serde_json::from_slice(&bytes).expect("failed to deserialize data"),
-                None => {
-                    let pages = Mangasee::get_pages(&url);
-                    db.insert(
-                        &url,
-                        serde_json::to_vec(&pages).expect("failed to serialize data"),
-                    )
-                    .unwrap();
-                    pages
-                }
-            };
+            let pages = Mangasee::get_pages(&url);
+
+            let conn = db.lock().unwrap();
+            for i in 0..pages.pages.len() {
+                conn.execute(
+                    "INSERT INTO page(chapter_id, rank, url)
+                VALUES(
+                (SELECT chapter.id FROM chapter 
+                JOIN manga ON manga.id = chapter.manga_id  
+                JOIN source ON source.id = manga.source_id
+                WHERE source.name = ?1 AND manga.title = ?2 AND chapter.number = ?3),
+                ?4,
+                ?5)",
+                    params![source, title, chapter, i as i32, pages.pages[i].clone()],
+                )
+                .unwrap();
+            }
             return Ok(warp::reply::json(&pages));
         }
         Err(warp::reject())
     }
 
-    fn get_source_url(source: String, db: Tree) -> Result<String, String> {
-        match db.get(source) {
-            Ok(res) => Ok(String::from_utf8(res.unwrap().to_vec()).unwrap()),
+    fn encode_title(title: String) -> String {
+        base64::encode_config(&title, base64::URL_SAFE_NO_PAD)
+    }
+
+    fn decode_title(encoded: String) -> String {
+        String::from_utf8(base64::decode_config(encoded, base64::URL_SAFE_NO_PAD).unwrap()).unwrap()
+    }
+
+    fn get_source_url(source: String, db: Arc<Mutex<Connection>>) -> Result<String, String> {
+        let conn = db.lock().unwrap();
+        match conn.query_row(
+            "SELECT url FROM source WHERE name = ?1",
+            params![source],
+            |row| row.get(0),
+        ) {
+            Ok(url) => {
+                let url: String = url;
+                println!("url {}", url.clone());
+                Ok(url)
+            }
             Err(e) => Err(e.to_string()),
         }
     }
 
-    fn get_manga_url(source: String, title: String, db: Tree) -> Result<String, String> {
-        let base_url = match get_source_url(source.clone(), db.clone()) {
-            Ok(res) => res,
-            Err(e) => return Err(e.to_string()),
-        };
-
-        let key = format!("{}:{}:path", source, title);
-        let path = match db.get(key) {
-            Ok(res) => String::from_utf8(res.unwrap().to_vec()).unwrap(),
-            Err(e) => return Err(e.to_string()),
-        };
-
-        Ok(format!("{}{}", base_url, path))
+    fn get_manga_url(
+        source: String,
+        title: String,
+        db: Arc<Mutex<Connection>>,
+    ) -> Result<String, String> {
+        let conn = db.lock().unwrap();
+        match conn.query_row(
+            "SELECT source.url || manga.path FROM manga 
+            JOIN source ON source.id = manga.source_id 
+            WHERE source.name = ?1 AND  manga.title = ?2",
+            params![source, title],
+            |row| row.get(0),
+        ) {
+            Ok(url) => Ok(url),
+            Err(e) => Err(e.to_string()),
+        }
     }
 
     fn get_chapter_url(
         source: String,
         title: String,
         chapter: String,
-        db: Tree,
+        db: Arc<Mutex<Connection>>,
     ) -> Result<String, String> {
-        let base_url = match get_source_url(source.clone(), db.clone()) {
-            Ok(res) => res,
-            Err(e) => return Err(e.to_string()),
-        };
-
-        let path = match db.get(format!("{}:{}:{}", source, title, chapter)) {
-            Ok(res) => String::from_utf8(res.unwrap().to_vec()).unwrap(),
-            Err(e) => return Err(e.to_string()),
-        };
-
-        Ok(format!("{}{}", base_url, path))
+        let conn = db.lock().unwrap();
+        match conn.query_row(
+            "SELECT source.url || chapter.path FROM chapter
+            JOIN manga ON manga.id = chapter.manga_id 
+            JOIN source ON source.id = manga.source_id 
+            WHERE source.name = ?1 AND  manga.title = ?2 AND chapter.number = ?3",
+            params![source, title, chapter],
+            |row| row.get(0),
+        ) {
+            Ok(url) => Ok(url),
+            Err(e) => Err(e.to_string()),
+        }
     }
 }

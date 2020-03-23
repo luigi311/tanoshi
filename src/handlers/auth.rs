@@ -1,26 +1,30 @@
 pub mod auth {
     use crate::auth::{auth::Auth, Claims, User};
-    use sled::Tree;
+    use rusqlite::Connection;
     use std::convert::Infallible;
+    use std::sync::{Arc, Mutex};
 
     pub async fn register(
         user: User,
-        auth: Auth,
-        db: Tree,
+        db: Arc<Mutex<Connection>>,
     ) -> Result<impl warp::Reply, Infallible> {
-        let res = auth.register(user, db);
+        let res = Auth::register(user, db);
         Ok(warp::reply::with_status(
             warp::reply::json(&res),
             warp::http::StatusCode::CREATED,
         ))
     }
 
-    pub async fn login(user: User, auth: Auth, db: Tree) -> Result<impl warp::Reply, Infallible> {
-        let res = auth.login(user, db);
+    pub async fn login(
+        user: User,
+        token: String,
+        db: Arc<Mutex<Connection>>,
+    ) -> Result<impl warp::Reply, Infallible> {
+        let res = Auth::login(token, user, db);
         Ok(warp::reply::json(&res))
     }
 
-    pub fn validate(token: String, auth: Auth) -> Option<Claims> {
-        auth.validate(token)
+    pub fn validate(secret: String, token: String) -> Option<Claims> {
+        Auth::validate(secret, token)
     }
 }

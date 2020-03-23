@@ -22,3 +22,5 @@ sled = "0.31"
 pretty_env_logger = "0.4"
 jsonwebtoken = "7"
 base64 = "0.12.0"
+rusqlite = {version="0.21", features = ["serde_json", "chrono"]}
+chrono = { version = "0.4", features = ["serde"] }
