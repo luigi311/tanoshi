@@ -13,13 +13,16 @@ use yew_router::{agent::RouteRequest, prelude::*};
 
 use serde_json::json;
 
-use crate::app::component::model::{HistoryRequest, HistoryResponse};
+use crate::app::component::model::{HistoryRequest, HistoryResponse, Settings};
 use crate::app::{browse::BrowseRoute, AppRoute};
 
 use super::component::model::{
-    ChapterModel, GetChaptersResponse, GetMangaResponse, GetPagesResponse, MangaModel,
+    BackgroundColor, ChapterModel, GetChaptersResponse, GetMangaResponse, GetPagesResponse,
+    MangaModel, ReadingDirection,
 };
 use super::component::Spinner;
+use yew::services::storage::Area;
+use yew::services::StorageService;
 
 #[derive(Clone, Properties)]
 pub struct Props {
@@ -45,6 +48,7 @@ pub struct Chapter {
     is_fetching: bool,
     refs: Vec<NodeRef>,
     is_bar_visible: bool,
+    settings: Settings,
 }
 
 pub enum Msg {
@@ -66,6 +70,14 @@ impl Component for Chapter {
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
         let callback = link.callback(|_| Msg::RouterCallback); // TODO use a dispatcher instead.
         let router = RouteAgent::bridge(callback);
+        let storage = StorageService::new(Area::Local).unwrap();
+        let settings = {
+            if let Ok(settings) = storage.restore("settings") {
+                serde_json::from_str(settings.as_str()).expect("failed to serialize")
+            } else {
+                Settings::default()
+            }
+        };
 
         Chapter {
             fetch_task: None,
@@ -83,6 +95,7 @@ impl Component for Chapter {
             is_fetching: false,
             refs: vec![NodeRef::default(), NodeRef::default()],
             is_bar_visible: true,
+            settings,
         }
     }
 
@@ -163,7 +176,12 @@ impl Component for Chapter {
 
     fn view(&self) -> Html {
         html! {
-        <>
+        <div class={
+            match self.settings.background_color {
+                BackgroundColor::Black => "bg-black",
+                BackgroundColor::White => "bg-white",
+            }
+        }>
             <div
             ref=self.refs[0].clone()
             class="animated slideInDown faster block fixed inset-x-0 top-0 z-50 bg-gray-900 z-50 content-end flex opacity-75"
@@ -181,9 +199,25 @@ impl Component for Chapter {
                     _ => Msg::Noop,
                 }
             )>
-                <button class="manga-navigate-left outline-none" onmouseup=self.link.callback(|_| Msg::PagePrevious)/>
+                <button
+                class="manga-navigate-left outline-none"
+                onmouseup={
+                    match self.settings.reading_direction {
+                        ReadingDirection::LeftToRight => self.link.callback(|_| Msg::PagePrevious),
+                        ReadingDirection::RightToLeft => self.link.callback(|_| Msg::PageForward),
+                        ReadingDirection::LongStrip => self.link.callback(|_| Msg::PagePrevious)
+                    }
+                }/>
                 <button class="manga-navigate-center outline-none" onmouseup=self.link.callback(|_| Msg::ToggleBar)/>
-                <button class="manga-navigate-right outline-none" onmouseup=self.link.callback(|_| Msg::PageForward)/>
+                <button
+                class="manga-navigate-right outline-none"
+                onmouseup={
+                    match self.settings.reading_direction {
+                        ReadingDirection::LeftToRight => self.link.callback(|_| Msg::PageForward),
+                        ReadingDirection::RightToLeft => self.link.callback(|_| Msg::PagePrevious),
+                        ReadingDirection::LongStrip => self.link.callback(|_| Msg::PageForward),
+                    }
+                }/>
                 <div class="flex">
                     {
                         for (0..self.pages.len()).map(|i| html! {
@@ -217,7 +251,7 @@ impl Component for Chapter {
                     }
                 </div>
             </div>
-        </>
+        </div>
         }
     }
 }

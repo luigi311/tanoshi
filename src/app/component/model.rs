@@ -72,21 +72,20 @@ pub enum BackgroundColor {
 }
 
 #[derive(Deserialize, Serialize, Clone)]
-pub struct SettingParams {
+pub struct Settings {
     pub double_page: bool,
     pub background_color: BackgroundColor,
     pub reading_direction: ReadingDirection,
 }
 
-#[derive(Deserialize, Serialize, Clone)]
-pub struct GetSettingsResponse {
-    pub settings: Option<SettingParams>,
-    pub status: String,
-}
-
-#[derive(Deserialize, Serialize, Clone)]
-pub struct SetSettingsResponse {
-    pub status: String,
+impl Default for Settings {
+    fn default() -> Self {
+        Settings {
+            double_page: false,
+            background_color: BackgroundColor::Black,
+            reading_direction: ReadingDirection::LeftToRight,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
