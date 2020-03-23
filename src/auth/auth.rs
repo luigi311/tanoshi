@@ -39,7 +39,13 @@ impl Auth {
             |row| row.get(0),
         ) {
             Ok(hashed) => hashed,
-            Err(e) => "".to_string(),
+            Err(e) => {
+                return UserResponse {
+                    claim: None,
+                    token: None,
+                    status: format!("failed, reason :{}", e.to_string()),
+                }
+            }
         };
 
         if Auth::verify(hashed, user.password.as_bytes()) {
