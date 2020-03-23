@@ -110,6 +110,8 @@ pub struct UpdateModel {
     pub thumbnail_url: String,
     pub number: String,
     pub uploaded: chrono::DateTime<Local>,
+    pub days: Option<i64>,
+    pub show_sep: Option<bool>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

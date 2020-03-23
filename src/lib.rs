@@ -1,6 +1,7 @@
-#![recursion_limit="1024"]
+#![recursion_limit = "1024"]
 #[macro_use]
 extern crate log;
+extern crate chrono;
 extern crate web_logger;
 
 mod utils;

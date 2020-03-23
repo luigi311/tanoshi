@@ -64,10 +64,7 @@ impl Component for Catalogue {
                 .dyn_ref::<HtmlElement>()
                 .unwrap()
                 .offset_height() as f64;
-            info!(
-                "body scroll: {}, document scroll: {}",
-                current_scroll, height
-            );
+
             if current_scroll >= height {
                 tmp_link.send_message(Msg::ScrolledDown);
             }
