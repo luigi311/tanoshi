@@ -98,11 +98,6 @@ impl Component for Home {
 }
 
 impl Home {
-    fn remainder(&self, len: usize) -> Vec<i32> {
-        let end = (3 - (len % 3)) as i32;
-        return (0..end).collect();
-    }
-
     fn fetch_favorites(&mut self) {
         let req = Request::get("/api/favorites")
             .header("Authorization", self.token.to_string())

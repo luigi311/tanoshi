@@ -1,3 +1,4 @@
+use chrono::Local;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
@@ -99,5 +100,20 @@ pub struct HistoryResponse {
     pub source: String,
     pub title: String,
     pub history: Option<BTreeMap<String, i32>>,
+    pub status: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct UpdateModel {
+    pub source: String,
+    pub title: String,
+    pub thumbnail_url: String,
+    pub number: String,
+    pub uploaded: chrono::DateTime<Local>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct UpdatesResponse {
+    pub updates: Vec<UpdateModel>,
     pub status: String,
 }
