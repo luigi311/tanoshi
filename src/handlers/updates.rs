@@ -4,6 +4,7 @@ use std::sync::{Arc, Mutex};
 use crate::auth::Claims;
 use chrono::Local;
 use rusqlite::{params, Connection};
+use std::str::FromStr;
 use warp::Rejection;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -27,10 +28,24 @@ impl Default for Update {
     }
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct UpdatesResponse {
+    updates: Vec<Update>,
+    status: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct UpdateParam {
+    page: i32,
+}
+
 pub async fn get_updates(
     claim: Claims,
+    param: UpdateParam,
     db: Arc<Mutex<Connection>>,
 ) -> Result<impl warp::Reply, Rejection> {
+    let limit = 10;
+    let offset = (param.page * limit) - limit;
     let conn = db.lock().unwrap();
     let mut stmt = conn
         .prepare(
@@ -41,11 +56,13 @@ pub async fn get_updates(
     JOIN source ON source.id = manga.source_id
     JOIN favorite ON favorite.manga_id = manga.id
     JOIN user ON user.id = favorite.user_id
-    WHERE user.username = ?1 ORDER BY uploaded DESC",
+    WHERE user.username = ?1 ORDER BY uploaded DESC
+    LIMIT ?2 OFFSET ?3 ",
         )
         .unwrap();
+
     let updates_iter = stmt
-        .query_map(params![claim.sub], |row| {
+        .query_map(params![claim.sub, limit, offset], |row| {
             Ok(Update {
                 source: row.get(0)?,
                 title: row.get(1)?,
@@ -61,5 +78,10 @@ pub async fn get_updates(
         updates.push(update.unwrap());
     }
 
-    Ok(warp::reply::json(&updates))
+    let res = UpdatesResponse {
+        updates: updates,
+        status: "success".to_string(),
+    };
+
+    Ok(warp::reply::json(&res))
 }

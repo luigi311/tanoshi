@@ -1,5 +1,6 @@
 use crate::filters::{with_authorization, with_db};
 use crate::handlers::updates;
+use crate::handlers::updates::UpdateParam;
 use rusqlite::Connection;
 use std::sync::{Arc, Mutex};
 use warp::{path, Filter};
@@ -18,6 +19,7 @@ pub fn get_updates(
     warp::path!("api" / "updates")
         .and(warp::get())
         .and(with_authorization(secret))
+        .and(warp::query::<UpdateParam>())
         .and(with_db(db))
         .and_then(updates::get_updates)
 }
