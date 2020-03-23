@@ -1,6 +1,6 @@
 use crate::auth::auth::Auth;
 use crate::auth::Claims;
-use crate::handlers::auth::auth as auth_handler;
+use crate::handlers::auth as auth_handler;
 use rusqlite::Connection;
 use std::sync::{Arc, Mutex};
 use warp::Filter;
@@ -9,6 +9,7 @@ pub mod auth;
 pub mod favorites;
 pub mod history;
 pub mod manga;
+pub mod updates;
 
 pub fn with_db(
     db: Arc<Mutex<Connection>>,

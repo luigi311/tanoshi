@@ -37,15 +37,7 @@ impl Scraping for Mangasee {
 
         let selector = scraper::Selector::parse(".requested .row").unwrap();
         for row in document.select(&selector) {
-            let mut manga = Manga {
-                title: String::from(""),
-                author: String::from(""),
-                genre: vec![],
-                status: String::from(""),
-                description: String::from(""),
-                path: String::from(""),
-                thumbnail_url: String::from(""),
-            };
+            let mut manga = Manga::default();
 
             let sel = scraper::Selector::parse("img").unwrap();
             for el in row.select(&sel) {

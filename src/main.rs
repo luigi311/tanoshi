@@ -26,16 +26,22 @@ async fn main() {
     let conn = rusqlite::Connection::open(db_path).unwrap();
     let conn = Arc::new(Mutex::new(conn));
 
-    let auth_api = filters::auth::auth::authentication(secret.clone(), conn.clone());
-    let manga_api = filters::manga::manga::manga(conn.clone());
+    let auth_api = filters::auth::authentication(secret.clone(), conn.clone());
+    let manga_api = filters::manga::manga(conn.clone());
 
-    let fav = favorites::favorites::Favorites::new();
-    let fav_api = filters::favorites::favorites::favorites(secret.clone(), fav, conn.clone());
+    let fav = favorites::Favorites::new();
+    let fav_api = filters::favorites::favorites(secret.clone(), fav, conn.clone());
 
     let history = history::history::History::default();
-    let history_api = filters::history::history::history(secret.clone(), history, conn.clone());
+    let history_api = filters::history::history(secret.clone(), history, conn.clone());
 
-    let api = manga_api.or(auth_api).or(fav_api).or(history_api);
+    let updates_api = filters::updates::updates(secret.clone(), conn.clone());
+
+    let api = manga_api
+        .or(auth_api)
+        .or(fav_api)
+        .or(history_api)
+        .or(updates_api);
 
     let static_path = std::env::var("STATIC_FILES_PATH").unwrap_or("./dist".to_string());
     let static_files = warp::fs::dir(static_path);

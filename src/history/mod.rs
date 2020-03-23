@@ -2,6 +2,7 @@ use crate::model::{Chapter, Manga};
 use serde::{Deserialize, Serialize};
 
 pub mod history;
+use history::History;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct HistoryRequest {
