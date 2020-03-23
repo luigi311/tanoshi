@@ -1,3 +1,4 @@
+use chrono::Local;
 use serde::{Deserialize, Serialize};
 
 pub mod mangasee;
@@ -13,10 +14,21 @@ pub struct Manga {
     pub thumbnail_url: String,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, Default)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Chapter {
     pub no: String,
     pub url: String,
+    pub uploaded: chrono::DateTime<Local>,
+}
+
+impl Default for Chapter {
+    fn default() -> Self {
+        Chapter {
+            no: "".to_string(),
+            url: "".to_string(),
+            uploaded: Local::now(),
+        }
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]

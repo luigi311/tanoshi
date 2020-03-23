@@ -59,7 +59,7 @@ impl Favorites {
     ) -> AddFavoritesResponse {
         let conn = db.lock().unwrap();
         match conn.execute(
-            "INSERT INTO favorite(user_id, manga_id) \
+            "INSERT OR IGNORE INTO favorite(user_id, manga_id) \
         VALUES(
             (SELECT id FROM user WHERE username = ?1),
             (SELECT manga.id FROM manga JOIN source ON source.id = manga.source_id 

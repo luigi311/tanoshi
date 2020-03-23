@@ -19,7 +19,7 @@ pub mod manga {
             let conn = db.lock().unwrap();
             for m in mangas.clone().mangas {
                 conn.execute(
-                    "INSERT INTO manga(
+                    "INSERT OR IGNORE INTO manga(
                     source_id, 
                     title, 
                     path, 
@@ -82,14 +82,15 @@ pub mod manga {
             let conn = db.lock().unwrap();
             for c in chapter.clone().chapters {
                 conn.execute(
-                    "INSERT INTO chapter(manga_id, number, path)
+                    "INSERT OR IGNORE INTO chapter(manga_id, number, path, uploaded)
                 VALUES(
                 (SELECT manga.id FROM manga 
                 JOIN source ON source.id = manga.source_id 
                 WHERE source.name = ?1 AND title = ?2 ), 
                 ?3, 
-                ?4)",
-                    params![&source, &title, &c.no, &c.url],
+                ?4,
+                ?5)",
+                    params![&source, &title, &c.no, &c.url, &c.uploaded],
                 )
                 .unwrap();
             }
@@ -113,7 +114,7 @@ pub mod manga {
             let conn = db.lock().unwrap();
             for i in 0..pages.pages.len() {
                 conn.execute(
-                    "INSERT INTO page(chapter_id, rank, url)
+                    "INSERT OR IGNORE INTO page(chapter_id, rank, url)
                 VALUES(
                 (SELECT chapter.id FROM chapter 
                 JOIN manga ON manga.id = chapter.manga_id  
@@ -145,11 +146,7 @@ pub mod manga {
             params![source],
             |row| row.get(0),
         ) {
-            Ok(url) => {
-                let url: String = url;
-                println!("url {}", url.clone());
-                Ok(url)
-            }
+            Ok(url) => Ok(url),
             Err(e) => Err(e.to_string()),
         }
     }

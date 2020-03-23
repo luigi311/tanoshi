@@ -5,6 +5,7 @@ use crate::scraper::{
     Chapter, GetChaptersResponse, GetMangaResponse, GetMangasResponse, GetPagesResponse, GetParams,
     Manga, Params, Scraping,
 };
+use chrono::{DateTime, Local};
 
 #[derive(Clone)]
 pub struct Mangasee {
@@ -128,13 +129,22 @@ impl Scraping for Mangasee {
         let document = scraper::Html::parse_document(&html);
         let selector = scraper::Selector::parse(".mainWell .chapter-list a[chapter]").unwrap();
         for element in document.select(&selector) {
-            let rank = String::from(element.value().attr("chapter").unwrap());
-            let link = element.value().attr("href").unwrap();
+            let mut chapter = Chapter::default();
 
-            chapters.push(Chapter {
-                no: rank,
-                url: link.replace("-page-1", ""),
-            });
+            chapter.no = String::from(element.value().attr("chapter").unwrap());
+
+            let link = element.value().attr("href").unwrap();
+            chapter.url = link.replace("-page-1", "");
+
+            let time_sel = scraper::Selector::parse("time[class*=\"SeriesTime\"]").unwrap();
+            for time_el in element.select(&time_sel) {
+                let date_str = time_el.value().attr("datetime").unwrap();
+                chapter.uploaded = DateTime::from(
+                    DateTime::parse_from_str(&date_str, "%Y-%m-%dT%H:%M:%S%:z").unwrap(),
+                );
+            }
+
+            chapters.push(chapter);
         }
 
         GetChaptersResponse { chapters }
