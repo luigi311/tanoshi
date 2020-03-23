@@ -19,7 +19,6 @@ impl Eq for Manga {}
 pub struct Chapter {
     pub path: String,
     pub read: i32,
-    pub len: i32,
 }
 
 impl PartialEq for Chapter {

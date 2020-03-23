@@ -1,6 +1,5 @@
 use crate::model::{Chapter, Manga};
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
 
 pub mod history;
 
@@ -10,8 +9,7 @@ pub struct HistoryRequest {
     title: String,
     chapter: String,
     read: i32,
-    len: i32,
-    at: u32,
+    at: chrono::DateTime<chrono::Local>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]

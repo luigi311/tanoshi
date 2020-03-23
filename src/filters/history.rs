@@ -5,49 +5,46 @@ pub mod history {
     use crate::handlers::auth::auth as auth_handler;
     use crate::handlers::history::history as history_handler;
     use crate::history::{history::History, HistoryRequest};
-    use sled::Tree;
+    use rusqlite::Connection;
+    use std::sync::{Arc, Mutex};
     use warp::Filter;
 
     pub fn history(
+        secret: String,
         history: History,
-        auth: Auth,
-        library_tree: Tree,
-        scraper_tree: Tree,
+        db: Arc<Mutex<Connection>>,
     ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-        get_history(history.clone(), auth.clone(), library_tree.clone()).or(add_history(
+        get_history(secret.clone(), history.clone(), db.clone()).or(add_history(
+            secret.clone(),
             history,
-            auth,
-            library_tree,
-            scraper_tree,
+            db,
         ))
     }
 
     fn get_history(
+        secret: String,
         history: History,
-        auth: Auth,
-        db: Tree,
+        db: Arc<Mutex<Connection>>,
     ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
         warp::path!("api" / "history" / "source" / String / "manga" / String)
             .and(warp::get())
-            .and(with_authorization(auth))
+            .and(with_authorization(secret))
             .and(with_history(history))
             .and(with_db(db))
             .and_then(history_handler::get_history)
     }
 
     fn add_history(
+        secret: String,
         history: History,
-        auth: Auth,
-        library_tree: Tree,
-        scraper_tree: Tree,
+        db: Arc<Mutex<Connection>>,
     ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
         warp::path!("api" / "history")
             .and(warp::post())
-            .and(with_authorization(auth))
+            .and(with_authorization(secret))
             .and(json_body())
             .and(with_history(history))
-            .and(with_db(library_tree))
-            .and(with_db(scraper_tree))
+            .and(with_db(db))
             .and_then(history_handler::add_history)
     }
 

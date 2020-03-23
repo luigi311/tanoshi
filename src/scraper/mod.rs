@@ -53,8 +53,8 @@ pub struct GetPagesResponse {
 }
 
 pub trait Scraping {
-    fn get_mangas(url: String, param: Params) -> GetMangasResponse;
-    fn get_manga_info(url: String) -> GetMangaResponse;
-    fn get_chapters(url: String) -> GetChaptersResponse;
-    fn get_pages(url: String) -> GetPagesResponse;
+    fn get_mangas(url: &String, param: Params) -> GetMangasResponse;
+    fn get_manga_info(url: &String) -> GetMangaResponse;
+    fn get_chapters(url: &String) -> GetChaptersResponse;
+    fn get_pages(url: &String) -> GetPagesResponse;
 }
