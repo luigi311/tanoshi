@@ -20,8 +20,6 @@ use super::model::GetChaptersResponse;
 pub struct FavoriteManga {
     pub source: String,
     pub title: String,
-    pub path: String,
-    pub thumbnail_url: String,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -185,9 +183,7 @@ impl Manga {
     fn favorite(&mut self) {
         let fav = FavoriteManga {
             source: self.source.clone(),
-            title: self.title.clone(),
-            path: self.path.clone(),
-            thumbnail_url: self.thumbnail.clone(),
+            title: self.title.to_string(),
         };
 
         let req = Request::post("/api/favorites")
@@ -214,18 +210,14 @@ impl Manga {
     }
 
     fn unfavorite(&mut self) {
-        let fav = FavoriteManga {
-            source: self.source.clone(),
-            title: self.title.clone(),
-            path: self.path.clone(),
-            thumbnail_url: self.thumbnail.clone(),
-        };
-
-        let req = Request::delete("/api/favorites")
-            .header("Authorization", self.token.to_owned())
-            .header("Content-Type", "application/json")
-            .body(Json(&fav))
-            .expect("failed to build request");
+        let req = Request::delete(format!(
+            "/api/favorites/source/{}/manga/{}",
+            self.source.clone(),
+            base64::encode_config(&self.title, base64::URL_SAFE_NO_PAD)
+        ))
+        .header("Authorization", self.token.to_owned())
+        .body(Nothing)
+        .expect("failed to build request");
 
         if let Ok(task) = FetchService::new().fetch(
             req,
@@ -253,13 +245,11 @@ impl Manga {
 
     fn to_detail(&mut self) {
         if !self.job.is_none() {
-            let splitted: Vec<_> = self.path.split("/").collect();
-            let path = splitted.last().unwrap();
             self.router
                 .send(RouteRequest::ChangeRoute(Route::from(format!(
                     "/catalogue/{}/manga/{}",
                     self.source.clone(),
-                    path.to_string()
+                    base64::encode_config(&self.title, base64::URL_SAFE_NO_PAD),
                 ))));
             self.job = None;
         }

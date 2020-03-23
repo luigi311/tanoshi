@@ -26,6 +26,8 @@ enclose = "*"
 anyhow = "1.0.2"
 quote = "=1.0.2"
 js-sys = "*"
+base64 = "*"
+chrono = { version = "0.4", features = ["serde"] }
 
 [dependencies.web-sys]
 version = "0.3"
