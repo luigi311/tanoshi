@@ -24,7 +24,7 @@ log = "*"
 web_logger="*"
 enclose = "*"
 anyhow = "1.0.27"
-quote = "1.0.3"
+quote = "1.0.1"
 js-sys = "*"
 base64 = "*"
 chrono = { version = "0.4", features = ["serde"] }
