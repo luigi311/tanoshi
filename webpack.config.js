@@ -10,7 +10,6 @@ module.exports = (env, argv) => {
                 index:'/'
             },
             contentBase: distPath,
-            compress: argv.mode === "production",
             host: '0.0.0.0',
             port: 8000,
             proxy: {

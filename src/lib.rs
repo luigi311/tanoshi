@@ -17,7 +17,7 @@ mod app;
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 
 #[wasm_bindgen]
-pub fn run_app() -> Result<(), JsValue> {
+pub fn run() -> Result<(), JsValue> {
     utils::set_panic_hook();
     web_logger::init();
     yew::start_app::<app::App>();
