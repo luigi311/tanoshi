@@ -10,7 +10,8 @@ I decided to make this a PWA with scraping on backend.
 ### Currently working
 - Browse and read manga from mangasee
 - Favorite mangas for faster reading
-
+- Reading History across devices
+- See chapter updates
 ### Planned
 I'm trying to make this as close as tachiyomi, and add sync across device as well.
 
