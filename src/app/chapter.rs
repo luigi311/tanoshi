@@ -182,9 +182,7 @@ impl Component for Chapter {
             Msg::RouterCallback => {
                 self.get_pages();
             }
-            Msg::SetHistoryRequested => {
-                self.is_fetching = false;
-            }
+            Msg::SetHistoryRequested => {}
             Msg::Noop => {
                 info!("noop");
             }
@@ -494,7 +492,6 @@ impl Chapter {
             }),
         ) {
             self.fetch_task = Some(FetchTask::from(task));
-            self.is_fetching = true;
         }
     }
 }
