@@ -24,8 +24,9 @@ Use Dockerfile below to install
 FROM rust:1.41.1
 
 ENV TOKEN_SECRET_KEY secret_key
-ENV DB_PATH /tanoshi/db
+ENV DB_PATH /tanoshi/db/tanoshi.db
 ENV STATIC_FILES_PATH /tanoshi/dist
+ENV PORT 3030
 
 RUN apt update && apt install -y git curl
 RUN curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add -
