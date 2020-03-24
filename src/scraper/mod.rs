@@ -2,6 +2,7 @@ use chrono::Local;
 use serde::{Deserialize, Serialize};
 
 pub mod mangasee;
+pub mod repository;
 use mangasee::Mangasee;
 
 #[derive(Debug, Deserialize, Serialize, Clone, Default)]
