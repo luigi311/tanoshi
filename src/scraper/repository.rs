@@ -1,6 +1,8 @@
-use crate::scraper::{Chapter, GetChaptersResponse, GetMangaResponse, GetMangasResponse, Manga};
-use rusqlite::{params, Connection};
 use std::sync::{Arc, Mutex};
+
+use rusqlite::{params, Connection};
+
+use crate::scraper::{Chapter, GetChaptersResponse, GetMangaResponse, GetMangasResponse, Manga};
 
 pub fn get_source_url(source: String, db: Arc<Mutex<Connection>>) -> Result<String, String> {
     let conn = db.lock().unwrap();
@@ -83,24 +85,32 @@ pub fn get_manga_detail(
 pub fn get_chapters(
     source: String,
     title: String,
+    username: String,
     db: Arc<Mutex<Connection>>,
 ) -> Result<GetChaptersResponse, String> {
     let conn = db.lock().unwrap();
     let mut stmt = conn
         .prepare(
-            "SELECT chapter.number, chapter.path, chapter.uploaded FROM chapter
-        JOIN manga ON manga.id = chapter.manga_id
-        JOIN source ON source.id = manga.source_id
-        WHERE source.name = ?1 AND manga.title = ?2
-        ORDER BY CAST(chapter.number AS DECIMAL) DESC",
+            "SELECT 
+                chapter.number, chapter.path, 
+                IFNULL(history.last_page, 0) as last_page,
+                chapter.uploaded
+                FROM chapter
+                JOIN manga ON manga.id = chapter.manga_id
+                JOIN source ON source.id = manga.source_id
+                LEFT JOIN history ON chapter.id = history.chapter_id
+                AND history.user_id = (SELECT id FROM user WHERE username = ?1)
+                WHERE source.name = ?2 AND manga.title = ?3
+                ORDER BY CAST(chapter.number AS DECIMAL) DESC",
         )
         .unwrap();
     let chapters_iter = stmt
-        .query_map(params![source, title], |row| {
+        .query_map(params![username, source, title], |row| {
             Ok(Chapter {
                 no: row.get(0)?,
                 url: row.get(1)?,
-                uploaded: row.get(2)?,
+                read: row.get(2)?,
+                uploaded: row.get(3)?,
             })
         })
         .unwrap();

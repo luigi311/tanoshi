@@ -82,9 +82,8 @@ impl Auth {
             &DecodingKey::from_secret(secret.as_bytes()),
             &Validation::default(),
         )
-        .expect("failed to decode token")
-        .claims;
-        Some(claim)
+        .unwrap();
+        Some(claim.claims)
     }
 
     fn hash(password: &[u8]) -> String {

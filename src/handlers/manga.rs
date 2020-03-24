@@ -73,13 +73,19 @@ pub async fn get_manga_info(
 pub async fn get_chapters(
     source: String,
     title: String,
+    claim: Claims,
     param: GetParams,
     db: Arc<Mutex<Connection>>,
 ) -> Result<impl warp::Reply, Rejection> {
     let title = decode_title(title);
-    if let Ok(chapter) = repository::get_chapters(source.clone(), title.clone(), db.clone()) {
-        return Ok(warp::reply::json(&chapter));
-    } else if let Ok(url) = repository::get_manga_url(source.clone(), title.clone(), db.clone()) {
+    if !param.refresh.unwrap_or(false) {
+        match repository::get_chapters(source.clone(), title.clone(), claim.sub, db.clone()) {
+            Ok(chapter) => return Ok(warp::reply::json(&chapter)),
+            Err(e) => {}
+        };
+    }
+
+    if let Ok(url) = repository::get_manga_url(source.clone(), title.clone(), db.clone()) {
         let chapter = Mangasee::get_chapters(&url);
 
         let conn = db.lock().unwrap();

@@ -27,7 +27,7 @@ async fn main() {
     let conn = Arc::new(Mutex::new(conn));
 
     let auth_api = filters::auth::authentication(secret.clone(), conn.clone());
-    let manga_api = filters::manga::manga(conn.clone());
+    let manga_api = filters::manga::manga(secret.clone(), conn.clone());
 
     let fav = favorites::Favorites::new();
     let fav_api = filters::favorites::favorites(secret.clone(), fav, conn.clone());

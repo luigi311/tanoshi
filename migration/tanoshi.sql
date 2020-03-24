@@ -15,7 +15,7 @@ CREATE TABLE user
     updated  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX username_idx ON user(username);
+CREATE INDEX username_idx ON user (username);
 
 CREATE TABLE source
 (
@@ -27,7 +27,7 @@ CREATE TABLE source
     UNIQUE (name, url)
 );
 
-CREATE INDEX source_name_idx ON source(name);
+CREATE INDEX source_name_idx ON source (name);
 
 CREATE TABLE manga
 (
@@ -48,7 +48,7 @@ CREATE TABLE manga
         ON UPDATE NO ACTION
 );
 
-CREATE INDEX manga_title_idx ON manga(source_id, title);
+CREATE INDEX manga_title_idx ON manga (source_id, title);
 
 CREATE TABLE chapter
 (
@@ -67,7 +67,7 @@ CREATE TABLE chapter
         On UPDATE NO ACTION
 );
 
-CREATE INDEX chapter_idx ON chapter(manga_id, number);
+CREATE INDEX chapter_idx ON chapter (manga_id, number);
 
 CREATE TABLE page
 (
@@ -84,17 +84,18 @@ CREATE TABLE page
         On UPDATE NO ACTION
 );
 
-CREATE INDEX page_idx ON page(chapter_id);
+CREATE INDEX page_idx ON page (chapter_id);
 
 CREATE TABLE history
 (
     id         INTEGER PRIMARY KEY,
-    user_id    INTEGER,
+    user_id    INTEGER   NOT NULL,
     chapter_id INTEGER   NOT NULL,
     last_page  INTEGER,
     at         TIMESTAMP NOT NULL,
     created    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (user_id, chapter_id),
     FOREIGN KEY (user_id)
         REFERENCES user (id)
         ON DELETE CASCADE
@@ -105,7 +106,7 @@ CREATE TABLE history
         On UPDATE NO ACTION
 );
 
-CREATE INDEX history_idx ON history(user_id, chapter_id);
+CREATE INDEX history_idx ON history (user_id, chapter_id);
 
 CREATE TABLE favorite
 (
@@ -125,7 +126,7 @@ CREATE TABLE favorite
         On UPDATE NO ACTION
 );
 
-CREATE INDEX favorite_idx ON favorite(user_id, manga_id);
+CREATE INDEX favorite_idx ON favorite (user_id, manga_id);
 
 INSERT INTO source(name, url)
 VALUES ('mangasee', 'https://mangaseeonline.us');

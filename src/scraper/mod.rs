@@ -20,6 +20,7 @@ pub struct Manga {
 pub struct Chapter {
     pub no: String,
     pub url: String,
+    pub read: i32,
     pub uploaded: chrono::DateTime<Local>,
 }
 
@@ -28,6 +29,7 @@ impl Default for Chapter {
         Chapter {
             no: "".to_string(),
             url: "".to_string(),
+            read: 0,
             uploaded: Local::now(),
         }
     }

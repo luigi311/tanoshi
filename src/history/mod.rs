@@ -15,6 +15,7 @@ pub struct HistoryRequest {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct HistoryResponse {
-    history: Vec<Chapter>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub history: Vec<Chapter>,
     pub status: String,
 }
