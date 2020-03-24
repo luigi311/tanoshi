@@ -2,7 +2,7 @@ use chrono::Local;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
-#[derive(Deserialize, Debug, Clone, Default)]
+#[derive(Deserialize, Serialize, Debug, Clone, Default)]
 pub struct MangaModel {
     pub title: String,
     pub author: String,
@@ -13,18 +13,20 @@ pub struct MangaModel {
     pub thumbnail_url: String,
 }
 
-#[derive(Debug, Deserialize, Clone, Default)]
+#[derive(Debug, Deserialize, Serialize, Clone, Default)]
 pub struct ChapterModel {
     pub no: String,
     pub url: String,
+    pub read: i32,
+    pub uploaded: Option<chrono::DateTime<Local>>,
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct GetMangasResponse {
     pub mangas: Vec<MangaModel>,
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct GetMangaResponse {
     pub manga: MangaModel,
 }
@@ -88,17 +90,18 @@ impl Default for Settings {
     }
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct HistoryRequest {
-    pub chapter: Option<String>,
-    pub read: Option<i32>,
+    pub source: String,
+    pub title: String,
+    pub chapter: String,
+    pub read: i32,
+    pub at: chrono::DateTime<chrono::Local>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct HistoryResponse {
-    pub source: String,
-    pub title: String,
-    pub history: Option<BTreeMap<String, i32>>,
+    pub history: Vec<ChapterModel>,
     pub status: String,
 }
 

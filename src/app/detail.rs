@@ -8,6 +8,8 @@ use super::component::Spinner;
 use crate::app::AppRoute;
 
 use anyhow;
+use yew::services::storage::Area;
+use yew::services::StorageService;
 
 #[derive(Clone, Properties)]
 pub struct Props {
@@ -18,6 +20,7 @@ pub struct Props {
 pub struct Detail {
     fetch_task: Option<FetchTask>,
     link: ComponentLink<Self>,
+    token: String,
     source: String,
     title: String,
     manga: MangaModel,
@@ -38,9 +41,18 @@ impl Component for Detail {
     type Properties = Props;
 
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
+        let storage = StorageService::new(Area::Local).unwrap();
+        let token = {
+            if let Ok(token) = storage.restore("token") {
+                token
+            } else {
+                "".to_string()
+            }
+        };
         Detail {
             fetch_task: None,
             link,
+            token,
             source: props.source,
             title: props.title,
             manga: MangaModel {
@@ -116,10 +128,12 @@ impl Component for Detail {
             <div class="w-6/7 mx-2 grid grid-cols-4 lg:grid-cols-8">
                 {
                     for self.chapters.iter().map(|(chapter)| html!{
-                        <div class="rounded-lg border border-grey-light m-2">
+                        <div class={
+                            format!("rounded-lg border border-grey-light m-2 {}", if chapter.read > 0 {"bg-gray-400"} else {""})
+                        }>
                             <RouterAnchor<AppRoute>
                             classes="px-2 py-2 text-center block hover:shadow"
-                            route=AppRoute::Chapter(self.source.to_owned(), self.title.to_owned(), chapter.no.to_owned(), 1)>
+                            route=AppRoute::Chapter(self.source.to_owned(), self.title.to_owned(), chapter.no.to_owned(), (chapter.read + 1) as usize)>
                                 {chapter.no.to_owned()}
                             </RouterAnchor<AppRoute>>
                         </div>
@@ -160,6 +174,7 @@ impl Detail {
             "/api/source/{}/manga/{}/chapter?refresh={}",
             self.source, self.title, refresh
         ))
+        .header("Authorization", self.token.to_string())
         .body(Nothing)
         .expect("failed to build request");
 

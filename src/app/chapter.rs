@@ -21,6 +21,7 @@ use super::component::model::{
     MangaModel, ReadingDirection,
 };
 use super::component::Spinner;
+use chrono::{DateTime, Utc};
 use yew::services::storage::Area;
 use yew::services::StorageService;
 
@@ -36,6 +37,7 @@ pub struct Chapter {
     fetch_task: Option<FetchTask>,
     link: ComponentLink<Self>,
     router: Box<dyn Bridge<RouteAgent>>,
+    token: String,
     source: String,
     title: String,
     chapter: ChapterModel,
@@ -60,6 +62,7 @@ pub enum Msg {
     ToggleBar,
     PageSliderChange(usize),
     RouterCallback,
+    SetHistoryRequested,
     Noop,
 }
 
@@ -78,11 +81,19 @@ impl Component for Chapter {
                 Settings::default()
             }
         };
+        let token = {
+            if let Ok(token) = storage.restore("token") {
+                token
+            } else {
+                "".to_string()
+            }
+        };
 
         Chapter {
             fetch_task: None,
             link,
             router,
+            token,
             source: props.source,
             title: props.title,
             current_chapter: props.chapter,
@@ -114,6 +125,7 @@ impl Component for Chapter {
         match msg {
             Msg::MangaReady(data) => {}
             Msg::ChapterReady(data) => {
+                self.is_fetching = false;
                 self.chapters = data.chapters.clone();
                 let idx = match self
                     .chapters
@@ -132,12 +144,15 @@ impl Component for Chapter {
             }
             Msg::PageForward => {
                 self.next_page_or_chapter();
+                self.set_history();
             }
             Msg::PagePrevious => {
                 self.prev_page_or_chapter();
+                self.set_history();
             }
             Msg::PageSliderChange(page) => {
                 self.move_to_page(page);
+                self.set_history();
             }
             Msg::ToggleBar => {
                 if self.is_bar_visible {
@@ -166,6 +181,9 @@ impl Component for Chapter {
             }
             Msg::RouterCallback => {
                 self.get_pages();
+            }
+            Msg::SetHistoryRequested => {
+                self.is_fetching = false;
             }
             Msg::Noop => {
                 info!("noop");
@@ -262,6 +280,7 @@ impl Chapter {
             "/api/source/{}/manga/{}/chapter",
             self.source, self.title
         ))
+        .header("Authorization", self.token.to_string())
         .body(Nothing)
         .expect("failed to build request");
 
@@ -279,6 +298,7 @@ impl Chapter {
             ),
         ) {
             self.fetch_task = Some(FetchTask::from(task));
+            self.is_fetching = true;
         }
     }
 
@@ -436,31 +456,45 @@ impl Chapter {
         }
     }
 
+    fn get_date(&self) -> DateTime<Utc> {
+        let timestamp = js_sys::Date::now();
+        let secs: i64 = (timestamp / 1000.0).floor() as i64;
+        let nanoes: u32 = (timestamp as u32 % 1000) * 1_000_000;
+        let naivetime = chrono::NaiveDateTime::from_timestamp(secs, nanoes);
+        DateTime::<Utc>::from_utc(naivetime, Utc)
+    }
+
     fn set_history(&mut self) {
         let h = HistoryRequest {
-            chapter: Some(self.current_chapter.clone()),
-            read: Some(self.current_page as i32),
+            source: self.source.clone(),
+            title: String::from_utf8(
+                base64::decode_config(self.title.clone(), base64::URL_SAFE_NO_PAD).unwrap(),
+            )
+            .unwrap(),
+            chapter: self.current_chapter.clone(),
+            read: self.current_page as i32,
+            at: DateTime::from(self.get_date()),
         };
 
-        let req = Request::get(format!(
-            "/api/history/source/{}/manga/{}",
-            self.source, self.title
-        ))
-        .body(Json(&h))
-        .expect("failed to build request");
+        let req = Request::post("/api/history")
+            .header("Authorization", self.token.to_string())
+            .header("Content-Type", "application/json")
+            .body(Json(&h))
+            .expect("failed to build request");
 
         if let Ok(task) = FetchService::new().fetch(
             req,
             self.link.callback(|response: Response<Text>| {
                 if let (meta, Ok(data)) = response.into_parts() {
                     if meta.status.is_success() {
-                        return Msg::Noop;
+                        return Msg::SetHistoryRequested;
                     }
                 }
                 Msg::Noop
             }),
         ) {
             self.fetch_task = Some(FetchTask::from(task));
+            self.is_fetching = true;
         }
     }
 }
