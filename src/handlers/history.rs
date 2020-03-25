@@ -27,5 +27,14 @@ pub async fn add_history(
     db: Arc<Mutex<Connection>>,
 ) -> Result<impl warp::Reply, Infallible> {
     let res = history.add_history(claim.sub, request, db);
-    Ok(warp::reply::json(&res))
+    if res.status != "success" {
+        return Ok(warp::reply::with_status(
+            warp::reply::json(&res),
+            warp::http::status::StatusCode::BAD_REQUEST,
+        ));
+    }
+    Ok(warp::reply::with_status(
+        warp::reply::json(&res),
+        warp::http::status::StatusCode::OK,
+    ))
 }

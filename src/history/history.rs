@@ -24,17 +24,20 @@ impl History {
     ) -> HistoryResponse {
         let conn = db.lock().unwrap();
         match conn.execute(
-            "INSERT INTO history(user_id, chapter_id, last_page, at)
-        VALUES(
-        (SELECT id FROM user WHERE username = ?1),
-        (SELECT chapter.id FROM chapter
-        JOIN manga ON manga.id = chapter.manga_id
-        JOIN source ON source.id = manga.source_id
-        WHERE source.name = ?2 AND manga.title = ?3 AND chapter.number = ?4),
-        ?5, ?6) 
-        ON CONFLICT(user_id, chapter_id)
-         DO UPDATE SET last_page = ?5,
-         at = ?6,
+            "INSERT INTO history(user_id, chapter_id, last_page, at) \
+        VALUES(\
+        (SELECT id FROM user WHERE username = ?1), \
+        (SELECT chapter.id FROM chapter \
+        JOIN manga ON manga.id = chapter.manga_id \
+        JOIN source ON source.id = manga.source_id \
+        WHERE source.name = ?2 \
+        AND manga.title = ?3 \
+        AND chapter.number = ?4), \
+        ?5, \
+        ?6) \
+        ON CONFLICT(user_id, chapter_id) \
+         DO UPDATE SET last_page = excluded.last_page, \
+         at = excluded.at, \
          updated = CURRENT_TIMESTAMP",
             params![
                 username,
