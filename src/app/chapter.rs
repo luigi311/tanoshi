@@ -1,13 +1,11 @@
 use anyhow;
 use js_sys;
-use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
-use web_sys::HtmlElement;
+use web_sys::{CssStyleDeclaration, HtmlElement};
 use yew::format::{Json, Nothing, Text};
 use yew::prelude::*;
-use yew::prelude::*;
 use yew::services::fetch::{FetchService, FetchTask, Request, Response};
-use yew::utils::document;
+use yew::utils::{document, window};
 use yew::{html, Component, ComponentLink, Html, InputData, Properties, ShouldRender};
 use yew_router::{agent::RouteRequest, prelude::*};
 
@@ -18,7 +16,7 @@ use crate::app::{browse::BrowseRoute, AppRoute};
 
 use super::component::model::{
     BackgroundColor, ChapterModel, GetChaptersResponse, GetMangaResponse, GetPagesResponse,
-    MangaModel, ReadingDirection,
+    MangaModel, PageRendering, ReadingDirection,
 };
 use super::component::Spinner;
 use chrono::{DateTime, Utc};
@@ -88,6 +86,16 @@ impl Component for Chapter {
                 "".to_string()
             }
         };
+
+        if settings.background_color == BackgroundColor::Black {
+            document()
+                .body()
+                .expect("document should have a body")
+                .dyn_ref::<web_sys::HtmlElement>()
+                .unwrap()
+                .style()
+                .set_property("background-color", "black");
+        }
 
         Chapter {
             fetch_task: None,
@@ -193,10 +201,10 @@ impl Component for Chapter {
     fn view(&self) -> Html {
         html! {
         <div class={
-            match self.settings.background_color {
+            format!("{}", match self.settings.background_color {
                 BackgroundColor::Black => "bg-black",
                 BackgroundColor::White => "bg-white",
-            }
+            })
         }>
             <div
             ref=self.refs[0].clone()
@@ -208,7 +216,7 @@ impl Component for Chapter {
                     </svg>
                </RouterAnchor<AppRoute>>
             </div>
-            <div class="container mx-auto h-screen outline-none" id="manga-reader" tabindex="0" onkeydown=self.link.callback(|e: KeyboardEvent|
+            <div class="container h-screen outline-none" id="manga-reader" tabindex="0" onkeydown=self.link.callback(|e: KeyboardEvent|
                 match e.key().as_str() {
                     "ArrowRight" => Msg::PageForward,
                     "ArrowLeft"  => Msg::PagePrevious,
@@ -216,7 +224,13 @@ impl Component for Chapter {
                 }
             )>
                 <button
-                class="manga-navigate-left outline-none"
+                class={
+                    if self.settings.page_rendering == PageRendering::LongStrip {
+                        "hidden"
+                    } else {
+                        "manga-navigate-left outline-none"
+                    }
+                }
                 onmouseup={
                     match self.settings.reading_direction {
                         ReadingDirection::LeftToRight => self.link.callback(|_| Msg::PagePrevious),
@@ -225,17 +239,34 @@ impl Component for Chapter {
                 }/>
                 <button class="manga-navigate-center outline-none" onmouseup=self.link.callback(|_| Msg::ToggleBar)/>
                 <button
-                class="manga-navigate-right outline-none"
+                class={
+                    if self.settings.page_rendering == PageRendering::LongStrip {
+                        "hidden"
+                    } else {
+                        "manga-navigate-left outline-none"
+                    }
+                }
                 onmouseup={
                     match self.settings.reading_direction {
                         ReadingDirection::LeftToRight => self.link.callback(|_| Msg::PageForward),
                         ReadingDirection::RightToLeft => self.link.callback(|_| Msg::PagePrevious),
                     }
                 }/>
-                <div class="flex">
+                <div class={
+                    format!("flex {}", if self.settings.page_rendering == PageRendering::LongStrip {"flex-col cursor-pointer"} else {""})
+                }
+                onmouseup={
+                    if self.settings.page_rendering == PageRendering::LongStrip {
+                    self.link.callback(|_| Msg::ToggleBar)
+                    } else {
+                    self.link.callback(|_| Msg::Noop)
+                    }
+                }>
                     {
                         for (0..self.pages.len()).map(|i| html! {
-                        <img class={if (self.current_page == i) || (self.double_page && (self.current_page + 1 == i)) {
+                        <img class={if (self.current_page == i)
+                        || (self.settings.page_rendering == PageRendering::DoublePage && (self.current_page + 1 == i)
+                        || self.settings.page_rendering == PageRendering::LongStrip) {
                             "manga-page active"
                         } else {
                             "manga-page"
@@ -258,14 +289,24 @@ impl Component for Chapter {
                                 } else {
                                     "flex-grow flex-shrink z-50 px-1 py-2 border border-black bg-gray-500 cursor-pointer"
                                 }
-                            }
-                            >
-                            </div>
+                            }/>
                         })
                     }
                 </div>
             </div>
         </div>
+        }
+    }
+
+    fn destroy(&mut self) {
+        if self.settings.background_color == BackgroundColor::Black {
+            document()
+                .body()
+                .expect("document should have a body")
+                .dyn_ref::<web_sys::HtmlElement>()
+                .unwrap()
+                .style()
+                .set_property("background-color", "white");
         }
     }
 }
@@ -337,7 +378,7 @@ impl Chapter {
 
     fn next_page_or_chapter(&mut self) {
         let mut num = 1;
-        if self.double_page {
+        if self.settings.page_rendering == PageRendering::DoublePage {
             num = 2;
         }
 
@@ -395,7 +436,7 @@ impl Chapter {
 
     fn prev_page_or_chapter(&mut self) {
         let mut num: usize = 1;
-        if self.double_page {
+        if self.settings.page_rendering == PageRendering::DoublePage {
             num = 2;
         }
 

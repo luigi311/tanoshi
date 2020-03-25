@@ -1,14 +1,10 @@
-use yew::format::{Json, Nothing};
 use yew::services::fetch::{FetchService, FetchTask, Request, Response};
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
-use yew_router::components::RouterAnchor;
 
 use super::component::model::{
     BackgroundColor, ChapterModel, GetChaptersResponse, GetMangaResponse, MangaModel,
     PageRendering, ReadingDirection,
 };
-use super::component::Spinner;
-use crate::app::AppRoute;
 
 use crate::app::component::model::SettingParams;
 use anyhow;

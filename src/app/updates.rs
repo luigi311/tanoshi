@@ -17,7 +17,6 @@ use chrono::{DateTime, FixedOffset, Local, NaiveDateTime, Utc};
 use serde_json::error::Category::Data;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
-use wasm_bindgen::__rt::std::str::FromStr;
 
 #[derive(Clone, Properties)]
 pub struct Props {}
