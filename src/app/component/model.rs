@@ -1,6 +1,8 @@
+use anyhow::Error;
 use chrono::Local;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
+use yew::format::Text;
 
 #[derive(Deserialize, Serialize, Debug, Clone, Default)]
 pub struct MangaModel {
@@ -60,33 +62,46 @@ pub struct FavoriteManga {
     pub thumbnail_url: String,
 }
 
-#[derive(Deserialize, Serialize, Clone)]
+#[derive(Deserialize, Serialize, Clone, PartialEq)]
 pub enum ReadingDirection {
     LeftToRight,
     RightToLeft,
+}
+
+#[derive(Deserialize, Serialize, Clone, PartialEq)]
+pub enum PageRendering {
+    SinglePage,
+    DoublePage,
     LongStrip,
 }
 
-#[derive(Deserialize, Serialize, Clone)]
+#[derive(Deserialize, Serialize, Clone, PartialEq)]
 pub enum BackgroundColor {
     Black,
     White,
 }
 
 #[derive(Deserialize, Serialize, Clone)]
-pub struct Settings {
-    pub double_page: bool,
+pub struct SettingParams {
+    pub page_rendering: PageRendering,
     pub background_color: BackgroundColor,
     pub reading_direction: ReadingDirection,
 }
 
-impl Default for Settings {
+impl Default for SettingParams {
     fn default() -> Self {
-        Settings {
-            double_page: false,
+        SettingParams {
+            page_rendering: PageRendering::SinglePage,
             background_color: BackgroundColor::Black,
             reading_direction: ReadingDirection::LeftToRight,
         }
+    }
+}
+
+impl From<&SettingParams> for Text {
+    fn from(param: &SettingParams) -> Self {
+        let val = serde_json::to_string(&param).unwrap();
+        Text::Ok(val)
     }
 }
 

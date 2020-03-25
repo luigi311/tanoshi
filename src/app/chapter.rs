@@ -13,7 +13,7 @@ use yew_router::{agent::RouteRequest, prelude::*};
 
 use serde_json::json;
 
-use crate::app::component::model::{HistoryRequest, HistoryResponse, Settings};
+use crate::app::component::model::{HistoryRequest, HistoryResponse, SettingParams};
 use crate::app::{browse::BrowseRoute, AppRoute};
 
 use super::component::model::{
@@ -50,7 +50,7 @@ pub struct Chapter {
     is_fetching: bool,
     refs: Vec<NodeRef>,
     is_bar_visible: bool,
-    settings: Settings,
+    settings: SettingParams,
 }
 
 pub enum Msg {
@@ -78,7 +78,7 @@ impl Component for Chapter {
             if let Ok(settings) = storage.restore("settings") {
                 serde_json::from_str(settings.as_str()).expect("failed to serialize")
             } else {
-                Settings::default()
+                SettingParams::default()
             }
         };
         let token = {
@@ -221,7 +221,6 @@ impl Component for Chapter {
                     match self.settings.reading_direction {
                         ReadingDirection::LeftToRight => self.link.callback(|_| Msg::PagePrevious),
                         ReadingDirection::RightToLeft => self.link.callback(|_| Msg::PageForward),
-                        ReadingDirection::LongStrip => self.link.callback(|_| Msg::PagePrevious)
                     }
                 }/>
                 <button class="manga-navigate-center outline-none" onmouseup=self.link.callback(|_| Msg::ToggleBar)/>
@@ -231,7 +230,6 @@ impl Component for Chapter {
                     match self.settings.reading_direction {
                         ReadingDirection::LeftToRight => self.link.callback(|_| Msg::PageForward),
                         ReadingDirection::RightToLeft => self.link.callback(|_| Msg::PagePrevious),
-                        ReadingDirection::LongStrip => self.link.callback(|_| Msg::PageForward),
                     }
                 }/>
                 <div class="flex">
