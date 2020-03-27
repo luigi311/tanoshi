@@ -40,7 +40,7 @@ pub struct Updates {
 pub enum Msg {
     UpdatesReady(UpdatesResponse),
     ScrolledDown,
-    Noop,
+    noop,
 }
 
 impl Component for Updates {
@@ -111,7 +111,7 @@ impl Component for Updates {
                     self.fetch_updates();
                 }
             }
-            Noop => {
+            noop => {
                 return false;
             }
         };
@@ -184,7 +184,7 @@ impl Updates {
                             return Msg::UpdatesReady(data);
                         }
                     }
-                    Msg::Noop
+                    Msg::noop
                 },
             ),
         ) {

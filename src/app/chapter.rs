@@ -61,7 +61,7 @@ pub enum Msg {
     PageSliderChange(usize),
     RouterCallback,
     SetHistoryRequested,
-    Noop,
+    noop,
 }
 
 impl Component for Chapter {
@@ -199,7 +199,7 @@ impl Component for Chapter {
                 self.get_pages();
             }
             Msg::SetHistoryRequested => {}
-            Msg::Noop => {
+            Msg::noop => {
                 info!("noop");
             }
         }
@@ -223,7 +223,7 @@ impl Component for Chapter {
                 match e.key().as_str() {
                     "ArrowRight" => Msg::PageForward,
                     "ArrowLeft"  => Msg::PagePrevious,
-                    _ => Msg::Noop,
+                    _ => Msg::noop,
                 }
             )>
                 <button
@@ -254,7 +254,7 @@ impl Component for Chapter {
                     if self.settings.page_rendering == PageRendering::LongStrip {
                     self.link.callback(|_| Msg::ToggleBar)
                     } else {
-                    self.link.callback(|_| Msg::Noop)
+                    self.link.callback(|_| Msg::noop)
                     }
                 }>
                     {
@@ -325,7 +325,7 @@ impl Chapter {
                             return Msg::ChapterReady(data);
                         }
                     }
-                    Msg::Noop
+                    Msg::noop
                 },
             ),
         ) {
@@ -351,7 +351,7 @@ impl Chapter {
                             return Msg::PagesReady(data);
                         }
                     }
-                    Msg::Noop
+                    Msg::noop
                 },
             ),
         ) {
@@ -522,7 +522,7 @@ impl Chapter {
                         return Msg::SetHistoryRequested;
                     }
                 }
-                Msg::Noop
+                Msg::noop
             }),
         ) {
             self.fetch_task = Some(FetchTask::from(task));

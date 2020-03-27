@@ -40,7 +40,7 @@ pub struct History {
 pub enum Msg {
     HistoryReady(HistoryResponse),
     ScrolledDown,
-    Noop,
+    noop,
 }
 
 impl Component for History {
@@ -94,15 +94,19 @@ impl Component for History {
         match msg {
             Msg::HistoryReady(data) => {
                 let mut history = data.history;
-                for his in history.iter_mut() {
-                    let days = self.calculate_days(his.at);
-                    if self.prev_days != days {
-                        self.prev_days = days;
-                        his.days = Some(days);
-                        his.show_sep = Some(true);
+                if history.is_empty() {
+                    window().set_onscroll(None);
+                } else {
+                    for his in history.iter_mut() {
+                        let days = self.calculate_days(his.at);
+                        if self.prev_days != days {
+                            self.prev_days = days;
+                            his.days = Some(days);
+                            his.show_sep = Some(true);
+                        }
                     }
+                    self.history.append(&mut history);
                 }
-                self.history.append(&mut history);
                 self.is_fetching = false;
             }
             Msg::ScrolledDown => {
@@ -111,7 +115,7 @@ impl Component for History {
                     self.fetch_updates();
                 }
             }
-            Noop => {
+            noop => {
                 return false;
             }
         };
@@ -184,8 +188,7 @@ impl History {
                             return Msg::HistoryReady(data);
                         }
                     }
-                    info!("history read");
-                    Msg::Noop
+                    Msg::noop
                 },
             ),
         ) {

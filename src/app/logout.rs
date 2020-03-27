@@ -1,18 +1,18 @@
 use serde::{Deserialize, Serialize};
-use yew::{Component, ComponentLink, html, Html, Properties, ShouldRender, InputData, Bridge, Bridged};
 use yew::format::Json;
 use yew::services::fetch::{FetchService, FetchTask, Request, Response};
-use yew::services::{StorageService, storage::Area};
+use yew::services::{storage::Area, StorageService};
+use yew::{
+    html, Bridge, Bridged, Component, ComponentLink, Html, InputData, Properties, ShouldRender,
+};
 
-use yew_router::{prelude::*,agent::RouteRequest};
 use yew_router::components::RouterAnchor;
-
+use yew_router::{agent::RouteRequest, prelude::*};
 
 use crate::app::AppRoute;
 
 #[derive(Clone, PartialEq, Properties)]
-pub struct Props {
-}
+pub struct Props {}
 
 pub struct Logout {
     fetch_task: Option<FetchTask>,
@@ -22,7 +22,7 @@ pub struct Logout {
 }
 
 pub enum Msg {
-    Noop,
+    noop,
 }
 
 impl Component for Logout {
@@ -31,7 +31,7 @@ impl Component for Logout {
 
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
         let storage = StorageService::new(Area::Local).unwrap();
-        let callback = link.callback(|_| Msg::Noop);
+        let callback = link.callback(|_| Msg::noop);
         let router = RouteAgent::bridge(callback);
         Logout {
             fetch_task: None,
@@ -43,7 +43,8 @@ impl Component for Logout {
 
     fn mounted(&mut self) -> ShouldRender {
         self.storage.remove("token");
-        self.router.send(RouteRequest::ChangeRoute(Route::from("/login".to_string())));
+        self.router
+            .send(RouteRequest::ChangeRoute(Route::from("/login".to_string())));
         true
     }
 

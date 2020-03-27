@@ -38,7 +38,7 @@ pub enum Msg {
     MangaReady(GetMangasResponse),
     FavoritesReady(GetFavoritesResponse),
     ScrolledDown,
-    Noop,
+    noop,
 }
 
 impl Component for Catalogue {
@@ -111,7 +111,7 @@ impl Component for Catalogue {
                 }
             }
 
-            Msg::Noop => {
+            Msg::noop => {
                 info!("noop");
             }
         }
@@ -160,7 +160,7 @@ impl Catalogue {
                             return Msg::MangaReady(data);
                         }
                     }
-                    Msg::Noop
+                    Msg::noop
                 },
             ),
         ) {
@@ -184,7 +184,7 @@ impl Catalogue {
                             return Msg::FavoritesReady(data);
                         }
                     }
-                    Msg::Noop
+                    Msg::noop
                 },
             ),
         ) {

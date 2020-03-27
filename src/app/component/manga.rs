@@ -61,7 +61,7 @@ pub enum Msg {
     TouchMove(TouchEvent),
     Favorited(AddFavoritesResponse),
     Unfavorited(AddFavoritesResponse),
-    Noop,
+    noop,
 }
 
 impl Component for Manga {
@@ -77,7 +77,7 @@ impl Component for Manga {
                 "".to_string()
             }
         };
-        let callback = link.callback(|_| Msg::Noop);
+        let callback = link.callback(|_| Msg::noop);
         let router = RouteAgent::bridge(callback);
         Manga {
             fetch_task: None,
@@ -141,7 +141,7 @@ impl Component for Manga {
                     self.is_favorite = false;
                 }
             }
-            Msg::Noop => {}
+            Msg::noop => {}
             _ => {}
         }
         true
@@ -201,7 +201,7 @@ impl Manga {
                             return Msg::Favorited(data);
                         }
                     }
-                    Msg::Noop
+                    Msg::noop
                 },
             ),
         ) {
@@ -228,7 +228,7 @@ impl Manga {
                             return Msg::Unfavorited(data);
                         }
                     }
-                    Msg::Noop
+                    Msg::noop
                 },
             ),
         ) {
