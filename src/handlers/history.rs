@@ -11,7 +11,8 @@ use std::sync::{Arc, Mutex};
 pub struct History {
     source: String,
     title: String,
-    thumbnail_url: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    thumbnail_url: Option<String>,
     chapter: String,
     read: i32,
     at: chrono::DateTime<chrono::Local>,
