@@ -115,12 +115,24 @@ pub struct HistoryRequest {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct HistoryModel {
+    pub source: String,
+    pub title: String,
+    pub thumbnail_url: String,
+    pub chapter: String,
+    pub read: i32,
+    pub at: chrono::DateTime<chrono::Local>,
+    pub days: Option<i64>,
+    pub show_sep: Option<bool>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct HistoryResponse {
-    pub history: Vec<ChapterModel>,
+    pub history: Vec<HistoryModel>,
     pub status: String,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct UpdateModel {
     pub source: String,
     pub title: String,
@@ -131,7 +143,7 @@ pub struct UpdateModel {
     pub show_sep: Option<bool>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct UpdatesResponse {
     pub updates: Vec<UpdateModel>,
     pub status: String,

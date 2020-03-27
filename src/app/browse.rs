@@ -13,6 +13,7 @@ use super::catalogue::Catalogue;
 use super::chapter::Chapter;
 use super::component::NavigationBar;
 use super::detail::Detail;
+use super::history::History;
 use super::home::Home;
 use super::login::Login;
 use super::logout::Logout;
@@ -27,6 +28,8 @@ pub enum BrowseRoute {
     Source(String),
     #[to = "/updates"]
     Updates,
+    #[to = "/history"]
+    History,
     #[to = "/settings"]
     Settings,
     #[to = "/"]
@@ -51,6 +54,10 @@ impl Into<Props> for BrowseRoute {
                 title: None,
             },
             BrowseRoute::Updates => Props {
+                source: None,
+                title: None,
+            },
+            BrowseRoute::History => Props {
                 source: None,
                 title: None,
             },
@@ -127,6 +134,7 @@ impl Component for Browse {
                     BrowseRoute::Detail(source, title) => html!{<Detail source=source title=title/>},
                     BrowseRoute::Source(source) => html!{<Catalogue source=source/>},
                     BrowseRoute::Updates => html!{<Updates/>},
+                    BrowseRoute::History => html!{<History/>},
                     BrowseRoute::Home => html!{<Home/>},
                     BrowseRoute::Settings => html!{<Settings />},
                 }}) />
