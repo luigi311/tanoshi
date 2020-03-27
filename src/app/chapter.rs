@@ -1,15 +1,17 @@
 use anyhow;
+use chrono::{DateTime, Utc};
 use js_sys;
+use serde_json::json;
 use wasm_bindgen::JsCast;
 use web_sys::{CssStyleDeclaration, HtmlElement};
 use yew::format::{Json, Nothing, Text};
 use yew::prelude::*;
 use yew::services::fetch::{FetchService, FetchTask, Request, Response};
+use yew::services::storage::Area;
+use yew::services::StorageService;
 use yew::utils::{document, window};
 use yew::{html, Component, ComponentLink, Html, InputData, Properties, ShouldRender};
 use yew_router::{agent::RouteRequest, prelude::*};
-
-use serde_json::json;
 
 use crate::app::component::model::{HistoryRequest, HistoryResponse, SettingParams};
 use crate::app::{browse::BrowseRoute, AppRoute};
@@ -19,9 +21,7 @@ use super::component::model::{
     MangaModel, PageRendering, ReadingDirection,
 };
 use super::component::Spinner;
-use chrono::{DateTime, Utc};
-use yew::services::storage::Area;
-use yew::services::StorageService;
+use wasm_bindgen::__rt::std::net::Shutdown::Read;
 
 #[derive(Clone, Properties)]
 pub struct Props {
@@ -151,11 +151,19 @@ impl Component for Chapter {
                 self.is_fetching = false;
             }
             Msg::PageForward => {
-                self.next_page_or_chapter();
+                if self.settings.reading_direction == ReadingDirection::LeftToRight {
+                    self.next_page_or_chapter();
+                } else {
+                    self.prev_page_or_chapter();
+                }
                 self.set_history();
             }
             Msg::PagePrevious => {
-                self.prev_page_or_chapter();
+                if self.settings.reading_direction == ReadingDirection::LeftToRight {
+                    self.prev_page_or_chapter();
+                } else {
+                    self.next_page_or_chapter();
+                }
                 self.set_history();
             }
             Msg::PageSliderChange(page) => {
@@ -200,12 +208,7 @@ impl Component for Chapter {
 
     fn view(&self) -> Html {
         html! {
-        <div class={
-            format!("{}", match self.settings.background_color {
-                BackgroundColor::Black => "bg-black",
-                BackgroundColor::White => "bg-white",
-            })
-        }>
+        <div>
             <div
             ref=self.refs[0].clone()
             class="animated slideInDown faster block fixed inset-x-0 top-0 z-50 bg-gray-900 z-50 content-end flex opacity-75"
@@ -231,29 +234,21 @@ impl Component for Chapter {
                         "manga-navigate-left outline-none"
                     }
                 }
-                onmouseup={
-                    match self.settings.reading_direction {
-                        ReadingDirection::LeftToRight => self.link.callback(|_| Msg::PagePrevious),
-                        ReadingDirection::RightToLeft => self.link.callback(|_| Msg::PageForward),
-                    }
-                }/>
+                onmouseup=self.link.callback(|_| Msg::PagePrevious)/>
                 <button class="manga-navigate-center outline-none" onmouseup=self.link.callback(|_| Msg::ToggleBar)/>
                 <button
                 class={
                     if self.settings.page_rendering == PageRendering::LongStrip {
                         "hidden"
                     } else {
-                        "manga-navigate-left outline-none"
+                        "manga-navigate-right outline-none"
                     }
                 }
-                onmouseup={
-                    match self.settings.reading_direction {
-                        ReadingDirection::LeftToRight => self.link.callback(|_| Msg::PageForward),
-                        ReadingDirection::RightToLeft => self.link.callback(|_| Msg::PagePrevious),
-                    }
-                }/>
+                onmouseup=self.link.callback(|_| Msg::PageForward)/>
                 <div class={
-                    format!("flex {}", if self.settings.page_rendering == PageRendering::LongStrip {"flex-col cursor-pointer"} else {""})
+                    format!("flex {} {}",
+                    if self.settings.page_rendering == PageRendering::LongStrip {"flex-col cursor-pointer"} else {""},
+                    if self.settings.reading_direction == ReadingDirection::RightToLeft {"flex-row-reverse"} else {""})
                 }
                 onmouseup={
                     if self.settings.page_rendering == PageRendering::LongStrip {
@@ -531,6 +526,14 @@ impl Chapter {
             }),
         ) {
             self.fetch_task = Some(FetchTask::from(task));
+        }
+    }
+
+    fn keyboad_navigation_callback(&self) -> Msg {
+        if self.settings.reading_direction == ReadingDirection::RightToLeft {
+            Msg::PageForward
+        } else {
+            Msg::PagePrevious
         }
     }
 }
