@@ -46,6 +46,7 @@ pub async fn get_updates(
 ) -> Result<impl warp::Reply, Rejection> {
     let limit = 10;
     let offset = (param.page * limit) - limit;
+
     let conn = db.lock().unwrap();
     let mut stmt = conn
         .prepare(
