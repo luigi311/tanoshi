@@ -11,7 +11,9 @@ pub struct User {
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct UserResponse {
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub claim: Option<Claims>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub token: Option<String>,
     pub status: String,
 }

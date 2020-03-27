@@ -12,7 +12,6 @@ mod auth;
 mod favorites;
 mod filters;
 mod handlers;
-mod history;
 mod model;
 mod scraper;
 
@@ -32,8 +31,7 @@ async fn main() {
     let fav = favorites::Favorites::new();
     let fav_api = filters::favorites::favorites(secret.clone(), fav, conn.clone());
 
-    let history = history::history::History::default();
-    let history_api = filters::history::history(secret.clone(), history, conn.clone());
+    let history_api = filters::history::history(secret.clone(), conn.clone());
 
     let updates_api = filters::updates::updates(secret.clone(), conn.clone());
 
