@@ -1,7 +1,7 @@
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 use yew_router::components::RouterAnchor;
 
-use crate::app::{browse::BrowseRoute, AppRoute};
+use crate::app::{browse::BrowseRoute, catalogue::CatalogueRoute, AppRoute};
 
 #[derive(Clone, PartialEq, Properties)]
 pub struct Props {}
@@ -32,7 +32,7 @@ impl Component for NavigationBar {
                     </svg>
                     <span class="tab tab-home block text-xs">{"Favorites"}</span>
                </RouterAnchor<AppRoute>>
-               <RouterAnchor<AppRoute> route=AppRoute::Browse(BrowseRoute::Source("mangasee".to_string())) classes="w-full focus:text-teal-500 hover:text-teal-500 justify-center inline-block text-center pt-2 pb-1">
+               <RouterAnchor<AppRoute> route=AppRoute::Browse(BrowseRoute::Catalogue(CatalogueRoute::Select)) classes="w-full focus:text-teal-500 hover:text-teal-500 justify-center inline-block text-center pt-2 pb-1">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24"  class="fill-current inline-block mb-1">
                         <path class="heroicon-ui" d="M4 3h16a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5c0-1.1.9-2 2-2zm16 4V5H4v2h16zm0 2H4v10h16V9z"/>
                     </svg>

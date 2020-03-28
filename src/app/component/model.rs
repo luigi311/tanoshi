@@ -24,6 +24,12 @@ pub struct ChapterModel {
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct GetSourceResponse {
+    pub sources: Vec<String>,
+    pub status: String,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct GetMangasResponse {
     pub mangas: Vec<MangaModel>,
 }

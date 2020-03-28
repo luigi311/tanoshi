@@ -1,3 +1,4 @@
+use web_sys::HtmlElement;
 use yew::services::storage::Area;
 use yew::services::StorageService;
 use yew::{
@@ -7,7 +8,7 @@ use yew_router::agent::RouteRequest;
 use yew_router::prelude::{Route, RouteAgent};
 use yew_router::{router::Router, Switch};
 
-use web_sys::HtmlElement;
+use crate::app::catalogue::{self, CatalogueRoute};
 
 use super::catalogue::Catalogue;
 use super::chapter::Chapter;
@@ -24,8 +25,8 @@ use super::updates::Updates;
 pub enum BrowseRoute {
     #[to = "/catalogue/{source}/manga/{title}"]
     Detail(String, String),
-    #[to = "/catalogue/{source}"]
-    Source(String),
+    #[to = "/catalogue{*:rest}"]
+    Catalogue(CatalogueRoute),
     #[to = "/updates"]
     Updates,
     #[to = "/history"]
@@ -49,8 +50,8 @@ impl Into<Props> for BrowseRoute {
                 source: Some(source),
                 title: Some(title),
             },
-            BrowseRoute::Source(source) => Props {
-                source: Some(source),
+            BrowseRoute::Catalogue(route) => Props {
+                source: None,
                 title: None,
             },
             BrowseRoute::Updates => Props {
@@ -125,20 +126,20 @@ impl Component for Browse {
 
     fn view(&self) -> Html {
         html! {
-            <>
-                <div ref=self.refs[0].clone() class="block fixed inset-x-0 top-0 z-50 bg-teal-500 safe-top z-50"></div>
-                <NavigationBar ref=self.refs[1].clone()/>
-                <Router<BrowseRoute, ()>
-                render = Router::render(|switch: BrowseRoute| {
-                match switch {
-                    BrowseRoute::Detail(source, title) => html!{<Detail source=source title=title/>},
-                    BrowseRoute::Source(source) => html!{<Catalogue source=source/>},
-                    BrowseRoute::Updates => html!{<Updates/>},
-                    BrowseRoute::History => html!{<History/>},
-                    BrowseRoute::Home => html!{<Home/>},
-                    BrowseRoute::Settings => html!{<Settings />},
-                }}) />
-            </>
+                <>
+                    <div ref=self.refs[0].clone() class="block fixed inset-x-0 top-0 z-50 bg-teal-500 safe-top z-50"></div>
+                    <NavigationBar ref=self.refs[1].clone()/>
+                    <Router<BrowseRoute, ()>
+                    render = Router::render(|switch: BrowseRoute| {
+                    match switch {
+                        BrowseRoute::Detail(source, title) => html!{<Detail source=source title=title/>},
+                        BrowseRoute::Catalogue(catalogue_route) => html!{<Catalogue route=catalogue_route/>},
+                        BrowseRoute::Updates => html!{<Updates/>},
+                        BrowseRoute::History => html!{<History/>},
+                        BrowseRoute::Home => html!{<Home/>},
+                        BrowseRoute::Settings => html!{<Settings />},
+                    }}) / >
+            < / >
         }
     }
 }

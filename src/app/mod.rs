@@ -10,5 +10,7 @@ pub mod history;
 pub mod home;
 pub mod login;
 pub mod logout;
+pub mod select;
 pub mod settings;
+pub mod source;
 pub mod updates;
