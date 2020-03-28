@@ -106,6 +106,7 @@ impl Component for Login {
     fn view(&self) -> Html {
         html! {
             <div class="container mx-auto" style="padding-top: calc(env(safe-area-inset-top) + .5rem)">
+                <div class="block fixed inset-x-0 top-0 z-50 bg-tachiyomi-blue safe-top z-50 shadow"></div>
                 <div class="flex justify-center px-6 my-12">
                 <div class="w-full xl:w-3/4 lg:w-11/12 flex">
                     <div class="w-full  bg-white p-5 rounded-lg lg:rounded-l-none">

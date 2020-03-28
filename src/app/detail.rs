@@ -100,7 +100,7 @@ impl Component for Detail {
         html! {
             <div class="container pb-20" style="padding-top: calc(env(safe-area-inset-top) + .5rem)">
             <Spinner is_active={self.is_fetching_manga || self.is_fetching_chapter} />
-            <div class="m-2 flex lg:flex-row sm:flex-col">
+            <div class="m-2 flex md:flex-row sm:flex-col">
                 <div class="flex-shrink-0 lg:m-2 sm:mx-auto sm:my-2">
                     <div class="relative my-4">
                         <img class="manga-cover sm:cover cover-sm" src=self.manga.thumbnail_url />

@@ -123,7 +123,7 @@ impl Component for Source {
         html! {
             <div class="container mx-auto pb-20"  style="padding-top: calc(env(safe-area-inset-top) + .5rem)">
                 <Spinner is_active=self.is_fetching />
-                <div class="grid grid-cols-3 md:grid-cols-6 gap-2" id="catalogue">
+                <div class="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2" id="catalogue">
                     { for self.mangas.iter().map(|manga| html!{
                         <Manga
                         title=manga.title.to_owned()

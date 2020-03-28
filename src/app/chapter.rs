@@ -49,6 +49,7 @@ pub struct Chapter {
     refs: Vec<NodeRef>,
     is_bar_visible: bool,
     settings: SettingParams,
+    page_refs: Vec<NodeRef>,
 }
 
 pub enum Msg {
@@ -69,7 +70,7 @@ impl Component for Chapter {
     type Properties = Props;
 
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
-        let callback = link.callback(|_| Msg::RouterCallback); // TODO use a dispatcher instead.
+        let callback = link.callback(|_| Msg::RouterCallback);
         let router = RouteAgent::bridge(callback);
         let storage = StorageService::new(Area::Local).unwrap();
         let settings = {
@@ -115,6 +116,7 @@ impl Component for Chapter {
             refs: vec![NodeRef::default(), NodeRef::default()],
             is_bar_visible: true,
             settings,
+            page_refs: vec![],
         }
     }
 
@@ -147,7 +149,11 @@ impl Component for Chapter {
                 self.get_pages();
             }
             Msg::PagesReady(data) => {
+                self.page_refs.clear();
                 self.pages = data.pages;
+                for i in (0..self.pages.len()) {
+                    self.page_refs.push(NodeRef::default())
+                }
                 self.is_fetching = false;
             }
             Msg::PageForward => {
@@ -208,7 +214,7 @@ impl Component for Chapter {
 
     fn view(&self) -> Html {
         html! {
-        <div>
+        <div >
             <div
             ref=self.refs[0].clone()
             class="animated slideInDown faster block fixed inset-x-0 top-0 z-50 bg-gray-900 z-50 content-end flex opacity-75"
@@ -219,7 +225,7 @@ impl Component for Chapter {
                     </svg>
                </RouterAnchor<AppRoute>>
             </div>
-            <div class="container h-screen outline-none" id="manga-reader" tabindex="0" onkeydown=self.link.callback(|e: KeyboardEvent|
+            <div class="h-screen m-0 outline-none" id="manga-reader" tabindex="0" onkeydown=self.link.callback(|e: KeyboardEvent|
                 match e.key().as_str() {
                     "ArrowRight" => Msg::PageForward,
                     "ArrowLeft"  => Msg::PagePrevious,
@@ -231,22 +237,22 @@ impl Component for Chapter {
                     if self.settings.page_rendering == PageRendering::LongStrip {
                         "hidden"
                     } else {
-                        "manga-navigate-left outline-none"
+                        "manga-navigate-left outline-none fixed"
                     }
                 }
                 onmouseup=self.link.callback(|_| Msg::PagePrevious)/>
-                <button class="manga-navigate-center outline-none" onmouseup=self.link.callback(|_| Msg::ToggleBar)/>
+                <button class="manga-navigate-center outline-none fixed" onmouseup=self.link.callback(|_| Msg::ToggleBar)/>
                 <button
                 class={
                     if self.settings.page_rendering == PageRendering::LongStrip {
                         "hidden"
                     } else {
-                        "manga-navigate-right outline-none"
+                        "manga-navigate-right outline-none fixed"
                     }
                 }
                 onmouseup=self.link.callback(|_| Msg::PageForward)/>
                 <div class={
-                    format!("flex {} {}",
+                    format!("flex justify-center {} {}",
                     if self.settings.page_rendering == PageRendering::LongStrip {"flex-col cursor-pointer"} else {""},
                     if self.settings.reading_direction == ReadingDirection::RightToLeft {"flex-row-reverse"} else {""})
                 }
@@ -259,13 +265,13 @@ impl Component for Chapter {
                 }>
                     {
                         for (0..self.pages.len()).map(|i| html! {
-                        <img class={if (self.current_page == i)
+                        <img ref=self.page_refs[i].clone() class={format!("manga-page {}", if (self.current_page == i)
                         || (self.settings.page_rendering == PageRendering::DoublePage && (self.current_page + 1 == i)
                         || self.settings.page_rendering == PageRendering::LongStrip) {
-                            "manga-page active"
+                            "active"
                         } else {
-                            "manga-page"
-                        }} src=self.pages[i] page={i}/>
+                            ""
+                        })} src=self.pages[i] page={i}/>
                         })
                     }
                 </div>

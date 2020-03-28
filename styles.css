@@ -54,7 +54,6 @@ body {
 .manga-page.active {
     max-height: 100vh;
     max-width: 100vw;
-    margin: auto;
     display: block;
 }
 
