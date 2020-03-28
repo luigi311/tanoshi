@@ -1,6 +1,9 @@
 module.exports = {
     theme: {
         extend: {
+            colors: {
+                'tachiyomi-blue': '#5b749b',
+            }
         },
         container: {
             center: true,

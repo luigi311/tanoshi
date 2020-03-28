@@ -127,8 +127,8 @@ impl Component for Updates {
                 for self.updates.iter().map(|update| {
                 html!{
                 <>
-                <div class={if update.show_sep.unwrap_or(false) {"shadow p-2 bg-teal-200"} else {"hidden"}}>
-                <span class="text-semibold">{
+                <div class={if update.show_sep.unwrap_or(false) {"shadow p-2 bg-tachiyomi-blue"} else {"hidden"}}>
+                <span class="text-semibold text-white">{
                     match update.days.unwrap_or(0) {
                         0 => "Today".to_string(),
                         1 => "Yesterday".to_string(),

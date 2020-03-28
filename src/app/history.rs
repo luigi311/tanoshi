@@ -131,8 +131,8 @@ impl Component for History {
                 for self.history.iter().map(|h| {
                 html!{
                 <>
-                <div class={if h.show_sep.unwrap_or(false) {"shadow p-2 bg-teal-200"} else {"hidden"}}>
-                <span class="text-semibold">{
+                <div class={if h.show_sep.unwrap_or(false) {"shadow p-2 bg-tachiyomi-blue"} else {"hidden"}}>
+                <span class="text-semibold text-white">{
                     match h.days.unwrap_or(0) {
                         0 => "Today".to_string(),
                         1 => "Yesterday".to_string(),
