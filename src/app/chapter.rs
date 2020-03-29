@@ -3,7 +3,7 @@ use chrono::{DateTime, Utc};
 use js_sys;
 use serde_json::json;
 use wasm_bindgen::JsCast;
-use web_sys::{CssStyleDeclaration, HtmlElement};
+use web_sys::{CssStyleDeclaration, HtmlElement, HtmlImageElement};
 use yew::format::{Json, Nothing, Text};
 use yew::prelude::*;
 use yew::services::fetch::{FetchService, FetchTask, Request, Response};
@@ -21,7 +21,6 @@ use super::component::model::{
     MangaModel, PageRendering, ReadingDirection,
 };
 use super::component::Spinner;
-use wasm_bindgen::__rt::std::net::Shutdown::Read;
 
 #[derive(Clone, Properties)]
 pub struct Props {
@@ -50,6 +49,7 @@ pub struct Chapter {
     is_bar_visible: bool,
     settings: SettingParams,
     page_refs: Vec<NodeRef>,
+    container_ref: NodeRef,
 }
 
 pub enum Msg {
@@ -117,6 +117,7 @@ impl Component for Chapter {
             is_bar_visible: true,
             settings,
             page_refs: vec![],
+            container_ref: NodeRef::default(),
         }
     }
 
@@ -151,7 +152,9 @@ impl Component for Chapter {
             Msg::PagesReady(data) => {
                 self.pages = data.pages;
                 self.page_refs.clear();
-                self.page_refs.resize(self.pages.len(), NodeRef::default());
+                for i in 0..self.pages.len() {
+                    self.page_refs.push(NodeRef::default());
+                }
                 self.is_fetching = false;
             }
             Msg::PageForward => {
@@ -249,7 +252,7 @@ impl Component for Chapter {
                     }
                 }
                 onmouseup=self.link.callback(|_| Msg::PageForward)/>
-                <div class={
+                <div ref=self.container_ref.clone() class={
                     format!("flex justify-center {} {}",
                     if self.settings.page_rendering == PageRendering::LongStrip {"flex-col cursor-pointer"} else {"h-screen"},
                     if self.settings.reading_direction == ReadingDirection::RightToLeft {"flex-row-reverse"} else {""})
@@ -263,7 +266,7 @@ impl Component for Chapter {
                 }>
                     {
                         for (0..self.pages.len()).map(|i| html! {
-                        <img ref=self.page_refs[i].clone() class={format!("{} {}", if self.settings.page_rendering == PageRendering::DoublePage {
+                        <img id={i} ref=self.page_refs[i].clone() class={format!("{} {}", if self.settings.page_rendering == PageRendering::DoublePage {
                             "h-screen"
                         } else {
                             "w-auto h-auto object-contain"
@@ -359,13 +362,12 @@ impl Chapter {
 
     fn move_to_page(&mut self, page: usize) {
         self.current_page = page;
-        let route_string = format!(
-            "/catalogue/{}/manga/{}/chapter/{}/page/{}",
-            self.source, self.title, self.current_chapter, self.current_page
-        );
-        let route = Route::from(route_string);
-        self.router
-            .send(RouteRequest::ReplaceRouteNoBroadcast(route));
+        if self.settings.page_rendering == PageRendering::LongStrip {
+            if let Some(el) = self.page_refs[page].cast::<HtmlImageElement>() {
+                el.scroll_into_view();
+            }
+        } else {
+        }
     }
 
     fn next_page_or_chapter(&mut self) {

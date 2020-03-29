@@ -35,6 +35,7 @@ features = [
   'Document',
   'Element',
   'HtmlElement',
+  'HtmlImageElement',
   'Node',
   'Window',
   'CssStyleDeclaration'
