@@ -251,7 +251,7 @@ impl Component for Chapter {
                 onmouseup=self.link.callback(|_| Msg::PageForward)/>
                 <div class={
                     format!("flex justify-center {} {}",
-                    if self.settings.page_rendering == PageRendering::LongStrip {"flex-col cursor-pointer"} else {""},
+                    if self.settings.page_rendering == PageRendering::LongStrip {"flex-col cursor-pointer"} else {"h-screen"},
                     if self.settings.reading_direction == ReadingDirection::RightToLeft {"flex-row-reverse"} else {""})
                 }
                 onmouseup={
@@ -263,12 +263,16 @@ impl Component for Chapter {
                 }>
                     {
                         for (0..self.pages.len()).map(|i| html! {
-                        <img ref=self.page_refs[i].clone() class={format!("manga-page {}", if (self.current_page == i)
+                        <img ref=self.page_refs[i].clone() class={format!("{} {}", if self.settings.page_rendering == PageRendering::DoublePage {
+                            "h-screen"
+                        } else {
+                            "w-auto h-auto object-contain"
+                        }, if (self.current_page == i)
                         || (self.settings.page_rendering == PageRendering::DoublePage && (self.current_page + 1 == i)
                         || self.settings.page_rendering == PageRendering::LongStrip) {
-                            "active"
+                            "block"
                         } else {
-                            ""
+                            "hidden"
                         })} src=self.pages[i] page={i}/>
                         })
                     }
@@ -277,8 +281,8 @@ impl Component for Chapter {
             </div>
             <div ref=self.refs[1].clone()
             class="animated slideInUp faster block fixed inset-x-0 bottom-0 z-50 bg-gray-900 opacity-75 shadow safe-bottom">
-                <div class="flex px-4 py-6 justify-center">
-                    <input type="range" min="0" max={if self.pages.len() > 0 {self.pages.len()-1} else {self.pages.len()}} step="1" value={self.current_page} oninput=self.link.callback(|e: InputData| Msg::PageSliderChange(e.value.parse::<usize>().unwrap()))/>
+                <div class="flex px-4 py-5 justify-center">
+                    <input type="range" min="0" max={if self.pages.len() > 0 {self.pages.len()-1} else {self.pages.len()}} step="1" value={self.current_page} defaultValue={self.current_page} oninput=self.link.callback(|e: InputData| Msg::PageSliderChange(e.value.parse::<usize>().unwrap()))/>
                     <span class="mx-4 text-white">{format!("{}/{}", self.current_page + 1, self.pages.len())}</span>
                 </div>
             </div>
