@@ -143,7 +143,7 @@ impl Component for History {
                 </div>
                 <RouterAnchor<AppRoute>
                 classes="flex inline-flex border-b border-gray-light p-2 content-center hover:bg-gray-200"
-                route=AppRoute::Chapter(h.source.clone(), base64::encode_config(h.title.clone(), base64::URL_SAFE_NO_PAD), h.chapter.clone(), h.read as usize)>
+                route=AppRoute::Chapter(h.source.clone(), base64::encode_config(h.title.clone(), base64::URL_SAFE_NO_PAD), h.chapter.clone(), (h.read + 1) as usize)>
                     <div class="mr-4 my-2 h-16 w-16 object-fit object-center bg-center bg-cover rounded-full" style={format!("background-image: url({})", h.thumbnail_url.clone())}/>
                     <div class="flex flex-col my-auto">
                         <span class="text-lg font-semibold">{h.title.clone()}</span>

@@ -2,6 +2,7 @@ use anyhow;
 use chrono::{DateTime, Utc};
 use js_sys;
 use serde_json::json;
+use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use web_sys::{CssStyleDeclaration, HtmlElement, HtmlImageElement};
 use yew::format::{Json, Nothing, Text};
@@ -50,6 +51,7 @@ pub struct Chapter {
     settings: SettingParams,
     page_refs: Vec<NodeRef>,
     container_ref: NodeRef,
+    closure: Closure<dyn Fn()>,
 }
 
 pub enum Msg {
@@ -62,6 +64,7 @@ pub enum Msg {
     PageSliderChange(usize),
     RouterCallback,
     SetHistoryRequested,
+    ScrollEvent(f64),
     noop,
 }
 
@@ -98,6 +101,20 @@ impl Component for Chapter {
                 .set_property("background-color", "black");
         }
 
+        let tmp_link = link.clone();
+        let closure = Closure::wrap(Box::new(move || {
+            let current_scroll = window().scroll_y().expect("error get scroll y")
+                + window().inner_height().unwrap().as_f64().unwrap();
+            let height = document()
+                .get_element_by_id("pages")
+                .expect("should have pages")
+                .dyn_ref::<HtmlElement>()
+                .unwrap()
+                .offset_height() as f64;
+
+            tmp_link.send_message(Msg::ScrollEvent(current_scroll));
+        }) as Box<dyn Fn()>);
+
         Chapter {
             fetch_task: None,
             link,
@@ -118,10 +135,12 @@ impl Component for Chapter {
             settings,
             page_refs: vec![],
             container_ref: NodeRef::default(),
+            closure,
         }
     }
 
     fn mounted(&mut self) -> ShouldRender {
+        window().set_onscroll(Some(self.closure.as_ref().unchecked_ref()));
         self.get_chapters();
         document()
             .get_element_by_id("manga-reader")
@@ -206,6 +225,19 @@ impl Component for Chapter {
                 self.get_pages();
             }
             Msg::SetHistoryRequested => {}
+            Msg::ScrollEvent(scroll) => {
+                for page_ref in self.page_refs.clone().iter() {
+                    if let Some(el) = page_ref.cast::<HtmlImageElement>() {
+                        if scroll > el.offset_top() as f64 {
+                            if el.id().parse::<usize>().unwrap() > self.current_page {
+                                self.next_page_or_chapter();
+                            } else if el.id().parse::<usize>().unwrap() < self.current_page {
+                                self.prev_page_or_chapter();
+                            }
+                        }
+                    }
+                }
+            }
             Msg::noop => {
                 info!("noop");
             }
@@ -215,7 +247,7 @@ impl Component for Chapter {
 
     fn view(&self) -> Html {
         html! {
-        <div >
+        <div>
             <div
             ref=self.refs[0].clone()
             class="animated slideInDown faster block fixed inset-x-0 top-0 z-50 bg-gray-900 z-50 content-end flex opacity-75"
@@ -252,7 +284,9 @@ impl Component for Chapter {
                     }
                 }
                 onmouseup=self.link.callback(|_| Msg::PageForward)/>
-                <div ref=self.container_ref.clone() class={
+                <div ref=self.container_ref.clone()
+                 id="pages"
+                 class={
                     format!("flex justify-center {} {}",
                     if self.settings.page_rendering == PageRendering::LongStrip {"flex-col cursor-pointer"} else {"h-screen"},
                     if self.settings.reading_direction == ReadingDirection::RightToLeft {"flex-row-reverse"} else {""})
@@ -294,6 +328,7 @@ impl Component for Chapter {
     }
 
     fn destroy(&mut self) {
+        window().set_onscroll(None);
         if self.settings.background_color == BackgroundColor::Black {
             document()
                 .body()

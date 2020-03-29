@@ -85,7 +85,6 @@ impl Component for Source {
     fn mounted(&mut self) -> ShouldRender {
         window().set_onscroll(Some(self.closure.as_ref().unchecked_ref()));
         self.fetch_favorites();
-        info!("source mounted");
         false
     }
 
