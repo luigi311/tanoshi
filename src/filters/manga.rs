@@ -13,10 +13,20 @@ pub fn manga(
     secret: String,
     db: Arc<Mutex<Connection>>,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    list_mangas(db.clone())
+    list_sources(db.clone())
+        .or(list_mangas(db.clone()))
         .or(get_manga_info(db.clone()))
         .or(get_chapters(secret, db.clone()))
         .or(get_pages(db.clone()))
+}
+
+pub fn list_sources(
+    db: Arc<Mutex<Connection>>,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path!("api" / "source")
+        .and(warp::get())
+        .and(with_db(db))
+        .and_then(manga::list_sources)
 }
 
 pub fn list_mangas(

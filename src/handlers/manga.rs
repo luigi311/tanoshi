@@ -1,11 +1,36 @@
 use std::sync::{Arc, Mutex};
 
 use rusqlite::{params, Connection};
-use sled::{Batch, Tree};
 use warp::Rejection;
+
+use serde_json::json;
 
 use crate::auth::Claims;
 use crate::scraper::{mangasee::Mangasee, repository, GetParams, Params, Scraping};
+
+pub struct Source {
+    name: String,
+}
+
+pub async fn list_sources(db: Arc<Mutex<Connection>>) -> Result<impl warp::Reply, Rejection> {
+    let conn = db.lock().unwrap();
+    let mut stmt = conn.prepare("SELECT name FROM source").unwrap();
+    let source_iter = stmt
+        .query_map(params![], |row| Ok(Source { name: row.get(0)? }))
+        .unwrap();
+
+    let mut sources = vec![];
+    for source in source_iter {
+        sources.push(source.unwrap().name);
+    }
+
+    Ok(warp::reply::json(&json!(
+        {
+            "sources": sources,
+            "status": "success"
+        }
+    )))
+}
 
 pub async fn list_mangas(
     source: String,
