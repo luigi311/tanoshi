@@ -149,11 +149,9 @@ impl Component for Chapter {
                 self.get_pages();
             }
             Msg::PagesReady(data) => {
-                self.page_refs.clear();
                 self.pages = data.pages;
-                for i in (0..self.pages.len()) {
-                    self.page_refs.push(NodeRef::default())
-                }
+                self.page_refs.clear();
+                self.page_refs.resize(self.pages.len(), NodeRef::default());
                 self.is_fetching = false;
             }
             Msg::PageForward => {
@@ -279,20 +277,9 @@ impl Component for Chapter {
             </div>
             <div ref=self.refs[1].clone()
             class="animated slideInUp faster block fixed inset-x-0 bottom-0 z-50 bg-gray-900 opacity-75 shadow safe-bottom">
-                <div class="flex p-4 justify-center">
-                    {
-                        for (0..self.pages.len()).map(|i| html!{
-                            <div
-                            onclick=self.link.callback(move |_| Msg::PageSliderChange(i))
-                            class={
-                                if self.current_page == i {
-                                    "flex-grow flex-shrink z-50 px-1 py-2 border border-black bg-gray-700 cursor-pointer"
-                                } else {
-                                    "flex-grow flex-shrink z-50 px-1 py-2 border border-black bg-gray-500 cursor-pointer"
-                                }
-                            }/>
-                        })
-                    }
+                <div class="flex px-4 py-6 justify-center">
+                    <input type="range" min="0" max={if self.pages.len() > 0 {self.pages.len()-1} else {self.pages.len()}} step="1" value={self.current_page} oninput=self.link.callback(|e: InputData| Msg::PageSliderChange(e.value.parse::<usize>().unwrap()))/>
+                    <span class="mx-4 text-white">{format!("{}/{}", self.current_page + 1, self.pages.len())}</span>
                 </div>
             </div>
         </div>
@@ -532,14 +519,6 @@ impl Chapter {
             }),
         ) {
             self.fetch_task = Some(FetchTask::from(task));
-        }
-    }
-
-    fn keyboad_navigation_callback(&self) -> Msg {
-        if self.settings.reading_direction == ReadingDirection::RightToLeft {
-            Msg::PageForward
-        } else {
-            Msg::PagePrevious
         }
     }
 }
