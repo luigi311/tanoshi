@@ -3,21 +3,21 @@ Tachiyomi-like web manga reader. Front-end for [tanoshi](https://github.com/fadh
 
 ## Goals
 After switching to iOS from android, I really missing tachiyomi for reading manga.
-Because I don't want to pay for annual fee of app store, 
-I decided to make this a PWA with scraping on backend.
+Because I can't afford to pay for annual fee of app store, 
+I decided to make this a PWA instead with web scraping on backend.
 
 ## Features
 ### Currently working
 - Browse and read manga from mangasee
-- Favorite mangas for faster reading
-- Reading History across devices
+- Favorite mangas for faster access
+- Sync reading history across devices
 - See chapter updates
 - Configure page rendering and reading direction
 ### Planned
 I'm trying to make this as close as tachiyomi, and add sync across device as well.
 
 ## Why Rust
-Because I want to learn rust, and also webassembly
+Rust is the most loved programming language, I thought this is my chance to learn rust too.
 
 ## Installation
 Use Dockerfile below to install
