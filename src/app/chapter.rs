@@ -52,6 +52,7 @@ pub struct Chapter {
     page_refs: Vec<NodeRef>,
     container_ref: NodeRef,
     closure: Closure<dyn Fn()>,
+    is_history_fetching: bool,
 }
 
 pub enum Msg {
@@ -98,7 +99,8 @@ impl Component for Chapter {
                 .dyn_ref::<web_sys::HtmlElement>()
                 .unwrap()
                 .style()
-                .set_property("background-color", "black");
+                .set_property("background-color", "black")
+                .expect("failed to set background color");
         }
 
         let tmp_link = link.clone();
@@ -136,6 +138,7 @@ impl Component for Chapter {
             page_refs: vec![],
             container_ref: NodeRef::default(),
             closure,
+            is_history_fetching: false,
         }
     }
 
@@ -234,16 +237,15 @@ impl Component for Chapter {
             Msg::RouterCallback => {
                 self.get_pages();
             }
-            Msg::SetHistoryRequested => {}
+            Msg::SetHistoryRequested => {
+                self.is_history_fetching = false;
+            }
             Msg::ScrollEvent(scroll) => {
                 for page_ref in self.page_refs.clone().iter() {
                     if let Some(el) = page_ref.cast::<HtmlImageElement>() {
                         if scroll > el.offset_top() as f64 {
-                            if el.id().parse::<usize>().unwrap() > self.current_page {
-                                self.next_page_or_chapter();
-                            } else if el.id().parse::<usize>().unwrap() < self.current_page {
-                                self.prev_page_or_chapter();
-                            }
+                            self.current_page = el.id().parse::<usize>().unwrap();
+                            self.set_history();
                         }
                     }
                 }
@@ -371,7 +373,8 @@ impl Component for Chapter {
                 .dyn_ref::<web_sys::HtmlElement>()
                 .unwrap()
                 .style()
-                .set_property("background-color", "white");
+                .set_property("background-color", "white")
+                .expect("failed to set background color");
         }
     }
 }
@@ -479,11 +482,10 @@ impl Chapter {
                     self.source, self.title, self.current_chapter
                 );
                 self.previous_chapter_page = self.current_page;
-            } else {
-                route_string = format!("/catalogue/{}/manga/{}", self.source, self.title);
+
+                let route = Route::from(route_string);
+                self.router.send(RouteRequest::ChangeRoute(route));
             }
-            let route = Route::from(route_string);
-            self.router.send(RouteRequest::ChangeRoute(route));
         } else {
             route_string = format!(
                 "/catalogue/{}/manga/{}/chapter/{}/page/{}",
@@ -538,10 +540,6 @@ impl Chapter {
                 );
                 let route = Route::from(route_string);
                 self.router.send(RouteRequest::ChangeRoute(route));
-            } else {
-                let route_string = format!("/catalogue/{}/manga/{}", self.source, self.title);
-                let route = Route::from(route_string);
-                self.router.send(RouteRequest::ChangeRoute(route));
             }
         } else {
             let route_string = format!(
@@ -566,35 +564,38 @@ impl Chapter {
     }
 
     fn set_history(&mut self) {
-        let h = HistoryRequest {
-            source: self.source.clone(),
-            title: String::from_utf8(
-                base64::decode_config(self.title.clone(), base64::URL_SAFE_NO_PAD).unwrap(),
-            )
-            .unwrap(),
-            chapter: self.current_chapter.clone(),
-            read: self.current_page as i32,
-            at: DateTime::from(self.get_date()),
-        };
+        if !self.is_history_fetching {
+            let h = HistoryRequest {
+                source: self.source.clone(),
+                title: String::from_utf8(
+                    base64::decode_config(self.title.clone(), base64::URL_SAFE_NO_PAD).unwrap(),
+                )
+                .unwrap(),
+                chapter: self.current_chapter.clone(),
+                read: self.current_page as i32,
+                at: DateTime::from(self.get_date()),
+            };
 
-        let req = Request::post("/api/history")
-            .header("Authorization", self.token.to_string())
-            .header("Content-Type", "application/json")
-            .body(Json(&h))
-            .expect("failed to build request");
+            let req = Request::post("/api/history")
+                .header("Authorization", self.token.to_string())
+                .header("Content-Type", "application/json")
+                .body(Json(&h))
+                .expect("failed to build request");
 
-        if let Ok(task) = FetchService::new().fetch(
-            req,
-            self.link.callback(|response: Response<Text>| {
-                if let (meta, Ok(data)) = response.into_parts() {
-                    if meta.status.is_success() {
-                        return Msg::SetHistoryRequested;
+            if let Ok(task) = FetchService::new().fetch(
+                req,
+                self.link.callback(|response: Response<Text>| {
+                    if let (meta, Ok(data)) = response.into_parts() {
+                        if meta.status.is_success() {
+                            return Msg::SetHistoryRequested;
+                        }
                     }
-                }
-                Msg::noop
-            }),
-        ) {
-            self.fetch_task = Some(FetchTask::from(task));
+                    Msg::noop
+                }),
+            ) {
+                self.fetch_task = Some(FetchTask::from(task));
+                self.is_history_fetching = true;
+            }
         }
     }
 }
