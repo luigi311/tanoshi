@@ -241,11 +241,18 @@ impl Component for Chapter {
                 self.is_history_fetching = false;
             }
             Msg::ScrollEvent(scroll) => {
+                let mut page = 0;
                 for page_ref in self.page_refs.clone().iter() {
                     if let Some(el) = page_ref.cast::<HtmlImageElement>() {
                         if scroll > el.offset_top() as f64 {
-                            self.current_page = el.id().parse::<usize>().unwrap();
-                            self.set_history();
+                            page = el.id().parse::<usize>().unwrap();
+                        } else {
+                            if self.current_page != page {
+                                self.current_page = page;
+                                self.set_history();
+                                info!("page {}", page);
+                            }
+                            break;
                         }
                     }
                 }
@@ -564,7 +571,7 @@ impl Chapter {
     }
 
     fn set_history(&mut self) {
-        if !self.is_history_fetching {
+        if !self.is_history_fetching && !self.is_fetching {
             let h = HistoryRequest {
                 source: self.source.clone(),
                 title: String::from_utf8(
