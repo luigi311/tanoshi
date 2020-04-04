@@ -179,18 +179,26 @@ impl Component for Chapter {
                 self.is_fetching = false;
             }
             Msg::PageForward => {
-                if self.settings.reading_direction == ReadingDirection::LeftToRight {
+                if self.settings.page_rendering == PageRendering::LongStrip {
                     self.next_page_or_chapter();
                 } else {
-                    self.prev_page_or_chapter();
+                    if self.settings.reading_direction == ReadingDirection::LeftToRight {
+                        self.next_page_or_chapter();
+                    } else {
+                        self.prev_page_or_chapter();
+                    }
                 }
                 self.set_history();
             }
             Msg::PagePrevious => {
-                if self.settings.reading_direction == ReadingDirection::LeftToRight {
+                if self.settings.page_rendering == PageRendering::LongStrip {
                     self.prev_page_or_chapter();
                 } else {
-                    self.next_page_or_chapter();
+                    if self.settings.reading_direction == ReadingDirection::LeftToRight {
+                        self.prev_page_or_chapter();
+                    } else {
+                        self.next_page_or_chapter();
+                    }
                 }
                 self.set_history();
             }
@@ -267,53 +275,76 @@ impl Component for Chapter {
                     _ => Msg::noop,
                 }
             )>
-                <button
-                class={
-                    if self.settings.page_rendering == PageRendering::LongStrip {
-                        "hidden"
+                {
+                    if self.settings.page_rendering != PageRendering::LongStrip {
+                        html!{
+                            <>
+                                <button class="manga-navigate-left outline-none fixed" onmouseup=self.link.callback(|_| Msg::PagePrevious)/>
+                                <button class="manga-navigate-center outline-none fixed" onmouseup=self.link.callback(|_| Msg::ToggleBar)/>
+                                <button class="manga-navigate-right outline-none fixed" onmouseup=self.link.callback(|_| Msg::PageForward)/>
+                            </>
+                        }
                     } else {
-                        "manga-navigate-left outline-none fixed"
+                        html!{}
                     }
                 }
-                onmouseup=self.link.callback(|_| Msg::PagePrevious)/>
-                <button class="manga-navigate-center outline-none fixed" onmouseup=self.link.callback(|_| Msg::ToggleBar)/>
-                <button
-                class={
-                    if self.settings.page_rendering == PageRendering::LongStrip {
-                        "hidden"
-                    } else {
-                        "manga-navigate-right outline-none fixed"
-                    }
-                }
-                onmouseup=self.link.callback(|_| Msg::PageForward)/>
                 <div ref=self.container_ref.clone()
                  id="pages"
                  class={
                     format!("flex justify-center {} {}",
-                    if self.settings.page_rendering == PageRendering::LongStrip {"flex-col cursor-pointer"} else {"h-screen"},
+                    if self.settings.page_rendering == PageRendering::LongStrip {"flex-col"} else {"h-screen"},
                     if self.settings.reading_direction == ReadingDirection::RightToLeft {"flex-row-reverse"} else {""})
-                }
-                onmouseup={
-                    if self.settings.page_rendering == PageRendering::LongStrip {
-                    self.link.callback(|_| Msg::ToggleBar)
-                    } else {
-                    self.link.callback(|_| Msg::noop)
-                    }
                 }>
                     {
+                        if self.settings.page_rendering == PageRendering::LongStrip {
+                            html!{
+                            <div
+                                class="border-dashed border-4 border-gray-500 flex justify-center items-center h-24 cursor-pointer"
+                                onmouseup=self.link.callback(|_| Msg::PagePrevious)>
+                                <span class="text-gray-500">{"Previous Chapter"}</span>
+                            </div>
+                            }
+                        } else {
+                            html!{}
+                        }
+                    }
+                    {
                         for (0..self.pages.len()).map(|i| html! {
-                        <img id={i} ref=self.page_refs[i].clone() class={format!("{} {}", if self.settings.page_rendering == PageRendering::DoublePage {
-                            "h-screen"
-                        } else {
-                            "w-auto h-auto object-contain"
-                        }, if (self.current_page == i)
-                        || (self.settings.page_rendering == PageRendering::DoublePage && (self.current_page + 1 == i)
-                        || self.settings.page_rendering == PageRendering::LongStrip) {
-                            "block"
-                        } else {
-                            "hidden"
-                        })} src=self.pages[i] page={i}/>
+                        <img id={i}
+                            ref=self.page_refs[i].clone()
+                            class={format!("{} {}", if self.settings.page_rendering == PageRendering::DoublePage {
+                                "h-screen"
+                            } else {
+                                "w-auto h-auto object-contain"
+                            }, if (self.current_page == i)
+                            || (self.settings.page_rendering == PageRendering::DoublePage && (self.current_page + 1 == i)
+                            || self.settings.page_rendering == PageRendering::LongStrip) {
+                                "block"
+                            } else {
+                                "hidden"
+                            })} src=self.pages[i] page={i}
+                            onmouseup={
+                                if self.settings.page_rendering == PageRendering::LongStrip {
+                                self.link.callback(|_| Msg::ToggleBar)
+                                } else {
+                                self.link.callback(|_| Msg::noop)
+                                }
+                            }
+                        />
                         })
+                    }
+                     {
+                        if self.settings.page_rendering == PageRendering::LongStrip {
+                            html!{
+                            <div
+                                class="border-dashed border-4 border-gray-500 flex justify-center items-center h-24 cursor-pointer"
+                                onmouseup=self.link.callback(|_| Msg::PageForward)>
+                                <span class="text-gray-500">{"Next Chapter"}</span>
+                            </div>
+                            }
+                        } else {
+                            html!{}
+                        }
                     }
                 </div>
                 <Spinner is_active=self.is_fetching />
