@@ -89,7 +89,6 @@ impl Component for Catalogue {
         html! {
             match route {
                 CatalogueRoute::Source(source) => {
-                    info!("catalogue route source {}", source.clone());
                     html! {<Source source=source />}
                 },
                 CatalogueRoute::Select => {

@@ -69,7 +69,6 @@ impl Component for Source {
                 tmp_link.send_message(Msg::ScrolledDown);
             }
         }) as Box<dyn Fn()>);
-
         Source {
             fetch_task: None,
             link,
@@ -84,7 +83,6 @@ impl Component for Source {
     }
 
     fn mounted(&mut self) -> ShouldRender {
-        window().set_onscroll(Some(self.closure.as_ref().unchecked_ref()));
         self.fetch_favorites();
         false
     }
@@ -121,7 +119,11 @@ impl Component for Source {
     }
 
     fn view(&self) -> Html {
-        html! {
+        match window().onscroll() {
+            Some(_) => {}
+            None => window().set_onscroll(Some(self.closure.as_ref().unchecked_ref())),
+        };
+        return html! {
             <div class="container mx-auto pb-20"  style="padding-top: calc(env(safe-area-inset-top) + .5rem)">
                 <Spinner is_active=self.is_fetching />
                 <div class="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2" id="catalogue">
@@ -136,7 +138,7 @@ impl Component for Source {
                     }
                     </div>
             </div>
-        }
+        };
     }
 
     fn destroy(&mut self) {
@@ -191,6 +193,7 @@ impl Source {
             ),
         ) {
             self.fetch_task = Some(FetchTask::from(task));
+            self.is_fetching = true;
         }
     }
 }
