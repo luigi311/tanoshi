@@ -66,6 +66,7 @@ pub enum Msg {
     RouterCallback,
     SetHistoryRequested,
     ScrollEvent(f64),
+    LoadStart(usize),
     Noop,
 }
 
@@ -172,6 +173,7 @@ impl Component for Chapter {
                 };
                 self.chapter = data.chapters[idx].clone();
                 self.get_pages();
+                return false;
             }
             Msg::PagesReady(data) => {
                 self.pages = data.pages;
@@ -239,6 +241,7 @@ impl Component for Chapter {
             }
             Msg::SetHistoryRequested => {
                 self.is_history_fetching = false;
+                return false;
             }
             Msg::ScrollEvent(scroll) => {
                 let mut page = 0;
@@ -254,15 +257,18 @@ impl Component for Chapter {
                     }
                 }
             }
+            Msg::LoadStart(page) => {
+                info!("page {} start load", page);
+            }
             Msg::Noop => {
-                info!("Noop");
+                return false;
             }
         }
         true
     }
 
     fn view(&self) -> Html {
-        html! {
+        return html! {
         <div>
             <div
             ref=self.refs[0].clone()
@@ -375,7 +381,7 @@ impl Component for Chapter {
                 </div>
             </div>
         </div>
-        }
+        };
     }
 
     fn destroy(&mut self) {
