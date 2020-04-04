@@ -8,6 +8,7 @@ pub mod component;
 pub mod detail;
 pub mod history;
 pub mod home;
+pub mod job;
 pub mod login;
 pub mod logout;
 pub mod select;

@@ -15,7 +15,7 @@ use yew::{html, Component, ComponentLink, Html, InputData, Properties, ShouldRen
 use yew_router::{agent::RouteRequest, prelude::*};
 
 use crate::app::component::model::{HistoryRequest, HistoryResponse, SettingParams};
-use crate::app::{browse::BrowseRoute, AppRoute};
+use crate::app::{browse::BrowseRoute, job, AppRoute};
 
 use super::component::model::{
     BackgroundColor, ChapterModel, GetChaptersResponse, GetMangaResponse, GetPagesResponse,
@@ -53,6 +53,7 @@ pub struct Chapter {
     container_ref: NodeRef,
     closure: Closure<dyn Fn()>,
     is_history_fetching: bool,
+    worker: Box<dyn Bridge<job::Worker>>,
 }
 
 pub enum Msg {
@@ -118,6 +119,9 @@ impl Component for Chapter {
             tmp_link.send_message(Msg::ScrollEvent(current_scroll));
         }) as Box<dyn Fn()>);
 
+        let worker_callback = link.callback(|_| Msg::SetHistoryRequested);
+        let worker = job::Worker::bridge(worker_callback);
+
         Chapter {
             fetch_task: None,
             link,
@@ -140,6 +144,7 @@ impl Component for Chapter {
             container_ref: NodeRef::default(),
             closure,
             is_history_fetching: false,
+            worker,
         }
     }
 
@@ -178,6 +183,14 @@ impl Component for Chapter {
                 for i in 0..self.pages.len() {
                     self.page_refs.push(NodeRef::default());
                 }
+
+                if self.settings.page_rendering == PageRendering::LongStrip {
+                    match window().onscroll() {
+                        Some(_) => {}
+                        None => window().set_onscroll(Some(self.closure.as_ref().unchecked_ref())),
+                    };
+                }
+
                 self.is_fetching = false;
             }
             Msg::PageForward => {
@@ -246,7 +259,9 @@ impl Component for Chapter {
                     if let Some(el) = page_ref.cast::<HtmlImageElement>() {
                         if scroll > el.offset_top() as f64 {
                             page = el.id().parse::<usize>().unwrap();
-                            if page == (self.pages.len() - 1) && page != self.current_page {
+                            if page == (self.pages.len().checked_sub(1).unwrap_or(0))
+                                && page != self.current_page
+                            {
                                 self.current_page = page;
                                 self.set_history();
                             }
@@ -271,13 +286,6 @@ impl Component for Chapter {
     }
 
     fn view(&self) -> Html {
-        if self.settings.page_rendering == PageRendering::LongStrip {
-            match window().onscroll() {
-                Some(_) => {}
-                None => window().set_onscroll(Some(self.closure.as_ref().unchecked_ref())),
-            };
-        }
-
         return html! {
         <div>
             <div
@@ -596,38 +604,17 @@ impl Chapter {
     }
 
     fn set_history(&mut self) {
-        if !self.is_history_fetching && !self.is_fetching {
-            let h = HistoryRequest {
-                source: self.source.clone(),
-                title: String::from_utf8(
-                    base64::decode_config(self.title.clone(), base64::URL_SAFE_NO_PAD).unwrap(),
-                )
-                .unwrap(),
-                chapter: self.current_chapter.clone(),
-                read: self.current_page as i32,
-                at: DateTime::from(self.get_date()),
-            };
-
-            let req = Request::post("/api/history")
-                .header("Authorization", self.token.to_string())
-                .header("Content-Type", "application/json")
-                .body(Json(&h))
-                .expect("failed to build request");
-
-            if let Ok(task) = FetchService::new().fetch(
-                req,
-                self.link.callback(|response: Response<Text>| {
-                    if let (meta, Ok(data)) = response.into_parts() {
-                        if meta.status.is_success() {
-                            return Msg::SetHistoryRequested;
-                        }
-                    }
-                    Msg::Noop
-                }),
-            ) {
-                self.fetch_task = Some(FetchTask::from(task));
-                self.is_history_fetching = true;
-            }
-        }
+        let h = HistoryRequest {
+            source: self.source.clone(),
+            title: String::from_utf8(
+                base64::decode_config(self.title.clone(), base64::URL_SAFE_NO_PAD).unwrap(),
+            )
+            .unwrap(),
+            chapter: self.current_chapter.clone(),
+            read: self.current_page as i32,
+            at: DateTime::from(self.get_date()),
+        };
+        self.worker
+            .send(job::Request::PostHistory(self.token.clone(), h));
     }
 }

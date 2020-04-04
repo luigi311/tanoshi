@@ -111,7 +111,7 @@ impl From<&SettingParams> for Text {
     }
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct HistoryRequest {
     pub source: String,
     pub title: String,
