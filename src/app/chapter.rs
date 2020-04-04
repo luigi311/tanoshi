@@ -140,7 +140,6 @@ impl Component for Chapter {
     }
 
     fn mounted(&mut self) -> ShouldRender {
-        window().set_onscroll(Some(self.closure.as_ref().unchecked_ref()));
         self.get_chapters();
         document()
             .get_element_by_id("manga-reader")
@@ -148,6 +147,9 @@ impl Component for Chapter {
             .dyn_ref::<HtmlElement>()
             .expect("should load HtmlElement")
             .focus();
+        if self.settings.page_rendering == PageRendering::LongStrip {
+            window().set_onscroll(Some(self.closure.as_ref().unchecked_ref()));
+        }
         true
     }
 
@@ -328,7 +330,9 @@ impl Component for Chapter {
     }
 
     fn destroy(&mut self) {
-        window().set_onscroll(None);
+        if self.settings.page_rendering == PageRendering::LongStrip {
+            window().set_onscroll(None);
+        }
         if self.settings.background_color == BackgroundColor::Black {
             document()
                 .body()
