@@ -151,9 +151,6 @@ impl Component for Chapter {
             .dyn_ref::<HtmlElement>()
             .expect("should load HtmlElement")
             .focus();
-        if self.settings.page_rendering == PageRendering::LongStrip {
-            window().set_onscroll(Some(self.closure.as_ref().unchecked_ref()));
-        }
         false
     }
 
@@ -274,6 +271,13 @@ impl Component for Chapter {
     }
 
     fn view(&self) -> Html {
+        if self.settings.page_rendering == PageRendering::LongStrip {
+            match window().onscroll() {
+                Some(_) => {}
+                None => window().set_onscroll(Some(self.closure.as_ref().unchecked_ref())),
+            };
+        }
+
         return html! {
         <div>
             <div
