@@ -34,7 +34,7 @@ pub struct Select {
 
 pub enum Msg {
     SourceReady(GetSourceResponse),
-    noop,
+    Noop,
 }
 
 impl Component for Select {
@@ -61,8 +61,8 @@ impl Component for Select {
                 self.sources = data.sources;
                 self.is_fetching = false;
             }
-            Msg::noop => {
-                info!("noop");
+            Msg::Noop => {
+                info!("Noop");
             }
         }
         true
@@ -107,7 +107,7 @@ impl Select {
                             return Msg::SourceReady(data);
                         }
                     }
-                    Msg::noop
+                    Msg::Noop
                 },
             ),
         ) {

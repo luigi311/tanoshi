@@ -24,7 +24,7 @@ pub enum Msg {
     SetReadingDirection(ReadingDirection),
     SetBackgroundColor(BackgroundColor),
     SetPageRendering(PageRendering),
-    noop,
+    Noop,
 }
 
 impl Component for Settings {
@@ -65,8 +65,8 @@ impl Component for Settings {
                 self.settings.page_rendering = value;
                 self.storage.store("settings", &self.settings)
             }
-            Msg::noop => {
-                info!("noop");
+            Msg::Noop => {
+                info!("Noop");
             }
         }
         true

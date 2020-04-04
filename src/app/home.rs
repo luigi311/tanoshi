@@ -32,7 +32,7 @@ pub struct Home {
 
 pub enum Msg {
     FavoritesReady(GetFavoritesResponse),
-    noop,
+    Noop,
 }
 
 impl Component for Home {
@@ -69,7 +69,7 @@ impl Component for Home {
                 self.mangas = data.favorites.unwrap();
                 self.is_fetching = false;
             }
-            noop => {
+            Noop => {
                 return false;
             }
         };
@@ -113,7 +113,7 @@ impl Home {
                             return Msg::FavoritesReady(data);
                         }
                     }
-                    Msg::noop
+                    Msg::Noop
                 },
             ),
         ) {

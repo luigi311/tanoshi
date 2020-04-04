@@ -18,7 +18,7 @@ pub struct Spinner {
 }
 
 pub enum Msg {
-    noop,
+    Noop,
 }
 
 impl Component for Spinner {

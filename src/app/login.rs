@@ -50,7 +50,7 @@ pub enum Msg {
     PasswordChange(InputData),
     Submit(Event),
     LoggedIn(UserResponse),
-    noop,
+    Noop,
 }
 
 impl Component for Login {
@@ -59,7 +59,7 @@ impl Component for Login {
 
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
         let storage = StorageService::new(Area::Local).unwrap();
-        let callback = link.callback(|_| Msg::noop);
+        let callback = link.callback(|_| Msg::Noop);
         let router = RouteAgent::bridge(callback);
         Login {
             fetch_task: None,
@@ -95,8 +95,8 @@ impl Component for Login {
                     return false;
                 }
             },
-            Msg::noop => {
-                info!("noop");
+            Msg::Noop => {
+                info!("Noop");
                 return false;
             }
         }
@@ -169,7 +169,7 @@ impl Login {
                             return Msg::LoggedIn(data);
                         }
                     }
-                    Msg::noop
+                    Msg::Noop
                 },
             ),
         ) {

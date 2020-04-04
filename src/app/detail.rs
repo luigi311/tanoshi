@@ -33,7 +33,7 @@ pub enum Msg {
     MangaReady(GetMangaResponse),
     ChapterReady(GetChaptersResponse),
     Refresh,
-    noop,
+    Noop,
 }
 
 impl Component for Detail {
@@ -89,8 +89,8 @@ impl Component for Detail {
             Msg::Refresh => {
                 self.get_chapters(true);
             }
-            Msg::noop => {
-                info!("noop");
+            Msg::Noop => {
+                info!("Noop");
             }
         }
         true
@@ -160,7 +160,7 @@ impl Detail {
                             return Msg::MangaReady(data);
                         }
                     }
-                    Msg::noop
+                    Msg::Noop
                 },
             ),
         ) {
@@ -187,7 +187,7 @@ impl Detail {
                             return Msg::ChapterReady(data);
                         }
                     }
-                    Msg::noop
+                    Msg::Noop
                 },
             ),
         ) {

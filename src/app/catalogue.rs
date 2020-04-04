@@ -45,7 +45,7 @@ pub struct Catalogue {
 }
 
 pub enum Msg {
-    noop,
+    Noop,
 }
 
 impl Component for Catalogue {
@@ -72,8 +72,8 @@ impl Component for Catalogue {
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
-            Msg::noop => {
-                info!("noop");
+            Msg::Noop => {
+                info!("Noop");
             }
         }
         true

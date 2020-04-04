@@ -40,7 +40,7 @@ pub struct History {
 pub enum Msg {
     HistoryReady(HistoryResponse),
     ScrolledDown,
-    noop,
+    Noop,
 }
 
 impl Component for History {
@@ -115,7 +115,7 @@ impl Component for History {
                     self.fetch_updates();
                 }
             }
-            noop => {
+            Noop => {
                 return false;
             }
         };
@@ -188,7 +188,7 @@ impl History {
                             return Msg::HistoryReady(data);
                         }
                     }
-                    Msg::noop
+                    Msg::Noop
                 },
             ),
         ) {

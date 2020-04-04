@@ -66,7 +66,7 @@ pub enum Msg {
     RouterCallback,
     SetHistoryRequested,
     ScrollEvent(f64),
-    noop,
+    Noop,
 }
 
 impl Component for Chapter {
@@ -153,7 +153,7 @@ impl Component for Chapter {
         if self.settings.page_rendering == PageRendering::LongStrip {
             window().set_onscroll(Some(self.closure.as_ref().unchecked_ref()));
         }
-        true
+        false
     }
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
@@ -257,8 +257,8 @@ impl Component for Chapter {
                     }
                 }
             }
-            Msg::noop => {
-                info!("noop");
+            Msg::Noop => {
+                info!("Noop");
             }
         }
         true
@@ -281,7 +281,7 @@ impl Component for Chapter {
                 match e.key().as_str() {
                     "ArrowRight" => Msg::PageForward,
                     "ArrowLeft"  => Msg::PagePrevious,
-                    _ => Msg::noop,
+                    _ => Msg::Noop,
                 }
             )>
                 {
@@ -336,7 +336,7 @@ impl Component for Chapter {
                                 if self.settings.page_rendering == PageRendering::LongStrip {
                                 self.link.callback(|_| Msg::ToggleBar)
                                 } else {
-                                self.link.callback(|_| Msg::noop)
+                                self.link.callback(|_| Msg::Noop)
                                 }
                             }
                         />
@@ -405,7 +405,7 @@ impl Chapter {
                             return Msg::ChapterReady(data);
                         }
                     }
-                    Msg::noop
+                    Msg::Noop
                 },
             ),
         ) {
@@ -431,7 +431,7 @@ impl Chapter {
                             return Msg::PagesReady(data);
                         }
                     }
-                    Msg::noop
+                    Msg::Noop
                 },
             ),
         ) {
@@ -597,7 +597,7 @@ impl Chapter {
                             return Msg::SetHistoryRequested;
                         }
                     }
-                    Msg::noop
+                    Msg::Noop
                 }),
             ) {
                 self.fetch_task = Some(FetchTask::from(task));

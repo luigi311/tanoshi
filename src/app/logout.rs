@@ -22,7 +22,7 @@ pub struct Logout {
 }
 
 pub enum Msg {
-    noop,
+    Noop,
 }
 
 impl Component for Logout {
@@ -31,7 +31,7 @@ impl Component for Logout {
 
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
         let storage = StorageService::new(Area::Local).unwrap();
-        let callback = link.callback(|_| Msg::noop);
+        let callback = link.callback(|_| Msg::Noop);
         let router = RouteAgent::bridge(callback);
         Logout {
             fetch_task: None,

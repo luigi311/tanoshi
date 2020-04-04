@@ -38,7 +38,7 @@ pub enum Msg {
     MangaReady(GetMangasResponse),
     FavoritesReady(GetFavoritesResponse),
     ScrolledDown,
-    noop,
+    Noop,
 }
 
 impl Component for Source {
@@ -69,6 +69,7 @@ impl Component for Source {
                 tmp_link.send_message(Msg::ScrolledDown);
             }
         }) as Box<dyn Fn()>);
+
         Source {
             fetch_task: None,
             link,
@@ -103,6 +104,7 @@ impl Component for Source {
                     .map(|ch| ch.title.clone())
                     .collect();
                 self.fetch_mangas();
+                self.is_fetching = false;
             }
             Msg::ScrolledDown => {
                 if !self.is_fetching {
@@ -111,8 +113,8 @@ impl Component for Source {
                 }
             }
 
-            Msg::noop => {
-                info!("noop");
+            Msg::Noop => {
+                info!("Noop");
             }
         }
         true
@@ -160,7 +162,7 @@ impl Source {
                             return Msg::MangaReady(data);
                         }
                     }
-                    Msg::noop
+                    Msg::Noop
                 },
             ),
         ) {
@@ -184,7 +186,7 @@ impl Source {
                             return Msg::FavoritesReady(data);
                         }
                     }
-                    Msg::noop
+                    Msg::Noop
                 },
             ),
         ) {
