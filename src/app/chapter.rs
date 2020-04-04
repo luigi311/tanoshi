@@ -126,7 +126,7 @@ impl Component for Chapter {
             title: props.title,
             current_chapter: props.chapter,
             chapter: Default::default(),
-            current_page: props.page - 1,
+            current_page: props.page.checked_sub(1).unwrap_or(0),
             double_page: false,
             chapters: vec![],
             previous_chapter_page: 0,
@@ -246,13 +246,10 @@ impl Component for Chapter {
                     if let Some(el) = page_ref.cast::<HtmlImageElement>() {
                         if scroll > el.offset_top() as f64 {
                             page = el.id().parse::<usize>().unwrap();
-                        } else {
                             if self.current_page != page {
                                 self.current_page = page;
                                 self.set_history();
-                                info!("page {}", page);
                             }
-                            break;
                         }
                     }
                 }
@@ -331,7 +328,13 @@ impl Component for Chapter {
                                 "block"
                             } else {
                                 "hidden"
-                            })} src=self.pages[i] page={i}
+                            })} src={
+                                if i >= 0 && i < self.current_page + 3 {
+                                    self.pages[i].clone()
+                                } else {
+                                    "".to_string()
+                                }
+                            }
                             onmouseup={
                                 if self.settings.page_rendering == PageRendering::LongStrip {
                                 self.link.callback(|_| Msg::ToggleBar)
@@ -361,7 +364,13 @@ impl Component for Chapter {
             <div ref=self.refs[1].clone()
             class="animated slideInUp faster block fixed inset-x-0 bottom-0 z-50 bg-gray-900 opacity-75 shadow safe-bottom">
                 <div class="flex px-4 py-5 justify-center">
-                    <input type="range" min="0" max={if self.pages.len() > 0 {self.pages.len()-1} else {self.pages.len()}} step="1" value={self.current_page} defaultValue={self.current_page} oninput=self.link.callback(|e: InputData| Msg::PageSliderChange(e.value.parse::<usize>().unwrap()))/>
+                    <input
+                        type="range"
+                        min="0"
+                        max=self.pages.len().checked_sub(1).unwrap_or(0)
+                        step="1"
+                        value={self.current_page}
+                        oninput=self.link.callback(|e: InputData| Msg::PageSliderChange(e.value.parse::<usize>().unwrap()))/>
                     <span class="mx-4 text-white">{format!("{}/{}", self.current_page + 1, self.pages.len())}</span>
                 </div>
             </div>
