@@ -249,10 +249,16 @@ impl Component for Chapter {
                     if let Some(el) = page_ref.cast::<HtmlImageElement>() {
                         if scroll > el.offset_top() as f64 {
                             page = el.id().parse::<usize>().unwrap();
+                            if page == (self.pages.len() - 1) && page != self.current_page {
+                                self.current_page = page;
+                                self.set_history();
+                            }
+                        } else {
                             if self.current_page != page {
                                 self.current_page = page;
                                 self.set_history();
                             }
+                            break;
                         }
                     }
                 }
