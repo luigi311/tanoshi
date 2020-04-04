@@ -32,12 +32,15 @@ pub struct Source {
     is_fetching: bool,
     token: String,
     closure: Closure<dyn Fn()>,
+    keyword: String,
 }
 
 pub enum Msg {
     MangaReady(GetMangasResponse),
     FavoritesReady(GetFavoritesResponse),
     ScrolledDown,
+    KeywordChanged(InputData),
+    Search(Event),
     Noop,
 }
 
@@ -79,6 +82,7 @@ impl Component for Source {
             is_fetching: false,
             token,
             closure,
+            keyword: "".to_string(),
         }
     }
 
@@ -91,7 +95,11 @@ impl Component for Source {
         match msg {
             Msg::MangaReady(data) => {
                 let mut mangas = data.mangas;
-                self.mangas.append(&mut mangas);
+                if self.page == 1 {
+                    self.mangas = mangas;
+                } else {
+                    self.mangas.append(&mut mangas);
+                }
                 self.is_fetching = false;
             }
             Msg::FavoritesReady(data) => {
@@ -110,7 +118,15 @@ impl Component for Source {
                     self.fetch_mangas();
                 }
             }
-
+            Msg::KeywordChanged(e) => {
+                self.keyword = e.value;
+            }
+            Msg::Search(e) => {
+                e.prevent_default();
+                self.mangas.clear();
+                self.page = 1;
+                self.fetch_mangas();
+            }
             Msg::Noop => {
                 info!("Noop");
             }
@@ -125,6 +141,14 @@ impl Component for Source {
         };
         return html! {
             <div class="container mx-auto pb-20"  style="padding-top: calc(env(safe-area-inset-top) + .5rem)">
+                <form class="w-full p-2 mb-2 md:m-2 grid grid-cols-5 items-strech" onsubmit=self.link.callback(|e| Msg::Search(e))>
+                    <input
+                        type="search"
+                        class="col-span-4 px-3 py-2 focus:outline-none text-sm leading-tight text-gray-700 border rounded-l appearance-none"
+                        placeholder=format!("Search {}...", self.source.clone())
+                        oninput=self.link.callback(|e| Msg::KeywordChanged(e))/>
+                    <button type="submit" class="col-span-1 rounded-r bg-tachiyomi-blue"><i class="fa fa-search"></i></button>
+                </form>
                 <Spinner is_active=self.is_fetching />
                 <div class="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2" id="catalogue">
                     { for self.mangas.iter().map(|manga| html!{
@@ -149,8 +173,8 @@ impl Component for Source {
 impl Source {
     fn fetch_mangas(&mut self) {
         let req = Request::get(format!(
-            "/api/source/{}?sort_by=popularity&sort_order=descending&page={}",
-            self.source, self.page
+            "/api/source/{}?keyword={}&sort_by=popularity&sort_order=descending&page={}",
+            self.source, self.keyword, self.page
         ))
         .body(Nothing)
         .expect("failed to build request");
