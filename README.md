@@ -8,11 +8,12 @@ I decided to make this a PWA instead with web scraping on backend.
 
 ## Features
 ### Currently working
-- Browse and read manga from mangasee
-- Favorite mangas for faster access
-- Sync reading history across devices
+- Browse, search, and read manga from mangasee
+- Favorite mangas
+- Reading history across devices
 - See chapter updates
-- Configure page rendering and reading direction
+- Read in single page, double page, or long strip
+- Read from right to left or left to right
 ### Planned
 I'm trying to make this as close as tachiyomi, and add sync across device as well.
 
