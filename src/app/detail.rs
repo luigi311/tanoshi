@@ -63,6 +63,8 @@ impl Component for Detail {
                 description: "".to_string(),
                 path: "".to_string(),
                 thumbnail_url: "".to_string(),
+                last_read: None,
+                last_page: None,
             },
             chapters: vec![],
             is_fetching_manga: false,
@@ -111,19 +113,25 @@ impl Component for Detail {
                     <p class="md:text-xl sm:text-sm font-semibold">{self.manga.status.to_owned()}</p>
                     <p class="md:text-xl sm:text-sm font-medium break-normal">{self.manga.genre.join(", ").to_owned()}</p>
                     <p class="break-normal md:text-base sm:text-xs">{self.manga.description.to_owned()}</p>
-                    <div class="inline-flex my-2">
-                        <button class="mr-2 inline-flex items-center bg-white hover:bg-gray-100 text-gray-800 font-semibold py-1 px-2 border border-gray-400 rounded shadow">
-                            <svg class="fill-current w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path class="heroicon-ui" d="M6.1 21.98a1 1 0 0 1-1.45-1.06l1.03-6.03-4.38-4.26a1 1 0 0 1 .56-1.71l6.05-.88 2.7-5.48a1 1 0 0 1 1.8 0l2.7 5.48 6.06.88a1 1 0 0 1 .55 1.7l-4.38 4.27 1.04 6.03a1 1 0 0 1-1.46 1.06l-5.4-2.85-5.42 2.85zm4.95-4.87a1 1 0 0 1 .93 0l4.08 2.15-.78-4.55a1 1 0 0 1 .29-.88l3.3-3.22-4.56-.67a1 1 0 0 1-.76-.54l-2.04-4.14L9.47 9.4a1 1 0 0 1-.75.54l-4.57.67 3.3 3.22a1 1 0 0 1 .3.88l-.79 4.55 4.09-2.15z"/></svg>
-                            <span>{"Favorite"}</span>
-                        </button>
-                        <button
-                        onclick=self.link.callback(|_| Msg::Refresh)
-                        class="ml-2 inline-flex items-center bg-white hover:bg-gray-100 text-gray-800 font-semibold py-1 px-2 border border-gray-400 rounded shadow">
-                            <svg class="fill-current w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path class="heroicon-ui" d="M6 18.7V21a1 1 0 0 1-2 0v-5a1 1 0 0 1 1-1h5a1 1 0 1 1 0 2H7.1A7 7 0 0 0 19 12a1 1 0 1 1 2 0 9 9 0 0 1-15 6.7zM18 5.3V3a1 1 0 0 1 2 0v5a1 1 0 0 1-1 1h-5a1 1 0 0 1 0-2h2.9A7 7 0 0 0 5 12a1 1 0 1 1-2 0 9 9 0 0 1 15-6.7z"/></svg>
-                            <span>{"Refresh"}</span>
-                        </button>
-                    </div>
                 </div>
+            </div>
+            <div class="inline-flex my-2 ml-4">
+                <button class="inline-flex items-center bg-white hover:bg-gray-100 text-gray-800 font-semibold py-1 px-2 border border-gray-400 rounded shadow">
+                    <svg class="fill-current w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path class="heroicon-ui" d="M6.1 21.98a1 1 0 0 1-1.45-1.06l1.03-6.03-4.38-4.26a1 1 0 0 1 .56-1.71l6.05-.88 2.7-5.48a1 1 0 0 1 1.8 0l2.7 5.48 6.06.88a1 1 0 0 1 .55 1.7l-4.38 4.27 1.04 6.03a1 1 0 0 1-1.46 1.06l-5.4-2.85-5.42 2.85zm4.95-4.87a1 1 0 0 1 .93 0l4.08 2.15-.78-4.55a1 1 0 0 1 .29-.88l3.3-3.22-4.56-.67a1 1 0 0 1-.76-.54l-2.04-4.14L9.47 9.4a1 1 0 0 1-.75.54l-4.57.67 3.3 3.22a1 1 0 0 1 .3.88l-.79 4.55 4.09-2.15z"/></svg>
+                    <span>{"Favorite"}</span>
+                </button>
+                <button
+                onclick=self.link.callback(|_| Msg::Refresh)
+                class="ml-2 inline-flex items-center bg-white hover:bg-gray-100 text-gray-800 font-semibold py-1 px-2 border border-gray-400 rounded shadow">
+                    <svg class="fill-current w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path class="heroicon-ui" d="M6 18.7V21a1 1 0 0 1-2 0v-5a1 1 0 0 1 1-1h5a1 1 0 1 1 0 2H7.1A7 7 0 0 0 19 12a1 1 0 1 1 2 0 9 9 0 0 1-15 6.7zM18 5.3V3a1 1 0 0 1 2 0v5a1 1 0 0 1-1 1h-5a1 1 0 0 1 0-2h2.9A7 7 0 0 0 5 12a1 1 0 1 1-2 0 9 9 0 0 1 15-6.7z"/></svg>
+                    <span>{"Refresh"}</span>
+                </button>
+                <RouterAnchor<AppRoute>
+                classes="ml-2 inline-flex items-center bg-white hover:bg-gray-100 text-gray-800 font-semibold py-1 px-2 border border-gray-400 rounded shadow"
+                route=AppRoute::Chapter(self.source.to_owned(), self.title.to_owned(), self.manga.last_read.as_ref().unwrap_or(&"1".to_string()).to_string(), (self.manga.last_page.as_ref().unwrap_or(&0) + 1) as usize)>
+                    <svg class="fill-current w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path class="heroicon-ui" d="M7 5H5v14h14V5h-2v10a1 1 0 0 1-1.45.9L12 14.11l-3.55 1.77A1 1 0 0 1 7 15V5zM5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5c0-1.1.9-2 2-2zm4 2v8.38l2.55-1.27a1 1 0 0 1 .9 0L15 13.38V5H9z"/></svg>
+                    <span>{"Read"}</span>
+                </RouterAnchor<AppRoute>>
             </div>
             <div class="w-6/7 mx-2 grid grid-cols-4 lg:grid-cols-8">
                 {
@@ -148,6 +156,7 @@ impl Component for Detail {
 impl Detail {
     fn get_manga_info(&mut self) {
         let req = Request::get(format!("/api/source/{}/manga/{}", self.source, self.title))
+            .header("Authorization", self.token.to_string())
             .body(Nothing)
             .expect("failed to build request");
 

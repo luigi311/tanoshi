@@ -138,7 +138,7 @@ impl Component for Source {
         match window().onscroll() {
             Some(_) => {}
             None => window().set_onscroll(Some(self.closure.as_ref().unchecked_ref())),
-        };
+        }
         return html! {
             <div class="container mx-auto pb-20"  style="padding-top: calc(env(safe-area-inset-top) + .5rem)">
                 <form class="w-full p-2 mb-2 md:m-2 grid grid-cols-5 items-strech" onsubmit=self.link.callback(|e| Msg::Search(e))>

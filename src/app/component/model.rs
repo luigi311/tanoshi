@@ -13,6 +13,8 @@ pub struct MangaModel {
     pub description: String,
     pub path: String,
     pub thumbnail_url: String,
+    pub last_read: Option<String>,
+    pub last_page: Option<i32>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, Default)]
