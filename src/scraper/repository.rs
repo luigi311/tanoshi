@@ -57,15 +57,21 @@ pub fn get_chapter_url(
 pub fn get_manga_detail(
     source: String,
     title: String,
+    username: String,
     db: Arc<Mutex<Connection>>,
 ) -> Result<GetMangaResponse, String> {
     let conn = db.lock().unwrap();
     match conn.query_row(
-        "SELECT title, author, status, description, path, thumbnail_url
+        "SELECT manga.title, author, status, description, manga.path, thumbnail_url, h.number AS last_read, h.last_page
         FROM manga
         JOIN source ON source.id = manga.source_id AND source.name = ?1
-        WHERE manga.title = ?2",
-        params![source, title],
+        LEFT JOIN (
+            SELECT chapter.manga_id, chapter.number, history.last_page, MAX(history.updated) FROM chapter
+            JOIN manga ON chapter.manga_id = manga.id
+            JOIN history ON history.chapter_id = chapter.id AND history.user_id = (SELECT id FROM user WHERE username = ?2)
+            ) h ON h.manga_id = manga.id
+        WHERE manga.title = ?3",
+        params![source, username, title],
         |row| {
             Ok(Manga {
                 title: row.get(0)?,
@@ -75,6 +81,8 @@ pub fn get_manga_detail(
                 description: row.get(3)?,
                 path: row.get(4)?,
                 thumbnail_url: row.get(5)?,
+                last_read: row.get(6)?,
+                last_page: row.get(7)?,
             })
         },
     ) {

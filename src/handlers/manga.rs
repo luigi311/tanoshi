@@ -65,10 +65,13 @@ pub async fn list_mangas(
 pub async fn get_manga_info(
     source: String,
     title: String,
+    claim: Claims,
     db: Arc<Mutex<Connection>>,
 ) -> Result<impl warp::Reply, Rejection> {
     let title = decode_title(title);
-    if let Ok(manga) = repository::get_manga_detail(source.clone(), title.clone(), db.clone()) {
+    if let Ok(manga) =
+        repository::get_manga_detail(source.clone(), title.clone(), claim.sub.clone(), db.clone())
+    {
         return Ok(warp::reply::json(&manga));
     } else if let Ok(url) = repository::get_manga_url(source.clone(), title.clone(), db.clone()) {
         let manga = Mangasee::get_manga_info(&url);

@@ -14,6 +14,10 @@ pub struct Manga {
     pub description: String,
     pub path: String,
     pub thumbnail_url: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub last_read: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub last_page: Option<i32>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]

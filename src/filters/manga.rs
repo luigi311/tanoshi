@@ -15,7 +15,7 @@ pub fn manga(
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     list_sources(db.clone())
         .or(list_mangas(db.clone()))
-        .or(get_manga_info(db.clone()))
+        .or(get_manga_info(secret.clone(), db.clone()))
         .or(get_chapters(secret, db.clone()))
         .or(get_pages(db.clone()))
 }
@@ -40,10 +40,12 @@ pub fn list_mangas(
 }
 
 pub fn get_manga_info(
+    secret: String,
     db: Arc<Mutex<Connection>>,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::path!("api" / "source" / String / "manga" / String)
         .and(warp::get())
+        .and(with_authorization(secret))
         .and(with_db(db))
         .and_then(manga::get_manga_info)
 }
