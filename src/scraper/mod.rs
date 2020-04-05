@@ -18,6 +18,7 @@ pub struct Manga {
     pub last_read: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub last_page: Option<i32>,
+    pub is_favorite: bool,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]

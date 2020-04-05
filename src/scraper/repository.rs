@@ -62,9 +62,23 @@ pub fn get_manga_detail(
 ) -> Result<GetMangaResponse, String> {
     let conn = db.lock().unwrap();
     match conn.query_row(
-        "SELECT manga.title, author, status, description, manga.path, thumbnail_url, h.number AS last_read, h.last_page
+        "SELECT
+       manga.title,
+       author,
+       status,
+       description,
+       manga.path,
+       thumbnail_url,
+       h.number AS last_read,
+       h.last_page,
+       CASE WHEN f.manga_id IS NULL
+            THEN false
+            ELSE
+                true
+        END is_favorite
         FROM manga
         JOIN source ON source.id = manga.source_id AND source.name = ?1
+        LEFT JOIN favorite f on manga.id = f.manga_id AND f.user_id = (SELECT id FROM user WHERE username = ?2)
         LEFT JOIN (
             SELECT chapter.manga_id, chapter.number, history.last_page, MAX(history.updated) FROM chapter
             JOIN manga ON chapter.manga_id = manga.id
@@ -83,6 +97,7 @@ pub fn get_manga_detail(
                 thumbnail_url: row.get(5)?,
                 last_read: row.get(6)?,
                 last_page: row.get(7)?,
+                is_favorite: row.get(8)?,
             })
         },
     ) {

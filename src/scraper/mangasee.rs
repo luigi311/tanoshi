@@ -66,6 +66,7 @@ impl Scraping for Mangasee {
             thumbnail_url: "".to_string(),
             last_read: None,
             last_page: None,
+            is_favorite: false,
         };
 
         let resp = ureq::get(url.as_str()).call();
