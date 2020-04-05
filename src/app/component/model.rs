@@ -15,6 +15,7 @@ pub struct MangaModel {
     pub thumbnail_url: String,
     pub last_read: Option<String>,
     pub last_page: Option<i32>,
+    pub is_favorite: bool,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, Default)]
