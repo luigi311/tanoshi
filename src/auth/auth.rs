@@ -77,13 +77,14 @@ impl Auth {
     }
 
     pub fn validate(secret: String, token: String) -> Option<Claims> {
-        let claim = decode::<Claims>(
+        match decode::<Claims>(
             &token,
             &DecodingKey::from_secret(secret.as_bytes()),
             &Validation::default(),
-        )
-        .unwrap();
-        Some(claim.claims)
+        ) {
+            Ok(claim) => Some(claim.claims),
+            Err(_) => None,
+        }
     }
 
     fn hash(password: &[u8]) -> String {

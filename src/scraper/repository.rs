@@ -62,8 +62,9 @@ pub fn get_manga_detail(
     let conn = db.lock().unwrap();
     match conn.query_row(
         "SELECT title, author, status, description, path, thumbnail_url
-        JOIN source ON source.id = manga.source_id
-        WHERE source.name = ?1 AND ?2",
+        FROM manga
+        JOIN source ON source.id = manga.source_id AND source.name = ?1
+        WHERE manga.title = ?2",
         params![source, title],
         |row| {
             Ok(Manga {
