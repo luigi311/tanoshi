@@ -21,6 +21,9 @@ async fn main() {
 
     let secret = std::env::var("TOKEN_SECRET_KEY").unwrap();
     let db_path = std::env::var("DB_PATH").unwrap_or("./tanoshi.db".to_string());
+    let static_path = std::env::var("STATIC_FILES_PATH").unwrap_or("./dist".to_string());
+
+    let static_files = warp::fs::dir(static_path);
 
     let conn = rusqlite::Connection::open(db_path).unwrap();
     let conn = Arc::new(Mutex::new(conn));
@@ -39,12 +42,11 @@ async fn main() {
         .or(auth_api)
         .or(fav_api)
         .or(history_api)
-        .or(updates_api);
+        .or(updates_api)
+        .or(static_files)
+        .recover(filters::handle_rejection);
 
-    let static_path = std::env::var("STATIC_FILES_PATH").unwrap_or("./dist".to_string());
-    let static_files = warp::fs::dir(static_path);
-
-    let routes = api.or(static_files).with(warp::log("manga"));
+    let routes = api.with(warp::log("manga"));
 
     let port = std::env::var("PORT").unwrap_or("80".to_string());
     warp::serve(routes)
