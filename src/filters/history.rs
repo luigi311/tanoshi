@@ -4,20 +4,20 @@ use crate::filters::{with_authorization, with_db};
 use crate::handlers::auth as auth_handler;
 use crate::handlers::history as history_handler;
 use crate::handlers::history::{History, HistoryParam};
-use rusqlite::Connection;
+use postgres::Client;
 use std::sync::{Arc, Mutex};
 use warp::Filter;
 
 pub fn history(
     secret: String,
-    db: Arc<Mutex<Connection>>,
+    db: Arc<Mutex<Client>>,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     get_history(secret.clone(), db.clone()).or(add_history(secret.clone(), db))
 }
 
 fn get_history(
     secret: String,
-    db: Arc<Mutex<Connection>>,
+    db: Arc<Mutex<Client>>,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::path!("api" / "history")
         .and(warp::get())
@@ -29,7 +29,7 @@ fn get_history(
 
 fn add_history(
     secret: String,
-    db: Arc<Mutex<Connection>>,
+    db: Arc<Mutex<Client>>,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::path!("api" / "history")
         .and(warp::post())

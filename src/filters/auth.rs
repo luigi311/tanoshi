@@ -2,20 +2,20 @@ use crate::auth::auth::Auth;
 use crate::auth::User;
 use crate::filters::with_db;
 use crate::handlers::auth as auth_handler;
-use rusqlite::Connection;
+use postgres::Client;
 use std::sync::{Arc, Mutex};
 use warp::Filter;
 
 pub fn authentication(
     secret: String,
-    db: Arc<Mutex<Connection>>,
+    db: Arc<Mutex<Client>>,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     login(secret.clone(), db.clone()).or(register(secret, db))
 }
 
 pub fn login(
     secret: String,
-    db: Arc<Mutex<Connection>>,
+    db: Arc<Mutex<Client>>,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::path!("api" / "login")
         .and(warp::post())
@@ -27,7 +27,7 @@ pub fn login(
 
 pub fn register(
     secret: String,
-    db: Arc<Mutex<Connection>>,
+    db: Arc<Mutex<Client>>,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::path!("api" / "register")
         .and(warp::post())

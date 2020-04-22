@@ -2,21 +2,21 @@ use crate::auth::{Claims, User, UserResponse};
 use argon2::{self, Config};
 use jsonwebtoken::crypto::verify;
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
+use postgres::Client;
 use rand;
 use rand::Rng;
-use rusqlite::{params, Connection};
 use std::sync::{Arc, Mutex};
 
 #[derive(Clone)]
 pub struct Auth {}
 
 impl Auth {
-    pub fn register(user: User, db: Arc<Mutex<Connection>>) -> UserResponse {
+    pub fn register(user: User, db: Arc<Mutex<Client>>) -> UserResponse {
         let hashed = Auth::hash(user.password.as_bytes());
-        let conn = db.lock().unwrap();
+        let mut conn = db.lock().unwrap();
         match conn.execute(
             "INSERT INTO user(username, password) VALUES (?1, ?2)",
-            params![user.username, hashed],
+            &[&user.username, &hashed],
         ) {
             Ok(_) => UserResponse {
                 claim: None,
@@ -31,14 +31,13 @@ impl Auth {
         }
     }
 
-    pub fn login(secret: String, user: User, db: Arc<Mutex<Connection>>) -> UserResponse {
-        let conn = db.lock().unwrap();
-        let hashed = match conn.query_row(
+    pub fn login(secret: String, user: User, db: Arc<Mutex<Client>>) -> UserResponse {
+        let mut conn = db.lock().unwrap();
+        let hashed: String = match conn.query_one(
             "SELECT password FROM user WHERE username = ?1",
-            params![user.username.clone()],
-            |row| row.get(0),
+            &[&user.username],
         ) {
-            Ok(hashed) => hashed,
+            Ok(row) => row.get(0),
             Err(e) => {
                 return UserResponse {
                     claim: None,
@@ -67,13 +66,12 @@ impl Auth {
                 token: Some(token),
                 status: "success".to_string(),
             };
-        } else {
-            return UserResponse {
-                claim: None,
-                token: None,
-                status: "failed".to_string(),
-            };
         }
+        return UserResponse {
+            claim: None,
+            token: None,
+            status: "failed".to_string(),
+        };
     }
 
     pub fn validate(secret: String, token: String) -> Option<Claims> {

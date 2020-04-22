@@ -1,7 +1,7 @@
 use std::convert::Infallible;
 use std::sync::{Arc, Mutex};
 
-use rusqlite::Connection;
+use postgres::Client;
 use serde_json::json;
 use warp::Filter;
 
@@ -21,8 +21,8 @@ pub struct ExpiredOrInvalidToken;
 impl warp::reject::Reject for ExpiredOrInvalidToken {}
 
 pub fn with_db(
-    db: Arc<Mutex<Connection>>,
-) -> impl Filter<Extract = (Arc<Mutex<Connection>>,), Error = std::convert::Infallible> + Clone {
+    db: Arc<Mutex<Client>>,
+) -> impl Filter<Extract = (Arc<Mutex<Client>>,), Error = std::convert::Infallible> + Clone {
     warp::any().map(move || db.clone())
 }
 

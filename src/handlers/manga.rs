@@ -1,6 +1,7 @@
 use std::sync::{Arc, Mutex};
 
-use rusqlite::{params, Connection};
+use postgres::Client;
+use serde::{Deserialize, Serialize};
 use warp::Rejection;
 
 use serde_json::json;
@@ -8,21 +9,20 @@ use serde_json::json;
 use crate::auth::Claims;
 use crate::scraper::{mangasee::Mangasee, repository, GetParams, Params, Scraping};
 
+#[derive(Debug, Clone, Deserialize, Serialize, Default)]
 pub struct Source {
     name: String,
 }
 
-pub async fn list_sources(db: Arc<Mutex<Connection>>) -> Result<impl warp::Reply, Rejection> {
-    let conn = db.lock().unwrap();
-    let mut stmt = conn.prepare("SELECT name FROM source").unwrap();
-    let source_iter = stmt
-        .query_map(params![], |row| Ok(Source { name: row.get(0)? }))
-        .unwrap();
+pub async fn list_sources(db: Arc<Mutex<Client>>) -> Result<impl warp::Reply, Rejection> {
+    let mut conn = db.lock().unwrap();
+    let stmt = conn.prepare("SELECT name FROM source").unwrap();
+    let rows = conn.query(&stmt, &[]).unwrap();
 
-    let mut sources = vec![];
-    for source in source_iter {
-        sources.push(source.unwrap().name);
-    }
+    let sources = rows
+        .iter()
+        .map(|row| Source { name: row.get(0) })
+        .collect::<Vec<Source>>();
 
     Ok(warp::reply::json(&json!(
         {
@@ -35,25 +35,25 @@ pub async fn list_sources(db: Arc<Mutex<Connection>>) -> Result<impl warp::Reply
 pub async fn list_mangas(
     source: String,
     param: Params,
-    db: Arc<Mutex<Connection>>,
+    db: Arc<Mutex<Client>>,
 ) -> Result<impl warp::Reply, Rejection> {
     if let Ok(url) = repository::get_source_url(source.clone(), db.clone()) {
         let mangas = Mangasee::get_mangas(&url, param);
 
-        let conn = db.lock().unwrap();
+        let mut conn = db.lock().unwrap();
         for m in mangas.clone().mangas {
             conn.execute(
                 "INSERT OR IGNORE INTO manga(
-                    source_id, 
-                    title, 
-                    path, 
+                    source_id,
+                    title,
+                    path,
                     thumbnail_url
                     ) VALUES (
-                    (SELECT id FROM source WHERE name = ?1), 
-                    ?2, 
-                    ?3, 
+                    (SELECT id FROM source WHERE name = ?1),
+                    ?2,
+                    ?3,
                     ?4)",
-                params![source.clone(), m.title, m.path, m.thumbnail_url],
+                &[&source, &m.title, &m.path, &m.thumbnail_url],
             )
             .unwrap();
         }
@@ -66,7 +66,7 @@ pub async fn get_manga_info(
     source: String,
     title: String,
     claim: Claims,
-    db: Arc<Mutex<Connection>>,
+    db: Arc<Mutex<Client>>,
 ) -> Result<impl warp::Reply, Rejection> {
     let title = decode_title(title);
     if let Ok(manga) =
@@ -76,19 +76,19 @@ pub async fn get_manga_info(
     } else if let Ok(url) = repository::get_manga_url(source.clone(), title.clone(), db.clone()) {
         let manga = Mangasee::get_manga_info(&url);
 
-        let conn = db.lock().unwrap();
+        let mut conn = db.lock().unwrap();
         conn.execute(
             "UPDATE manga SET author = ?1, status = ?2, description = ?3
                 WHERE manga.source_id = (
                 SELECT source.id FROM source
                 WHERE source.name = ?4)
                 AND manga.title = ?5",
-            params![
-                manga.manga.author.clone(),
-                manga.manga.status.clone(),
-                manga.manga.description.clone(),
-                source.clone(),
-                title.clone()
+            &[
+                &manga.manga.author,
+                &manga.manga.status,
+                &manga.manga.description,
+                &source,
+                &title,
             ],
         )
         .unwrap();
@@ -103,7 +103,7 @@ pub async fn get_chapters(
     title: String,
     claim: Claims,
     param: GetParams,
-    db: Arc<Mutex<Connection>>,
+    db: Arc<Mutex<Client>>,
 ) -> Result<impl warp::Reply, Rejection> {
     let title = decode_title(title);
     if !param.refresh.unwrap_or(false) {
@@ -116,18 +116,18 @@ pub async fn get_chapters(
     if let Ok(url) = repository::get_manga_url(source.clone(), title.clone(), db.clone()) {
         let chapter = Mangasee::get_chapters(&url);
 
-        let conn = db.lock().unwrap();
+        let mut conn = db.lock().unwrap();
         for c in chapter.clone().chapters {
             conn.execute(
                 "INSERT OR IGNORE INTO chapter(manga_id, number, path, uploaded)
                 VALUES(
-                (SELECT manga.id FROM manga 
-                JOIN source ON source.id = manga.source_id 
-                WHERE source.name = ?1 AND title = ?2 ), 
-                ?3, 
+                (SELECT manga.id FROM manga
+                JOIN source ON source.id = manga.source_id
+                WHERE source.name = ?1 AND title = ?2 ),
+                ?3,
                 ?4,
                 ?5)",
-                params![&source, &title, &c.no, &c.url, &c.uploaded],
+                &[&source, &title, &c.no, &c.url, &c.uploaded],
             )
             .unwrap();
         }
@@ -141,7 +141,7 @@ pub async fn get_pages(
     title: String,
     chapter: String,
     param: GetParams,
-    db: Arc<Mutex<Connection>>,
+    db: Arc<Mutex<Client>>,
 ) -> Result<impl warp::Reply, Rejection> {
     let title = decode_title(title);
     if let Ok(url) =
@@ -149,18 +149,18 @@ pub async fn get_pages(
     {
         let pages = Mangasee::get_pages(&url);
 
-        let conn = db.lock().unwrap();
+        let mut conn = db.lock().unwrap();
         for i in 0..pages.pages.len() {
             conn.execute(
                 "INSERT OR IGNORE INTO page(chapter_id, rank, url)
                 VALUES(
-                (SELECT chapter.id FROM chapter 
-                JOIN manga ON manga.id = chapter.manga_id  
+                (SELECT chapter.id FROM chapter
+                JOIN manga ON manga.id = chapter.manga_id
                 JOIN source ON source.id = manga.source_id
                 WHERE source.name = ?1 AND manga.title = ?2 AND chapter.number = ?3),
                 ?4,
                 ?5)",
-                params![source, title, chapter, i as i32, pages.pages[i].clone()],
+                &[&source, &title, &chapter, &(i as i32), &pages.pages[i]],
             )
             .unwrap();
         }

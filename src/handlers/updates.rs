@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 
 use crate::auth::Claims;
 use chrono::Local;
-use rusqlite::{params, Connection};
+use postgres::Client;
 use std::str::FromStr;
 use warp::Rejection;
 
@@ -42,13 +42,13 @@ pub struct UpdateParam {
 pub async fn get_updates(
     claim: Claims,
     param: UpdateParam,
-    db: Arc<Mutex<Connection>>,
+    db: Arc<Mutex<Client>>,
 ) -> Result<impl warp::Reply, Rejection> {
     let limit = 10;
     let offset = (param.page * limit) - limit;
 
-    let conn = db.lock().unwrap();
-    let mut stmt = conn
+    let mut conn = db.lock().unwrap();
+    let stmt = conn
         .prepare(
             "SELECT source.name, manga.title, 
         manga.thumbnail_url, chapter.number, 
@@ -62,22 +62,18 @@ pub async fn get_updates(
         )
         .unwrap();
 
-    let updates_iter = stmt
-        .query_map(params![claim.sub, limit, offset], |row| {
-            Ok(Update {
-                source: row.get(0)?,
-                title: row.get(1)?,
-                thumbnail_url: row.get(2)?,
-                number: row.get(3)?,
-                uploaded: row.get(4)?,
-            })
-        })
-        .unwrap();
+    let rows = conn.query(&stmt, &[&claim.sub, &limit, &offset]).unwrap();
 
-    let mut updates = vec![];
-    for update in updates_iter {
-        updates.push(update.unwrap());
-    }
+    let mut updates = rows
+        .iter()
+        .map(|row| Update {
+            source: row.get(0),
+            title: row.get(1),
+            thumbnail_url: row.get(2),
+            number: row.get(3),
+            uploaded: row.get(4),
+        })
+        .collect::<Vec<Update>>();
 
     let res = UpdatesResponse {
         updates: updates,
