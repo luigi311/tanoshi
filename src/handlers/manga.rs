@@ -1,7 +1,7 @@
 use std::sync::{Arc, Mutex};
 
-use postgres::Client;
 use serde::{Deserialize, Serialize};
+use sqlx::postgres::PgPool;
 use warp::Rejection;
 
 use serde_json::json;
@@ -9,20 +9,11 @@ use serde_json::json;
 use crate::auth::Claims;
 use crate::scraper::{mangasee::Mangasee, repository, GetParams, Params, Scraping};
 
-#[derive(Debug, Clone, Deserialize, Serialize, Default)]
-pub struct Source {
-    name: String,
-}
 
-pub async fn list_sources(db: Arc<Mutex<Client>>) -> Result<impl warp::Reply, Rejection> {
-    let mut conn = db.lock().unwrap();
-    let stmt = conn.prepare("SELECT name FROM source").unwrap();
-    let rows = conn.query(&stmt, &[]).unwrap();
+pub async fn list_sources(db: PgPool) -> Result<impl warp::Reply, Rejection> {
+    let sources = sqlx::query!("SELECT name FROM source").fetch_all(&db).await;
 
-    let sources = rows
-        .iter()
-        .map(|row| Source { name: row.get(0) })
-        .collect::<Vec<Source>>();
+    let sources = sources.unwrap().iter().map(|source| source.name.clone()).collect::<Vec<String>>();
 
     Ok(warp::reply::json(&json!(
         {
@@ -35,27 +26,25 @@ pub async fn list_sources(db: Arc<Mutex<Client>>) -> Result<impl warp::Reply, Re
 pub async fn list_mangas(
     source: String,
     param: Params,
-    db: Arc<Mutex<Client>>,
+    db: PgPool,
 ) -> Result<impl warp::Reply, Rejection> {
-    if let Ok(url) = repository::get_source_url(source.clone(), db.clone()) {
+    if let Ok(url) = repository::get_source_url(source.clone(), db.clone()).await {
         let mangas = Mangasee::get_mangas(&url, param);
 
-        let mut conn = db.lock().unwrap();
         for m in mangas.clone().mangas {
-            conn.execute(
-                "INSERT OR IGNORE INTO manga(
+            sqlx::query!(
+                "INSERT INTO manga(
                     source_id,
                     title,
                     path,
                     thumbnail_url
                     ) VALUES (
-                    (SELECT id FROM source WHERE name = ?1),
-                    ?2,
-                    ?3,
-                    ?4)",
-                &[&source, &m.title, &m.path, &m.thumbnail_url],
-            )
-            .unwrap();
+                    (SELECT id FROM source WHERE name = $1),
+                    $2,
+                    $3,
+                    $4) ON CONFLICT DO NOTHING",
+                source, m.title, m.path, m.thumbnail_url,
+            ).execute(&db).await;
         }
         return Ok(warp::reply::json(&mangas));
     }
@@ -66,32 +55,28 @@ pub async fn get_manga_info(
     source: String,
     title: String,
     claim: Claims,
-    db: Arc<Mutex<Client>>,
+    db: PgPool,
 ) -> Result<impl warp::Reply, Rejection> {
     let title = decode_title(title);
     if let Ok(manga) =
-        repository::get_manga_detail(source.clone(), title.clone(), claim.sub.clone(), db.clone())
+        repository::get_manga_detail(source.clone(), title.clone(), claim.sub.clone(), db.clone()).await
     {
         return Ok(warp::reply::json(&manga));
-    } else if let Ok(url) = repository::get_manga_url(source.clone(), title.clone(), db.clone()) {
+    } else if let Ok(url) = repository::get_manga_url(source.clone(), title.clone(), db.clone()).await {
         let manga = Mangasee::get_manga_info(&url);
 
-        let mut conn = db.lock().unwrap();
-        conn.execute(
-            "UPDATE manga SET author = ?1, status = ?2, description = ?3
+        sqlx::query!(
+            "UPDATE manga SET author = $1, status = $2, description = $3
                 WHERE manga.source_id = (
                 SELECT source.id FROM source
-                WHERE source.name = ?4)
-                AND manga.title = ?5",
-            &[
-                &manga.manga.author,
-                &manga.manga.status,
-                &manga.manga.description,
-                &source,
-                &title,
-            ],
-        )
-        .unwrap();
+                WHERE source.name = $4)
+                AND manga.title = $5",
+                manga.manga.author,
+                manga.manga.status,
+                manga.manga.description,
+                source,
+                title,
+        ).execute(&db).await;
 
         return Ok(warp::reply::json(&manga));
     }
@@ -103,33 +88,31 @@ pub async fn get_chapters(
     title: String,
     claim: Claims,
     param: GetParams,
-    db: Arc<Mutex<Client>>,
+    db: PgPool,
 ) -> Result<impl warp::Reply, Rejection> {
     let title = decode_title(title);
     if !param.refresh.unwrap_or(false) {
-        match repository::get_chapters(source.clone(), title.clone(), claim.sub, db.clone()) {
+        match repository::get_chapters(source.clone(), title.clone(), claim.sub, db.clone()).await {
             Ok(chapter) => return Ok(warp::reply::json(&chapter)),
             Err(e) => {}
         };
     }
 
-    if let Ok(url) = repository::get_manga_url(source.clone(), title.clone(), db.clone()) {
+    if let Ok(url) = repository::get_manga_url(source.clone(), title.clone(), db.clone()).await {
         let chapter = Mangasee::get_chapters(&url);
 
-        let mut conn = db.lock().unwrap();
         for c in chapter.clone().chapters {
-            conn.execute(
-                "INSERT OR IGNORE INTO chapter(manga_id, number, path, uploaded)
+            sqlx::query!(
+                "INSERT INTO chapter(manga_id, number, path, uploaded)
                 VALUES(
                 (SELECT manga.id FROM manga
                 JOIN source ON source.id = manga.source_id
-                WHERE source.name = ?1 AND title = ?2 ),
-                ?3,
-                ?4,
-                ?5)",
-                &[&source, &title, &c.no, &c.url, &c.uploaded],
-            )
-            .unwrap();
+                WHERE source.name = $1 AND title = $2 ),
+                $3,
+                $4,
+                $5) ON CONFLICT DO NOTHING",
+                source, title, c.no, c.url, c.uploaded,
+            ).execute(&db).await;
         }
         return Ok(warp::reply::json(&chapter));
     }
@@ -141,28 +124,26 @@ pub async fn get_pages(
     title: String,
     chapter: String,
     param: GetParams,
-    db: Arc<Mutex<Client>>,
+    db: PgPool,
 ) -> Result<impl warp::Reply, Rejection> {
     let title = decode_title(title);
     if let Ok(url) =
-        repository::get_chapter_url(source.clone(), title.clone(), chapter.clone(), db.clone())
+        repository::get_chapter_url(source.clone(), title.clone(), chapter.clone(), db.clone()).await
     {
         let pages = Mangasee::get_pages(&url);
-
-        let mut conn = db.lock().unwrap();
         for i in 0..pages.pages.len() {
-            conn.execute(
-                "INSERT OR IGNORE INTO page(chapter_id, rank, url)
+            sqlx::query!(
+                "INSERT INTO page(chapter_id, rank, url)
                 VALUES(
                 (SELECT chapter.id FROM chapter
                 JOIN manga ON manga.id = chapter.manga_id
                 JOIN source ON source.id = manga.source_id
-                WHERE source.name = ?1 AND manga.title = ?2 AND chapter.number = ?3),
-                ?4,
-                ?5)",
-                &[&source, &title, &chapter, &(i as i32), &pages.pages[i]],
+                WHERE source.name = $1 AND manga.title = $2 AND chapter.number = $3),
+                $4,
+                $5) ON CONFLICT DO NOTHING",
+                source, title, chapter, (i as i32), pages.pages[i],
             )
-            .unwrap();
+            .execute(&db).await;
         }
         return Ok(warp::reply::json(&pages));
     }

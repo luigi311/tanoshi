@@ -4,3 +4,4 @@
 /dist/
 /db/
 .DS_Store
+.env

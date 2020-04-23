@@ -2,22 +2,25 @@ use crate::auth::{Claims, User, UserResponse};
 use argon2::{self, Config};
 use jsonwebtoken::crypto::verify;
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
-use postgres::Client;
 use rand;
 use rand::Rng;
+use sqlx;
+use sqlx::postgres::PgPool;
 use std::sync::{Arc, Mutex};
 
 #[derive(Clone)]
 pub struct Auth {}
 
 impl Auth {
-    pub fn register(user: User, db: Arc<Mutex<Client>>) -> UserResponse {
+    pub async fn register(user: User, db: PgPool) -> UserResponse {
         let hashed = Auth::hash(user.password.as_bytes());
-        let mut conn = db.lock().unwrap();
-        match conn.execute(
-            "INSERT INTO user(username, password) VALUES (?1, ?2)",
-            &[&user.username, &hashed],
-        ) {
+        match sqlx::query!(
+            r#"INSERT INTO "user"(username, password) VALUES ($1, $2)"#,
+            user.username,
+            hashed
+        )
+        .execute(&db).await
+        {
             Ok(_) => UserResponse {
                 claim: None,
                 token: None,
@@ -26,28 +29,21 @@ impl Auth {
             Err(e) => UserResponse {
                 claim: None,
                 token: None,
-                status: format!("failed create accound, reason: {}", e.to_string()),
+                status: format!("failed create account, reason: {}", e.to_string()),
             },
         }
     }
 
-    pub fn login(secret: String, user: User, db: Arc<Mutex<Client>>) -> UserResponse {
-        let mut conn = db.lock().unwrap();
-        let hashed: String = match conn.query_one(
-            "SELECT password FROM user WHERE username = ?1",
-            &[&user.username],
-        ) {
-            Ok(row) => row.get(0),
-            Err(e) => {
-                return UserResponse {
-                    claim: None,
-                    token: None,
-                    status: format!("failed, reason :{}", e.to_string()),
-                }
-            }
-        };
+    pub async fn login(secret: String, user: User, db: PgPool) -> UserResponse {
+        let account = sqlx::query_as!(
+            User,
+            r#"SELECT username, password FROM "user" WHERE username = $1"#,
+            user.username,
+        )
+        .fetch_one(&db)
+        .await;
 
-        if Auth::verify(hashed, user.password.as_bytes()) {
+        if Auth::verify(account.unwrap().password, user.password.as_bytes()) {
             let user_claims = Claims {
                 sub: user.username,
                 company: "tanoshi".to_string(),

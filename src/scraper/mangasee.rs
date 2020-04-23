@@ -59,7 +59,7 @@ impl Scraping for Mangasee {
         let mut m = Manga {
             title: "".to_string(),
             author: "".to_string(),
-            genre: vec![],
+            //genre: vec![],
             status: "".to_string(),
             description: "".to_string(),
             path: "".to_string(),
@@ -96,7 +96,7 @@ impl Scraping for Mangasee {
         let selector = scraper::Selector::parse("a[href*=\"genre\"]").unwrap();
         for element in document.select(&selector) {
             for text in element.text() {
-                m.genre.push(String::from(text));
+                //m.genre.push(String::from(text));
             }
         }
 
@@ -134,9 +134,7 @@ impl Scraping for Mangasee {
             let time_sel = scraper::Selector::parse("time[class*=\"SeriesTime\"]").unwrap();
             for time_el in element.select(&time_sel) {
                 let date_str = time_el.value().attr("datetime").unwrap();
-                chapter.uploaded = DateTime::from(
-                    DateTime::parse_from_str(&date_str, "%Y-%m-%dT%H:%M:%S%:z").unwrap(),
-                );
+                chapter.uploaded = chrono::NaiveDateTime::parse_from_str(&date_str, "%Y-%m-%dT%H:%M:%S%:z").unwrap()
             }
 
             chapters.push(chapter);

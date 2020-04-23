@@ -5,13 +5,13 @@
 use crate::filters::{with_authorization, with_db};
 use crate::handlers::manga;
 use crate::scraper::{mangasee::Mangasee, GetParams, Params};
-use postgres::Client;
+use sqlx::postgres::PgPool;
 use std::sync::{Arc, Mutex};
 use warp::Filter;
 
 pub fn manga(
     secret: String,
-    db: Arc<Mutex<Client>>,
+    db: PgPool,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     list_sources(db.clone())
         .or(list_mangas(db.clone()))
@@ -21,7 +21,7 @@ pub fn manga(
 }
 
 pub fn list_sources(
-    db: Arc<Mutex<Client>>,
+    db: PgPool,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::path!("api" / "source")
         .and(warp::get())
@@ -30,7 +30,7 @@ pub fn list_sources(
 }
 
 pub fn list_mangas(
-    db: Arc<Mutex<Client>>,
+    db: PgPool,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::path!("api" / "source" / String)
         .and(warp::get())
@@ -41,7 +41,7 @@ pub fn list_mangas(
 
 pub fn get_manga_info(
     secret: String,
-    db: Arc<Mutex<Client>>,
+    db: PgPool,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::path!("api" / "source" / String / "manga" / String)
         .and(warp::get())
@@ -52,7 +52,7 @@ pub fn get_manga_info(
 
 pub fn get_chapters(
     secret: String,
-    db: Arc<Mutex<Client>>,
+    db: PgPool,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::path!("api" / "source" / String / "manga" / String / "chapter")
         .and(warp::get())
@@ -63,7 +63,7 @@ pub fn get_chapters(
 }
 
 pub fn get_pages(
-    db: Arc<Mutex<Client>>,
+    db: PgPool,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::path!("api" / "source" / String / "manga" / String / "chapter" / String)
         .and(warp::get())

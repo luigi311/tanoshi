@@ -1,8 +1,8 @@
 use std::convert::Infallible;
 use std::sync::{Arc, Mutex};
 
-use postgres::Client;
 use serde_json::json;
+use sqlx::postgres::PgPool;
 use warp::Filter;
 
 use crate::auth::auth::Auth;
@@ -21,8 +21,8 @@ pub struct ExpiredOrInvalidToken;
 impl warp::reject::Reject for ExpiredOrInvalidToken {}
 
 pub fn with_db(
-    db: Arc<Mutex<Client>>,
-) -> impl Filter<Extract = (Arc<Mutex<Client>>,), Error = std::convert::Infallible> + Clone {
+    db: PgPool,
+) -> impl Filter<Extract = (PgPool,), Error = std::convert::Infallible> + Clone {
     warp::any().map(move || db.clone())
 }
 

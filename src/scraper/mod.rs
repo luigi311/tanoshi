@@ -9,7 +9,7 @@ use mangasee::Mangasee;
 pub struct Manga {
     pub title: String,
     pub author: String,
-    pub genre: Vec<String>,
+    //pub genre: Vec<String>,
     pub status: String,
     pub description: String,
     pub path: String,
@@ -26,7 +26,7 @@ pub struct Chapter {
     pub no: String,
     pub url: String,
     pub read: i32,
-    pub uploaded: chrono::DateTime<Local>,
+    pub uploaded: chrono::NaiveDateTime,
 }
 
 impl Default for Chapter {
@@ -35,7 +35,7 @@ impl Default for Chapter {
             no: "".to_string(),
             url: "".to_string(),
             read: 0,
-            uploaded: Local::now(),
+            uploaded: Local::now().naive_local(),
         }
     }
 }
