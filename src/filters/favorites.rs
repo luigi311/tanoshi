@@ -5,14 +5,14 @@ use crate::favorites::FavoriteManga;
 use crate::filters::{with_authorization, with_db};
 use crate::handlers::auth as auth_handler;
 use crate::handlers::favorites as favorite_handler;
-use rusqlite::Connection;
+use sqlx::postgres::PgPool;
 use std::sync::{Arc, Mutex};
 use warp::Filter;
 
 pub fn favorites(
     secret: String,
     fav: Favorites,
-    db: Arc<Mutex<Connection>>,
+    db: PgPool,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     get_favorites(secret.clone(), fav.clone(), db.clone())
         .or(add_favorites(secret.clone(), fav.clone(), db.clone()))
@@ -22,7 +22,7 @@ pub fn favorites(
 fn get_favorites(
     secret: String,
     fav: Favorites,
-    db: Arc<Mutex<Connection>>,
+    db: PgPool,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::path!("api" / "favorites")
         .and(warp::get())
@@ -35,7 +35,7 @@ fn get_favorites(
 fn add_favorites(
     secret: String,
     fav: Favorites,
-    db: Arc<Mutex<Connection>>,
+    db: PgPool,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::path!("api" / "favorites")
         .and(warp::post())
@@ -49,7 +49,7 @@ fn add_favorites(
 fn remove_favorites(
     secret: String,
     fav: Favorites,
-    db: Arc<Mutex<Connection>>,
+    db: PgPool,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::path!("api" / "favorites" / "source" / String / "manga" / String)
         .and(warp::delete())

@@ -2,8 +2,8 @@ use crate::auth::Claims;
 use crate::filters::favorites::favorites;
 use crate::model::Chapter;
 use chrono::Local;
-use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
+use sqlx::postgres::PgPool;
 use std::convert::Infallible;
 use std::sync::{Arc, Mutex};
 
@@ -15,7 +15,7 @@ pub struct History {
     thumbnail_url: Option<String>,
     chapter: String,
     read: i32,
-    at: chrono::DateTime<chrono::Local>,
+    at: chrono::NaiveDateTime,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -32,46 +32,27 @@ pub struct HistoryParam {
 pub async fn get_history(
     claim: Claims,
     param: HistoryParam,
-    db: Arc<Mutex<Connection>>,
+    db: PgPool,
 ) -> Result<impl warp::Reply, Infallible> {
-    let limit = 10;
-    let offset = (param.page * limit) - limit;
-
-    let conn = db.lock().unwrap();
-    let mut stmt = conn
-        .prepare(
-            "SELECT source.name, manga.title, 
-                   manga.thumbnail_url, chapter.number, 
-                   history.last_page, history.at 
+    let limit: i64 = 10;
+    let offset: i64 = (param.page as i64 * limit) - limit;
+    let histories = sqlx::query_as!(
+            History,
+            r#"SELECT source.name AS source, manga.title AS title, 
+                   manga.thumbnail_url as thumbnail_url, chapter.number AS chapter, 
+                   history.last_page AS read, history.at AS at
                    FROM chapter
                    JOIN manga ON manga.id = chapter.manga_id
                    JOIN source ON source.id = manga.source_id
                    JOIN history ON history.chapter_id = chapter.id
-                   JOIN user ON user.id = history.user_id
-                   WHERE user.username = ?1 ORDER BY at DESC
-                   LIMIT ?2 OFFSET ?3 ",
-        )
-        .unwrap();
-    let history_iter = stmt
-        .query_map(params![claim.sub, limit, offset], |row| {
-            Ok(History {
-                source: row.get(0)?,
-                title: row.get(1)?,
-                thumbnail_url: row.get(2)?,
-                chapter: row.get(3)?,
-                read: row.get(4)?,
-                at: row.get(5)?,
-            })
-        })
-        .unwrap();
-
-    let mut histories = vec![];
-    for ch in history_iter {
-        histories.push(ch.unwrap())
-    }
-
+                   JOIN "user" ON "user".id = history.user_id
+                   WHERE "user".username = $1 ORDER BY at DESC
+                   LIMIT $2 OFFSET $3"#,
+                   claim.sub, limit, offset
+        ).fetch_all(&db).await;
+    
     let res = HistoryResponse {
-        history: histories,
+        history: histories.unwrap(),
         status: "success".to_string(),
     };
 
@@ -90,34 +71,32 @@ pub async fn get_history(
 pub async fn add_history(
     claim: Claims,
     request: History,
-    db: Arc<Mutex<Connection>>,
+    db: PgPool,
 ) -> Result<impl warp::Reply, Infallible> {
-    let conn = db.lock().unwrap();
-    let reply = match conn.execute(
-        "INSERT INTO history(user_id, chapter_id, last_page, at) \
-        VALUES(\
-        (SELECT id FROM user WHERE username = ?1), \
-        (SELECT chapter.id FROM chapter \
-        JOIN manga ON manga.id = chapter.manga_id \
-        JOIN source ON source.id = manga.source_id \
-        WHERE source.name = ?2 \
-        AND manga.title = ?3 \
-        AND chapter.number = ?4), \
-        ?5, \
-        ?6) \
-        ON CONFLICT(user_id, chapter_id) \
-         DO UPDATE SET last_page = excluded.last_page, \
-         at = excluded.at, \
-         updated = CURRENT_TIMESTAMP",
-        params![
+    let reply = match sqlx::query!(
+        r#"INSERT INTO history(user_id, chapter_id, last_page, at)
+        VALUES(
+        (SELECT id FROM "user" WHERE username = $1),
+        (SELECT chapter.id FROM chapter
+        JOIN manga ON manga.id = chapter.manga_id
+        JOIN source ON source.id = manga.source_id
+        WHERE source.name = $2
+        AND manga.title = $3
+        AND chapter.number = $4),
+        $5,
+        $6)
+        ON CONFLICT(user_id, chapter_id)
+         DO UPDATE SET last_page = excluded.last_page,
+         at = excluded.at,
+         updated = CURRENT_TIMESTAMP"#,
             claim.sub,
             request.source,
             request.title,
             request.chapter,
             request.read,
-            request.at
-        ],
-    ) {
+            request.at,
+    ).execute(&db).await 
+    {
         Ok(_) => warp::reply::with_status(
             warp::reply::json(&HistoryResponse {
                 history: vec![],

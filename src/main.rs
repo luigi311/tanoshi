@@ -3,10 +3,10 @@ extern crate argon2;
 use std::str::FromStr;
 
 use pretty_env_logger;
-use warp::Filter;
-
-use crate::scraper::mangasee::Mangasee;
+use sqlx::postgres::PgPool;
+use std::error::Error;
 use std::sync::{Arc, Mutex};
+use warp::Filter;
 
 mod auth;
 mod favorites;
@@ -16,7 +16,7 @@ mod model;
 mod scraper;
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), sqlx::Error> {
     pretty_env_logger::init();
 
     let secret = std::env::var("TOKEN_SECRET_KEY").unwrap();
@@ -25,18 +25,20 @@ async fn main() {
 
     let static_files = warp::fs::dir(static_path);
 
-    let conn = rusqlite::Connection::open(db_path).unwrap();
-    let conn = Arc::new(Mutex::new(conn));
+    let pool = PgPool::builder()
+        .max_size(5) // maximum number of connections in the pool
+        .build(std::env::var("DATABASE_URL").unwrap().as_str())
+        .await?;
 
-    let auth_api = filters::auth::authentication(secret.clone(), conn.clone());
-    let manga_api = filters::manga::manga(secret.clone(), conn.clone());
+    let auth_api = filters::auth::authentication(secret.clone(), pool.clone());
+    let manga_api = filters::manga::manga(secret.clone(), pool.clone());
 
     let fav = favorites::Favorites::new();
-    let fav_api = filters::favorites::favorites(secret.clone(), fav, conn.clone());
+    let fav_api = filters::favorites::favorites(secret.clone(), fav, pool.clone());
 
-    let history_api = filters::history::history(secret.clone(), conn.clone());
+    let history_api = filters::history::history(secret.clone(), pool.clone());
 
-    let updates_api = filters::updates::updates(secret.clone(), conn.clone());
+    let updates_api = filters::updates::updates(secret.clone(), pool.clone());
 
     let api = manga_api
         .or(auth_api)
@@ -52,4 +54,5 @@ async fn main() {
     warp::serve(routes)
         .run(std::net::SocketAddrV4::from_str(format!("0.0.0.0:{}", port).as_str()).unwrap())
         .await;
+        Ok(())
 }

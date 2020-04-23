@@ -1,25 +1,25 @@
-DROP TABLE IF EXISTS user;
-DROP TABLE IF EXISTS source;
-DROP TABLE IF EXISTS manga;
-DROP TABLE IF EXISTS chapter;
-DROP TABLE IF EXISTS page;
 DROP TABLE IF EXISTS history;
 DROP TABLE IF EXISTS favorite;
+DROP TABLE IF EXISTS "user";
+DROP TABLE IF EXISTS page;
+DROP TABLE IF EXISTS chapter;
+DROP TABLE IF EXISTS manga;
+DROP TABLE IF EXISTS source;
 
-CREATE TABLE user
+CREATE TABLE "user"
 (
-    id       INTEGER PRIMARY KEY,
+    id       SERIAL PRIMARY KEY,
     username TEXT NOT NULL UNIQUE,
     password TEXT NOT NULL,
     created  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX username_idx ON user (username);
+CREATE INDEX username_idx ON "user" (username);
 
 CREATE TABLE source
 (
-    id      INTEGER PRIMARY KEY,
+    id      SERIAL PRIMARY KEY,
     name    TEXT NOT NULL,
     url     TEXT NOT NULL,
     created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -31,7 +31,7 @@ CREATE INDEX source_name_idx ON source (name);
 
 CREATE TABLE manga
 (
-    id            INTEGER PRIMARY KEY,
+    id            SERIAL PRIMARY KEY,
     source_id     INTEGER,
     title         TEXT NOT NULL,
     author        TEXT,
@@ -52,7 +52,7 @@ CREATE INDEX manga_title_idx ON manga (source_id, title);
 
 CREATE TABLE chapter
 (
-    id       INTEGER PRIMARY KEY,
+    id       SERIAL PRIMARY KEY,
     manga_id INTEGER,
     title    TEXT,
     number   TEXT NOT NULL,
@@ -71,7 +71,7 @@ CREATE INDEX chapter_idx ON chapter (manga_id, number);
 
 CREATE TABLE page
 (
-    id         INTEGER PRIMARY KEY,
+    id         SERIAL PRIMARY KEY,
     chapter_id INTEGER,
     rank       INTEGER NOT NULL,
     url        TEXT    NOT NULL,
@@ -88,7 +88,7 @@ CREATE INDEX page_idx ON page (chapter_id);
 
 CREATE TABLE history
 (
-    id         INTEGER PRIMARY KEY,
+    id         SERIAL PRIMARY KEY,
     user_id    INTEGER   NOT NULL,
     chapter_id INTEGER   NOT NULL,
     last_page  INTEGER,
@@ -97,7 +97,7 @@ CREATE TABLE history
     updated    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (user_id, chapter_id),
     FOREIGN KEY (user_id)
-        REFERENCES user (id)
+        REFERENCES "user" (id)
         ON DELETE CASCADE
         On UPDATE NO ACTION,
     FOREIGN KEY (chapter_id)
@@ -110,14 +110,14 @@ CREATE INDEX history_idx ON history (user_id, chapter_id);
 
 CREATE TABLE favorite
 (
-    id       INTEGER PRIMARY KEY,
+    id       SERIAL PRIMARY KEY,
     user_id  INTEGER NOT NULL,
     manga_id INTEGER NOT NULL,
     created  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (user_id, manga_id),
     FOREIGN KEY (user_id)
-        REFERENCES user (id)
+        REFERENCES "user" (id)
         ON DELETE CASCADE
         On UPDATE NO ACTION,
     FOREIGN KEY (manga_id)
