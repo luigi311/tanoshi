@@ -74,7 +74,7 @@ impl Component for Detail {
             manga: MangaModel {
                 title: "".to_string(),
                 author: "".to_string(),
-                genre: vec![],
+                //genre: vec![],
                 status: "".to_string(),
                 description: "".to_string(),
                 path: "".to_string(),
@@ -145,7 +145,7 @@ impl Component for Detail {
                 <div class="flex flex-col m-2">
                     <p class="md:text-xl sm:text-base font-bold">{self.manga.title.to_owned()}</p>
                     <p class="md:text-xl sm:text-sm font-semibold">{self.manga.status.to_owned()}</p>
-                    <p class="md:text-xl sm:text-sm font-medium break-normal">{self.manga.genre.join(", ").to_owned()}</p>
+                    //<p class="md:text-xl sm:text-sm font-medium break-normal">{self.manga.genre.join(", ").to_owned()}</p>
                     <p class="break-normal md:text-base sm:text-xs">{self.manga.description.to_owned()}</p>
                 </div>
             </div>

@@ -8,7 +8,7 @@ use yew::format::Text;
 pub struct MangaModel {
     pub title: String,
     pub author: String,
-    pub genre: Vec<String>,
+    //pub genre: Vec<String>,
     pub status: String,
     pub description: String,
     pub path: String,
@@ -23,7 +23,7 @@ pub struct ChapterModel {
     pub no: String,
     pub url: String,
     pub read: i32,
-    pub uploaded: Option<chrono::DateTime<Local>>,
+    pub uploaded: Option<chrono::NaiveDateTime>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -120,7 +120,7 @@ pub struct HistoryRequest {
     pub title: String,
     pub chapter: String,
     pub read: i32,
-    pub at: chrono::DateTime<chrono::Local>,
+    pub at: chrono::NaiveDateTime,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -130,7 +130,7 @@ pub struct HistoryModel {
     pub thumbnail_url: String,
     pub chapter: String,
     pub read: i32,
-    pub at: chrono::DateTime<chrono::Local>,
+    pub at: chrono::NaiveDateTime,
     pub days: Option<i64>,
     pub show_sep: Option<bool>,
 }

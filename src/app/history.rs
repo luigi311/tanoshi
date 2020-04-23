@@ -164,13 +164,11 @@ impl Component for History {
 }
 
 impl History {
-    fn calculate_days(&self, at: chrono::DateTime<Local>) -> i64 {
+    fn calculate_days(&self, at: chrono::NaiveDateTime) -> i64 {
         let timestamp = js_sys::Date::now();
         let secs: i64 = (timestamp / 1000.0).floor() as i64;
         let nanoes: u32 = (timestamp as u32 % 1000) * 1_000_000;
-        let naivetime = chrono::NaiveDateTime::from_timestamp(secs, nanoes);
-        let today = DateTime::<Utc>::from_utc(naivetime, Utc);
-        let at = DateTime::<Utc>::from(at);
+        let today = chrono::NaiveDateTime::from_timestamp(secs, nanoes);
         today.signed_duration_since(at).num_days()
     }
     fn fetch_updates(&mut self) {

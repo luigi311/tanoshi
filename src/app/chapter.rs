@@ -595,12 +595,11 @@ impl Chapter {
         }
     }
 
-    fn get_date(&self) -> DateTime<Utc> {
+    fn get_date(&self) -> chrono::NaiveDateTime {
         let timestamp = js_sys::Date::now();
         let secs: i64 = (timestamp / 1000.0).floor() as i64;
         let nanoes: u32 = (timestamp as u32 % 1000) * 1_000_000;
-        let naivetime = chrono::NaiveDateTime::from_timestamp(secs, nanoes);
-        DateTime::<Utc>::from_utc(naivetime, Utc)
+        chrono::NaiveDateTime::from_timestamp(secs, nanoes)
     }
 
     fn set_history(&mut self) {
@@ -612,7 +611,7 @@ impl Chapter {
             .unwrap(),
             chapter: self.current_chapter.clone(),
             read: self.current_page as i32,
-            at: DateTime::from(self.get_date()),
+            at: self.get_date(),
         };
         self.worker
             .send(job::Request::PostHistory(self.token.clone(), h));

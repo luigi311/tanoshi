@@ -52,7 +52,7 @@ impl Component for Select {
 
     fn mounted(&mut self) -> ShouldRender {
         self.fetch_sources();
-        false
+        true
     }
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
@@ -60,6 +60,7 @@ impl Component for Select {
             Msg::SourceReady(data) => {
                 self.sources = data.sources;
                 self.is_fetching = false;
+                info!("{:?}", self.sources.clone());
             }
             Msg::Noop => {
                 info!("Noop");
