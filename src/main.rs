@@ -20,7 +20,6 @@ async fn main() -> Result<(), sqlx::Error> {
     pretty_env_logger::init();
 
     let secret = std::env::var("TOKEN_SECRET_KEY").unwrap();
-    let db_path = std::env::var("DB_PATH").unwrap_or("./tanoshi.db".to_string());
     let static_path = std::env::var("STATIC_FILES_PATH").unwrap_or("./dist".to_string());
 
     let static_files = warp::fs::dir(static_path);
