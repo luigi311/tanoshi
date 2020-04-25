@@ -5,12 +5,13 @@ use crate::handlers::auth as auth_handler;
 use sqlx::postgres::PgPool;
 use std::sync::{Arc, Mutex};
 use warp::Filter;
+use super::with_authorization;
 
 pub fn authentication(
     secret: String,
     db: PgPool,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    login(secret.clone(), db.clone()).or(register(secret, db))
+    login(secret.clone(), db.clone()).or(register(secret.clone(), db.clone())).or(validate(secret))
 }
 
 pub fn login(
@@ -34,6 +35,17 @@ pub fn register(
         .and(json_body())
         .and(with_db(db))
         .and_then(auth_handler::register)
+}
+
+pub fn validate(
+    secret: String
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path!("api" / "validate")
+    .and(warp::get())
+    .and(with_authorization(secret))
+    .map(|_| {
+        Ok(warp::reply())
+    })
 }
 
 fn with_secret(
