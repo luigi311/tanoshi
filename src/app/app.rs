@@ -1,6 +1,6 @@
 use yew::services::storage::Area;
-use yew::services::StorageService;
-use yew::{html, Bridge, Bridged, Component, ComponentLink, Html, NodeRef, ShouldRender};
+use yew::services::{fetch::FetchTask, StorageService, FetchService};
+use yew::{html, Bridge, Bridged, Component, ComponentLink, Html, NodeRef, ShouldRender, format::{Text, Nothing}};
 use yew_router::agent::RouteRequest;
 use yew_router::prelude::{Route, RouteAgent};
 use yew_router::{router::Router, Switch};
@@ -11,6 +11,7 @@ use super::browse::{self, Browse, BrowseRoute};
 use super::chapter::Chapter;
 use super::login::Login;
 use super::logout::Logout;
+use http::{Response, Request};
 
 #[derive(Switch, Debug, Clone)]
 pub enum AppRoute {
@@ -29,11 +30,13 @@ pub struct App {
     storage: StorageService,
     router: Box<dyn Bridge<RouteAgent>>,
     route: String,
-    refs: Vec<NodeRef>,
+    fetch_task: Option<FetchTask>,
 }
 
 pub enum Msg {
     RouterCallback(Route),
+    TokenInvalidorExpired,
+    Noop,
 }
 
 impl Component for App {
@@ -49,24 +52,37 @@ impl Component for App {
             storage,
             router,
             route: "/".to_string(),
-            refs: vec![NodeRef::default(), NodeRef::default()],
+            fetch_task: None,
         }
     }
 
-    fn mounted(&mut self) -> ShouldRender {
-        if let Err(_) = self.storage.restore("token") {
-            self.router
-                .send(RouteRequest::ChangeRoute(Route::from("/login".to_string())));
-        } else {
-            self.router.send(RouteRequest::GetCurrentRoute);
-        }
+    fn change(&mut self, _props: Self::Properties) -> ShouldRender {
+        info!("change");
         true
     }
 
+    fn mounted(&mut self) -> ShouldRender {
+        if let Ok(token) = self.storage.restore("token") {
+            self.validate_token(token);
+        } else {
+            self.router
+                .send(RouteRequest::ChangeRoute(Route::from("/login".to_string())));
+        }
+        false
+    }
+
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
+        info!("update");
         match msg {
             Msg::RouterCallback(route) => {
                 self.route = route.route;
+            }
+            Msg::TokenInvalidorExpired => {
+                self.router
+                .send(RouteRequest::ChangeRoute(Route::from("/login".to_string())));
+            }
+            Msg::Noop => {
+                return false;
             }
         }
         true
@@ -92,12 +108,26 @@ impl Component for App {
 }
 
 impl App {
-    fn hide(&self) {
-        if let Some(top_bar) = self.refs[0].cast::<HtmlElement>() {
-            top_bar.set_hidden(true);
-        }
-        if let Some(nav_bar) = self.refs[0].cast::<HtmlElement>() {
-            nav_bar.set_hidden(true);
+    fn validate_token(&mut self, token: String) {
+        let req = Request::get("/api/validate")
+            .header("Authorization", token)
+            .body(Nothing)
+            .expect("failed to build request");
+
+        if let Ok(task) = FetchService::new().fetch(
+            req,
+            self.link.callback(
+                |response: Response<Text>| {
+                    let (meta, res) = response.into_parts();
+                    let status = meta.status;
+                    if status == http::StatusCode::UNAUTHORIZED {
+                        return Msg::TokenInvalidorExpired
+                    }
+                    Msg::Noop
+                },
+            ),
+        ) {
+            self.fetch_task = Some(FetchTask::from(task));
         }
     }
 }

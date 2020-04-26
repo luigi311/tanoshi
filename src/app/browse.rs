@@ -105,15 +105,7 @@ impl Component for Browse {
         }
     }
 
-    fn mounted(&mut self) -> ShouldRender {
-        if let Err(_) = self.storage.restore("token") {
-            self.router
-                .send(RouteRequest::ChangeRoute(Route::from("/login".to_string())));
-        } else {
-            self.router.send(RouteRequest::GetCurrentRoute);
-        }
-        true
-    }
+    fn mounted(&mut self) -> ShouldRender {false}
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
