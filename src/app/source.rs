@@ -160,7 +160,8 @@ impl Component for Source {
                         is_favorite=self.favorites.contains(&manga.title.to_owned()) />
                     })
                     }
-                    </div>
+                </div>
+                <button onclick=self.link.callback(|_| Msg::ScrolledDown)>{"Load More"}</button>
             </div>
         };
     }
