@@ -6,13 +6,15 @@ use yew::prelude::*;
 use yew::services::fetch::{FetchService, FetchTask};
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 
-use super::component::model::{FavoriteManga, GetFavoritesResponse, GetMangasResponse, MangaModel};
+use super::component::model::{FavoriteManga, GetFavoritesResponse};
 use super::component::Spinner;
 use http::{Request, Response};
 use std::borrow::BorrowMut;
 use yew::services::storage::Area;
 use yew::services::StorageService;
 use yew::utils::{document, window};
+
+use tanoshi::{GetMangasResponse, MangaModel};
 
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
