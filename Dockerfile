@@ -16,17 +16,16 @@ RUN echo "deb https://dl.yarnpkg.com/debian/ stable main" | tee /etc/apt/sources
 RUN apt-get update && apt install -y yarn
 
 WORKDIR /usr/src
-RUN git clone https://github.com/fadhlika/tanoshi-web /usr/src/tanoshi-web
 RUN git clone https://github.com/fadhlika/tanoshi /usr/src/tanoshi
 RUN mkdir -p /tanoshi
 
-WORKDIR /usr/src/tanoshi-web
+WORKDIR /usr/src/tanoshi/tanoshi-web
 RUN yarn install
 RUN yarn build
 RUN mkdir -p $STATIC_FILES_PATH && cp -R /usr/src/tanoshi-web/dist /tanoshi/
 RUN ls -l /tanoshi
 
-WORKDIR /usr/src/tanoshi
+WORKDIR /usr/src/tanoshi/tanoshi
 RUN cargo build --release
 RUN ls -l target/release
 RUN cp /usr/src/tanoshi/target/release/tanoshi /usr/local/bin/tanoshi
