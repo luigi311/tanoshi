@@ -1,7 +1,0 @@
-build:
-  docker:
-    web: Dockerfile
-  config:
-    TOKEN_SECRET_KEY: jkdasndkjandkandjandkan
-    STATIC_FILES_PATH: /tanoshi/dist
-    DATABASE_URL: postgres://bevhnvmxmpmdcp:ca59077c5eaa47e6d009392aaf760fa7861ce0132f71286983517229a0c8158a@ec2-54-147-209-121.compute-1.amazonaws.com:5432/d2jamba84a0rt6
