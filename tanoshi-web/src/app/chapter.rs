@@ -41,7 +41,6 @@ pub struct Chapter {
     chapter: ChapterModel,
     current_chapter: String,
     current_page: usize,
-    double_page: bool,
     chapters: Vec<ChapterModel>,
     previous_chapter_page: usize,
     pages: Vec<String>,
@@ -57,7 +56,6 @@ pub struct Chapter {
 }
 
 pub enum Msg {
-    MangaReady(GetMangaResponse),
     ChapterReady(GetChaptersResponse),
     PagesReady(GetPagesResponse),
     PageForward,
@@ -67,7 +65,6 @@ pub enum Msg {
     RouterCallback,
     SetHistoryRequested,
     ScrollEvent(f64),
-    LoadStart(usize),
     Noop,
 }
 
@@ -132,7 +129,6 @@ impl Component for Chapter {
             current_chapter: props.chapter,
             chapter: Default::default(),
             current_page: props.page.checked_sub(1).unwrap_or(0),
-            double_page: false,
             chapters: vec![],
             previous_chapter_page: 0,
             pages: vec![],
@@ -161,7 +157,6 @@ impl Component for Chapter {
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
-            Msg::MangaReady(data) => {}
             Msg::ChapterReady(data) => {
                 self.is_fetching = false;
                 self.chapters = data.chapters.clone();
@@ -275,9 +270,6 @@ impl Component for Chapter {
                     }
                 }
             }
-            Msg::LoadStart(page) => {
-                info!("page {} start load", page);
-            }
             Msg::Noop => {
                 return false;
             }
@@ -329,7 +321,7 @@ impl Component for Chapter {
                         if self.settings.page_rendering == PageRendering::LongStrip {
                             html!{
                             <div
-                                class="border-dashed border-4 border-gray-500 flex justify-center items-center h-24 cursor-pointer"
+                                class="border-dashed border-b border-gray-500 flex justify-center items-center h-24 cursor-pointer"
                                 onmouseup=self.link.callback(|_| Msg::PagePrevious)>
                                 <span class="text-gray-500">{"Previous Chapter"}</span>
                             </div>
@@ -373,7 +365,7 @@ impl Component for Chapter {
                         if self.settings.page_rendering == PageRendering::LongStrip {
                             html!{
                             <div
-                                class="border-dashed border-4 border-gray-500 flex justify-center items-center h-24 cursor-pointer"
+                                class="border-dashed border-t border-gray-500 flex justify-center items-center h-24 cursor-pointer"
                                 onmouseup=self.link.callback(|_| Msg::PageForward)>
                                 <span class="text-gray-500">{"Next Chapter"}</span>
                             </div>
