@@ -78,7 +78,7 @@ impl Component for Select {
                     for self.sources.iter().map(|source| html!{
                         <RouterAnchor<BrowseRoute>
                             classes="flex inline-flex border-b border-gray-light p-2 content-center hover:bg-gray-200"
-                            route=BrowseRoute::Catalogue(CatalogueRoute::Source("mangasee".to_string()))>
+                            route=BrowseRoute::Catalogue(CatalogueRoute::Source(source.to_string()))>
                             <span class="text-lg font-semibold">{source.clone()}</span>
                         </RouterAnchor<BrowseRoute>>
                     })

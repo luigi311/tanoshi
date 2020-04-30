@@ -27,8 +27,8 @@ impl Scraping for Mangadex {
         };
 
         s = match param.sort_order.unwrap() {
-            SortOrderParam::Asc => s + 1,
-            SortOrderParam::Desc => s,
+            SortOrderParam::Asc => s,
+            SortOrderParam::Desc => s + 1,
         };
 
         let params = vec![

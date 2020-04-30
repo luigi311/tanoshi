@@ -2,8 +2,11 @@ use yew::services::fetch::{FetchService, FetchTask, Request, Response};
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 
 use super::component::model::{
-    BackgroundColor, ChapterModel, GetChaptersResponse, GetMangaResponse, MangaModel,
+    BackgroundColor,
     PageRendering, ReadingDirection,
+};
+use tanoshi::manga::{
+    Chapter as ChapterModel, GetChaptersResponse, GetMangaResponse, Manga as MangaModel,
 };
 
 use crate::app::component::model::SettingParams;
