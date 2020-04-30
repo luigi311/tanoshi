@@ -87,7 +87,11 @@ pub async fn get_manga_info(
     } else if let Ok(url) =
         repository::get_manga_url(source.clone(), title.clone(), db.clone()).await
     {
-        let manga = Mangasee::get_manga_info(&url);
+        let manga = match source.as_str() {
+            "mangasee" =>  Mangasee::get_manga_info(&url),
+            "mangadex" => Mangadex::get_manga_info(&url),
+            _ => return Err(warp::reject())
+        };
 
         sqlx::query!(
             "UPDATE manga SET author = $1, status = $2, description = $3

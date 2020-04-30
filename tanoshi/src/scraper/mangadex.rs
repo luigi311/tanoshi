@@ -85,45 +85,43 @@ impl Scraping for Mangadex {
 
         let document = scraper::Html::parse_document(&html);
 
-        let selector = scraper::Selector::parse(".leftImage img").unwrap();
+        let selector = scraper::Selector::parse("meta[property=\"og:image\"]").unwrap();
         for element in document.select(&selector) {
-            let src = element.value().attr("src").unwrap();
-            m.thumbnail_url = String::from(src);
+            let src = element.value().attr("content").unwrap();
+            m.thumbnail_url = String::from(src).replace(".thumb", "");
         }
 
-        let selector = scraper::Selector::parse("h1[class=\"SeriesName\"]").unwrap();
+        let selector = scraper::Selector::parse("meta[property=\"og:title\"]").unwrap();
         for element in document.select(&selector) {
-            m.title = element.inner_html();
+            let title = element.value().attr("content").unwrap();
+            m.title = String::from(title).replace(" (Title) - MangaDex", "");
         }
 
         let selector = scraper::Selector::parse("a[href*=\"author\"]").unwrap();
-
         for element in document.select(&selector) {
             for text in element.text() {
                 m.author = String::from(text);
             }
         }
 
-        let selector = scraper::Selector::parse("a[href*=\"genre\"]").unwrap();
+        /* let selector = scraper::Selector::parse("a[href*=\"genre\"]").unwrap();
         for element in document.select(&selector) {
             for text in element.text() {
                 //m.genre.push(String::from(text));
             }
-        }
+        } */
 
-        let selector = scraper::Selector::parse(".PublishStatus").unwrap();
+        let selector = scraper::Selector::parse(".card-body .row .col-xl-9.col-lg-8.col-md-7").unwrap();
+        let element = document.select(&selector).next().unwrap().inner_html();
+        let re = Regex::new(r#"<div class="col-lg-9 col-xl-10">((Ongoing)|(Completed)|(Cancelled)|(Hiatus))</div>"#).unwrap();
+        let cap = re.captures(element.as_str()).unwrap();
+        m.status = cap.get(1).map_or("".to_string(), |m| m.as_str().to_string());
+
+        let selector = scraper::Selector::parse("meta[name=\"description\"").unwrap();
         for element in document.select(&selector) {
-            let status = element.value().attr("status").unwrap();
-            m.status = String::from(status);
-        }
-
-        let selector = scraper::Selector::parse(".description").unwrap();
-        for element in document.select(&selector) {
-            for text in element.text() {
-                m.description = String::from(text);
-            }
-        }
-
+            let description = element.value().attr("content").unwrap();
+            m.description = String::from(description);
+        } 
         GetMangaResponse { manga: m }
     }
 
