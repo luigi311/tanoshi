@@ -1,62 +1,61 @@
 use regex::Regex;
 use serde_json::json;
+use ureq;
 
 use crate::scraper::Scraping;
 use tanoshi::manga::{
     Chapter, GetChaptersResponse, GetMangaResponse, GetMangasResponse, GetPagesResponse, GetParams,
-    Manga, Params, SortOrderParam, SortByParam
+    Manga, Params, SortByParam, SortOrderParam
 };
 use chrono::{DateTime, Local};
+use tanoshi::mangadex::MangadexLogin;
 
 #[derive(Clone)]
-pub struct Mangasee {
+pub struct Mangadex {
     pub url: &'static str,
 }
 
-impl Scraping for Mangasee {
-    fn get_mangas(url: &String, param: Params, _: Vec<String>) -> GetMangasResponse {
+impl Scraping for Mangadex {
+    fn get_mangas(url: &String, param: Params, cookies: Vec<String>) -> GetMangasResponse {
         let mut mangas: Vec<Manga> = Vec::new();
 
-        let sort_by = match param.sort_by.unwrap() {
-            SortByParam::Views => "popularity",
-            SortByParam::LastUpdated => "dateUpdated",
-            _ => "dateUpdated"
+        let mut s = match param.sort_by.unwrap() {
+            SortByParam::LastUpdated => 0,
+            SortByParam::Views => 4,
+            SortByParam::Title => 2,
+            _ => 0,
         };
 
-        let sort_order = match param.sort_order.unwrap() {
-            SortOrderParam::Asc => "ascending",
-            SortOrderParam::Desc => "descending"
+        s = match param.sort_order.unwrap() {
+            SortOrderParam::Asc => s + 1,
+            SortOrderParam::Desc => s,
         };
 
         let params = vec![
-            ("keyword".to_owned(), param.keyword.to_owned()),
-            ("page".to_owned(), param.page.to_owned()),
-            ("sortBy".to_owned(), Some(sort_by.to_string())),
-            ("sortOrder".to_owned(), Some(sort_order.to_string())),
+            ("title".to_owned(), param.keyword.to_owned()),
+            ("p".to_owned(), param.page.to_owned()),
+            ("s".to_owned(), Some(s.to_string())),
         ];
 
         let urlencoded = serde_urlencoded::to_string(params).unwrap();
 
-        let resp = ureq::post(format!("{}/search/request.php", url).as_str())
-            .set(
-                "Content-Type",
-                "application/x-www-form-urlencoded; charset=utf-8",
-            )
-            .send_string(&urlencoded);
+        let resp = ureq::get(format!("{}/search?{}", url.clone(), urlencoded).as_str())
+        .set("Cookie", &cookies.join("; "))
+        .call();
 
         let html = resp.into_string().unwrap();
         let document = scraper::Html::parse_document(&html);
 
-        let selector = scraper::Selector::parse(".requested .row").unwrap();
+        let selector = scraper::Selector::parse(".manga-entry").unwrap();
         for row in document.select(&selector) {
             let mut manga = Manga::default();
 
-            let sel = scraper::Selector::parse("img").unwrap();
+            let sel = scraper::Selector::parse("div a img").unwrap();
             for el in row.select(&sel) {
-                manga.thumbnail_url = el.value().attr("src").unwrap().to_owned();
+                manga.thumbnail_url = format!("{}{}", url, el.value().attr("src").unwrap().to_owned());
             }
 
-            let sel = scraper::Selector::parse(".resultLink").unwrap();
+            let sel = scraper::Selector::parse(".manga_title").unwrap();
             for el in row.select(&sel) {
                 manga.title = el.inner_html();
                 manga.path = el.value().attr("href").unwrap().to_owned();
@@ -168,4 +167,47 @@ impl Scraping for Mangasee {
         }
         GetPagesResponse { pages }
     }
+}
+
+impl Mangadex {
+    pub fn login(url: &String, login: MangadexLogin) -> Result<Vec<String>, String> {
+        let boundary = "__TANOSHI__";
+        let body = format!(
+r#"--{}
+Content-Disposition: form-data; name="login_username"
+
+{}
+--{}
+Content-Disposition: form-data; name="login_password"
+
+{}
+--{}
+Content-Disposition: form-data; name="remember_me"
+
+{}
+--{}
+Content-Disposition: form-data; name="two_factor"
+
+{}
+--{}--"#,
+            boundary,
+            login.login_username,
+            boundary,
+            login.login_password,
+            boundary,
+            login.remember_me as i32,
+            boundary,
+            login.two_factor,
+            boundary);
+
+        let resp = ureq::post(format!("{}/ajax/actions.ajax.php?function=login", url).as_str())
+            .set("X-Requested-With", "XMLHttpRequest")
+            .set("Content-Type", format!("multipart/form-data; charset=utf-8; boundary={}", boundary).as_str())
+            .set("User-Agent", "Tanoshi/0.1.0")
+            .send_string(&body);
+
+        let cookies = resp.all("Set-Cookie").into_iter().map(|c| c.to_string()).collect();
+        Ok(cookies)
+    }
+
 }

@@ -2,7 +2,7 @@ use serde_json::json;
 
 use crate::favorites::{AddFavoritesResponse, FavoriteManga, GetFavoritesResponse};
 use crate::model::{Document, Manga};
-use crate::scraper::Manga as ScrapedManga;
+use tanoshi::manga::Manga as ScrapedManga;
 use sqlx::postgres::PgPool;
 
 #[derive(Clone)]

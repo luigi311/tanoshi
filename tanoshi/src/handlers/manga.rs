@@ -7,13 +7,20 @@ use warp::Rejection;
 use serde_json::json;
 
 use crate::auth::Claims;
-use crate::scraper::{mangasee::Mangasee, repository, GetParams, Params, Scraping};
-
+use crate::scraper::{
+    mangadex::Mangadex, mangasee::Mangasee, repository, Scraping,
+};
+use tanoshi::manga::{GetParams, Params};
+use tanoshi::mangadex::MangadexLogin;
 
 pub async fn list_sources(db: PgPool) -> Result<impl warp::Reply, Rejection> {
     let sources = sqlx::query!("SELECT name FROM source").fetch_all(&db).await;
 
-    let sources = sources.unwrap().iter().map(|source| source.name.clone()).collect::<Vec<String>>();
+    let sources = sources
+        .unwrap()
+        .iter()
+        .map(|source| source.name.clone())
+        .collect::<Vec<String>>();
 
     Ok(warp::reply::json(&json!(
         {
@@ -25,11 +32,20 @@ pub async fn list_sources(db: PgPool) -> Result<impl warp::Reply, Rejection> {
 
 pub async fn list_mangas(
     source: String,
+    claim: Claims,
     param: Params,
     db: PgPool,
 ) -> Result<impl warp::Reply, Rejection> {
     if let Ok(url) = repository::get_source_url(source.clone(), db.clone()).await {
-        let mangas = Mangasee::get_mangas(&url, param);
+        let mangas = match source.clone().as_str() {
+            "mangasee" => Mangasee::get_mangas(&url, param, vec![]),
+            "mangadex" => {
+                let ret = sqlx::query!(r#"SELECT mangadex_cookies FROM "user" WHERE username = $1"#, claim.sub).fetch_one(&db).await;
+                let ret = ret.unwrap();
+                Mangadex::get_mangas(&url, param, ret.mangadex_cookies.unwrap())
+            },
+            &_ => return Err(warp::reject()),
+        };
 
         for m in mangas.clone().mangas {
             sqlx::query!(
@@ -43,8 +59,13 @@ pub async fn list_mangas(
                     $2,
                     $3,
                     $4) ON CONFLICT DO NOTHING",
-                source, m.title, m.path, m.thumbnail_url,
-            ).execute(&db).await;
+                source,
+                m.title,
+                m.path,
+                m.thumbnail_url,
+            )
+            .execute(&db)
+            .await;
         }
         return Ok(warp::reply::json(&mangas));
     }
@@ -59,10 +80,13 @@ pub async fn get_manga_info(
 ) -> Result<impl warp::Reply, Rejection> {
     let title = decode_title(title);
     if let Ok(manga) =
-        repository::get_manga_detail(source.clone(), title.clone(), claim.sub.clone(), db.clone()).await
+        repository::get_manga_detail(source.clone(), title.clone(), claim.sub.clone(), db.clone())
+            .await
     {
         return Ok(warp::reply::json(&manga));
-    } else if let Ok(url) = repository::get_manga_url(source.clone(), title.clone(), db.clone()).await {
+    } else if let Ok(url) =
+        repository::get_manga_url(source.clone(), title.clone(), db.clone()).await
+    {
         let manga = Mangasee::get_manga_info(&url);
 
         sqlx::query!(
@@ -71,12 +95,14 @@ pub async fn get_manga_info(
                 SELECT source.id FROM source
                 WHERE source.name = $4)
                 AND manga.title = $5",
-                manga.manga.author,
-                manga.manga.status,
-                manga.manga.description,
-                source,
-                title,
-        ).execute(&db).await;
+            manga.manga.author,
+            manga.manga.status,
+            manga.manga.description,
+            source,
+            title,
+        )
+        .execute(&db)
+        .await;
 
         return Ok(warp::reply::json(&manga));
     }
@@ -111,8 +137,14 @@ pub async fn get_chapters(
                 $3,
                 $4,
                 $5) ON CONFLICT DO NOTHING",
-                source, title, c.no, c.url, c.uploaded,
-            ).execute(&db).await;
+                source,
+                title,
+                c.no,
+                c.url,
+                c.uploaded,
+            )
+            .execute(&db)
+            .await;
         }
         return Ok(warp::reply::json(&chapter));
     }
@@ -128,7 +160,8 @@ pub async fn get_pages(
 ) -> Result<impl warp::Reply, Rejection> {
     let title = decode_title(title);
     if let Ok(url) =
-        repository::get_chapter_url(source.clone(), title.clone(), chapter.clone(), db.clone()).await
+        repository::get_chapter_url(source.clone(), title.clone(), chapter.clone(), db.clone())
+            .await
     {
         let pages = Mangasee::get_pages(&url);
         for i in 0..pages.pages.len() {
@@ -141,11 +174,43 @@ pub async fn get_pages(
                 WHERE source.name = $1 AND manga.title = $2 AND chapter.number = $3),
                 $4,
                 $5) ON CONFLICT DO NOTHING",
-                source, title, chapter, (i as i32), pages.pages[i],
+                source,
+                title,
+                chapter,
+                (i as i32),
+                pages.pages[i],
             )
-            .execute(&db).await;
+            .execute(&db)
+            .await;
         }
         return Ok(warp::reply::json(&pages));
+    }
+    Err(warp::reject())
+}
+
+pub async fn login(
+    source: String,
+    claim: Claims,
+    login: MangadexLogin,
+    db: PgPool,
+) -> Result<impl warp::Reply, Rejection> {
+    if let Ok(url) = repository::get_source_url(source.clone(), db.clone()).await {
+        match Mangadex::login(&url, login){
+            Ok(cookies) => {
+                sqlx::query!(
+                    r#"
+                    UPDATE "user"
+                    SET mangadex_cookies = $1
+                    WHERE username = $2"#,
+                    cookies.as_slice(),
+                    claim.sub,
+                )
+                .execute(&db)
+                .await;
+                return Ok(warp::reply());
+            },
+            Err(_) => return Err(warp::reject())
+        }
     }
     Err(warp::reject())
 }

@@ -2,7 +2,7 @@ use std::sync::{Arc, Mutex};
 
 use sqlx::postgres::PgPool;
 
-use crate::scraper::{Chapter, GetChaptersResponse, GetMangaResponse, GetMangasResponse, Manga};
+use tanoshi::manga::{Chapter, GetChaptersResponse, GetMangaResponse, GetMangasResponse, Manga};
 
 pub async fn get_source_url(source: String, db: PgPool) -> Result<String, String> {
     match sqlx::query!(r#"SELECT url FROM source WHERE name = $1"#, source)
