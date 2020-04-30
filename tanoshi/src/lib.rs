@@ -21,6 +21,7 @@ pub struct GetMangasResponse {
 
 pub mod mangadex {
     use serde::{Deserialize, Serialize};
+    use std::collections::HashMap;
     #[derive(Deserialize, Serialize, Debug, Clone, Default)]
     pub struct MangadexLogin {
         pub login_username: String,
@@ -28,11 +29,57 @@ pub mod mangadex {
         pub remember_me: bool,
         pub two_factor: String,
     }
+
+    #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+    pub struct GetMangaResponse {
+        pub manga: Manga,
+        pub status: String,
+    }
+    #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+    pub struct GetChapterResponse {
+        pub chapter: ChapterMap,
+        pub status: String,
+    }
+
+    #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+    pub struct ChapterMap {
+        pub chapter: HashMap<String, Chapter>,
+    }
+
+    #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+    pub struct Manga {
+        pub cover_url: String,
+        pub description: String,
+        pub title: String,
+        pub artist: String,
+        pub author: String,
+        pub status: i64,
+        pub genres: Vec<i64>,
+        pub last_chapter: String,
+        pub lang_name: String,
+        pub lang_flag: String,
+        pub hentai: i64,
+    }
+
+    #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+    pub struct Chapter {
+        pub volume: String,
+        pub chapter: String,
+        pub title: String,
+        pub lang_code: String,
+        pub group_id: i64,
+        pub group_name: String,
+        pub group_id2: i64,
+        pub group_name2: String,
+        pub group_id3: i64,
+        pub group_name3: String,
+        pub timestamp: i64,
+    }
 }
 
 pub mod manga {
-    use serde::{Deserialize, Serialize};
     use chrono::Local;
+    use serde::{Deserialize, Serialize};
     #[derive(Debug, Deserialize, Serialize, Clone, Default)]
     pub struct Manga {
         pub title: String,

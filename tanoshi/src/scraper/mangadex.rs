@@ -49,6 +49,8 @@ impl Scraping for Mangadex {
         let selector = scraper::Selector::parse(".manga-entry").unwrap();
         for row in document.select(&selector) {
             let mut manga = Manga::default();
+            let id = row.value().attr("data-id").unwrap();
+            manga.path = format!("/api/manga/{}", id);
 
             let sel = scraper::Selector::parse("div a img").unwrap();
             for el in row.select(&sel) {
@@ -58,7 +60,6 @@ impl Scraping for Mangadex {
             let sel = scraper::Selector::parse(".manga_title").unwrap();
             for el in row.select(&sel) {
                 manga.title = el.inner_html();
-                manga.path = el.value().attr("href").unwrap().to_owned();
             }
             mangas.push(manga);
         }
@@ -67,61 +68,29 @@ impl Scraping for Mangadex {
     }
 
     fn get_manga_info(url: &String) -> GetMangaResponse {
+        let resp = ureq::get(url.as_str()).call();
+        let mangadex_resp: tanoshi::mangadex::GetMangaResponse = serde_json::from_reader(resp.into_reader()).unwrap();
+
+        let description = mangadex_resp.manga.description.split("\r\n").collect::<Vec<_>>();
         let mut m = Manga {
-            title: "".to_string(),
-            author: "".to_string(),
+            title: mangadex_resp.manga.title,
+            author: mangadex_resp.manga.author,
             //genre: vec![],
-            status: "".to_string(),
-            description: "".to_string(),
+            status: match mangadex_resp.manga.status {
+                1 => "Ongoing".to_string(),
+                2 => "Completed".to_string(),
+                3 => "Cancelled".to_string(),
+                4 => "Hiatus".to_string(),
+                _ => "Ongoing".to_string(),
+            },
+            description: description[0].to_string(),
             path: "".to_string(),
-            thumbnail_url: "".to_string(),
+            thumbnail_url: mangadex_resp.manga.cover_url,
             last_read: None,
             last_page: None,
             is_favorite: false,
         };
 
-        let resp = ureq::get(url.as_str()).call();
-        let html = resp.into_string().unwrap();
-
-        let document = scraper::Html::parse_document(&html);
-
-        let selector = scraper::Selector::parse("meta[property=\"og:image\"]").unwrap();
-        for element in document.select(&selector) {
-            let src = element.value().attr("content").unwrap();
-            m.thumbnail_url = String::from(src).replace(".thumb", "");
-        }
-
-        let selector = scraper::Selector::parse("meta[property=\"og:title\"]").unwrap();
-        for element in document.select(&selector) {
-            let title = element.value().attr("content").unwrap();
-            m.title = String::from(title).replace(" (Title) - MangaDex", "");
-        }
-
-        let selector = scraper::Selector::parse("a[href*=\"author\"]").unwrap();
-        for element in document.select(&selector) {
-            for text in element.text() {
-                m.author = String::from(text);
-            }
-        }
-
-        /* let selector = scraper::Selector::parse("a[href*=\"genre\"]").unwrap();
-        for element in document.select(&selector) {
-            for text in element.text() {
-                //m.genre.push(String::from(text));
-            }
-        } */
-
-        let selector = scraper::Selector::parse(".card-body .row .col-xl-9.col-lg-8.col-md-7").unwrap();
-        let element = document.select(&selector).next().unwrap().inner_html();
-        let re = Regex::new(r#"<div class="col-lg-9 col-xl-10">((Ongoing)|(Completed)|(Cancelled)|(Hiatus))</div>"#).unwrap();
-        let cap = re.captures(element.as_str()).unwrap();
-        m.status = cap.get(1).map_or("".to_string(), |m| m.as_str().to_string());
-
-        let selector = scraper::Selector::parse("meta[name=\"description\"").unwrap();
-        for element in document.select(&selector) {
-            let description = element.value().attr("content").unwrap();
-            m.description = String::from(description);
-        } 
         GetMangaResponse { manga: m }
     }
 
@@ -131,14 +100,18 @@ impl Scraping for Mangadex {
         let html = resp.into_string().unwrap();
 
         let document = scraper::Html::parse_document(&html);
-        let selector = scraper::Selector::parse(".mainWell .chapter-list a[chapter]").unwrap();
+        let selector = scraper::Selector::parse(".chapter-container .chapter-row .col.row a").unwrap();
         for element in document.select(&selector) {
             let mut chapter = Chapter::default();
 
-            chapter.no = String::from(element.value().attr("chapter").unwrap());
-
-            let link = element.value().attr("href").unwrap();
-            chapter.url = link.replace("-page-1", "");
+            for text in element.text() {
+                chapter.no = String::from(text);
+            }
+            let splitted = chapter.no.split_ascii_whitespace().collect::<Vec<_>>();
+            println!("{:?}", splitted.clone());
+            let idx = splitted.clone().into_iter().position(|p| p == "Ch.").unwrap();
+            chapter.no = splitted[idx+1].to_string();
+            chapter.url = element.value().attr("href").unwrap().to_string();
 
             let time_sel = scraper::Selector::parse("time[class*=\"SeriesTime\"]").unwrap();
             for time_el in element.select(&time_sel) {

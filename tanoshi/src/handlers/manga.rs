@@ -129,7 +129,11 @@ pub async fn get_chapters(
     }
 
     if let Ok(url) = repository::get_manga_url(source.clone(), title.clone(), db.clone()).await {
-        let chapter = Mangasee::get_chapters(&url);
+        let chapter = match source.as_str() {
+            "mangasee" =>  Mangasee::get_chapters(&url),
+            "mangadex" => Mangadex::get_chapters(&url),
+            _ => return Err(warp::reject())
+        };
 
         for c in chapter.clone().chapters {
             sqlx::query!(
