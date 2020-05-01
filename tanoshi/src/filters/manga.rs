@@ -4,20 +4,23 @@
 // use crate::filters::with_db;
 use crate::filters::{with_authorization, with_db};
 use crate::handlers::manga;
-use crate::scraper::{mangasee::Mangasee, GetParams, Params};
+use crate::scraper::{mangasee::Mangasee};
+use tanoshi::manga::{ GetParams, Params};
 use sqlx::postgres::PgPool;
 use std::sync::{Arc, Mutex};
 use warp::Filter;
+use tanoshi::mangadex::MangadexLogin;
 
 pub fn manga(
     secret: String,
     db: PgPool,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     list_sources(db.clone())
-        .or(list_mangas(db.clone()))
+        .or(list_mangas(secret.clone(), db.clone()))
         .or(get_manga_info(secret.clone(), db.clone()))
-        .or(get_chapters(secret, db.clone()))
+        .or(get_chapters(secret.clone(), db.clone()))
         .or(get_pages(db.clone()))
+        .or(login(secret.clone(), db.clone()))
 }
 
 pub fn list_sources(
@@ -30,10 +33,12 @@ pub fn list_sources(
 }
 
 pub fn list_mangas(
+    secret: String,
     db: PgPool,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::path!("api" / "source" / String)
         .and(warp::get())
+        .and(with_authorization(secret))
         .and(warp::query::<Params>())
         .and(with_db(db))
         .and_then(manga::list_mangas)
@@ -71,3 +76,20 @@ pub fn get_pages(
         .and(with_db(db))
         .and_then(manga::get_pages)
 }
+
+pub fn login(
+    secret: String,
+    db: PgPool,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path!("api" / "source" / String / "login")
+        .and(warp::post())
+        .and(with_authorization(secret))
+        .and(json_body())
+        .and(with_db(db))
+        .and_then(manga::login)
+}
+
+fn json_body() -> impl Filter<Extract = (MangadexLogin,), Error = warp::Rejection> + Clone {
+    warp::body::content_length_limit(1024 * 16).and(warp::body::json())
+}
+

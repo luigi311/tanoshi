@@ -1,9 +1,10 @@
 use regex::Regex;
 use serde_json::json;
 
-use crate::scraper::{
+use crate::scraper::Scraping;
+use tanoshi::manga::{
     Chapter, GetChaptersResponse, GetMangaResponse, GetMangasResponse, GetPagesResponse, GetParams,
-    Manga, Params, Scraping,
+    Manga, Params, SortOrderParam, SortByParam
 };
 use chrono::{DateTime, Local};
 
@@ -13,14 +14,25 @@ pub struct Mangasee {
 }
 
 impl Scraping for Mangasee {
-    fn get_mangas(url: &String, param: Params) -> GetMangasResponse {
+    fn get_mangas(url: &String, param: Params, _: Vec<String>) -> GetMangasResponse {
         let mut mangas: Vec<Manga> = Vec::new();
+
+        let sort_by = match param.sort_by.unwrap() {
+            SortByParam::Views => "popularity",
+            SortByParam::LastUpdated => "dateUpdated",
+            _ => "dateUpdated"
+        };
+
+        let sort_order = match param.sort_order.unwrap() {
+            SortOrderParam::Asc => "ascending",
+            SortOrderParam::Desc => "descending"
+        };
 
         let params = vec![
             ("keyword".to_owned(), param.keyword.to_owned()),
             ("page".to_owned(), param.page.to_owned()),
-            ("sortBy".to_owned(), param.sort_by.to_owned()),
-            ("sortOrder".to_owned(), param.sort_order.to_owned()),
+            ("sortBy".to_owned(), Some(sort_by.to_string())),
+            ("sortOrder".to_owned(), Some(sort_order.to_string())),
         ];
 
         let urlencoded = serde_urlencoded::to_string(params).unwrap();

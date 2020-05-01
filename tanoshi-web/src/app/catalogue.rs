@@ -9,7 +9,8 @@ use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 use yew_router::prelude::{Route, RouteAgent};
 use yew_router::{router::Router, Switch};
 
-use super::component::model::{FavoriteManga, GetFavoritesResponse, GetMangasResponse, MangaModel};
+use super::component::model::{FavoriteManga,GetFavoritesResponse};
+use tanoshi::manga::{GetMangasResponse, Manga as MangaModel};
 use super::component::Spinner;
 use super::select::Select;
 use super::source::Source;

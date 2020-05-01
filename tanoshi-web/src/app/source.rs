@@ -14,7 +14,7 @@ use yew::services::storage::Area;
 use yew::services::StorageService;
 use yew::utils::{document, window};
 
-use tanoshi::{GetMangasResponse, MangaModel};
+use tanoshi::manga::{GetMangasResponse, Manga as MangaModel};
 
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
@@ -74,6 +74,7 @@ impl Component for Source {
                 tmp_link.send_message(Msg::ScrolledDown);
             }
         }) as Box<dyn Fn()>);
+        info!("source {}", props.source.clone().unwrap());
         Source {
             fetch_task: None,
             link,
@@ -176,9 +177,10 @@ impl Component for Source {
 impl Source {
     fn fetch_mangas(&mut self) {
         let req = Request::get(format!(
-            "/api/source/{}?keyword={}&sort_by=popularity&sort_order=descending&page={}",
+            "/api/source/{}?keyword={}&sort_by=Views&sort_order=Desc&page={}",
             self.source, self.keyword, self.page
         ))
+        .header("Authorization", self.token.clone())
         .body(Nothing)
         .expect("failed to build request");
 
