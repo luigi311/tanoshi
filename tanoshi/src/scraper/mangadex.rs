@@ -71,7 +71,11 @@ impl Scraping for Mangadex {
         let resp = ureq::get(url.as_str()).call();
         let mangadex_resp: tanoshi::mangadex::GetMangaResponse = serde_json::from_reader(resp.into_reader()).unwrap();
 
-        let description = mangadex_resp.manga.description.split("\r\n").collect::<Vec<_>>();
+        let description_split = mangadex_resp.manga.description.split("\r\n").collect::<Vec<_>>();
+        let description = match description_split[0].to_string().starts_with("[b][u]") {
+            true => description_split[1].to_string(),
+            false => description_split[0].to_string(),
+        };
         let mut m = Manga {
             title: mangadex_resp.manga.title,
             author: mangadex_resp.manga.author,
@@ -83,9 +87,9 @@ impl Scraping for Mangadex {
                 4 => "Hiatus".to_string(),
                 _ => "Ongoing".to_string(),
             },
-            description: description[0].to_string(),
+            description: description,
             path: "".to_string(),
-            thumbnail_url: mangadex_resp.manga.cover_url,
+            thumbnail_url: format!("https://mangadex.org{}", mangadex_resp.manga.cover_url),
             last_read: None,
             last_page: None,
             is_favorite: false,
@@ -96,30 +100,22 @@ impl Scraping for Mangadex {
 
     fn get_chapters(url: &String) -> GetChaptersResponse {
         let mut chapters: Vec<Chapter> = Vec::new();
+
         let resp = ureq::get(url.as_str()).call();
-        let html = resp.into_string().unwrap();
+        let mangadex_resp: tanoshi::mangadex::GetChapterResponse = serde_json::from_reader(resp.into_reader()).unwrap();
 
-        let document = scraper::Html::parse_document(&html);
-        let selector = scraper::Selector::parse(".chapter-container .chapter-row .col.row a").unwrap();
-        for element in document.select(&selector) {
-            let mut chapter = Chapter::default();
-
-            for text in element.text() {
-                chapter.no = String::from(text);
+        for (id, chapter) in mangadex_resp.chapter {
+            if chapter.lang_code == "gb".to_string() {
+                chapters.push(Chapter{
+                    no: match chapter.chapter.as_str() {
+                        "" => "0".to_string(),
+                        _ => chapter.chapter,
+                    },
+                    url: format!("/api/chapter/{}", id),
+                    read: 0,
+                    uploaded: chrono::NaiveDateTime::from_timestamp(chapter.timestamp, 0),
+                })
             }
-            let splitted = chapter.no.split_ascii_whitespace().collect::<Vec<_>>();
-            println!("{:?}", splitted.clone());
-            let idx = splitted.clone().into_iter().position(|p| p == "Ch.").unwrap();
-            chapter.no = splitted[idx+1].to_string();
-            chapter.url = element.value().attr("href").unwrap().to_string();
-
-            let time_sel = scraper::Selector::parse("time[class*=\"SeriesTime\"]").unwrap();
-            for time_el in element.select(&time_sel) {
-                let date_str = time_el.value().attr("datetime").unwrap();
-                chapter.uploaded = chrono::NaiveDateTime::parse_from_str(&date_str, "%Y-%m-%dT%H:%M:%S%:z").unwrap()
-            }
-
-            chapters.push(chapter);
         }
 
         GetChaptersResponse { chapters }

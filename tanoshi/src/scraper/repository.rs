@@ -101,16 +101,16 @@ pub async fn get_chapters(
     match sqlx::query_as!(
         Chapter,
         r#"SELECT 
-                chapter.number AS no, chapter.path AS url, 
-                COALESCE(history.last_page, 0) AS read,
-                chapter.uploaded AS uploaded
-                FROM chapter
-                JOIN manga ON manga.id = chapter.manga_id
-                JOIN source ON source.id = manga.source_id
-                LEFT JOIN history ON chapter.id = history.chapter_id
-                AND history.user_id = (SELECT id FROM "user" WHERE username = $1)
-                WHERE source.name = $2 AND manga.title = $3
-                ORDER BY CAST(chapter.number AS DECIMAL) DESC"#,
+        chapter.number AS no, chapter.path AS url, 
+        COALESCE(history.last_page, 0) AS read,
+        chapter.uploaded AS uploaded
+        FROM chapter
+        JOIN manga ON manga.id = chapter.manga_id
+        JOIN source ON source.id = manga.source_id
+        LEFT JOIN history ON chapter.id = history.chapter_id
+        AND history.user_id = (SELECT id FROM "user" WHERE username = $1)
+        WHERE source.name = $2 AND manga.title = $3
+        ORDER BY CAST(chapter.number AS DECIMAL) DESC"#,
         username,
         source,
         title

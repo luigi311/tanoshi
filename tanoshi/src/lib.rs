@@ -37,13 +37,8 @@ pub mod mangadex {
     }
     #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
     pub struct GetChapterResponse {
-        pub chapter: ChapterMap,
-        pub status: String,
-    }
-
-    #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-    pub struct ChapterMap {
         pub chapter: HashMap<String, Chapter>,
+        pub status: String,
     }
 
     #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -67,12 +62,6 @@ pub mod mangadex {
         pub chapter: String,
         pub title: String,
         pub lang_code: String,
-        pub group_id: i64,
-        pub group_name: String,
-        pub group_id2: i64,
-        pub group_name2: String,
-        pub group_id3: i64,
-        pub group_name3: String,
         pub timestamp: i64,
     }
 }
