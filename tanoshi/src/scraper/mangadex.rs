@@ -123,15 +123,14 @@ impl Scraping for Mangadex {
 
     fn get_pages(url: &String) -> GetPagesResponse {
         let mut pages = Vec::new();
+
         let resp = ureq::get(url.as_str()).call();
-        let html = resp.into_string().unwrap();
+        let mangadex_resp: tanoshi::mangadex::GetPagesResponse = serde_json::from_reader(resp.into_reader()).unwrap();
 
-        let document = scraper::Html::parse_document(&html);
-
-        let selector = scraper::Selector::parse(".fullchapimage img").unwrap();
-        for element in document.select(&selector) {
-            pages.push(String::from(element.value().attr("src").unwrap()));
+        for page in mangadex_resp.page_array {
+            pages.push(format!("{}{}/{}", mangadex_resp.server, mangadex_resp.hash, page));
         }
+
         GetPagesResponse { pages }
     }
 }

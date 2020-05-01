@@ -171,7 +171,11 @@ pub async fn get_pages(
         repository::get_chapter_url(source.clone(), title.clone(), chapter.clone(), db.clone())
             .await
     {
-        let pages = Mangasee::get_pages(&url);
+        let pages = match source.as_str() {
+            "mangasee" =>  Mangasee::get_pages(&url),
+            "mangadex" => Mangadex::get_pages(&url),
+            _ => return Err(warp::reject())
+        };
         for i in 0..pages.pages.len() {
             sqlx::query!(
                 "INSERT INTO page(chapter_id, rank, url)

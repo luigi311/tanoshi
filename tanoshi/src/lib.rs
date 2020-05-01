@@ -64,6 +64,19 @@ pub mod mangadex {
         pub lang_code: String,
         pub timestamp: i64,
     }
+
+    #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+    pub struct GetPagesResponse {
+        pub id: i64,
+        pub timestamp: i64,
+        pub hash: String,
+        pub volume: String,
+        pub chapter: String,
+        pub title: String,
+        pub server: String,
+        pub page_array: Vec<String>,
+        pub status: String,
+    }
 }
 
 pub mod manga {
