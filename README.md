@@ -1,4 +1,4 @@
-# <img src="static/apple-touch-icon.png" alt="" width="30" height=30/> Tanoshi
+# <img src="tanoshi-web/static/apple-touch-icon.png" alt="" width="30" height=30/> Tanoshi
 Tachiyomi-like web manga reader.
 
 ## Goals
