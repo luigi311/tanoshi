@@ -80,7 +80,6 @@ pub struct Browse {
     storage: StorageService,
     router: Box<dyn Bridge<RouteAgent>>,
     route: String,
-    refs: Vec<NodeRef>,
 }
 
 pub enum Msg {
@@ -101,11 +100,16 @@ impl Component for Browse {
             storage,
             router,
             route: "/".to_string(),
-            refs: vec![NodeRef::default(), NodeRef::default()],
         }
     }
 
-    fn mounted(&mut self) -> ShouldRender {false}
+    fn change(&mut self, props: Self::Properties) -> ShouldRender {
+        if self.props != props {
+            self.props = props;
+            return true;
+        }
+        false
+    }
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
@@ -119,9 +123,9 @@ impl Component for Browse {
     fn view(&self) -> Html {
         html! {
                 <>
-                    <div ref=self.refs[0].clone() class="block fixed inset-x-0 top-0 z-50 bg-tachiyomi-blue safe-top z-50 shadow"></div>
-                    <NavigationBar ref=self.refs[1].clone()/>
-                    <Router<BrowseRoute, ()>
+                    <div class="block fixed inset-x-0 top-0 z-50 bg-tachiyomi-blue safe-top z-50 shadow"></div>
+                    <NavigationBar />
+                    <Router<BrowseRoute>
                     render = Router::render(|switch: BrowseRoute| {
                     match switch {
                         BrowseRoute::Detail(source, title) => html!{<Detail source=source title=title/>},
@@ -132,17 +136,6 @@ impl Component for Browse {
                         BrowseRoute::Settings => html!{<Settings />},
                     }}) / >
             < / >
-        }
-    }
-}
-
-impl Browse {
-    fn hide(&self) {
-        if let Some(top_bar) = self.refs[0].cast::<HtmlElement>() {
-            top_bar.set_hidden(true);
-        }
-        if let Some(nav_bar) = self.refs[0].cast::<HtmlElement>() {
-            nav_bar.set_hidden(true);
         }
     }
 }

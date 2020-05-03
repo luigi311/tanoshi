@@ -18,6 +18,10 @@ impl Component for NavigationBar {
         NavigationBar {}
     }
 
+    fn change(&mut self, _props: Self::Properties) -> ShouldRender {
+        false
+    }
+
     fn update(&mut self, _: Self::Message) -> ShouldRender {
         false
     }

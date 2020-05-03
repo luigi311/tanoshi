@@ -41,11 +41,16 @@ impl Component for Logout {
         }
     }
 
-    fn mounted(&mut self) -> ShouldRender {
-        self.storage.remove("token");
-        self.router
-            .send(RouteRequest::ChangeRoute(Route::from("/login".to_string())));
-        true
+    fn change(&mut self, _props: Self::Properties) -> ShouldRender {
+        false
+    }
+
+    fn rendered(&mut self, first_render: bool) {
+        if first_render {
+            self.storage.remove("token");
+            self.router
+                .send(RouteRequest::ChangeRoute(Route::from("/login".to_string())));
+        }
     }
 
     fn update(&mut self, _: Self::Message) -> ShouldRender {

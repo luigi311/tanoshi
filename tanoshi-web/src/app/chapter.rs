@@ -53,6 +53,7 @@ pub struct Chapter {
     closure: Closure<dyn Fn()>,
     is_history_fetching: bool,
     worker: Box<dyn Bridge<job::Worker>>,
+    should_fetch: bool,
 }
 
 pub enum Msg {
@@ -141,18 +142,33 @@ impl Component for Chapter {
             closure,
             is_history_fetching: false,
             worker,
+            should_fetch: true,
         }
     }
 
-    fn mounted(&mut self) -> ShouldRender {
-        self.get_chapters();
+    fn change(&mut self, props: Self::Properties) -> ShouldRender {
+        if self.source != props.source || self.title != props.title || self.current_chapter != props.chapter || self.current_page != props.page.checked_sub(1).unwrap_or(0) {
+            self.source = props.source;
+            self.title = props.title;
+            self.current_chapter = props.chapter;
+            self.current_page = props.page.checked_sub(1).unwrap_or(0);
+            return true;
+        } 
+        false
+    }
+
+    fn rendered(&mut self, first_render: bool) {
+        if self.should_fetch {
+            self.get_chapters();
+            self.should_fetch = false;
+        }
         document()
             .get_element_by_id("manga-reader")
             .expect("should have manga reader")
             .dyn_ref::<HtmlElement>()
             .expect("should load HtmlElement")
-            .focus();
-        false
+            .focus()
+            .unwrap();
     }
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {

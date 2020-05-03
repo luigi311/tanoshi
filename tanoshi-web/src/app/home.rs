@@ -28,6 +28,7 @@ pub struct Home {
     mangas: Vec<FavoriteManga>,
     token: String,
     is_fetching: bool,
+    should_fetch: bool,
 }
 
 pub enum Msg {
@@ -39,7 +40,7 @@ impl Component for Home {
     type Message = Msg;
     type Properties = Props;
 
-    fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
+    fn create(_props: Self::Properties, link: ComponentLink<Self>) -> Self {
         let storage = StorageService::new(Area::Local).unwrap();
         let token = {
             if let Ok(token) = storage.restore("token") {
@@ -55,12 +56,19 @@ impl Component for Home {
             mangas: vec![],
             token,
             is_fetching: false,
+            should_fetch: true,
         }
     }
 
-    fn mounted(&mut self) -> ShouldRender {
-        self.fetch_favorites();
+    fn change(&mut self, _: Self::Properties) -> ShouldRender {
         false
+    }
+
+    fn rendered(&mut self, first_render: bool) {
+        if self.should_fetch {
+            self.fetch_favorites();
+            self.should_fetch = false;
+        }
     }
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
@@ -68,8 +76,9 @@ impl Component for Home {
             Msg::FavoritesReady(data) => {
                 self.mangas = data.favorites.unwrap();
                 self.is_fetching = false;
+                self.fetch_task = None;
             }
-            Noop => {
+            Msg::Noop => {
                 return false;
             }
         };

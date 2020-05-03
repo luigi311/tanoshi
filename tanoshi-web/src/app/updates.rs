@@ -35,6 +35,7 @@ pub struct Updates {
     closure: Closure<dyn Fn()>,
     page: i32,
     prev_days: i64,
+    should_fetch: bool,
 }
 
 pub enum Msg {
@@ -71,7 +72,7 @@ impl Component for Updates {
                 tmp_link.send_message(Msg::ScrolledDown);
             }
         }) as Box<dyn Fn()>);
-
+        
         Updates {
             fetch_task: None,
             link,
@@ -81,13 +82,21 @@ impl Component for Updates {
             closure,
             page: 1,
             prev_days: -1,
+            should_fetch: true,
         }
     }
 
-    fn mounted(&mut self) -> ShouldRender {
-        window().set_onscroll(Some(self.closure.as_ref().unchecked_ref()));
-        self.fetch_updates();
+    fn change(&mut self, _props: Self::Properties) -> ShouldRender {
         false
+    }
+
+    fn rendered(&mut self, first_render: bool) {
+            if self.should_fetch {
+                window().set_onscroll(Some(self.closure.as_ref().unchecked_ref()));
+                self.fetch_updates();
+                self.should_fetch = false;
+            }
+        
     }
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
@@ -111,7 +120,7 @@ impl Component for Updates {
                     self.fetch_updates();
                 }
             }
-            Noop => {
+            Msg::Noop => {
                 return false;
             }
         };
@@ -160,13 +169,11 @@ impl Component for Updates {
 }
 
 impl Updates {
-    fn calculate_days(&self, at: chrono::DateTime<Local>) -> i64 {
+    fn calculate_days(&self, at: chrono::NaiveDateTime) -> i64 {
         let timestamp = js_sys::Date::now();
         let secs: i64 = (timestamp / 1000.0).floor() as i64;
         let nanoes: u32 = (timestamp as u32 % 1000) * 1_000_000;
-        let naivetime = chrono::NaiveDateTime::from_timestamp(secs, nanoes);
-        let today = DateTime::<Utc>::from_utc(naivetime, Utc);
-        let at = DateTime::<Utc>::from(at);
+        let today = chrono::NaiveDateTime::from_timestamp(secs, nanoes);
         today.signed_duration_since(at).num_days()
     }
     fn fetch_updates(&mut self) {

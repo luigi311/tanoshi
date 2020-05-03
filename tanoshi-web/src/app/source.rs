@@ -89,9 +89,18 @@ impl Component for Source {
         }
     }
 
-    fn mounted(&mut self) -> ShouldRender {
-        self.fetch_favorites();
-        false
+    fn change(&mut self, props: Self::Properties) -> ShouldRender {
+        if self.source != props.clone().source.unwrap() {
+            self.source = props.source.unwrap();
+            return true;
+        } 
+        return false;
+    }
+
+    fn rendered(&mut self, first_render: bool) {
+        if first_render {
+            self.fetch_favorites();
+        }
     }
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {

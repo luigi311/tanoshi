@@ -21,11 +21,6 @@ use wasm_bindgen::JsCast;
 #[derive(Clone, Properties)]
 pub struct Props {}
 
-#[derive(Deserialize)]
-pub struct Token {
-    token: String,
-}
-
 pub struct History {
     fetch_task: Option<FetchTask>,
     link: ComponentLink<Self>,
@@ -35,6 +30,7 @@ pub struct History {
     closure: Closure<dyn Fn()>,
     page: i32,
     prev_days: i64,
+    should_fetch: bool,
 }
 
 pub enum Msg {
@@ -47,7 +43,7 @@ impl Component for History {
     type Message = Msg;
     type Properties = Props;
 
-    fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
+    fn create(_props: Self::Properties, link: ComponentLink<Self>) -> Self {
         let storage = StorageService::new(Area::Local).unwrap();
         let token = {
             if let Ok(token) = storage.restore("token") {
@@ -81,13 +77,20 @@ impl Component for History {
             closure,
             page: 1,
             prev_days: -1,
+            should_fetch: true,
         }
     }
 
-    fn mounted(&mut self) -> ShouldRender {
-        window().set_onscroll(Some(self.closure.as_ref().unchecked_ref()));
-        self.fetch_updates();
+    fn change(&mut self, _props: Self::Properties) -> ShouldRender {
         false
+    }
+
+    fn rendered(&mut self, first_render: bool) {
+        if self.should_fetch {
+            window().set_onscroll(Some(self.closure.as_ref().unchecked_ref()));
+            self.fetch_history();
+            self.should_fetch = false;
+        }
     }
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
@@ -112,10 +115,10 @@ impl Component for History {
             Msg::ScrolledDown => {
                 if !self.is_fetching {
                     self.page += 1;
-                    self.fetch_updates();
+                    self.fetch_history();
                 }
             }
-            Noop => {
+            Msg::Noop => {
                 return false;
             }
         };
@@ -171,7 +174,7 @@ impl History {
         let today = chrono::NaiveDateTime::from_timestamp(secs, nanoes);
         today.signed_duration_since(at).num_days()
     }
-    fn fetch_updates(&mut self) {
+    fn fetch_history(&mut self) {
         let req = Request::get(format!("/api/history?page={}", self.page))
             .header("Authorization", self.token.to_string())
             .body(Nothing)

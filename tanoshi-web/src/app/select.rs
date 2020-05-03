@@ -50,9 +50,14 @@ impl Component for Select {
         }
     }
 
-    fn mounted(&mut self) -> ShouldRender {
-        self.fetch_sources();
-        true
+    fn change(&mut self, _props: Self::Properties) -> ShouldRender {
+        false
+    }
+
+    fn rendered(&mut self, first_render: bool) {
+        if first_render {
+            self.fetch_sources();
+        }
     }
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {

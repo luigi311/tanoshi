@@ -50,8 +50,11 @@ impl Component for Settings {
         }
     }
 
-    fn mounted(&mut self) -> ShouldRender {
-        true
+    fn change(&mut self, _props: Self::Properties) -> ShouldRender {
+        false
+    }
+
+    fn rendered(&mut self, first_render: bool) {
     }
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
