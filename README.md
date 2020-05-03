@@ -8,7 +8,7 @@ I decided to make this a PWA instead with web scraping on backend.
 
 ## Features
 ### Currently working
-- Browse, search, and read manga from mangasee
+- Browse, search, and read manga from mangasee and mangadex
 - Favorite mangas
 - Reading history across devices
 - See chapter updates
