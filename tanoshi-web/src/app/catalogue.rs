@@ -24,7 +24,7 @@ use yew::utils::{document, window};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 
-#[derive(Switch, Debug, Clone)]
+#[derive(Switch, PartialEq, Debug, Clone)]
 pub enum CatalogueRoute {
     #[to = "/{source}"]
     Source(String),
@@ -81,14 +81,16 @@ impl Component for Catalogue {
     }
 
     fn change(&mut self, props: Self::Properties) -> ShouldRender {
-        self.route = props.route;
-        true
+        if self.route != props.route {
+            self.route = props.route;
+            return true;
+        }
+        false
     }
 
     fn view(&self) -> Html {
-        let route = self.route.clone();
         html! {
-            match route {
+            match &self.route {
                 CatalogueRoute::Source(source) => {
                     html! {<Source source=source />}
                 },

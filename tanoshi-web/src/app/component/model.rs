@@ -147,7 +147,7 @@ pub struct UpdateModel {
     pub title: String,
     pub thumbnail_url: String,
     pub number: String,
-    pub uploaded: chrono::DateTime<Local>,
+    pub uploaded: chrono::NaiveDateTime,
     pub days: Option<i64>,
     pub show_sep: Option<bool>,
 }

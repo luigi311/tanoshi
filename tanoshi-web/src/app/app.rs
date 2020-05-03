@@ -57,18 +57,18 @@ impl Component for App {
     }
 
     fn change(&mut self, _props: Self::Properties) -> ShouldRender {
-        info!("change");
-        true
+        false
     }
 
-    fn mounted(&mut self) -> ShouldRender {
-        if let Ok(token) = self.storage.restore("token") {
-            self.validate_token(token);
-        } else {
-            self.router
-                .send(RouteRequest::ChangeRoute(Route::from("/login".to_string())));
+    fn rendered(&mut self, first_render: bool) {
+        if first_render {
+            if let Ok(token) = self.storage.restore("token") {
+                self.validate_token(token);
+            } else {
+                self.router
+                    .send(RouteRequest::ChangeRoute(Route::from("/login".to_string())));
+            }
         }
-        false
     }
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {

@@ -40,6 +40,7 @@ pub struct Detail {
     chapters: Vec<ChapterModel>,
     is_fetching_manga: bool,
     is_fetching_chapter: bool,
+    should_fetch: bool,
 }
 
 pub enum Msg {
@@ -86,12 +87,24 @@ impl Component for Detail {
             chapters: vec![],
             is_fetching_manga: false,
             is_fetching_chapter: false,
+            should_fetch: true,
         }
     }
 
-    fn mounted(&mut self) -> ShouldRender {
-        self.get_manga_info();
-        true
+    fn change(&mut self, props: Self::Properties) -> ShouldRender {
+        if self.source != props.source || self.title != props.title {
+            self.source = props.source;
+            self.title = props.title;
+            return true;
+        }
+        false
+    }
+
+    fn rendered(&mut self, first_render: bool) {
+        if self.should_fetch {
+            self.get_manga_info();
+            self.should_fetch = false;
+        }
     }
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
@@ -126,7 +139,7 @@ impl Component for Detail {
                 }
             }
             Msg::Noop => {
-                info!("Noop");
+                return false;
             }
         }
         true
