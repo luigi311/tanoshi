@@ -184,13 +184,19 @@ impl Component for History {
     fn view(&self) -> Html {
         html! {
            <div class="container mx-auto pb-20" style="padding-top: calc(env(safe-area-inset-top) + .5rem)">
-                <Spinner is_active=self.is_fetching is_fullscreen=true />
                 <div class="flex flex-col rounded-lg border border-grey-light m-2 shadow" id="updates">
                 {self.updates_or_history_cards()}
                 </div>
-                <div class="flex rounded-lg border border-grey-light m-2 shadow justify-center">
-                    <button onclick=self.link.callback(|_| Msg::ScrolledDown)>{"Load More"}</button>
-                </div>
+                {
+                    match self.is_fetching {
+                        false => html!{
+                            <div class="flex rounded-lg border border-grey-light m-2 shadow justify-center h-5">
+                                <button class="w-full h-full block" onclick=self.link.callback(|_| Msg::ScrolledDown)>{"Load More"}</button>
+                            </div>
+                        },
+                        true => html!{<Spinner is_active=self.is_fetching is_fullscreen=false />}
+                    }
+                }
             </div>
         }
     }
