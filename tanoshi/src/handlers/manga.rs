@@ -2,15 +2,15 @@ use std::sync::{Arc, Mutex};
 
 use serde::{Deserialize, Serialize};
 use sqlx::postgres::PgPool;
-use warp::Rejection;
+use warp::{http::Response, Rejection};
 
 use serde_json::json;
+use std::io::Read;
+use ureq;
 
 use crate::auth::Claims;
-use crate::scraper::{
-    mangadex::Mangadex, mangasee::Mangasee, repository, Scraping,
-};
-use tanoshi::manga::{GetParams, Params};
+use crate::scraper::{mangadex::Mangadex, mangasee::Mangasee, repository, Scraping};
+use tanoshi::manga::{GetParams, ImageProxyParam, Params};
 use tanoshi::mangadex::MangadexLogin;
 
 pub async fn list_sources(db: PgPool) -> Result<impl warp::Reply, Rejection> {
@@ -40,10 +40,15 @@ pub async fn list_mangas(
         let mangas = match source.clone().as_str() {
             "mangasee" => Mangasee::get_mangas(&url, param, vec![]),
             "mangadex" => {
-                let ret = sqlx::query!(r#"SELECT mangadex_cookies FROM "user" WHERE username = $1"#, claim.sub).fetch_one(&db).await;
+                let ret = sqlx::query!(
+                    r#"SELECT mangadex_cookies FROM "user" WHERE username = $1"#,
+                    claim.sub
+                )
+                .fetch_one(&db)
+                .await;
                 let ret = ret.unwrap();
                 Mangadex::get_mangas(&url, param, ret.mangadex_cookies.unwrap())
-            },
+            }
             &_ => return Err(warp::reject()),
         };
 
@@ -88,9 +93,9 @@ pub async fn get_manga_info(
         repository::get_manga_url(source.clone(), title.clone(), db.clone()).await
     {
         let manga = match source.as_str() {
-            "mangasee" =>  Mangasee::get_manga_info(&url),
+            "mangasee" => Mangasee::get_manga_info(&url),
             "mangadex" => Mangadex::get_manga_info(&url),
-            _ => return Err(warp::reject())
+            _ => return Err(warp::reject()),
         };
 
         sqlx::query!(
@@ -130,9 +135,9 @@ pub async fn get_chapters(
 
     if let Ok(url) = repository::get_manga_url(source.clone(), title.clone(), db.clone()).await {
         let chapter = match source.as_str() {
-            "mangasee" =>  Mangasee::get_chapters(&url),
+            "mangasee" => Mangasee::get_chapters(&url),
             "mangadex" => Mangadex::get_chapters(&url),
-            _ => return Err(warp::reject())
+            _ => return Err(warp::reject()),
         };
 
         for c in chapter.clone().chapters {
@@ -178,9 +183,9 @@ pub async fn get_pages(
             .await
     {
         let pages = match source.as_str() {
-            "mangasee" =>  Mangasee::get_pages(&url),
+            "mangasee" => Mangasee::get_pages(&url),
             "mangadex" => Mangadex::get_pages(&url),
-            _ => return Err(warp::reject())
+            _ => return Err(warp::reject()),
         };
         for i in 0..pages.pages.len() {
             sqlx::query!(
@@ -206,6 +211,27 @@ pub async fn get_pages(
     Err(warp::reject())
 }
 
+pub async fn proxy_image(param: ImageProxyParam) -> Result<impl warp::Reply, Rejection> {
+    let resp = ureq::get(&param.url).call();
+    let len = resp
+        .header("Content-Length")
+        .and_then(|s| s.parse::<usize>().ok())
+        .unwrap();
+    let content_type = resp.content_type().to_owned();
+
+    let mut reader = resp.into_reader();
+    let mut bytes = vec![];
+    reader.read_to_end(&mut bytes);
+
+    let resp = Response::builder()
+    .header("Content-Type", content_type)
+    .header("Content-Length", len)
+    .body(bytes)
+    .unwrap();
+
+    Ok(resp)
+}
+
 pub async fn login(
     source: String,
     claim: Claims,
@@ -213,7 +239,7 @@ pub async fn login(
     db: PgPool,
 ) -> Result<impl warp::Reply, Rejection> {
     if let Ok(url) = repository::get_source_url(source.clone(), db.clone()).await {
-        match Mangadex::login(&url, login){
+        match Mangadex::login(&url, login) {
             Ok(cookies) => {
                 sqlx::query!(
                     r#"
@@ -226,8 +252,8 @@ pub async fn login(
                 .execute(&db)
                 .await;
                 return Ok(warp::reply());
-            },
-            Err(_) => return Err(warp::reject())
+            }
+            Err(_) => return Err(warp::reject()),
         }
     }
     Err(warp::reject())

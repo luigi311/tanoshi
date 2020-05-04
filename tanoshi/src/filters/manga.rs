@@ -5,7 +5,7 @@
 use crate::filters::{with_authorization, with_db};
 use crate::handlers::manga;
 use crate::scraper::{mangasee::Mangasee};
-use tanoshi::manga::{ GetParams, Params};
+use tanoshi::manga::{ GetParams, Params, ImageProxyParam};
 use sqlx::postgres::PgPool;
 use std::sync::{Arc, Mutex};
 use warp::Filter;
@@ -21,6 +21,7 @@ pub fn manga(
         .or(get_chapters(secret.clone(), db.clone()))
         .or(get_pages(db.clone()))
         .or(login(secret.clone(), db.clone()))
+        .or(proxy_image())
 }
 
 pub fn list_sources(
@@ -75,6 +76,13 @@ pub fn get_pages(
         .and(warp::query::<GetParams>())
         .and(with_db(db))
         .and_then(manga::get_pages)
+}
+
+pub fn proxy_image() -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone { 
+    warp::path!("api" / "image")
+        .and(warp::get())
+        .and(warp::query::<ImageProxyParam>())
+        .and_then(manga::proxy_image)
 }
 
 pub fn login(

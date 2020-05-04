@@ -174,4 +174,9 @@ pub mod manga {
     pub struct GetPagesResponse {
         pub pages: Vec<String>,
     }
+
+    #[derive(Debug, Deserialize, Serialize, Clone)]
+    pub struct ImageProxyParam {
+        pub url: String,
+    }
 }
