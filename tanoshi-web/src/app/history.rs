@@ -6,35 +6,58 @@ use yew::services::fetch::{FetchTask, Request, Response};
 use yew::services::storage::Area;
 use yew::services::{FetchService, StorageService};
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
+
 use yew_router::components::RouterAnchor;
+use yew_router::service::RouteService;
 
 use super::component::model::{FavoriteManga, GetFavoritesResponse, GetMangasResponse};
 use super::component::{Manga, Spinner};
 use yew::utils::{document, window};
 
-use crate::app::component::model::{HistoryModel, HistoryResponse};
+use crate::app::component::model::{HistoryModel, HistoryResponse, UpdateModel, UpdatesResponse};
 use chrono::{DateTime, FixedOffset, Local, NaiveDateTime, Utc};
-use serde_json::error::Category::Data;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 
+#[derive(Debug, Eq, PartialEq)]
+pub enum PageType {
+    History,
+    Updates
+}
+
+impl Into<PageType> for String {
+    fn into(self) -> PageType {
+        match self.as_str() {
+            "/updates" => PageType::Updates,
+            "/history" => PageType::History,
+            _ => PageType::Updates,
+        }
+    }
+}
+
 #[derive(Clone, Properties)]
-pub struct Props {}
+pub struct Props {
+
+}
 
 pub struct History {
     fetch_task: Option<FetchTask>,
     link: ComponentLink<Self>,
     history: Vec<HistoryModel>,
+    updates: Vec<UpdateModel>,
     token: String,
     is_fetching: bool,
     closure: Closure<dyn Fn()>,
     page: i32,
     prev_days: i64,
     should_fetch: bool,
+    page_type: PageType,
+    route_service: RouteService<()>,
 }
 
 pub enum Msg {
     HistoryReady(HistoryResponse),
+    UpdatesReady(UpdatesResponse),
     ScrolledDown,
     Noop,
 }
@@ -68,27 +91,44 @@ impl Component for History {
             }
         }) as Box<dyn Fn()>);
 
+        let route_service: RouteService<()> = RouteService::new();
+        let page_type : PageType = route_service.get_path().into();
+        info!("create {:?}", page_type);
+
         History {
             fetch_task: None,
             link,
             history: vec![],
+            updates: vec![],
             token,
             is_fetching: false,
             closure,
             page: 1,
             prev_days: -1,
             should_fetch: true,
+            page_type,
+            route_service,
         }
     }
 
     fn change(&mut self, _props: Self::Properties) -> ShouldRender {
-        false
+        let page_type : PageType = self.route_service.get_path().into();
+        if self.page_type != page_type {
+            self.page_type = page_type;
+            self.should_fetch = true;
+            true
+        } else {
+            false
+        }
     }
 
     fn rendered(&mut self, first_render: bool) {
         if self.should_fetch {
             window().set_onscroll(Some(self.closure.as_ref().unchecked_ref()));
-            self.fetch_history();
+            match self.page_type {
+                PageType::History => self.fetch_history(),
+                PageType::Updates => self.fetch_updates(),
+            }
             self.should_fetch = false;
         }
     }
@@ -115,8 +155,24 @@ impl Component for History {
             Msg::ScrolledDown => {
                 if !self.is_fetching {
                     self.page += 1;
-                    self.fetch_history();
+                    match self.page_type {
+                        PageType::History => self.fetch_history(),
+                        PageType::Updates => self.fetch_updates(),
+                    }
                 }
+            }
+            Msg::UpdatesReady(data) => {
+                let mut updates = data.updates;
+                for update in updates.iter_mut() {
+                    let days = self.calculate_days(update.uploaded);
+                    if self.prev_days != days {
+                        self.prev_days = days;
+                        update.days = Some(days);
+                        update.show_sep = Some(true);
+                    }
+                }
+                self.updates.append(&mut updates);
+                self.is_fetching = false;
             }
             Msg::Noop => {
                 return false;
@@ -130,33 +186,10 @@ impl Component for History {
            <div class="container mx-auto pb-20" style="padding-top: calc(env(safe-area-inset-top) + .5rem)">
                 <Spinner is_active=self.is_fetching is_fullscreen=true />
                 <div class="flex flex-col rounded-lg border border-grey-light m-2 shadow" id="updates">
-                {
-                for self.history.iter().map(|h| {
-                html!{
-                <>
-                <div class={if h.show_sep.unwrap_or(false) {"shadow p-2 bg-tachiyomi-blue"} else {"hidden"}}>
-                <span class="text-semibold text-white">{
-                    match h.days.unwrap_or(0) {
-                        0 => "Today".to_string(),
-                        1 => "Yesterday".to_string(),
-                        _ => format!("{} Days Ago", h.days.unwrap_or(0))
-                    }
-                }
-                </span>
+                {self.updates_or_history_cards()}
                 </div>
-                <RouterAnchor<AppRoute>
-                classes="flex inline-flex border-b border-gray-light p-2 content-center hover:bg-gray-200"
-                route=AppRoute::Chapter(h.source.clone(), base64::encode_config(h.title.clone(), base64::URL_SAFE_NO_PAD), h.chapter.clone(), (h.read + 1) as usize)>
-                    <div class="mr-4 my-2 h-16 w-16 object-fit object-center bg-center bg-cover rounded-full" style={format!("background-image: url({})", h.thumbnail_url.clone())}/>
-                    <div class="flex flex-col my-auto">
-                        <span class="text-lg font-semibold">{h.title.clone()}</span>
-                        <span class="text-md">{format!("Chapter {}", h.chapter.clone())}</span>
-                    </div>
-                </RouterAnchor<AppRoute>>
-                </>
-                }
-                })
-                }
+                <div class="flex rounded-lg border border-grey-light m-2 shadow justify-center">
+                    <button onclick=self.link.callback(|_| Msg::ScrolledDown)>{"Load More"}</button>
                 </div>
             </div>
         }
@@ -174,6 +207,63 @@ impl History {
         let today = chrono::NaiveDateTime::from_timestamp(secs, nanoes);
         today.signed_duration_since(at).num_days()
     }
+    
+    fn show_separator(&self, show_sep: Option<bool>, days: Option<i64>) -> Html{
+        html!{
+            <div class={if show_sep.unwrap_or(false) {"shadow p-2 bg-tachiyomi-blue"} else {"hidden"}}>
+                <span class="text-semibold text-white">{
+                    match days.unwrap_or(0) {
+                        0 => "Today".to_string(),
+                        1 => "Yesterday".to_string(),
+                        _ => format!("{} Days Ago", days.unwrap_or(0))
+                    }
+                }
+                </span>
+            </div>
+        }
+    }
+
+    fn updates_or_history_cards(&self) -> Html {
+        match self.page_type {
+            PageType::History => {
+                self.history.iter().map(|h| {
+                    html!{
+                        <>
+                            {self.show_separator(h.show_sep, h.days)}
+                            <RouterAnchor<AppRoute>
+                            classes="flex inline-flex border-b border-gray-light p-2 content-center hover:bg-gray-200"
+                            route=AppRoute::Chapter(h.source.clone(), base64::encode_config(h.title.clone(), base64::URL_SAFE_NO_PAD), h.chapter.clone(), (h.read + 1) as usize)>
+                                <div class="mr-4 my-2 h-16 w-16 object-fit object-center bg-center bg-cover rounded-full" style={format!("background-image: url({})", h.thumbnail_url.clone())}/>
+                                <div class="flex flex-col my-auto">
+                                    <span class="text-lg font-semibold">{h.title.clone()}</span>
+                                    <span class="text-md">{format!("Chapter {}", h.chapter.clone())}</span>
+                                </div>
+                            </RouterAnchor<AppRoute>>
+                        </>
+                    }
+                }).collect()
+            },
+            PageType::Updates => {
+                self.updates.iter().map(|update| {
+                    html!{
+                        <>
+                            {self.show_separator(update.show_sep, update.days)}
+                            <RouterAnchor<AppRoute>
+                            classes="flex inline-flex border-b border-gray-light p-2 content-center hover:bg-gray-200"
+                            route=AppRoute::Chapter(update.source.clone(), base64::encode_config(update.title.clone(), base64::URL_SAFE_NO_PAD), update.number.clone(), 1)>
+                                <div class="mr-4 my-2 h-16 w-16 object-fit object-center bg-center bg-cover rounded-full" style={format!("background-image: url({})", update.thumbnail_url.clone())}/>
+                                <div class="flex flex-col my-auto">
+                                    <span class="text-lg font-semibold">{update.title.clone()}</span>
+                                    <span class="text-md">{format!("Chapter {}", update.number.clone())}</span>
+                                </div>
+                            </RouterAnchor<AppRoute>>
+                        </>
+                    }
+                }).collect()
+            }
+        }
+    }
+
     fn fetch_history(&mut self) {
         let req = Request::get(format!("/api/history?page={}", self.page))
             .header("Authorization", self.token.to_string())
@@ -187,6 +277,30 @@ impl History {
                     if let (meta, Json(Ok(data))) = response.into_parts() {
                         if meta.status.is_success() {
                             return Msg::HistoryReady(data);
+                        }
+                    }
+                    Msg::Noop
+                },
+            ),
+        ) {
+            self.fetch_task = Some(FetchTask::from(task));
+            self.is_fetching = true;
+        }
+    }
+
+    fn fetch_updates(&mut self) {
+        let req = Request::get(format!("/api/updates?page={}", self.page))
+            .header("Authorization", self.token.to_string())
+            .body(Nothing)
+            .expect("failed to build request");
+
+        if let Ok(task) = FetchService::new().fetch(
+            req,
+            self.link.callback(
+                |response: Response<Json<Result<UpdatesResponse, anyhow::Error>>>| {
+                    if let (meta, Json(Ok(data))) = response.into_parts() {
+                        if meta.status.is_success() {
+                            return Msg::UpdatesReady(data);
                         }
                     }
                     Msg::Noop

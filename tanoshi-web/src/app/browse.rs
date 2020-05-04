@@ -16,10 +16,7 @@ use super::component::NavigationBar;
 use super::detail::Detail;
 use super::history::History;
 use super::home::Home;
-use super::login::Login;
-use super::logout::Logout;
 use super::settings::Settings;
-use super::updates::Updates;
 
 #[derive(Switch, Debug, Clone)]
 pub enum BrowseRoute {
@@ -50,23 +47,7 @@ impl Into<Props> for BrowseRoute {
                 source: Some(source),
                 title: Some(title),
             },
-            BrowseRoute::Catalogue(route) => Props {
-                source: None,
-                title: None,
-            },
-            BrowseRoute::Updates => Props {
-                source: None,
-                title: None,
-            },
-            BrowseRoute::History => Props {
-                source: None,
-                title: None,
-            },
-            BrowseRoute::Settings => Props {
-                source: None,
-                title: None,
-            },
-            BrowseRoute::Home => Props {
+            _ => Props {
                 source: None,
                 title: None,
             },
@@ -130,7 +111,7 @@ impl Component for Browse {
                     match switch {
                         BrowseRoute::Detail(source, title) => html!{<Detail source=source title=title/>},
                         BrowseRoute::Catalogue(catalogue_route) => html!{<Catalogue route=catalogue_route/>},
-                        BrowseRoute::Updates => html!{<Updates/>},
+                        BrowseRoute::Updates => html!{<History/>},
                         BrowseRoute::History => html!{<History/>},
                         BrowseRoute::Home => html!{<Home/>},
                         BrowseRoute::Settings => html!{<Settings />},
