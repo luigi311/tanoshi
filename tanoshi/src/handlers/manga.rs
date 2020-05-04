@@ -156,6 +156,10 @@ pub async fn get_chapters(
             .execute(&db)
             .await;
         }
+
+        let mut chapter = chapter;
+        chapter.chapters.sort();
+        chapter.chapters.reverse();
         return Ok(warp::reply::json(&chapter));
     }
     Err(warp::reject())

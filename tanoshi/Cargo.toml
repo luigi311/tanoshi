@@ -20,7 +20,8 @@ bin = [
     "jsonwebtoken",
     "base64",
     "sqlx",
-    "futures"
+    "futures",
+    "human-sort"
 ]
 lib = []
 
@@ -42,3 +43,4 @@ base64 = {version = "0.12.0", optional = true}
 sqlx = { version = "0.3", default-features = false, features = [ "runtime-tokio", "macros", "chrono", "postgres", "tls"], optional = true }
 chrono = { version = "0.4", features = ["serde"] }
 futures = {version = "*", optional = true}
+human-sort = {version = "0.2", optional = true }

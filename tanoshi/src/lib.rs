@@ -82,6 +82,9 @@ pub mod mangadex {
 pub mod manga {
     use chrono::Local;
     use serde::{Deserialize, Serialize};
+    use std::cmp::Ordering;
+    use human_sort::compare;
+
     #[derive(Debug, Deserialize, Serialize, Clone, Default)]
     pub struct Manga {
         pub title: String,
@@ -98,7 +101,7 @@ pub mod manga {
         pub is_favorite: bool,
     }
 
-    #[derive(Debug, Deserialize, Serialize, Clone)]
+    #[derive(Debug, Deserialize, Serialize, Clone, Eq, PartialEq, Ord)]
     pub struct Chapter {
         pub no: String,
         pub title: String,
@@ -116,6 +119,12 @@ pub mod manga {
                 read: 0,
                 uploaded: Local::now().naive_local(),
             }
+        }
+    }
+
+    impl PartialOrd for Chapter {
+        fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+            Some(compare(&self.no, &other.no))
         }
     }
 
