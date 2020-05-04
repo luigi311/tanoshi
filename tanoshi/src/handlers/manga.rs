@@ -137,17 +137,19 @@ pub async fn get_chapters(
 
         for c in chapter.clone().chapters {
             sqlx::query!(
-                "INSERT INTO chapter(manga_id, number, path, uploaded)
+                "INSERT INTO chapter(manga_id, number, title, path, uploaded)
                 VALUES(
                 (SELECT manga.id FROM manga
                 JOIN source ON source.id = manga.source_id
                 WHERE source.name = $1 AND title = $2 ),
                 $3,
                 $4,
-                $5) ON CONFLICT DO NOTHING",
+                $5,
+                $6) ON CONFLICT DO NOTHING",
                 source,
                 title,
                 c.no,
+                c.title,
                 c.url,
                 c.uploaded,
             )

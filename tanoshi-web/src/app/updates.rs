@@ -130,7 +130,7 @@ impl Component for Updates {
     fn view(&self) -> Html {
         html! {
            <div class="container mx-auto pb-20" style="padding-top: calc(env(safe-area-inset-top) + .5rem)">
-                <Spinner is_active=self.is_fetching />
+                <Spinner is_active=self.is_fetching is_fullscreen=true />
                 <div class="flex flex-col rounded-lg border border-grey-light m-2 shadow" id="updates">
                 {
                 for self.updates.iter().map(|update| {

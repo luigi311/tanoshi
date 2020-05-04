@@ -101,6 +101,7 @@ pub mod manga {
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct Chapter {
         pub no: String,
+        pub title: String,
         pub url: String,
         pub read: i32,
         pub uploaded: chrono::NaiveDateTime,
@@ -110,6 +111,7 @@ pub mod manga {
         fn default() -> Self {
             Chapter {
                 no: "".to_string(),
+                title: "".to_string(),
                 url: "".to_string(),
                 read: 0,
                 uploaded: Local::now().naive_local(),

@@ -111,6 +111,7 @@ impl Scraping for Mangadex {
                         "" => "0".to_string(),
                         _ => chapter.chapter,
                     },
+                    title: chapter.title,
                     url: format!("/api/chapter/{}", id),
                     read: 0,
                     uploaded: chrono::NaiveDateTime::from_timestamp(chapter.timestamp, 0),

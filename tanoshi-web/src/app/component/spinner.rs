@@ -11,10 +11,12 @@ use yew::prelude::*;
 #[derive(Clone, PartialEq, Properties)]
 pub struct Props {
     pub is_active: bool,
+    pub is_fullscreen: bool
 }
 
 pub struct Spinner {
     is_active: bool,
+    is_fullscreen: bool,
 }
 
 pub enum Msg {
@@ -28,6 +30,7 @@ impl Component for Spinner {
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
         Spinner {
             is_active: props.is_active,
+            is_fullscreen: props.is_fullscreen,
         }
     }
 
@@ -42,10 +45,14 @@ impl Component for Spinner {
         }
         false
     }
-
+    //w-full h-full block m-auto bg-white opacity-75 z-10
     fn view(&self) -> Html {
         html! {
-                <div class={if !self.is_active {"hidden"} else {"w-full h-full fixed block top-0 left-0 bg-white opacity-75 z-10"}}>
+                <div class={
+                    if !self.is_active {"hidden"} 
+                    else if self.is_fullscreen{"w-full h-full fixed block top-0 left-0 bg-white opacity-75 z-10"}
+                    else {"w-full h-full block m-auto bg-white opacity-75 z-10"}
+                }>
                   <span class="text-green-500 opacity-75 top-1/2 my-0 mx-auto block relative w-20 h-20" style="top: 50%;">
                     <i class="fas fa-circle-notch fa-spin fa-5x"></i>
                   </span>

@@ -106,15 +106,16 @@ impl Component for Source {
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
             Msg::MangaReady(data) => {
+                self.is_fetching = false;
                 let mut mangas = data.mangas;
                 if self.page == 1 {
                     self.mangas = mangas;
                 } else {
                     self.mangas.append(&mut mangas);
                 }
-                self.is_fetching = false;
             }
             Msg::FavoritesReady(data) => {
+                self.is_fetching = false;
                 self.favorites = data
                     .favorites
                     .unwrap()
@@ -122,7 +123,6 @@ impl Component for Source {
                     .map(|ch| ch.title.clone())
                     .collect();
                 self.fetch_mangas();
-                self.is_fetching = false;
             }
             Msg::ScrolledDown => {
                 if !self.is_fetching {
@@ -161,7 +161,6 @@ impl Component for Source {
                         oninput=self.link.callback(|e| Msg::KeywordChanged(e))/>
                     <button type="submit" class="col-span-1 rounded-r bg-tachiyomi-blue"><i class="fa fa-search"></i></button>
                 </form>
-                <Spinner is_active=self.is_fetching />
                 <div class="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2" id="catalogue">
                     { for self.mangas.iter().map(|manga| html!{
                         <Manga
@@ -173,7 +172,14 @@ impl Component for Source {
                     })
                     }
                 </div>
-                <button onclick=self.link.callback(|_| Msg::ScrolledDown)>{"Load More"}</button>
+                <div class="grid grid-cols-1" id="catalogue">
+                {
+                    match self.is_fetching {
+                        true => html!{<Spinner is_active=true is_fullscreen=false />},
+                        false => html!{<button onclick=self.link.callback(|_| Msg::ScrolledDown)>{"Load More"}</button>}
+                    }
+                }
+                </div>
             </div>
         };
     }

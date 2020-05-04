@@ -3,9 +3,11 @@ use yew::services::fetch::{FetchService, FetchTask, Request, Response};
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 use yew_router::components::RouterAnchor;
 
-use super::component::model::{ChapterModel, GetChaptersResponse, GetMangaResponse, MangaModel};
+use super::component::model::{GetMangaResponse, MangaModel};
 use super::component::Spinner;
 use crate::app::AppRoute;
+
+use tanoshi::manga::{Chapter as ChapterModel, GetChaptersResponse};
 
 use serde::{Deserialize, Serialize};
 
@@ -148,7 +150,7 @@ impl Component for Detail {
     fn view(&self) -> Html {
         html! {
             <div class="container pb-20" style="padding-top: calc(env(safe-area-inset-top) + .5rem)">
-            <Spinner is_active={self.is_fetching_manga || self.is_fetching_chapter} />
+            <Spinner is_active={self.is_fetching_manga || self.is_fetching_chapter} is_fullscreen=true />
             <div class="m-2 flex md:flex-row sm:flex-col">
                 <div class="flex-shrink-0 lg:m-2 sm:mx-auto sm:my-2">
                     <div class="relative my-4">
@@ -182,16 +184,16 @@ impl Component for Detail {
                     <span>{"Read"}</span>
                 </RouterAnchor<AppRoute>>
             </div>
-            <div class="w-6/7 mx-2 grid grid-cols-4 lg:grid-cols-8">
+            <div class="w-6/7 mx-2 grid grid-cols-1 lg:grid-cols-2">
                 {
                     for self.chapters.iter().map(|(chapter)| html!{
                         <div class={
                             format!("rounded-lg border border-grey-light m-2 {}", if chapter.read > 0 {"bg-gray-400"} else {""})
                         }>
                             <RouterAnchor<AppRoute>
-                            classes="px-2 py-2 text-center block hover:shadow"
+                            classes="px-2 py-2 text-left block hover:shadow"
                             route=AppRoute::Chapter(self.source.to_owned(), self.title.to_owned(), chapter.no.to_owned(), (chapter.read + 1) as usize)>
-                                {chapter.no.to_owned()}
+                                {format!("Ch. {} {}", chapter.no.to_owned(), chapter.title.to_owned())}
                             </RouterAnchor<AppRoute>>
                         </div>
                     })

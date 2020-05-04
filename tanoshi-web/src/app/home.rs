@@ -88,7 +88,7 @@ impl Component for Home {
     fn view(&self) -> Html {
         html! {
            <div class="container mx-auto pb-20 sm:pb-25" style="padding-top: calc(env(safe-area-inset-top) + .5rem)">
-                <Spinner is_active=self.is_fetching />
+                <Spinner is_active=self.is_fetching is_fullscreen=true />
                 <div class="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
                 {
                 for self.mangas.iter().map(|manga|  html!{

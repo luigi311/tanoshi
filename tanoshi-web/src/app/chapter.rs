@@ -391,7 +391,7 @@ impl Component for Chapter {
                         }
                     }
                 </div>
-                <Spinner is_active=self.is_fetching />
+                <Spinner is_active=self.is_fetching is_fullscreen=true/>
             </div>
             <div ref=self.refs[1].clone()
             class="animated slideInUp faster block fixed inset-x-0 bottom-0 z-50 bg-gray-900 opacity-75 shadow safe-bottom">

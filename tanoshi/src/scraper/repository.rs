@@ -101,7 +101,7 @@ pub async fn get_chapters(
     match sqlx::query_as!(
         Chapter,
         r#"SELECT 
-        chapter.number AS no, chapter.path AS url, 
+        chapter.number AS no, COALESCE(chapter.title, '') AS title, chapter.path AS url, 
         COALESCE(history.last_page, 0) AS read,
         chapter.uploaded AS uploaded
         FROM chapter
