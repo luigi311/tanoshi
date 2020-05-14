@@ -127,7 +127,7 @@ pub async fn get_chapters(
 ) -> Result<impl warp::Reply, Rejection> {
     let title = decode_title(title);
     if !param.refresh.unwrap_or(false) {
-        match repository::get_chapters(source.clone(), title.clone(), claim.sub, db.clone()).await {
+        match repository::get_chapters(source.clone(), title.clone(), claim.sub.clone(), db.clone()).await {
             Ok(chapter) => return Ok(warp::reply::json(&chapter)),
             Err(e) => {}
         };
@@ -162,10 +162,10 @@ pub async fn get_chapters(
             .await;
         }
 
-        let mut chapter = chapter;
-        chapter.chapters.sort();
-        chapter.chapters.reverse();
-        return Ok(warp::reply::json(&chapter));
+        match repository::get_chapters(source.clone(), title.clone(), claim.sub, db.clone()).await {
+            Ok(chapter) => return Ok(warp::reply::json(&chapter)),
+            Err(e) => {}
+        };
     }
     Err(warp::reject())
 }
@@ -178,6 +178,11 @@ pub async fn get_pages(
     db: PgPool,
 ) -> Result<impl warp::Reply, Rejection> {
     let title = decode_title(title);
+    match repository::get_pages(source.clone(), title.clone(), chapter.clone(), db.clone()).await {
+        Ok(pages) => return Ok(warp::reply::json(&pages)),
+        Err(e) => {}
+    };
+
     if let Ok(url) =
         repository::get_chapter_url(source.clone(), title.clone(), chapter.clone(), db.clone())
             .await
@@ -206,7 +211,11 @@ pub async fn get_pages(
             .execute(&db)
             .await;
         }
-        return Ok(warp::reply::json(&pages));
+
+        match repository::get_pages(source.clone(), title.clone(), chapter.clone(), db.clone()).await {
+            Ok(pages) => return Ok(warp::reply::json(&pages)),
+            Err(e) => {}
+        };
     }
     Err(warp::reject())
 }

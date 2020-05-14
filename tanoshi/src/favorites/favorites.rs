@@ -24,9 +24,15 @@ impl Favorites {
             username
             ).fetch_all(&db).await;
 
-        GetFavoritesResponse {
-            favorites: favorites.unwrap(),
-            status: "success".to_string(),
+        match favorites {
+            Ok(favs) => GetFavoritesResponse {
+                favorites: favs,
+                status: "success".to_string(),
+            },
+            Err(e) => GetFavoritesResponse {
+                favorites: vec![],
+                status: e.to_string(),
+            }
         }
     }
 

@@ -2,7 +2,7 @@ use std::sync::{Arc, Mutex};
 
 use sqlx::postgres::PgPool;
 
-use tanoshi::manga::{Chapter, GetChaptersResponse, GetMangaResponse, GetMangasResponse, Manga};
+use tanoshi::manga::{Chapter, GetChaptersResponse, GetMangaResponse, GetMangasResponse, GetPagesResponse, Manga};
 
 pub async fn get_source_url(source: String, db: PgPool) -> Result<String, String> {
     match sqlx::query!(r#"SELECT url FROM source WHERE name = $1"#, source)
@@ -126,3 +126,39 @@ pub async fn get_chapters(
         Err(e) => Err(e.to_string()),
     }
 }
+
+pub async fn get_pages(
+    source: String,
+    title: String,
+    chapter: String,
+    db: PgPool,
+) -> Result<GetPagesResponse, String> {
+    match sqlx::query!(
+        r#"SELECT 
+        page.url
+        FROM page
+        JOIN chapter ON chapter.id = page.chapter_id
+        JOIN manga ON manga.id = chapter.manga_id
+        JOIN source ON source.id = manga.source_id
+        WHERE source.name = $1 AND manga.title = $2 AND chapter.number = $3
+        ORDER BY page.rank"#,
+        source,
+        title,
+        chapter
+    )
+    .fetch_all(&db)
+    .await
+    {
+        Ok(rows) => if rows.is_empty() {
+            Err("not found".to_string())
+        } else {
+            let mut pages= vec![];
+            for row in rows {
+                pages.push(row.url);
+            }
+            Ok(GetPagesResponse{pages})
+        },
+        Err(e) => Err(e.to_string()),
+    }
+}
+
