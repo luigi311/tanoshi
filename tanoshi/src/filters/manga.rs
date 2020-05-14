@@ -89,7 +89,7 @@ pub fn login(
     secret: String,
     db: PgPool,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    warp::path!("api" / "source" / String / "login")
+    warp::path!("api" / "source" / "mangadex" / "login")
         .and(warp::post())
         .and(with_authorization(secret))
         .and(json_body())

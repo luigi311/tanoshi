@@ -50,13 +50,6 @@ impl Component for Settings {
         }
     }
 
-    fn change(&mut self, _props: Self::Properties) -> ShouldRender {
-        false
-    }
-
-    fn rendered(&mut self, first_render: bool) {
-    }
-
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
             Msg::SetReadingDirection(value) => {
@@ -72,10 +65,14 @@ impl Component for Settings {
                 self.storage.store("settings", &self.settings)
             }
             Msg::Noop => {
-                info!("Noop");
+                return false;
             }
         }
         true
+    }
+
+    fn change(&mut self, _props: Self::Properties) -> ShouldRender {
+        false
     }
 
     fn view(&self) -> Html {

@@ -1,21 +1,17 @@
-use std::sync::{Arc, Mutex};
-
 use sqlx::postgres::PgPool;
 
 use tanoshi::manga::{Chapter, GetChaptersResponse, GetMangaResponse, GetMangasResponse, GetPagesResponse, Manga};
 
-pub async fn get_source_url(source: String, db: PgPool) -> Result<String, String> {
-    match sqlx::query!(r#"SELECT url FROM source WHERE name = $1"#, source)
+pub async fn get_source_url(source: String, db: PgPool) -> Result<String, sqlx::Error> {
+    let ret = sqlx::query!(r#"SELECT url FROM source WHERE name = $1"#, source)
         .fetch_one(&db)
-        .await
-    {
-        Ok(ret) => Ok(ret.url),
-        Err(e) => Err(e.to_string()),
-    }
+        .await?;
+
+    Ok(ret.url)
 }
 
-pub async fn get_manga_url(source: String, title: String, db: PgPool) -> Result<String, String> {
-    match sqlx::query!(
+pub async fn get_manga_url(source: String, title: String, db: PgPool) -> Result<String, sqlx::Error> {
+    let ret = sqlx::query!(
         r#"SELECT CONCAT(source.url, manga.path) AS url FROM manga 
             JOIN source ON source.id = manga.source_id 
             WHERE source.name = $1 AND  manga.title = $2"#,
@@ -23,11 +19,9 @@ pub async fn get_manga_url(source: String, title: String, db: PgPool) -> Result<
         title
     )
     .fetch_one(&db)
-    .await
-    {
-        Ok(v) => Ok(v.url.unwrap()),
-        Err(e) => Err(e.to_string()),
-    }
+    .await?;
+
+    Ok(ret.url.unwrap())
 }
 
 pub async fn get_chapter_url(
@@ -35,8 +29,8 @@ pub async fn get_chapter_url(
     title: String,
     chapter: String,
     db: PgPool,
-) -> Result<String, String> {
-    match sqlx::query!(
+) -> Result<String, sqlx::Error> {
+    let ret = sqlx::query!(
         "SELECT CONCAT(source.url, chapter.path) AS url FROM chapter
             JOIN manga ON manga.id = chapter.manga_id 
             JOIN source ON source.id = manga.source_id 
@@ -46,11 +40,9 @@ pub async fn get_chapter_url(
         chapter,
     )
     .fetch_one(&db)
-    .await
-    {
-        Ok(ret) => Ok(ret.url.unwrap()),
-        Err(e) => Err(e.to_string()),
-    }
+    .await?;
+
+    Ok(ret.url.unwrap())
 }
 
 pub async fn get_manga_detail(
@@ -58,8 +50,8 @@ pub async fn get_manga_detail(
     title: String,
     username: String,
     db: PgPool,
-) -> Result<GetMangaResponse, String> {
-    match sqlx::query_as!(
+) -> Result<GetMangaResponse, sqlx::Error> {
+    let manga = sqlx::query_as!(
         Manga,
         r#"SELECT
        manga.title AS title,
@@ -86,10 +78,9 @@ pub async fn get_manga_detail(
             ) h ON h.manga_id = manga.id
         WHERE manga.title = $3"#,
         source, username, title,
-    ).fetch_one(&db).await {
-        Ok(row) => Ok(GetMangaResponse {manga: row}),
-        Err(e) => Err(e.to_string()),
-    }
+    ).fetch_one(&db).await?;
+
+    Ok(GetMangaResponse {manga})
 }
 
 pub async fn get_chapters(
@@ -97,8 +88,8 @@ pub async fn get_chapters(
     title: String,
     username: String,
     db: PgPool,
-) -> Result<GetChaptersResponse, String> {
-    match sqlx::query_as!(
+) -> Result<GetChaptersResponse, sqlx::Error> {
+    let chapters = sqlx::query_as!(
         Chapter,
         r#"SELECT 
         chapter.number AS no, COALESCE(chapter.title, '') AS title, chapter.path AS url, 
@@ -116,14 +107,11 @@ pub async fn get_chapters(
         title
     )
     .fetch_all(&db)
-    .await
-    {
-        Ok(chapters) => if chapters.is_empty() {
-            Err("not found".to_string())
-        } else {
-            Ok(GetChaptersResponse { chapters })
-        },
-        Err(e) => Err(e.to_string()),
+    .await?;
+    if !chapters.is_empty() {
+        Ok(GetChaptersResponse { chapters })
+    } else {
+        Err(sqlx::Error::RowNotFound)
     }
 }
 
@@ -132,8 +120,8 @@ pub async fn get_pages(
     title: String,
     chapter: String,
     db: PgPool,
-) -> Result<GetPagesResponse, String> {
-    match sqlx::query!(
+) -> Result<GetPagesResponse, sqlx::Error> {
+    let pages = sqlx::query!(
         r#"SELECT 
         page.url
         FROM page
@@ -147,18 +135,93 @@ pub async fn get_pages(
         chapter
     )
     .fetch_all(&db)
-    .await
-    {
-        Ok(rows) => if rows.is_empty() {
-            Err("not found".to_string())
-        } else {
-            let mut pages= vec![];
-            for row in rows {
-                pages.push(row.url);
-            }
-            Ok(GetPagesResponse{pages})
-        },
-        Err(e) => Err(e.to_string()),
+    .await?;
+
+    if !pages.is_empty() {
+        let pages = pages.iter().map(|page| page.url.clone()).collect();
+        Ok(GetPagesResponse{pages})
+    } else {
+        Err(sqlx::Error::RowNotFound)
     }
+}
+
+pub async fn insert_mangas(source: String, mangas: Vec<Manga>, db: PgPool) -> Result<(), sqlx::Error> {
+    let mut tx = db.begin().await?;
+    for m in mangas {
+        sqlx::query!(
+                "INSERT INTO manga(
+                    source_id,
+                    title,
+                    path,
+                    thumbnail_url
+                    ) VALUES (
+                    (SELECT id FROM source WHERE name = $1),
+                    $2,
+                    $3,
+                    $4) ON CONFLICT DO NOTHING",
+                source,
+                m.title,
+                m.path,
+                m.thumbnail_url,
+            )
+            .execute(&mut tx)
+            .await?;
+    }
+    tx.commit().await?;
+
+    Ok(())
+}
+
+pub async fn insert_chapters(source: String, title: String, chapters: Vec<Chapter>, db: PgPool) -> Result<(), sqlx::Error> {
+    let mut tx = db.begin().await?;
+    for c in chapters {
+        sqlx::query!(
+                "INSERT INTO chapter(manga_id, number, title, path, uploaded)
+                VALUES(
+                (SELECT manga.id FROM manga
+                JOIN source ON source.id = manga.source_id
+                WHERE source.name = $1 AND title = $2 ),
+                $3,
+                $4,
+                $5,
+                $6) ON CONFLICT DO NOTHING",
+                source,
+                title,
+                c.no,
+                c.title,
+                c.url,
+                c.uploaded,
+            )
+            .execute(&mut tx)
+            .await?;
+    }
+    tx.commit().await?;
+
+    Ok(())
+}
+
+pub async fn insert_pages(source: String, title: String, chapter: String, pages: Vec<String>, db: PgPool) -> Result<(), sqlx::Error> {
+    let mut tx = db.begin().await?;
+    for i in 0..pages.len() {
+        sqlx::query!(
+                "INSERT INTO page(chapter_id, rank, url)
+                VALUES(
+                (SELECT chapter.id FROM chapter
+                JOIN manga ON manga.id = chapter.manga_id
+                JOIN source ON source.id = manga.source_id
+                WHERE source.name = $1 AND manga.title = $2 AND chapter.number = $3),
+                $4,
+                $5) ON CONFLICT DO NOTHING",
+                source,
+                title,
+                chapter,
+                (i as i32),
+                pages[i],
+            )
+            .execute(&mut tx)
+            .await?;
+    }
+    tx.commit().await?;
+    Ok(())
 }
 

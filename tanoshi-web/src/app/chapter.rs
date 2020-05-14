@@ -438,13 +438,21 @@ impl Chapter {
         <>
             <img id={let temp = i; i += 1; temp}
                 ref=self.page_refs[i].clone()
-                class={format!("w-1/2 h-auto object-contain object-left {}", if self.current_page == i {"block"} else {"hidden"})}
+                class={
+                    format!("w-1/2 h-auto object-contain {} {}",
+                        if self.settings.reading_direction == ReadingDirection::RightToLeft {"object-left"} else {"object-right"},
+                        if self.current_page == i {"block"} else {"hidden"})
+                }
                 src={if i >= 0 && i < self.current_page + 3 {left_page} else {"".to_string()}}
                 onmouseup={self.link.callback(|_| Msg::Noop)}
             />
             <img id={let temp = i; i += 1; temp}
                 ref=self.page_refs[i].clone()
-                class={format!("w-1/2 h-auto object-contain object-right {}", if self.current_page + 1 == i {"block"} else {"hidden"})}
+                class={
+                    format!("w-1/2 h-auto object-contain {} {}",
+                        if self.settings.reading_direction == ReadingDirection::RightToLeft {"object-right"} else {"object-left"},
+                        if self.current_page + 1 == i {"block"} else {"hidden"})
+                }
                 src={if i >= 0 && i < self.current_page + 3 {right_page} else {"".to_string()}}
                 onmouseup={self.link.callback(|_| Msg::Noop)}
             />

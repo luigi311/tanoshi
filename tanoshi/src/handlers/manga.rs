@@ -13,6 +13,8 @@ use crate::scraper::{mangadex::Mangadex, mangasee::Mangasee, repository, Scrapin
 use tanoshi::manga::{GetParams, ImageProxyParam, Params};
 use tanoshi::mangadex::MangadexLogin;
 
+use crate::handlers::TransactionReject;
+
 pub async fn list_sources(db: PgPool) -> Result<impl warp::Reply, Rejection> {
     let sources = sqlx::query!("SELECT name FROM source").fetch_all(&db).await;
 
@@ -52,26 +54,11 @@ pub async fn list_mangas(
             &_ => return Err(warp::reject()),
         };
 
-        for m in mangas.clone().mangas {
-            sqlx::query!(
-                "INSERT INTO manga(
-                    source_id,
-                    title,
-                    path,
-                    thumbnail_url
-                    ) VALUES (
-                    (SELECT id FROM source WHERE name = $1),
-                    $2,
-                    $3,
-                    $4) ON CONFLICT DO NOTHING",
-                source,
-                m.title,
-                m.path,
-                m.thumbnail_url,
-            )
-            .execute(&db)
-            .await;
+        match repository::insert_mangas(source.clone(), mangas.mangas.clone(), db.clone()).await {
+            Ok(_) => {},
+            Err(e) => return Err(warp::reject::custom(TransactionReject{message: e.to_string()})),
         }
+
         return Ok(warp::reply::json(&mangas));
     }
     Err(warp::reject())
@@ -140,26 +127,9 @@ pub async fn get_chapters(
             _ => return Err(warp::reject()),
         };
 
-        for c in chapter.clone().chapters {
-            sqlx::query!(
-                "INSERT INTO chapter(manga_id, number, title, path, uploaded)
-                VALUES(
-                (SELECT manga.id FROM manga
-                JOIN source ON source.id = manga.source_id
-                WHERE source.name = $1 AND title = $2 ),
-                $3,
-                $4,
-                $5,
-                $6) ON CONFLICT DO NOTHING",
-                source,
-                title,
-                c.no,
-                c.title,
-                c.url,
-                c.uploaded,
-            )
-            .execute(&db)
-            .await;
+        match repository::insert_chapters(source.clone(), title.clone(), chapter.chapters.clone(), db.clone()).await {
+            Ok(_) => {},
+            Err(e) => return Err(warp::reject::custom(TransactionReject{message: e.to_string()})),
         }
 
         match repository::get_chapters(source.clone(), title.clone(), claim.sub, db.clone()).await {
@@ -192,29 +162,15 @@ pub async fn get_pages(
             "mangadex" => Mangadex::get_pages(&url),
             _ => return Err(warp::reject()),
         };
-        for i in 0..pages.pages.len() {
-            sqlx::query!(
-                "INSERT INTO page(chapter_id, rank, url)
-                VALUES(
-                (SELECT chapter.id FROM chapter
-                JOIN manga ON manga.id = chapter.manga_id
-                JOIN source ON source.id = manga.source_id
-                WHERE source.name = $1 AND manga.title = $2 AND chapter.number = $3),
-                $4,
-                $5) ON CONFLICT DO NOTHING",
-                source,
-                title,
-                chapter,
-                (i as i32),
-                pages.pages[i],
-            )
-            .execute(&db)
-            .await;
+
+        match repository::insert_pages(source.clone(), title.clone(), chapter.clone(), pages.pages.clone(), db.clone()).await {
+            Ok(_) => {},
+            Err(e) => return Err(warp::reject::custom(TransactionReject{message: e.to_string()})),
         }
 
         match repository::get_pages(source.clone(), title.clone(), chapter.clone(), db.clone()).await {
             Ok(pages) => return Ok(warp::reply::json(&pages)),
-            Err(e) => {}
+            Err(e) => return Err(warp::reject::custom(TransactionReject{message: e.to_string()})),
         };
     }
     Err(warp::reject())
@@ -242,12 +198,11 @@ pub async fn proxy_image(param: ImageProxyParam) -> Result<impl warp::Reply, Rej
 }
 
 pub async fn login(
-    source: String,
     claim: Claims,
     login: MangadexLogin,
     db: PgPool,
 ) -> Result<impl warp::Reply, Rejection> {
-    if let Ok(url) = repository::get_source_url(source.clone(), db.clone()).await {
+    if let Ok(url) = repository::get_source_url("mangadex".to_owned(), db.clone()).await {
         match Mangadex::login(&url, login) {
             Ok(cookies) => {
                 sqlx::query!(
@@ -262,7 +217,7 @@ pub async fn login(
                 .await;
                 return Ok(warp::reply());
             }
-            Err(_) => return Err(warp::reject()),
+            Err(e) => return Err(warp::reject::custom(TransactionReject{message: e})),
         }
     }
     Err(warp::reject())
