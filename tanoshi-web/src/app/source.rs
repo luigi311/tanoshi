@@ -120,7 +120,7 @@ impl Component for Source {
                     .favorites
                     .unwrap()
                     .iter()
-                    .map(|ch| ch.title.clone())
+                    .map(|ch| format!("{}:{}", &ch.source, &ch.title))
                     .collect();
                 self.fetch_mangas();
             }
@@ -168,7 +168,7 @@ impl Component for Source {
                         thumbnail=manga.thumbnail_url.to_owned()
                         path=manga.path.to_owned()
                         source=self.source.to_owned()
-                        is_favorite=self.favorites.contains(&manga.title.to_owned()) />
+                        is_favorite=self.favorites.contains(&format!("{}:{}", &self.source, &manga.title)) />
                     })
                     }
                 </div>
