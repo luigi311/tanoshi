@@ -76,7 +76,7 @@ impl Scraping for Mangadex {
             true => description_split[1].to_string(),
             false => description_split[0].to_string(),
         };
-        let mut m = Manga {
+        let m = Manga {
             title: mangadex_resp.manga.title,
             author: mangadex_resp.manga.author,
             //genre: vec![],
@@ -105,7 +105,7 @@ impl Scraping for Mangadex {
         let mangadex_resp: tanoshi::mangadex::GetChapterResponse = serde_json::from_reader(resp.into_reader()).unwrap();
 
         for (id, chapter) in mangadex_resp.chapter {
-            if chapter.lang_code == "gb".to_string() {
+            if chapter.lang_code == "gb".to_string() || chapter.lang_code == "en".to_string() || chapter.lang_code == "br".to_string() {
                 chapters.push(Chapter{
                     no: match chapter.chapter.as_str() {
                         "" => "0".to_string(),

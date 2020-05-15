@@ -116,7 +116,7 @@ pub async fn get_chapters(
     if !param.refresh.unwrap_or(false) {
         match repository::get_chapters(source.clone(), title.clone(), claim.sub.clone(), db.clone()).await {
             Ok(chapter) => return Ok(warp::reply::json(&chapter)),
-            Err(e) => {}
+            Err(_e) => {}
         };
     }
 
@@ -134,7 +134,7 @@ pub async fn get_chapters(
 
         match repository::get_chapters(source.clone(), title.clone(), claim.sub, db.clone()).await {
             Ok(chapter) => return Ok(warp::reply::json(&chapter)),
-            Err(e) => {}
+            Err(e) => return Err(warp::reject::custom(TransactionReject{message: e.to_string()})),
         };
     }
     Err(warp::reject())
@@ -144,13 +144,13 @@ pub async fn get_pages(
     source: String,
     title: String,
     chapter: String,
-    param: GetParams,
+    _param: GetParams,
     db: PgPool,
 ) -> Result<impl warp::Reply, Rejection> {
     let title = decode_title(title);
     match repository::get_pages(source.clone(), title.clone(), chapter.clone(), db.clone()).await {
         Ok(pages) => return Ok(warp::reply::json(&pages)),
-        Err(e) => {}
+        Err(_) => {}
     };
 
     if let Ok(url) =

@@ -19,6 +19,7 @@ yew-router = {version="0.13"}
 failure = "*"
 serde = "*"
 serde_json ="1"
+serde_urlencoded = "0.6"
 http = "*"
 log = "*"
 web_logger="*"

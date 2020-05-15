@@ -1,6 +1,6 @@
 use sqlx::postgres::PgPool;
 
-use tanoshi::manga::{Chapter, GetChaptersResponse, GetMangaResponse, GetMangasResponse, GetPagesResponse, Manga};
+use tanoshi::manga::{Chapter, GetChaptersResponse, GetMangaResponse, GetPagesResponse, Manga};
 
 pub async fn get_source_url(source: String, db: PgPool) -> Result<String, sqlx::Error> {
     let ret = sqlx::query!(r#"SELECT url FROM source WHERE name = $1"#, source)

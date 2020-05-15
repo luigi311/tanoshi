@@ -373,7 +373,6 @@ impl Component for Chapter {
             class="animated slideInUp faster block fixed inset-x-0 bottom-0 z-50 bg-gray-900 opacity-75 shadow safe-bottom">
                 <div class="flex px-4 py-5 justify-center">
                     <input
-                        dir={if self.settings.reading_direction == ReadingDirection::RightToLeft {"rtl"} else {"ltr"}}
                         type="range"
                         min="0"
                         max=self.pages.len().checked_sub(1).unwrap_or(0)
@@ -412,14 +411,11 @@ impl Chapter {
                 ref=self.page_refs[i].clone()
                 class={format!("w-auto h-auto object-contain {}", if self.current_page == i {"block"} else {"hidden"})}
                 src={if i >= 0 && i < self.current_page + 3 {page} else {"".to_string()}}
-                onmouseup={self.link.callback(|_| Msg::Noop)}
             />
         }).collect()
     }
     fn double_page_view(&self) -> Html {
         let mut pages = Vec::new();
-
-        let default_str = "".to_string();
         for i in 0..self.pages.len() {
             if i % 2 == 0 {
                 pages.push((
@@ -445,7 +441,6 @@ impl Chapter {
                         if self.current_page == i {"block"} else {"hidden"})
                 }
                 src={if i >= 0 && i < self.current_page + 3 {left_page} else {"".to_string()}}
-                onmouseup={self.link.callback(|_| Msg::Noop)}
             />
             <img id={let temp = i; i += 1; temp}
                 ref=self.page_refs[i].clone()
@@ -455,7 +450,6 @@ impl Chapter {
                         if self.current_page + 1 == i {"block"} else {"hidden"})
                 }
                 src={if i >= 0 && i < self.current_page + 3 {right_page} else {"".to_string()}}
-                onmouseup={self.link.callback(|_| Msg::Noop)}
             />
         </>
         }).collect()
@@ -467,7 +461,7 @@ impl Chapter {
             <img id={let temp = i; i += 1; temp}
                 ref=self.page_refs[i].clone()
                 class={format!("w-auto h-auto object-contain block")}
-                src={page}
+                src={let temp = i-1; if temp >= 0 && temp < self.current_page + 3 {page} else {"".to_string()}}
                 onmouseup={self.link.callback(|_| Msg::ToggleBar)}
             />
         }).collect()

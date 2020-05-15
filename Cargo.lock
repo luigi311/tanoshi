@@ -2144,6 +2144,7 @@ dependencies = [
  "quote",
  "serde",
  "serde_json",
+ "serde_urlencoded",
  "tanoshi",
  "wasm-bindgen",
  "wasm-bindgen-test",

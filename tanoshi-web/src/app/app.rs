@@ -1,11 +1,9 @@
 use yew::services::storage::Area;
 use yew::services::{fetch::FetchTask, StorageService, FetchService};
-use yew::{html, Bridge, Bridged, Component, ComponentLink, Html, NodeRef, ShouldRender, format::{Text, Nothing}};
+use yew::{html, Bridge, Bridged, Component, ComponentLink, Html, ShouldRender, format::{Text, Nothing}};
 use yew_router::agent::RouteRequest;
 use yew_router::prelude::{Route, RouteAgent};
 use yew_router::{router::Router, Switch};
-
-use web_sys::HtmlElement;
 
 use super::browse::{self, Browse, BrowseRoute};
 use super::chapter::Chapter;
@@ -118,7 +116,7 @@ impl App {
             req,
             self.link.callback(
                 |response: Response<Text>| {
-                    let (meta, res) = response.into_parts();
+                    let (meta, _res) = response.into_parts();
                     let status = meta.status;
                     if status == http::StatusCode::UNAUTHORIZED {
                         return Msg::TokenInvalidorExpired

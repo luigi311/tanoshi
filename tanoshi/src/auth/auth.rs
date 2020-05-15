@@ -1,12 +1,10 @@
 use crate::auth::{Claims, User, UserResponse};
 use argon2::{self, Config};
-use jsonwebtoken::crypto::verify;
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
 use rand;
 use rand::Rng;
 use sqlx;
 use sqlx::postgres::PgPool;
-use std::sync::{Arc, Mutex};
 
 #[derive(Clone)]
 pub struct Auth {}

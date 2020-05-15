@@ -1,28 +1,9 @@
-use super::component::Manga;
-use serde::Deserialize;
-use web_sys::HtmlElement;
-use yew::format::{Json, Nothing};
-use yew::prelude::*;
-use yew::services::fetch::{FetchService, FetchTask};
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 
-use yew_router::prelude::{Route, RouteAgent};
-use yew_router::{router::Router, Switch};
+use yew_router::{Switch};
 
-use super::component::model::{FavoriteManga,GetFavoritesResponse};
-use tanoshi::manga::{GetMangasResponse, Manga as MangaModel};
-use super::component::Spinner;
 use super::select::Select;
 use super::source::Source;
-
-use http::{Request, Response};
-use std::borrow::BorrowMut;
-use yew::services::storage::Area;
-use yew::services::StorageService;
-use yew::utils::{document, window};
-
-use wasm_bindgen::prelude::*;
-use wasm_bindgen::JsCast;
 
 #[derive(Switch, PartialEq, Debug, Clone)]
 pub enum CatalogueRoute {
@@ -38,10 +19,7 @@ pub struct Props {
 }
 
 pub struct Catalogue {
-    fetch_task: Option<FetchTask>,
     link: ComponentLink<Self>,
-    is_fetching: bool,
-    token: String,
     route: CatalogueRoute,
 }
 
@@ -54,20 +32,9 @@ impl Component for Catalogue {
     type Properties = Props;
 
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
-        let storage = StorageService::new(Area::Local).unwrap();
-        let token = {
-            if let Ok(token) = storage.restore("token") {
-                token
-            } else {
-                "".to_string()
-            }
-        };
         Catalogue {
-            fetch_task: None,
             link,
             route: props.route,
-            is_fetching: false,
-            token,
         }
     }
 

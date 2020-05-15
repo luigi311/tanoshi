@@ -1,5 +1,4 @@
 use super::component::Manga;
-use serde::Deserialize;
 use web_sys::HtmlElement;
 use yew::format::{Json, Nothing};
 use yew::prelude::*;
@@ -9,12 +8,11 @@ use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 use super::component::model::{FavoriteManga, GetFavoritesResponse};
 use super::component::Spinner;
 use http::{Request, Response};
-use std::borrow::BorrowMut;
 use yew::services::storage::Area;
 use yew::services::StorageService;
 use yew::utils::{document, window};
 
-use tanoshi::manga::{GetMangasResponse, Manga as MangaModel};
+use tanoshi::manga::{GetMangasResponse, Manga as MangaModel, Params, SortByParam, SortOrderParam};
 
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
@@ -191,9 +189,17 @@ impl Component for Source {
 
 impl Source {
     fn fetch_mangas(&mut self) {
+        let params = Params{
+            keyword: Some(self.keyword.to_owned()),
+            sort_by: Some(SortByParam::Views),
+            sort_order: Some(SortOrderParam::Desc),
+            page: Some(self.page.to_string())
+        };
+        let params = serde_urlencoded::to_string(params).unwrap();
+        
         let req = Request::get(format!(
-            "/api/source/{}?keyword={}&sort_by=Views&sort_order=Desc&page={}",
-            self.source, self.keyword, self.page
+            "/api/source/{}?{}",
+            self.source, params
         ))
         .header("Authorization", self.token.clone())
         .body(Nothing)

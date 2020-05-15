@@ -1,7 +1,6 @@
 use serde::{Deserialize, Serialize};
 
 pub mod auth;
-use auth::Auth;
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct User {

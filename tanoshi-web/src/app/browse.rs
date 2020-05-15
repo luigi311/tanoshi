@@ -1,17 +1,14 @@
-use web_sys::HtmlElement;
 use yew::services::storage::Area;
 use yew::services::StorageService;
 use yew::{
-    html, Bridge, Bridged, Component, ComponentLink, Html, NodeRef, Properties, ShouldRender,
+    html, Bridge, Bridged, Component, ComponentLink, Html, Properties, ShouldRender,
 };
-use yew_router::agent::RouteRequest;
 use yew_router::prelude::{Route, RouteAgent};
 use yew_router::{router::Router, Switch};
 
-use crate::app::catalogue::{self, CatalogueRoute};
+use crate::app::catalogue::{CatalogueRoute};
 
 use super::catalogue::Catalogue;
-use super::chapter::Chapter;
 use super::component::NavigationBar;
 use super::detail::Detail;
 use super::history::History;
