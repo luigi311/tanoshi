@@ -373,6 +373,7 @@ impl Component for Chapter {
             class="animated slideInUp faster block fixed inset-x-0 bottom-0 z-50 bg-gray-900 opacity-75 shadow safe-bottom">
                 <div class="flex px-4 py-5 justify-center">
                     <input
+                        dir={if self.settings.reading_direction == ReadingDirection::RightToLeft {"rtl"} else {"ltr"}}
                         type="range"
                         min="0"
                         max=self.pages.len().checked_sub(1).unwrap_or(0)
