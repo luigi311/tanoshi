@@ -553,7 +553,8 @@ impl Chapter {
 
             if is_next {
                 route_string = format!(
-                    "/chapter/{}/page/1",
+                    "/manga/{}/chapter/{}/page/1",
+                    self.manga_id,
                     self.current_chapter_id
                 );
                 self.previous_chapter_page = self.current_page;
@@ -563,7 +564,8 @@ impl Chapter {
             }
         } else {
             route_string = format!(
-                "/chapter/{}/page/{}",
+                "/manga/{}/chapter/{}/page/{}",
+                self.manga_id,
                 self.current_chapter_id,
                 self.current_page + 1
             );
@@ -605,7 +607,8 @@ impl Chapter {
             if current_chapter_idx < self.chapters.len() {
                 self.pages.clear();
                 let route_string = format!(
-                    "/chapter/{}/page/{}",
+                    "/manga/{}/chapter/{}/page/{}",
+                    self.manga_id,
                     self.current_chapter_id,
                     self.current_page + 1
                 );
@@ -614,7 +617,8 @@ impl Chapter {
             }
         } else {
             let route_string = format!(
-                "/chapter/{}/page/{}",
+                "/manga/{}/chapter/{}/page/{}",
+                self.manga_id,
                 self.current_chapter_id,
                 self.current_page + 1
             );
