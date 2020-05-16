@@ -402,7 +402,7 @@ impl Chapter {
         pages.clone().into_iter().map(|(i, page)| html! {
             <img id={i}
                 ref=self.page_refs[i].clone()
-                class={format!("w-auto h-auto object-contain {}", if self.current_page == i {"block"} else {"hidden"})}
+                class={format!("w-full h-auto object-contain object-center {}", if self.current_page == i {"block"} else {"hidden"})}
                 src={if i >= 0 && i < self.current_page + 3 {page} else {"".to_string()}}
                 style={"background: transparent url('/assets/loading.gif') no-repeat scroll center center"}
             />
