@@ -8,6 +8,9 @@ module.exports = {
         container: {
             center: true,
         },
+        minHeight: {
+            '24': '6rem'
+        }
     },
     variants: {
         backgroundColor: ['responsive', 'hover', 'focus', 'active', 'group-hover'],

@@ -180,7 +180,7 @@ impl Component for Chapter {
             Msg::PagesReady(data) => {
                 self.pages = data.pages;
                 self.page_refs.clear();
-                for i in 0..self.pages.len() {
+                for i in 0..self.pages.len() + 1 {
                     self.page_refs.push(NodeRef::default());
                 }
 
@@ -361,6 +361,7 @@ impl Component for Chapter {
             <div ref=self.refs[1].clone()
             class="animated slideInUp faster block fixed inset-x-0 bottom-0 z-50 bg-gray-900 opacity-75 shadow safe-bottom">
                 <div class="flex px-4 py-5 justify-center">
+                    <span class="mx-4 text-white">{format!("{}", self.current_page + 1)}</span>
                     <input
                         type="range"
                         min="0"
@@ -368,7 +369,7 @@ impl Component for Chapter {
                         step="1"
                         value={self.current_page}
                         oninput=self.link.callback(|e: InputData| Msg::PageSliderChange(e.value.parse::<usize>().unwrap()))/>
-                    <span class="mx-4 text-white">{format!("{}/{}", self.current_page + 1, self.pages.len())}</span>
+                    <span class="mx-4 text-white">{format!("{}", self.pages.len())}</span>
                 </div>
             </div>
         </div>
@@ -394,12 +395,16 @@ impl Component for Chapter {
 
 impl Chapter {
     fn single_page_view(&self) -> Html {
-        let mut i = 0;
-        self.pages.clone().into_iter().map(|page| html! {
-            <img id={let temp = i; i += 1; temp}
+        let mut pages = Vec::new();
+        for i in (0..self.pages.len()) {
+            pages.push((i, self.pages[i].to_owned()));
+        }
+        pages.clone().into_iter().map(|(i, page)| html! {
+            <img id={i}
                 ref=self.page_refs[i].clone()
                 class={format!("w-auto h-auto object-contain {}", if self.current_page == i {"block"} else {"hidden"})}
                 src={if i >= 0 && i < self.current_page + 3 {page} else {"".to_string()}}
+                style={"background: transparent url('/assets/loading.gif') no-repeat scroll center center"}
             />
         }).collect()
     }
@@ -408,10 +413,12 @@ impl Chapter {
         for i in 0..self.pages.len() {
             if i % 2 == 0 {
                 pages.push((
+                    i,
                     match self.pages.get(i) {
                         Some(page) => page.clone(),
                         None => "".to_string()
                     },
+                    i + 1,
                     match self.pages.get(i + 1) {
                         Some(page) => page.clone(),
                         None => "".to_string()
@@ -419,39 +426,44 @@ impl Chapter {
             }
         }
 
-        let mut i = 0;
-        pages.into_iter().map(|(left_page, right_page)| html! {
+        pages.into_iter().map(|(left_idx, left_page, right_idx, right_page)| html! {
         <>
-            <img id={let temp = i; i += 1; temp}
-                ref=self.page_refs[i].clone()
+            <img id={left_idx}
+                ref=self.page_refs[left_idx].clone()
                 class={
                     format!("w-1/2 h-auto object-contain {} {}",
                         if self.settings.reading_direction == ReadingDirection::RightToLeft {"object-left"} else {"object-right"},
-                        if self.current_page == i {"block"} else {"hidden"})
+                        if self.current_page == left_idx {"block"} else {"hidden"})
                 }
-                src={if i >= 0 && i < self.current_page + 3 {left_page} else {"".to_string()}}
+                src={if left_idx >= 0 && left_idx < self.current_page + 3 {left_page} else {"".to_string()}}
+                style={"background: transparent url('/assets/loading.gif') no-repeat scroll center center"}
             />
-            <img id={let temp = i; i += 1; temp}
-                ref=self.page_refs[i].clone()
+            <img id={right_idx}
+                ref=self.page_refs[right_idx].clone()
                 class={
                     format!("w-1/2 h-auto object-contain {} {}",
                         if self.settings.reading_direction == ReadingDirection::RightToLeft {"object-right"} else {"object-left"},
-                        if self.current_page + 1 == i {"block"} else {"hidden"})
+                        if self.current_page + 1 == right_idx {"block"} else {"hidden"})
                 }
-                src={if i >= 0 && i < self.current_page + 3 {right_page} else {"".to_string()}}
+                src={if right_idx >= 0 && right_idx < self.current_page + 3 {right_page} else {"".to_string()}}
+                style={"background: transparent url('/assets/loading.gif') no-repeat scroll center center"}
             />
         </>
         }).collect()
     }
 
     fn long_strip_view(&self) -> Html {
-        let mut i = 0;
-        self.pages.clone().into_iter().map(|page| html! {
-            <img id={let temp = i; i+=1; temp}
+        let mut pages = Vec::new();
+        for i in (0..self.pages.len()) {
+            pages.push((i, self.pages[i].to_owned()));
+        }
+        pages.clone().into_iter().map(|(i, page)| html! {
+            <img id={i}
                 ref=self.page_refs[i].clone()
-                class={format!("w-auto h-auto object-contain block")}
+                class={format!("w-auto min-h-24 object-contain block")}
                 src={if i >= 0 && i < self.current_page + 3 {page} else {"".to_string()}}
                 onmouseup={self.link.callback(|_| Msg::ToggleBar)}
+                style={"background: transparent url('/assets/loading.gif') no-repeat scroll center center"}
             />
         }).collect()
     }
