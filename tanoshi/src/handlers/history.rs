@@ -25,7 +25,7 @@ pub async fn get_history(
             chapter.id AS chapter_id,
             history.last_page AS read, 
             history.at AS at,
-            manga.manga_id
+            manga.id
             FROM chapter
             JOIN manga ON manga.id = chapter.manga_id
             JOIN history ON history.chapter_id = chapter.id
@@ -38,13 +38,13 @@ pub async fn get_history(
         .bind(offset)
         .map(|row: PgRow| 
             History {
-                title: row.get(1),
-                thumbnail_url: row.get(2),
-                chapter: row.get(3),
-                chapter_id: row.get(4),
-                read: row.get(5),
-                at: row.get(6),
-                manga_id: row.get(7),
+                title: row.get(0),
+                thumbnail_url: row.get(1),
+                chapter: row.get(2),
+                chapter_id: row.get(3),
+                read: row.get(4),
+                at: row.get(5),
+                manga_id: row.get(6),
                 days: None,
                 show_sep: None,
             })

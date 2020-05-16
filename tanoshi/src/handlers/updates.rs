@@ -25,8 +25,8 @@ pub async fn get_updates(
             manga.thumbnail_url AS thumbnail_url, 
             chapter.uploaded AS uploaded,
             chapter.number AS number,
-            chapter.id AS chapter_id.
-            manga.manga_id
+            chapter.id AS chapter_id,
+            manga.id
             FROM chapter
             JOIN manga ON manga.id = chapter.manga_id
             JOIN source ON source.id = manga.source_id
@@ -39,12 +39,12 @@ pub async fn get_updates(
         .bind(limit as i64)
         .bind(offset as i64)
         .map(|row: PgRow| Update {
-            title: row.get(1),
-            thumbnail_url: row.get(2),
-            uploaded: row.get(3),
-            number: row.get(4),
-            chapter_id: row.get(5),
-            manga_id: row.get(6),
+            title: row.get(0),
+            thumbnail_url: row.get(1),
+            uploaded: row.get(2),
+            number: row.get(3),
+            chapter_id: row.get(4),
+            manga_id: row.get(5),
             days: None,
             show_sep: None,
         })

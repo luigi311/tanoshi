@@ -106,7 +106,7 @@ impl Scraping for Mangadex {
         let mangadex_resp: tanoshi::mangadex::GetChapterResponse = serde_json::from_reader(resp.into_reader()).unwrap();
 
         for (id, chapter) in mangadex_resp.chapter {
-            if chapter.lang_code == "gb".to_string() || chapter.lang_code == "en".to_string() || chapter.lang_code == "br".to_string() {
+            if chapter.lang_code == "gb".to_string() {
                 chapters.push(Chapter{
                     id: 0,
                     manga_id: 0,
