@@ -10,11 +10,11 @@ use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 use yew_router::components::RouterAnchor;
 use yew_router::service::RouteService;
 
-use super::component::model::{FavoriteManga, GetFavoritesResponse, GetMangasResponse};
-use super::component::{Manga, Spinner};
+use tanoshi::manga::{History as HistoryModel, HistoryResponse, Update as UpdateModel, UpdatesResponse};
+use super::component::{Spinner};
 use yew::utils::{document, window};
 
-use crate::app::component::model::{HistoryModel, HistoryResponse, UpdateModel, UpdatesResponse};
+use crate::app::component::model::{};
 use chrono::{DateTime, FixedOffset, Local, NaiveDateTime, Utc};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
@@ -238,8 +238,8 @@ impl History {
                             {self.show_separator(h.show_sep, h.days)}
                             <RouterAnchor<AppRoute>
                             classes="flex inline-flex border-b border-gray-light p-2 content-center hover:bg-gray-200"
-                            route=AppRoute::Chapter(h.source.clone(), base64::encode_config(h.title.clone(), base64::URL_SAFE_NO_PAD), h.chapter.clone(), (h.read + 1) as usize)>
-                                <div class="mr-4 my-2 h-16 w-16 object-fit object-center bg-center bg-cover rounded-full" style={format!("background-image: url({})", h.thumbnail_url.clone())}/>
+                            route=AppRoute::Chapter(h.manga_id, h.chapter_id, (h.read + 1) as usize)>
+                                <div class="mr-4 my-2 h-16 w-16 object-fit object-center bg-center bg-cover rounded-full" style={format!("background-image: url({})", h.thumbnail_url.clone().unwrap_or("".to_string()))}/>
                                 <div class="flex flex-col my-auto">
                                     <span class="text-lg font-semibold">{h.title.clone()}</span>
                                     <span class="text-md">{format!("Chapter {}", h.chapter.clone())}</span>
@@ -256,7 +256,7 @@ impl History {
                             {self.show_separator(update.show_sep, update.days)}
                             <RouterAnchor<AppRoute>
                             classes="flex inline-flex border-b border-gray-light p-2 content-center hover:bg-gray-200"
-                            route=AppRoute::Chapter(update.source.clone(), base64::encode_config(update.title.clone(), base64::URL_SAFE_NO_PAD), update.number.clone(), 1)>
+                            route=AppRoute::Chapter(update.manga_id, update.chapter_id, 1)>
                                 <div class="mr-4 my-2 h-16 w-16 object-fit object-center bg-center bg-cover rounded-full" style={format!("background-image: url({})", update.thumbnail_url.clone())}/>
                                 <div class="flex flex-col my-auto">
                                     <span class="text-lg font-semibold">{update.title.clone()}</span>

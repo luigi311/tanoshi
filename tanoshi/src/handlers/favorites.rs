@@ -1,5 +1,6 @@
 use crate::auth::Claims;
-use crate::favorites::{favorites::Favorites, FavoriteManga};
+use crate::favorites::{favorites::Favorites};
+use tanoshi::manga::FavoriteManga;
 use sqlx::postgres::PgPool;
 use std::convert::Infallible;
 use std::sync::{Arc, Mutex};
@@ -14,24 +15,21 @@ pub async fn get_favorites(
 }
 
 pub async fn add_favorites(
+    manga_id: i32,
     claim: Claims,
-    manga: FavoriteManga,
     fav: Favorites,
     db: PgPool,
 ) -> Result<impl warp::Reply, Infallible> {
-    let res = fav.add_favorite(claim.sub, manga, db).await;
+    let res = fav.add_favorite(claim.sub, manga_id, db).await;
     Ok(warp::reply::json(&res))
 }
 
 pub async fn remove_favorites(
-    source: String,
-    title: String,
+    manga_id: i32,
     claim: Claims,
     fav: Favorites,
     db: PgPool,
 ) -> Result<impl warp::Reply, Infallible> {
-    let title =
-        String::from_utf8(base64::decode_config(title, base64::URL_SAFE_NO_PAD).unwrap()).unwrap();
-    let res = fav.remove_favorites(claim.sub, source, title, db).await;
+    let res = fav.remove_favorites(claim.sub, manga_id, db).await;
     Ok(warp::reply::json(&res))
 }

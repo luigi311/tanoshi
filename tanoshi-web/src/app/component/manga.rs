@@ -1,9 +1,6 @@
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::__rt::core::time::Duration;
-use wasm_bindgen::prelude::*;
-use wasm_bindgen::JsCast;
-use web_sys::{Document, Element, HtmlElement, Window};
-use yew::format::{Json, Nothing, Text};
+use yew::format::{Json, Nothing};
 use yew::prelude::*;
 use yew::services::fetch::{FetchTask, Request, Response};
 use yew::services::storage::Area;
@@ -11,10 +8,6 @@ use yew::services::{FetchService, StorageService, Task, TimeoutService};
 use yew::{html, Bridge, Bridged, Component, ComponentLink, Html, Properties, ShouldRender};
 use yew_router::agent::{RouteAgent, RouteRequest};
 use yew_router::prelude::*;
-
-use crate::app::AppRoute;
-
-use super::model::GetChaptersResponse;
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct FavoriteManga {
@@ -29,10 +22,9 @@ pub struct AddFavoritesResponse {
 
 #[derive(Clone, PartialEq, Properties)]
 pub struct Props {
+    pub id: i32,
     pub title: String,
     pub thumbnail: String,
-    pub path: String,
-    pub source: String,
     pub is_favorite: bool,
 }
 
@@ -41,11 +33,10 @@ pub struct Manga {
     link: ComponentLink<Self>,
     timeout: TimeoutService,
     job: Option<Box<dyn Task>>,
+    id: i32,
     router: Box<dyn Bridge<RouteAgent>>,
     title: String,
     thumbnail: String,
-    path: String,
-    pub source: String,
     pub is_favorite: bool,
     token: String,
     is_dragging: bool,
@@ -85,10 +76,9 @@ impl Component for Manga {
             timeout: TimeoutService::new(),
             job: None,
             router,
+            id: props.id,
             title: props.title,
             thumbnail: props.thumbnail,
-            path: props.path,
-            source: props.source,
             is_favorite: props.is_favorite,
             token,
             is_dragging: false,
@@ -154,9 +144,6 @@ impl Component for Manga {
     fn view(&self) -> Html {
         let _title = self.title.to_owned();
         let thumbnail = self.thumbnail.to_owned();
-        let path = self.path.to_owned();
-        let source = self.source.to_owned();
-
         html! {
             <div
             class=self.classes()
@@ -185,15 +172,10 @@ impl Manga {
     }
 
     fn favorite(&mut self) {
-        let fav = FavoriteManga {
-            source: self.source.clone(),
-            title: self.title.to_string(),
-        };
-
-        let req = Request::post("/api/favorites")
+        let req = Request::post(format!("/api/favorites/{}", self.id))
             .header("Authorization", self.token.to_owned())
             .header("Content-Type", "application/json")
-            .body(Json(&fav))
+            .body(Nothing)
             .expect("failed to build request");
 
         if let Ok(task) = FetchService::new().fetch(
@@ -214,11 +196,7 @@ impl Manga {
     }
 
     fn unfavorite(&mut self) {
-        let req = Request::delete(format!(
-            "/api/favorites/source/{}/manga/{}",
-            self.source.clone(),
-            base64::encode_config(&self.title, base64::URL_SAFE_NO_PAD)
-        ))
+        let req = Request::delete(format!("/api/favorites/{}", self.id))
         .header("Authorization", self.token.to_owned())
         .body(Nothing)
         .expect("failed to build request");
@@ -251,9 +229,8 @@ impl Manga {
         if !self.job.is_none() {
             self.router
                 .send(RouteRequest::ChangeRoute(Route::from(format!(
-                    "/catalogue/{}/manga/{}",
-                    self.source.clone(),
-                    base64::encode_config(&self.title, base64::URL_SAFE_NO_PAD),
+                    "/manga/{}",
+                    self.id
                 ))));
             self.job = None;
         }

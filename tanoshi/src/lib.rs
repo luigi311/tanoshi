@@ -1,24 +1,3 @@
-use serde::{Deserialize, Serialize};
-
-#[derive(Deserialize, Serialize, Debug, Clone, Default)]
-pub struct MangaModel {
-    pub title: String,
-    pub author: String,
-    //pub genre: Vec<String>,
-    pub status: String,
-    pub description: String,
-    pub path: String,
-    pub thumbnail_url: String,
-    pub last_read: Option<String>,
-    pub last_page: Option<i32>,
-    pub is_favorite: bool,
-}
-
-#[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct GetMangasResponse {
-    pub mangas: Vec<MangaModel>,
-}
-
 pub mod mangadex {
     use serde::{Deserialize, Serialize};
     use std::collections::HashMap;
@@ -81,12 +60,20 @@ pub mod mangadex {
 
 pub mod manga {
     use chrono::Local;
+    use human_sort::compare;
     use serde::{Deserialize, Serialize};
     use std::cmp::Ordering;
-    use human_sort::compare;
+
+    #[derive(Debug, Deserialize, Serialize, Clone, Default)]
+    pub struct Source {
+        pub id: i32,
+        pub name: String,
+        pub url: String,
+    }
 
     #[derive(Debug, Deserialize, Serialize, Clone, Default)]
     pub struct Manga {
+        pub id: i32,
         pub title: String,
         pub author: String,
         //pub genre: Vec<String>,
@@ -103,6 +90,8 @@ pub mod manga {
 
     #[derive(Debug, Deserialize, Serialize, Clone, Eq, PartialEq, Ord)]
     pub struct Chapter {
+        pub id: i32,
+        pub manga_id: i32,
         pub no: String,
         pub title: String,
         pub url: String,
@@ -113,11 +102,13 @@ pub mod manga {
     impl Default for Chapter {
         fn default() -> Self {
             Chapter {
+                id: 0,
+                manga_id: 0,
                 no: "".to_string(),
                 title: "".to_string(),
                 url: "".to_string(),
                 read: 0,
-                uploaded: Local::now().naive_local(),
+                uploaded: chrono::NaiveDateTime::from_timestamp(0, 0),
             }
         }
     }
@@ -156,6 +147,12 @@ pub mod manga {
     }
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
+    pub struct GetSourceResponse {
+        pub sources: Vec<Source>,
+        pub status: String,
+    }
+
+    #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct GetMangasResponse {
         pub mangas: Vec<Manga>,
     }
@@ -172,11 +169,93 @@ pub mod manga {
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct GetPagesResponse {
+        pub manga_id: i32,
         pub pages: Vec<String>,
     }
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct ImageProxyParam {
         pub url: String,
+    }
+
+    #[derive(Debug, Clone, Deserialize, Serialize)]
+    pub struct HistoryRequest {
+        pub chapter_id: i32,
+        pub read: i32,
+        pub at: chrono::NaiveDateTime,
+    }
+
+    #[derive(Debug, Clone, Deserialize, Serialize)]
+    pub struct HistoryResponse {
+        pub history: Vec<History>,
+        pub status: String,
+    }
+
+    #[derive(Debug, Clone, Deserialize, Serialize)]
+    pub struct History {
+        pub manga_id: i32,
+        pub title: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub thumbnail_url: Option<String>,
+        pub chapter: String,
+        pub chapter_id: i32,
+        pub read: i32,
+        pub at: chrono::NaiveDateTime,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub days: Option<i64>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub show_sep: Option<bool>,
+    }
+
+    #[derive(Debug, Clone, Deserialize, Serialize)]
+    pub struct Update {
+        pub manga_id: i32,
+        pub title: String,
+        pub thumbnail_url: String,
+        pub number: String,
+        pub chapter_id: i32,
+        pub uploaded: chrono::NaiveDateTime,
+        pub days: Option<i64>,
+        pub show_sep: Option<bool>,
+    }
+
+    impl Default for Update {
+        fn default() -> Self {
+            Update {
+                manga_id: 0,
+                title: "".to_string(),
+                thumbnail_url: "".to_string(),
+                number: "".to_string(),
+                chapter_id: 0,
+                uploaded: Local::now().naive_local(),
+                days: None,
+                show_sep: None,
+            }
+        }
+    }
+
+    #[derive(Debug, Clone, Deserialize, Serialize)]
+    pub struct UpdatesResponse {
+        pub updates: Vec<Update>,
+        pub status: String,
+    }
+
+    #[derive(Debug, Serialize, Deserialize, Clone)]
+    pub struct GetFavoritesResponse {
+        pub favorites: Option<Vec<FavoriteManga>>,
+        pub status: String,
+    }
+
+    #[derive(Debug, Serialize, Deserialize, Clone)]
+    pub struct AddFavoritesResponse {
+        pub status: String,
+    }
+
+    #[derive(Debug, Serialize, Deserialize, Clone, Default)]
+    pub struct FavoriteManga {
+        pub manga_id: i32,
+        pub title: String,
+        pub path: String,
+        pub thumbnail_url: String,
     }
 }

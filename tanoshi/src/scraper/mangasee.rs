@@ -68,18 +68,7 @@ impl Scraping for Mangasee {
     }
 
     fn get_manga_info(url: &String) -> GetMangaResponse {
-        let mut m = Manga {
-            title: "".to_string(),
-            author: "".to_string(),
-            //genre: vec![],
-            status: "".to_string(),
-            description: "".to_string(),
-            path: "".to_string(),
-            thumbnail_url: "".to_string(),
-            last_read: None,
-            last_page: None,
-            is_favorite: false,
-        };
+        let mut m = Manga::default();
 
         let resp = ureq::get(url.as_str()).call();
         let html = resp.into_string().unwrap();
@@ -166,6 +155,9 @@ impl Scraping for Mangasee {
         for element in document.select(&selector) {
             pages.push(String::from(element.value().attr("src").unwrap()));
         }
-        GetPagesResponse { pages }
+        GetPagesResponse { 
+            manga_id: 0, 
+            pages 
+        }
     }
 }

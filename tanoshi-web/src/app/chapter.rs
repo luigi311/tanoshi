@@ -1,12 +1,10 @@
 use anyhow;
-use chrono::{DateTime, Utc};
 use js_sys;
-use serde_json::json;
 use wasm_bindgen::JsCast;
 use wasm_bindgen::prelude::*;
-use web_sys::{CssStyleDeclaration, HtmlElement, HtmlImageElement};
+use web_sys::{HtmlElement, HtmlImageElement};
 use yew::{Component, ComponentLink, html, Html, InputData, Properties, ShouldRender};
-use yew::format::{Json, Nothing, Text};
+use yew::format::{Json, Nothing};
 use yew::prelude::*;
 use yew::services::fetch::{FetchService, FetchTask, Request, Response};
 use yew::services::storage::Area;
@@ -15,19 +13,18 @@ use yew::utils::{document, window};
 use yew_router::{agent::RouteRequest, prelude::*};
 
 use crate::app::{AppRoute, browse::BrowseRoute, job};
-use crate::app::component::model::{HistoryRequest, HistoryResponse, SettingParams};
 
-use super::component::model::{
-    BackgroundColor, ChapterModel, GetChaptersResponse, GetMangaResponse, GetPagesResponse,
-    MangaModel, PageRendering, ReadingDirection,
-};
 use super::component::Spinner;
+use super::component::model::{
+    BackgroundColor, PageRendering, ReadingDirection, SettingParams
+};
+
+use tanoshi::manga::{Chapter as ChapterModel, GetChaptersResponse, GetPagesResponse, HistoryRequest};
 
 #[derive(Clone, Properties)]
 pub struct Props {
-    pub source: String,
-    pub title: String,
-    pub chapter: String,
+    pub manga_id: i32,
+    pub chapter_id: i32,
     pub page: usize,
 }
 
@@ -36,10 +33,9 @@ pub struct Chapter {
     link: ComponentLink<Self>,
     router: Box<dyn Bridge<RouteAgent>>,
     token: String,
-    source: String,
-    title: String,
+    manga_id: i32,
     chapter: ChapterModel,
-    current_chapter: String,
+    current_chapter_id: i32,
     current_page: usize,
     chapters: Vec<ChapterModel>,
     previous_chapter_page: usize,
@@ -107,28 +103,21 @@ impl Component for Chapter {
         let closure = Closure::wrap(Box::new(move || {
             let current_scroll = window().scroll_y().expect("error get scroll y")
                 + window().inner_height().unwrap().as_f64().unwrap();
-            let height = document()
-                .get_element_by_id("pages")
-                .expect("should have pages")
-                .dyn_ref::<HtmlElement>()
-                .unwrap()
-                .offset_height() as f64;
 
             tmp_link.send_message(Msg::ScrollEvent(current_scroll));
         }) as Box<dyn Fn()>);
 
         let worker_callback = link.callback(|_| Msg::SetHistoryRequested);
         let worker = job::Worker::bridge(worker_callback);
-
+        info!("create");
         Chapter {
             fetch_task: None,
             link,
             router,
             token,
-            source: props.source,
-            title: props.title,
-            current_chapter: props.chapter,
-            chapter: Default::default(),
+            manga_id: props.manga_id,
+            current_chapter_id: props.chapter_id,
+            chapter: ChapterModel::default(),
             current_page: props.page.checked_sub(1).unwrap_or(0),
             chapters: vec![],
             previous_chapter_page: 0,
@@ -147,20 +136,20 @@ impl Component for Chapter {
     }
 
     fn change(&mut self, props: Self::Properties) -> ShouldRender {
-        if self.source != props.source || self.title != props.title || self.current_chapter != props.chapter || self.current_page != props.page.checked_sub(1).unwrap_or(0) {
-            self.source = props.source;
-            self.title = props.title;
-            self.current_chapter = props.chapter;
+        info!("change");
+        if self.current_chapter_id != props.chapter_id || self.current_page != props.page.checked_sub(1).unwrap_or(0) {
+            self.manga_id = props.manga_id;
+            self.current_chapter_id = props.chapter_id;
             self.current_page = props.page.checked_sub(1).unwrap_or(0);
             return true;
         }
         false
     }
 
-    fn rendered(&mut self, first_render: bool) {
+    fn rendered(&mut self, _first_render: bool) {
         if self.should_fetch {
-            self.get_chapters();
             self.should_fetch = false;
+            self.get_chapters();
         }
         document()
             .get_element_by_id("manga-reader")
@@ -179,7 +168,7 @@ impl Component for Chapter {
                 let idx = match self
                     .chapters
                     .iter()
-                    .position(|chapter| chapter.no == self.current_chapter)
+                    .position(|chapter| chapter.id == self.current_chapter_id)
                 {
                     Some(index) => index,
                     None => 0,
@@ -191,7 +180,7 @@ impl Component for Chapter {
             Msg::PagesReady(data) => {
                 self.pages = data.pages;
                 self.page_refs.clear();
-                for i in 0..self.pages.len() + 1 {
+                for i in 0..self.pages.len() {
                     self.page_refs.push(NodeRef::default());
                 }
 
@@ -235,24 +224,24 @@ impl Component for Chapter {
             Msg::ToggleBar => {
                 if self.is_bar_visible {
                     if let Some(bar) = self.refs[0].cast::<HtmlElement>() {
-                        bar.class_list().remove_1("slideInDown");
-                        bar.class_list().add_1("slideOutUp");
+                        bar.class_list().remove_1("slideInDown").expect("failed remove class");
+                        bar.class_list().add_1("slideOutUp").expect("failed add class");
                         self.is_bar_visible = false;
                     }
                     if let Some(bar) = self.refs[1].cast::<HtmlElement>() {
-                        bar.class_list().remove_1("slideInUp");
-                        bar.class_list().add_1("slideOutDown");
+                        bar.class_list().remove_1("slideInUp").expect("failed remove class");
+                        bar.class_list().add_1("slideOutDown").expect("failed add class");
                         self.is_bar_visible = false;
                     }
                 } else {
                     if let Some(bar) = self.refs[0].cast::<HtmlElement>() {
-                        bar.class_list().remove_1("slideOutUp");
-                        bar.class_list().add_1("slideInDown");
+                        bar.class_list().remove_1("slideOutUp").expect("failed remove class");
+                        bar.class_list().add_1("slideInDown").expect("failed add class");
                         self.is_bar_visible = true;
                     }
                     if let Some(bar) = self.refs[1].cast::<HtmlElement>() {
-                        bar.class_list().remove_1("slideOutDown");
-                        bar.class_list().add_1("slideInUp");
+                        bar.class_list().remove_1("slideOutDown").expect("failed remove class");
+                        bar.class_list().add_1("slideInUp").expect("failed add class");
                         self.is_bar_visible = true;
                     }
                 }
@@ -300,7 +289,7 @@ impl Component for Chapter {
             ref=self.refs[0].clone()
             class="animated slideInDown faster block fixed inset-x-0 top-0 z-50 bg-gray-900 z-50 content-end flex opacity-75"
             style="padding-top: calc(env(safe-area-inset-top) + .5rem)">
-                <RouterAnchor<AppRoute> classes="z-50 ml-2 mb-2 text-white" route=AppRoute::Browse(BrowseRoute::Detail(self.source.to_owned(), self.title.to_owned()))>
+                <RouterAnchor<AppRoute> classes="z-50 ml-2 mb-2 text-white" route=AppRoute::Browse(BrowseRoute::Detail(self.manga_id))>
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" class="fill-current inline-block mb-1">
                         <path class="heroicon-ui" d="M5.41 11H21a1 1 0 0 1 0 2H5.41l5.3 5.3a1 1 0 0 1-1.42 1.4l-7-7a1 1 0 0 1 0-1.4l7-7a1 1 0 0 1 1.42 1.4L5.4 11z"/>
                     </svg>
@@ -458,10 +447,10 @@ impl Chapter {
     fn long_strip_view(&self) -> Html {
         let mut i = 0;
         self.pages.clone().into_iter().map(|page| html! {
-            <img id={let temp = i; i += 1; temp}
+            <img id={let temp = i; i+=1; temp}
                 ref=self.page_refs[i].clone()
                 class={format!("w-auto h-auto object-contain block")}
-                src={let temp = i-1; if temp >= 0 && temp < self.current_page + 3 {page} else {"".to_string()}}
+                src={if i >= 0 && i < self.current_page + 3 {page} else {"".to_string()}}
                 onmouseup={self.link.callback(|_| Msg::ToggleBar)}
             />
         }).collect()
@@ -469,8 +458,8 @@ impl Chapter {
 
     fn get_chapters(&mut self) {
         let req = Request::get(format!(
-            "/api/source/{}/manga/{}/chapter",
-            self.source, self.title
+            "/api/manga/{}/chapter",
+            self.manga_id
         ))
             .header("Authorization", self.token.to_string())
             .body(Nothing)
@@ -496,8 +485,8 @@ impl Chapter {
 
     fn get_pages(&mut self) {
         let req = Request::get(format!(
-            "/api/source/{}/manga/{}/chapter/{}",
-            self.source, self.title, self.current_chapter
+            "/api/chapter/{}",
+            self.current_chapter_id
         ))
             .body(Nothing)
             .expect("failed to build request");
@@ -546,7 +535,7 @@ impl Chapter {
             let current_chapter_idx = match self
                 .chapters
                 .iter()
-                .position(|chapter| chapter.no == self.current_chapter)
+                .position(|chapter| chapter.id == self.current_chapter_id)
             {
                 Some(index) => index,
                 None => 0,
@@ -554,7 +543,7 @@ impl Chapter {
 
             let is_next = match current_chapter_idx.checked_sub(1) {
                 Some(index) => {
-                    self.current_chapter = self.chapters[index].no.clone();
+                    self.current_chapter_id = self.chapters[index].id;
                     true
                 }
                 None => false,
@@ -564,8 +553,8 @@ impl Chapter {
 
             if is_next {
                 route_string = format!(
-                    "/catalogue/{}/manga/{}/chapter/{}/page/1",
-                    self.source, self.title, self.current_chapter
+                    "/chapter/{}/page/1",
+                    self.current_chapter_id
                 );
                 self.previous_chapter_page = self.current_page;
 
@@ -574,10 +563,8 @@ impl Chapter {
             }
         } else {
             route_string = format!(
-                "/catalogue/{}/manga/{}/chapter/{}/page/{}",
-                self.source,
-                self.title,
-                self.current_chapter,
+                "/chapter/{}/page/{}",
+                self.current_chapter_id,
                 self.current_page + 1
             );
             let route = Route::from(route_string);
@@ -604,24 +591,22 @@ impl Chapter {
             let current_chapter_idx = match self
                 .chapters
                 .iter()
-                .position(|chapter| chapter.no == self.current_chapter)
+                .position(|chapter| chapter.id == self.current_chapter_id)
             {
                 Some(index) => index + 1,
                 None => 0,
             };
 
-            self.current_chapter = match self.chapters.get(current_chapter_idx) {
-                Some(chapter) => chapter.no.to_string(),
-                None => self.current_chapter.clone(),
+            self.current_chapter_id = match self.chapters.get(current_chapter_idx) {
+                Some(chapter) => chapter.id,
+                None => self.current_chapter_id,
             };
             self.current_page = self.previous_chapter_page;
             if current_chapter_idx < self.chapters.len() {
                 self.pages.clear();
                 let route_string = format!(
-                    "/catalogue/{}/manga/{}/chapter/{}/page/{}",
-                    self.source,
-                    self.title,
-                    self.current_chapter,
+                    "/chapter/{}/page/{}",
+                    self.current_chapter_id,
                     self.current_page + 1
                 );
                 let route = Route::from(route_string);
@@ -629,10 +614,8 @@ impl Chapter {
             }
         } else {
             let route_string = format!(
-                "/catalogue/{}/manga/{}/chapter/{}/page/{}",
-                self.source,
-                self.title,
-                self.current_chapter,
+                "/chapter/{}/page/{}",
+                self.current_chapter_id,
                 self.current_page + 1
             );
             let route = Route::from(route_string);
@@ -650,12 +633,7 @@ impl Chapter {
 
     fn set_history(&mut self) {
         let h = HistoryRequest {
-            source: self.source.clone(),
-            title: String::from_utf8(
-                base64::decode_config(self.title.clone(), base64::URL_SAFE_NO_PAD).unwrap(),
-            )
-                .unwrap(),
-            chapter: self.current_chapter.clone(),
+            chapter_id: self.current_chapter_id,
             read: self.current_page as i32,
             at: self.get_date(),
         };

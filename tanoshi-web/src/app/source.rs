@@ -5,30 +5,28 @@ use yew::prelude::*;
 use yew::services::fetch::{FetchService, FetchTask};
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 
-use super::component::model::{FavoriteManga, GetFavoritesResponse};
 use super::component::Spinner;
 use http::{Request, Response};
 use yew::services::storage::Area;
 use yew::services::StorageService;
 use yew::utils::{document, window};
 
-use tanoshi::manga::{GetMangasResponse, Manga as MangaModel, Params, SortByParam, SortOrderParam};
+use tanoshi::manga::{GetMangasResponse, Manga as MangaModel, Params, SortByParam, SortOrderParam, Source as SourceModel};
 
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 
 #[derive(Clone, Properties)]
 pub struct Props {
-    pub source: Option<String>,
+    pub source_id: Option<i32>,
 }
 
 pub struct Source {
     fetch_task: Option<FetchTask>,
     link: ComponentLink<Self>,
-    source: String,
+    source_id: i32,
     page: i32,
     mangas: Vec<MangaModel>,
-    favorites: Vec<String>,
     is_fetching: bool,
     token: String,
     closure: Closure<dyn Fn()>,
@@ -37,7 +35,6 @@ pub struct Source {
 
 pub enum Msg {
     MangaReady(GetMangasResponse),
-    FavoritesReady(GetFavoritesResponse),
     ScrolledDown,
     KeywordChanged(InputData),
     Search(Event),
@@ -72,15 +69,14 @@ impl Component for Source {
                 tmp_link.send_message(Msg::ScrolledDown);
             }
         }) as Box<dyn Fn()>);
-        info!("source {}", props.source.clone().unwrap());
+        
         Source {
             fetch_task: None,
             link,
-            source: props.source.unwrap(),
+            source_id: props.source_id.unwrap(),
             page: 1,
             mangas: vec![],
-            favorites: vec![],
-            is_fetching: false,
+            is_fetching: true,
             token,
             closure,
             keyword: "".to_string(),
@@ -88,8 +84,8 @@ impl Component for Source {
     }
 
     fn change(&mut self, props: Self::Properties) -> ShouldRender {
-        if self.source != props.clone().source.unwrap() {
-            self.source = props.source.unwrap();
+        if self.source_id != props.clone().source_id.unwrap() {
+            self.source_id = props.source_id.unwrap();
             return true;
         } 
         return false;
@@ -97,7 +93,7 @@ impl Component for Source {
 
     fn rendered(&mut self, first_render: bool) {
         if first_render {
-            self.fetch_favorites();
+            self.fetch_mangas();
         }
     }
 
@@ -111,16 +107,6 @@ impl Component for Source {
                 } else {
                     self.mangas.append(&mut mangas);
                 }
-            }
-            Msg::FavoritesReady(data) => {
-                self.is_fetching = false;
-                self.favorites = data
-                    .favorites
-                    .unwrap()
-                    .iter()
-                    .map(|ch| format!("{}:{}", &ch.source, &ch.title))
-                    .collect();
-                self.fetch_mangas();
             }
             Msg::ScrolledDown => {
                 if !self.is_fetching {
@@ -155,18 +141,17 @@ impl Component for Source {
                     <input
                         type="search"
                         class="col-span-4 px-3 py-2 focus:outline-none text-sm leading-tight text-gray-700 border rounded-l appearance-none"
-                        placeholder=format!("Search {}...", self.source.clone())
+                        placeholder={"Search"}
                         oninput=self.link.callback(|e| Msg::KeywordChanged(e))/>
                     <button type="submit" class="col-span-1 rounded-r bg-tachiyomi-blue"><i class="fa fa-search"></i></button>
                 </form>
                 <div class="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2" id="catalogue">
                     { for self.mangas.iter().map(|manga| html!{
                         <Manga
+                        id=manga.id
                         title=manga.title.to_owned()
                         thumbnail=manga.thumbnail_url.to_owned()
-                        path=manga.path.to_owned()
-                        source=self.source.to_owned()
-                        is_favorite=self.favorites.contains(&format!("{}:{}", &self.source, &manga.title)) />
+                        is_favorite=manga.is_favorite />
                     })
                     }
                 </div>
@@ -199,7 +184,7 @@ impl Source {
         
         let req = Request::get(format!(
             "/api/source/{}?{}",
-            self.source, params
+            self.source_id, params
         ))
         .header("Authorization", self.token.clone())
         .body(Nothing)
@@ -212,30 +197,6 @@ impl Source {
                     if let (meta, Json(Ok(data))) = response.into_parts() {
                         if meta.status.is_success() {
                             return Msg::MangaReady(data);
-                        }
-                    }
-                    Msg::Noop
-                },
-            ),
-        ) {
-            self.fetch_task = Some(FetchTask::from(task));
-            self.is_fetching = true;
-        }
-    }
-
-    fn fetch_favorites(&mut self) {
-        let req = Request::get("/api/favorites")
-            .header("Authorization", self.token.clone())
-            .body(Nothing)
-            .expect("failed to build request");
-
-        if let Ok(task) = FetchService::new().fetch(
-            req,
-            self.link.callback(
-                |response: Response<Json<Result<GetFavoritesResponse, anyhow::Error>>>| {
-                    if let (meta, Json(Ok(data))) = response.into_parts() {
-                        if meta.status.is_success() {
-                            return Msg::FavoritesReady(data);
                         }
                     }
                     Msg::Noop

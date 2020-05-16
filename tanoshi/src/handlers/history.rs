@@ -1,28 +1,9 @@
 use crate::auth::Claims;
-use crate::filters::favorites::favorites;
-use crate::model::Chapter;
-use chrono::Local;
 use serde::{Deserialize, Serialize};
-use sqlx::postgres::PgPool;
+use sqlx::Row;
+use sqlx::postgres::{PgPool, PgRow};
 use std::convert::Infallible;
-use std::sync::{Arc, Mutex};
-
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct History {
-    source: String,
-    title: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    thumbnail_url: Option<String>,
-    chapter: String,
-    read: i32,
-    at: chrono::NaiveDateTime,
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct HistoryResponse {
-    pub history: Vec<History>,
-    pub status: String,
-}
+use tanoshi::manga::{HistoryRequest, HistoryResponse, History};
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct HistoryParam {
@@ -36,20 +17,38 @@ pub async fn get_history(
 ) -> Result<impl warp::Reply, Infallible> {
     let limit: i64 = 10;
     let offset: i64 = (param.page as i64 * limit) - limit;
-    let histories = sqlx::query_as!(
-            History,
-            r#"SELECT source.name AS source, manga.title AS title, 
-                   manga.thumbnail_url as thumbnail_url, chapter.number AS chapter, 
-                   history.last_page AS read, history.at AS at
-                   FROM chapter
-                   JOIN manga ON manga.id = chapter.manga_id
-                   JOIN source ON source.id = manga.source_id
-                   JOIN history ON history.chapter_id = chapter.id
-                   JOIN "user" ON "user".id = history.user_id
-                   WHERE "user".username = $1 ORDER BY at DESC
-                   LIMIT $2 OFFSET $3"#,
-                   claim.sub, limit, offset
-        ).fetch_all(&db).await;
+    let histories = sqlx::query(
+            r#"SELECT 
+            manga.title AS title, 
+            manga.thumbnail_url as thumbnail_url, 
+            chapter.number AS chapter, 
+            chapter.id AS chapter_id,
+            history.last_page AS read, 
+            history.at AS at,
+            manga.manga_id
+            FROM chapter
+            JOIN manga ON manga.id = chapter.manga_id
+            JOIN history ON history.chapter_id = chapter.id
+            JOIN "user" ON "user".id = history.user_id
+            WHERE "user".username = $1 ORDER BY at DESC
+            LIMIT $2 OFFSET $3"#
+        )
+        .bind(claim.sub)
+        .bind(limit)
+        .bind(offset)
+        .map(|row: PgRow| 
+            History {
+                title: row.get(1),
+                thumbnail_url: row.get(2),
+                chapter: row.get(3),
+                chapter_id: row.get(4),
+                read: row.get(5),
+                at: row.get(6),
+                manga_id: row.get(7),
+                days: None,
+                show_sep: None,
+            })
+        .fetch_all(&db).await;
     
     let res = HistoryResponse {
         history: histories.unwrap(),
@@ -70,31 +69,24 @@ pub async fn get_history(
 
 pub async fn add_history(
     claim: Claims,
-    request: History,
+    request: HistoryRequest,
     db: PgPool,
 ) -> Result<impl warp::Reply, Infallible> {
     let reply = match sqlx::query!(
         r#"INSERT INTO history(user_id, chapter_id, last_page, at)
         VALUES(
         (SELECT id FROM "user" WHERE username = $1),
-        (SELECT chapter.id FROM chapter
-        JOIN manga ON manga.id = chapter.manga_id
-        JOIN source ON source.id = manga.source_id
-        WHERE source.name = $2
-        AND manga.title = $3
-        AND chapter.number = $4),
-        $5,
-        $6)
+        $2,
+        $3,
+        $4)
         ON CONFLICT(user_id, chapter_id)
-         DO UPDATE SET last_page = excluded.last_page,
-         at = excluded.at,
-         updated = CURRENT_TIMESTAMP"#,
-            claim.sub,
-            request.source,
-            request.title,
-            request.chapter,
-            request.read,
-            request.at,
+        DO UPDATE SET last_page = excluded.last_page,
+        at = excluded.at,
+        updated = CURRENT_TIMESTAMP"#,
+           claim.sub,
+           request.chapter_id,
+           request.read,
+           request.at,
     ).execute(&db).await 
     {
         Ok(_) => warp::reply::with_status(

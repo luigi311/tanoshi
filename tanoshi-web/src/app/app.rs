@@ -13,8 +13,8 @@ use http::{Response, Request};
 
 #[derive(Switch, Debug, Clone)]
 pub enum AppRoute {
-    #[to = "/catalogue/{source}/manga/{title}/chapter/{chapter}/page/{page}"]
-    Chapter(String, String, String, usize),
+    #[to = "/manga/{manga_id}/chapter/{chapter_id}/page/{page}"]
+    Chapter(i32, i32, usize),
     #[to = "/login"]
     Login,
     #[to = "/logout"]
@@ -92,7 +92,7 @@ impl Component for App {
                 <Router<AppRoute, ()>
                 render = Router::render(|switch: AppRoute| {
                 match switch {
-                    AppRoute::Chapter(source, title, chapter, page) => html!{<Chapter source=source title=title chapter=chapter page=page/>},
+                    AppRoute::Chapter(manga_id, chapter_id, page) => html!{<Chapter manga_id=manga_id chapter_id=chapter_id page=page/>},
                     AppRoute::Login => html!{<Login />},
                     AppRoute::Logout => html!{<Logout />},
                     AppRoute::Browse(route) => {

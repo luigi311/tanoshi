@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use yew::worker::*;
 
-use crate::app::component::model::HistoryRequest;
+use tanoshi::manga::HistoryRequest;
 use yew::format::{Json, Text};
 use yew::services::fetch::{FetchService, FetchTask};
 

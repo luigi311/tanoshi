@@ -37,7 +37,7 @@ pub fn list_mangas(
     secret: String,
     db: PgPool,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    warp::path!("api" / "source" / String)
+    warp::path!("api" / "source" / i32)
         .and(warp::get())
         .and(with_authorization(secret))
         .and(warp::query::<Params>())
@@ -49,7 +49,7 @@ pub fn get_manga_info(
     secret: String,
     db: PgPool,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    warp::path!("api" / "source" / String / "manga" / String)
+    warp::path!("api" / "manga" / i32)
         .and(warp::get())
         .and(with_authorization(secret))
         .and(with_db(db))
@@ -60,7 +60,7 @@ pub fn get_chapters(
     secret: String,
     db: PgPool,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    warp::path!("api" / "source" / String / "manga" / String / "chapter")
+    warp::path!("api" / "manga" / i32 / "chapter")
         .and(warp::get())
         .and(with_authorization(secret))
         .and(warp::query::<GetParams>())
@@ -71,7 +71,7 @@ pub fn get_chapters(
 pub fn get_pages(
     db: PgPool,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    warp::path!("api" / "source" / String / "manga" / String / "chapter" / String)
+    warp::path!("api" / "chapter" / i32)
         .and(warp::get())
         .and(warp::query::<GetParams>())
         .and(with_db(db))

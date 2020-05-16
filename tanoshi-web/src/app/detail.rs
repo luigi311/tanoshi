@@ -3,11 +3,10 @@ use yew::services::fetch::{FetchService, FetchTask, Request, Response};
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 use yew_router::components::RouterAnchor;
 
-use super::component::model::{GetMangaResponse, MangaModel};
 use super::component::Spinner;
 use crate::app::AppRoute;
 
-use tanoshi::manga::{Chapter as ChapterModel, GetChaptersResponse};
+use tanoshi::manga::{GetMangaResponse, Manga as MangaModel, Chapter as ChapterModel, GetChaptersResponse};
 
 use serde::{Deserialize, Serialize};
 
@@ -28,16 +27,14 @@ pub struct AddFavoritesResponse {
 
 #[derive(Clone, Properties)]
 pub struct Props {
-    pub source: String,
-    pub title: String,
+    pub manga_id: i32,
 }
 
 pub struct Detail {
     fetch_task: Option<FetchTask>,
     link: ComponentLink<Self>,
     token: String,
-    source: String,
-    title: String,
+    manga_id: i32,
     manga: MangaModel,
     chapters: Vec<ChapterModel>,
     is_fetching_manga: bool,
@@ -72,20 +69,8 @@ impl Component for Detail {
             fetch_task: None,
             link,
             token,
-            source: props.source,
-            title: props.title,
-            manga: MangaModel {
-                title: "".to_string(),
-                author: "".to_string(),
-                //genre: vec![],
-                status: "".to_string(),
-                description: "".to_string(),
-                path: "".to_string(),
-                thumbnail_url: "".to_string(),
-                last_read: None,
-                last_page: None,
-                is_favorite: false,
-            },
+            manga_id: props.manga_id,
+            manga: MangaModel::default(),
             chapters: vec![],
             is_fetching_manga: false,
             is_fetching_chapter: false,
@@ -94,9 +79,8 @@ impl Component for Detail {
     }
 
     fn change(&mut self, props: Self::Properties) -> ShouldRender {
-        if self.source != props.source || self.title != props.title {
-            self.source = props.source;
-            self.title = props.title;
+        if self.manga_id != props.manga_id {
+            self.manga_id = props.manga_id;
             return true;
         }
         false
@@ -177,12 +161,12 @@ impl Component for Detail {
                     <svg class="fill-current w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path class="heroicon-ui" d="M6 18.7V21a1 1 0 0 1-2 0v-5a1 1 0 0 1 1-1h5a1 1 0 1 1 0 2H7.1A7 7 0 0 0 19 12a1 1 0 1 1 2 0 9 9 0 0 1-15 6.7zM18 5.3V3a1 1 0 0 1 2 0v5a1 1 0 0 1-1 1h-5a1 1 0 0 1 0-2h2.9A7 7 0 0 0 5 12a1 1 0 1 1-2 0 9 9 0 0 1 15-6.7z"/></svg>
                     <span>{"Refresh"}</span>
                 </button>
-                <RouterAnchor<AppRoute>
+                /* <RouterAnchor<AppRoute>
                 classes="ml-2 inline-flex items-center bg-white hover:bg-gray-100 text-gray-800 font-semibold py-1 px-2 border border-gray-400 rounded shadow"
                 route=AppRoute::Chapter(self.source.to_owned(), self.title.to_owned(), self.manga.last_read.as_ref().unwrap_or(&"1".to_string()).to_string(), (self.manga.last_page.as_ref().unwrap_or(&0) + 1) as usize)>
                     <svg class="fill-current w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path class="heroicon-ui" d="M7 5H5v14h14V5h-2v10a1 1 0 0 1-1.45.9L12 14.11l-3.55 1.77A1 1 0 0 1 7 15V5zM5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5c0-1.1.9-2 2-2zm4 2v8.38l2.55-1.27a1 1 0 0 1 .9 0L15 13.38V5H9z"/></svg>
                     <span>{"Read"}</span>
-                </RouterAnchor<AppRoute>>
+                </RouterAnchor<AppRoute>> */
             </div>
             <div class="w-6/7 mx-2 grid grid-cols-1 lg:grid-cols-2">
                 {
@@ -192,7 +176,7 @@ impl Component for Detail {
                         }>
                             <RouterAnchor<AppRoute>
                             classes="px-2 py-2 text-left block hover:shadow"
-                            route=AppRoute::Chapter(self.source.to_owned(), self.title.to_owned(), chapter.no.to_owned(), (chapter.read + 1) as usize)>
+                            route=AppRoute::Chapter(chapter.manga_id, chapter.id, (chapter.read + 1) as usize)>
                                 {format!("Ch. {} {}", chapter.no.to_owned(), chapter.title.to_owned())}
                             </RouterAnchor<AppRoute>>
                         </div>
@@ -206,7 +190,7 @@ impl Component for Detail {
 
 impl Detail {
     fn get_manga_info(&mut self) {
-        let req = Request::get(format!("/api/source/{}/manga/{}", self.source, self.title))
+        let req = Request::get(format!("/api/manga/{}", self.manga_id))
             .header("Authorization", self.token.to_string())
             .body(Nothing)
             .expect("failed to build request");
@@ -231,8 +215,8 @@ impl Detail {
 
     fn get_chapters(&mut self, refresh: bool) {
         let req = Request::get(format!(
-            "/api/source/{}/manga/{}/chapter?refresh={}",
-            self.source, self.title, refresh
+            "/api/manga/{}/chapter?refresh={}",
+            self.manga_id, refresh
         ))
         .header("Authorization", self.token.to_string())
         .body(Nothing)
@@ -256,15 +240,10 @@ impl Detail {
         }
     }
     fn favorite(&mut self) {
-        let fav = FavoriteManga {
-            source: self.source.clone(),
-            title: self.manga.title.to_string(),
-        };
-
-        let req = Request::post("/api/favorites")
+        let req = Request::post(format!("/api/favorites/{}", self.manga_id))
             .header("Authorization", self.token.to_owned())
             .header("Content-Type", "application/json")
-            .body(Json(&fav))
+            .body(Nothing)
             .expect("failed to build request");
 
         if let Ok(task) = FetchService::new().fetch(
@@ -285,11 +264,7 @@ impl Detail {
     }
 
     fn unfavorite(&mut self) {
-        let req = Request::delete(format!(
-            "/api/favorites/source/{}/manga/{}",
-            self.source.clone(),
-            self.title
-        ))
+        let req = Request::delete(format!("/api/favorites/{}", self.manga_id))
         .header("Authorization", self.token.to_owned())
         .body(Nothing)
         .expect("failed to build request");

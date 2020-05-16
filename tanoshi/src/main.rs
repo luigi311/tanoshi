@@ -1,11 +1,10 @@
 extern crate argon2;
+extern crate pretty_env_logger;
+#[macro_use] extern crate log;
 
 use std::str::FromStr;
 
-use pretty_env_logger;
 use sqlx::postgres::PgPool;
-use std::error::Error;
-use std::sync::{Arc, Mutex};
 use warp::Filter;
 
 mod auth;

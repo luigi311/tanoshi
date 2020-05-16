@@ -1,26 +1,17 @@
-use super::component::Manga;
-use serde::Deserialize;
-use web_sys::HtmlElement;
 use yew::format::{Json, Nothing};
-use yew::prelude::*;
 use yew::services::fetch::{FetchService, FetchTask};
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 use yew_router::components::RouterAnchor;
 
-use super::component::model::{FavoriteManga, GetSourceResponse};
 use super::component::Spinner;
 use http::{Request, Response};
-use std::borrow::BorrowMut;
-use yew::services::storage::Area;
-use yew::services::StorageService;
-use yew::utils::{document, window};
-
-use wasm_bindgen::prelude::*;
-use wasm_bindgen::JsCast;
+use yew::utils::{window};
 
 use super::app::AppRoute;
 use super::browse::BrowseRoute;
 use super::catalogue::CatalogueRoute;
+
+use tanoshi::manga::{Source as SourceModel, GetSourceResponse};
 
 #[derive(Clone, Properties)]
 pub struct Props {}
@@ -28,7 +19,7 @@ pub struct Props {}
 pub struct Select {
     fetch_task: Option<FetchTask>,
     link: ComponentLink<Self>,
-    sources: Vec<String>,
+    sources: Vec<SourceModel>,
     is_fetching: bool,
 }
 
@@ -83,8 +74,8 @@ impl Component for Select {
                     for self.sources.iter().map(|source| html!{
                         <RouterAnchor<BrowseRoute>
                             classes="flex inline-flex border-b border-gray-light p-2 content-center hover:bg-gray-200"
-                            route=BrowseRoute::Catalogue(CatalogueRoute::Source(source.to_string()))>
-                            <span class="text-lg font-semibold">{source.clone()}</span>
+                            route=BrowseRoute::Catalogue(CatalogueRoute::Source(source.id))>
+                            <span class="text-lg font-semibold">{source.name.to_owned()}</span>
                         </RouterAnchor<BrowseRoute>>
                     })
                 }

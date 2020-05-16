@@ -21,7 +21,7 @@ impl Scraping for Mangadex {
 
         let mut s = match param.sort_by.unwrap() {
             SortByParam::LastUpdated => 0,
-            SortByParam::Views => 4,
+            SortByParam::Views => 8,
             SortByParam::Title => 2,
             _ => 0,
         };
@@ -77,6 +77,7 @@ impl Scraping for Mangadex {
             false => description_split[0].to_string(),
         };
         let m = Manga {
+            id: 0,
             title: mangadex_resp.manga.title,
             author: mangadex_resp.manga.author,
             //genre: vec![],
@@ -107,6 +108,8 @@ impl Scraping for Mangadex {
         for (id, chapter) in mangadex_resp.chapter {
             if chapter.lang_code == "gb".to_string() || chapter.lang_code == "en".to_string() || chapter.lang_code == "br".to_string() {
                 chapters.push(Chapter{
+                    id: 0,
+                    manga_id: 0,
                     no: match chapter.chapter.as_str() {
                         "" => "0".to_string(),
                         _ => chapter.chapter,
@@ -132,7 +135,10 @@ impl Scraping for Mangadex {
             pages.push(format!("{}{}/{}", mangadex_resp.server, mangadex_resp.hash, page));
         }
 
-        GetPagesResponse { pages }
+        GetPagesResponse { 
+            manga_id: 0,
+            pages 
+        }
     }
 }
 

@@ -5,7 +5,7 @@ use yew::services::storage::Area;
 use yew::services::{FetchService, StorageService};
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 
-use super::component::model::{FavoriteManga, GetFavoritesResponse, GetMangasResponse};
+use tanoshi::manga::{FavoriteManga, GetFavoritesResponse, GetMangasResponse};
 use super::component::{Manga, Spinner};
 
 #[derive(Deserialize, Debug)]
@@ -91,12 +91,11 @@ impl Component for Home {
                 <Spinner is_active=self.is_fetching is_fullscreen=true />
                 <div class="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
                 {
-                for self.mangas.iter().map(|manga|  html!{
+                for self.mangas.iter().map(|manga| html!{
                 <Manga
+                    id=manga.manga_id
                     title=manga.title.to_owned()
                     thumbnail=manga.thumbnail_url.to_owned()
-                    path=manga.path.to_owned()
-                    source=manga.source.to_owned()
                     is_favorite={false} />
                 })
                 }

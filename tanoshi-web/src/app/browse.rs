@@ -17,8 +17,8 @@ use super::settings::Settings;
 
 #[derive(Switch, Debug, Clone)]
 pub enum BrowseRoute {
-    #[to = "/catalogue/{source}/manga/{title}"]
-    Detail(String, String),
+    #[to = "/manga/{manga_id}"]
+    Detail(i32),
     #[to = "/catalogue{*:rest}"]
     Catalogue(CatalogueRoute),
     #[to = "/updates"]
@@ -30,7 +30,6 @@ pub enum BrowseRoute {
     #[to = "/"]
     Home,
 }
-
 #[derive(Clone, PartialEq, Properties)]
 pub struct Props {
     pub source: Option<String>,
@@ -39,15 +38,9 @@ pub struct Props {
 
 impl Into<Props> for BrowseRoute {
     fn into(self) -> Props {
-        match self {
-            BrowseRoute::Detail(source, title) => Props {
-                source: Some(source),
-                title: Some(title),
-            },
-            _ => Props {
-                source: None,
-                title: None,
-            },
+        Props {
+            source: None,
+            title: None,
         }
     }
 }
@@ -106,7 +99,7 @@ impl Component for Browse {
                     <Router<BrowseRoute>
                     render = Router::render(|switch: BrowseRoute| {
                     match switch {
-                        BrowseRoute::Detail(source, title) => html!{<Detail source=source title=title/>},
+                        BrowseRoute::Detail(manga_id) => html!{<Detail manga_id=manga_id/>},
                         BrowseRoute::Catalogue(catalogue_route) => html!{<Catalogue route=catalogue_route/>},
                         BrowseRoute::Updates => html!{<History/>},
                         BrowseRoute::History => html!{<History/>},

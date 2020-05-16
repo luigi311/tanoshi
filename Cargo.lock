@@ -2140,6 +2140,7 @@ dependencies = [
  "futures",
  "human-sort",
  "jsonwebtoken",
+ "log 0.3.9",
  "pretty_env_logger",
  "rand 0.7.3",
  "regex",
