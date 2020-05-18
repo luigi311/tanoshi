@@ -240,7 +240,7 @@ impl Detail {
         }
     }
     fn favorite(&mut self) {
-        let req = Request::post(format!("/api/favorites/{}", self.manga_id))
+        let req = Request::post(format!("/api/favorites/manga/{}", self.manga_id))
             .header("Authorization", self.token.to_owned())
             .header("Content-Type", "application/json")
             .body(Nothing)
@@ -264,7 +264,7 @@ impl Detail {
     }
 
     fn unfavorite(&mut self) {
-        let req = Request::delete(format!("/api/favorites/{}", self.manga_id))
+        let req = Request::delete(format!("/api/favorites/manga/{}", self.manga_id))
         .header("Authorization", self.token.to_owned())
         .body(Nothing)
         .expect("failed to build request");
