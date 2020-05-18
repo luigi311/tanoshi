@@ -11,7 +11,7 @@ crate-type = ["lib"]
 bin = [
     "ureq",
     "scraper",
-    "regex",
+    "fancy-regex",
     "tokio",
     "warp",
     "rust-argon2",
@@ -21,14 +21,15 @@ bin = [
     "jsonwebtoken",
     "base64",
     "sqlx",
-    "futures"
+    "futures",
+    "zip"
 ]
 lib = []
 
 [dependencies]
 ureq = {version = "1", optional = true}
 scraper = {version = "0.12", optional = true}
-regex = {version = "1", optional = true}
+fancy-regex = {version = "0.3", optional = true}
 serde = {version = "1.0", features = ["derive"]}
 serde_json = "1.0"
 serde_urlencoded = "0.6"
@@ -45,3 +46,4 @@ sqlx = { version = "0.3", default-features = false, features = [ "runtime-tokio"
 chrono = { version = "0.4", features = ["serde"] }
 futures = {version = "*", optional = true}
 human-sort = {version = "0.2"}
+zip = {version = "0.5", optional = true}

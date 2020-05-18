@@ -1,4 +1,4 @@
-use regex::Regex;
+use fancy_regex::Regex;
 use serde_json::json;
 
 use crate::scraper::Scraping;

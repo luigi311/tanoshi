@@ -3,9 +3,8 @@ use serde::{Deserialize, Serialize};
 
 pub mod repository;
 pub mod mangasee;
-use mangasee::Mangasee;
-
 pub mod mangadex;
+pub mod local;
 
 use tanoshi::manga::{
     GetMangasResponse, GetMangaResponse, GetChaptersResponse, GetPagesResponse, Params

@@ -152,7 +152,10 @@ pub async fn get_chapters(
         LEFT JOIN history ON chapter.id = history.chapter_id
         AND history.user_id = (SELECT id FROM "user" WHERE username = $1)
         WHERE chapter.manga_id = $2
-        ORDER BY CAST(chapter.number AS DECIMAL) DESC"#,
+        ORDER BY CAST((CASE
+            WHEN chapter.number = '' IS TRUE THEN '0'
+            ELSE chapter.number
+            END) AS DECIMAL) DESC"#,
         username,
         manga_id
     )
