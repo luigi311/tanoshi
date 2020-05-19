@@ -6,7 +6,7 @@ use std::io::Read;
 use ureq;
 
 use crate::auth::Claims;
-use crate::scraper::{local::Local, mangadex::Mangadex, mangasee::Mangasee, repository};
+use crate::scraper::{local::Local, repository};
 use tanoshi::scraping::Scraping;
 use tanoshi::manga::{GetParams, ImageProxyParam, Params};
 use tanoshi::mangadex::MangadexLogin;
@@ -35,12 +35,11 @@ pub async fn list_mangas(
 ) -> Result<impl warp::Reply, Rejection> {
     if let Ok(source) = repository::get_source(source_id, db.clone()).await {
         let mangas = match source.name.as_str() {
-            "local" => Local::get_mangas(
-                &"/Users/fadhlika/Repos/tanoshi/mangas".to_string(),
-                param,
-                vec![],
-            ).unwrap(),
-            "mangasee" => Mangasee::get_mangas(&source.url, param, vec![]).unwrap(),
+            "local" => {
+                let path = std::env::var("MANGA_PATH").expect("MANGA_PATH not set");
+                Local::get_mangas(&path, param, vec![],).unwrap()
+            },
+            "mangasee" => crate::scraper::get_mangas(source.name, &source.url, param, vec![]).unwrap(),
             "mangadex" => {
                 let ret = sqlx::query!(
                     r#"SELECT mangadex_cookies FROM "user" WHERE username = $1"#,
@@ -49,7 +48,7 @@ pub async fn list_mangas(
                 .fetch_one(&db)
                 .await;
                 let ret = ret.unwrap();
-                Mangadex::get_mangas(&source.url, param, ret.mangadex_cookies.unwrap()).unwrap()
+                crate::scraper::get_mangas(source.name, &source.url, param, ret.mangadex_cookies.unwrap()).unwrap()
             }
             &_ => return Err(warp::reject()),
         };
@@ -84,9 +83,9 @@ pub async fn get_manga_info(
         return Ok(warp::reply::json(&manga));
     } else if let Ok(url) = repository::get_manga_url(manga_id, db.clone()).await {
         let manga = if url.contains("mangasee") {
-            Mangasee::get_manga_info(&url).unwrap()
+            crate::scraper::get_manga_info("mangasee".to_string(), &url).unwrap()
         } else if url.contains("mangadex") {
-            Mangadex::get_manga_info(&url).unwrap()
+            crate::scraper::get_manga_info("mangadex".to_string(), &url).unwrap()
         } else if url.starts_with("/") {
             Local::get_manga_info(&url).unwrap()
         } else {
@@ -128,9 +127,9 @@ pub async fn get_chapters(
 
     if let Ok(url) = repository::get_manga_url(manga_id, db.clone()).await {
         let chapter = if url.contains("mangasee") {
-            Mangasee::get_chapters(&url).unwrap()
+            crate::scraper::get_chapters("mangasee".to_string(), &url).unwrap()
         } else if url.contains("mangadex") {
-            Mangadex::get_chapters(&url).unwrap()
+            crate::scraper::get_chapters("mangadex".to_string(), &url).unwrap()
         } else if url.starts_with("/") {
             Local::get_chapters(&url).unwrap()
         } else {
@@ -170,9 +169,9 @@ pub async fn get_pages(
 
     if let Ok(url) = repository::get_chapter_url(chapter_id, db.clone()).await {
         let pages = if url.contains("mangasee") {
-            Mangasee::get_pages(&url).unwrap()
+            crate::scraper::get_pages("mangasee".to_string(), &url).unwrap()
         } else if url.contains("mangadex") {
-            Mangadex::get_pages(&url).unwrap()
+            crate::scraper::get_pages("mangadex".to_string(), &url).unwrap()
         } else if url.starts_with("/") {
             Local::get_pages(&url).unwrap()
         } else {
@@ -229,7 +228,7 @@ pub async fn login(
     login: MangadexLogin,
     db: PgPool,
 ) -> Result<impl warp::Reply, Rejection> {
-    match Mangadex::login(&"https://mangadex.org".to_owned(), login) {
+    /* match Mangadex::login(&"https://mangadex.org".to_owned(), login) {
         Ok(cookies) => {
             sqlx::query!(
                 r#"
@@ -244,5 +243,6 @@ pub async fn login(
             return Ok(warp::reply());
         }
         Err(e) => return Err(warp::reject::custom(TransactionReject { message: e })),
-    }
+    } */
+    Ok(warp::reply())
 }
