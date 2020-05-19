@@ -1,4 +1,3 @@
-use crate::scraper::Scraping;
 use human_sort::compare;
 use std::{fs, io};
 use std::io::{BufReader, Read};
@@ -6,6 +5,7 @@ use tanoshi::manga::{
     Chapter, GetChaptersResponse, GetMangaResponse, GetMangasResponse, GetPagesResponse, GetParams,
     Manga, Params, SortByParam, SortOrderParam,
 };
+use tanoshi::scraping::Scraping;
 use zip::result::ZipError;
 use fancy_regex::Regex;
 use anyhow::Result;

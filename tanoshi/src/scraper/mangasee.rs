@@ -2,7 +2,7 @@ use fancy_regex::Regex;
 use serde_json::json;
 use anyhow::Result;
 
-use crate::scraper::Scraping;
+use tanoshi::scraping::Scraping;
 use tanoshi::manga::{
     Chapter, Manga, Params, SortOrderParam, SortByParam
 };

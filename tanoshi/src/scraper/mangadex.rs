@@ -3,7 +3,7 @@ use serde_json::json;
 use ureq;
 use anyhow::Result;
 
-use crate::scraper::Scraping;
+use tanoshi::scraping::Scraping;
 use tanoshi::manga::{
     Chapter, Manga, Params, SortByParam, SortOrderParam
 };

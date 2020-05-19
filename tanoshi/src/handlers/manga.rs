@@ -6,7 +6,8 @@ use std::io::Read;
 use ureq;
 
 use crate::auth::Claims;
-use crate::scraper::{local::Local, mangadex::Mangadex, mangasee::Mangasee, repository, Scraping};
+use crate::scraper::{local::Local, mangadex::Mangadex, mangasee::Mangasee, repository};
+use tanoshi::scraping::Scraping;
 use tanoshi::manga::{GetParams, ImageProxyParam, Params};
 use tanoshi::mangadex::MangadexLogin;
 
