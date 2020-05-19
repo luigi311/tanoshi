@@ -4,7 +4,6 @@
 // use crate::filters::with_db;
 use crate::filters::{with_authorization, with_db};
 use crate::handlers::manga;
-use crate::scraper::{mangasee::Mangasee};
 use tanoshi::manga::{ GetParams, Params, ImageProxyParam};
 use sqlx::postgres::PgPool;
 use std::sync::{Arc, Mutex};
