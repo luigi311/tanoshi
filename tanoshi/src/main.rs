@@ -11,7 +11,6 @@ mod auth;
 mod favorites;
 mod filters;
 mod handlers;
-mod model;
 mod scraper;
 
 #[tokio::main]

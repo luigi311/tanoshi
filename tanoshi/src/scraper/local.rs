@@ -1,4 +1,3 @@
-use crate::scraper::Scraping;
 use human_sort::compare;
 use std::{fs, io};
 use std::io::{BufReader, Read};
@@ -6,8 +5,10 @@ use tanoshi::manga::{
     Chapter, GetChaptersResponse, GetMangaResponse, GetMangasResponse, GetPagesResponse, GetParams,
     Manga, Params, SortByParam, SortOrderParam,
 };
+use tanoshi::scraping::Scraping;
 use zip::result::ZipError;
 use fancy_regex::Regex;
+use anyhow::Result;
 
 #[derive(Clone)]
 pub struct Local {
@@ -15,7 +16,7 @@ pub struct Local {
 }
 
 impl Scraping for Local {
-    fn get_mangas(url: &String, param: Params, cookies: Vec<String>) -> GetMangasResponse {
+    fn get_mangas(url: &String, param: Params, cookies: Vec<String>) -> Result<Vec<Manga>> {
         let entries = fs::read_dir(url)
             .expect("error read directory")
             .filter(|res| res.as_ref().unwrap().file_type().unwrap().is_dir())
@@ -37,16 +38,14 @@ impl Scraping for Local {
             .collect::<Result<Vec<_>, io::Error>>()
             .unwrap_or(vec![]);
 
-        GetMangasResponse { mangas: entries }
+        Ok(entries)
     }
 
-    fn get_manga_info(url: &String) -> GetMangaResponse {
-        GetMangaResponse {
-            manga: Manga::default(),
-        }
+    fn get_manga_info(url: &String) -> Result<Manga> {
+        Ok(Manga::default())
     }
 
-    fn get_chapters(url: &String) -> GetChaptersResponse {
+    fn get_chapters(url: &String) -> Result<Vec<Chapter>> {
         let re = Regex::new(r"(?<=v)(\d+)|(?<=volume)\s*(\d+)|(?<=vol)\s*(\d+)|(?<=ch)(\d+)|(?<=chapter)\s*(\d+)|(\d+)").unwrap();
         let entries = fs::read_dir(url)
             .expect("error read directory")
@@ -66,20 +65,17 @@ impl Scraping for Local {
             .collect::<Result<Vec<_>, io::Error>>()
             .unwrap_or(vec![]);
 
-        GetChaptersResponse { chapters: entries }
+        Ok(entries)
     }
 
-    fn get_pages(url: &String) -> GetPagesResponse {
+    fn get_pages(url: &String) -> Result<Vec<String>> {
         let file = fs::File::open(&url).unwrap();
         let reader = BufReader::new(file);
 
         let archive = zip::ZipArchive::new(reader).unwrap();
         let mut pages: Vec<String> = archive.file_names().map(|file_name| format!("{}/{}", url, file_name)).collect();
         pages.sort();
-        GetPagesResponse {
-            manga_id: 0,
-            pages: pages,
-        }
+        Ok(pages)
     }
 }
 

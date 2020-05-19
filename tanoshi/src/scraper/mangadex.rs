@@ -1,11 +1,11 @@
 use fancy_regex::Regex;
 use serde_json::json;
 use ureq;
+use anyhow::Result;
 
-use crate::scraper::Scraping;
+use tanoshi::scraping::Scraping;
 use tanoshi::manga::{
-    Chapter, GetChaptersResponse, GetMangaResponse, GetMangasResponse, GetPagesResponse, GetParams,
-    Manga, Params, SortByParam, SortOrderParam
+    Chapter, Manga, Params, SortByParam, SortOrderParam
 };
 use chrono::{DateTime, Local};
 use tanoshi::mangadex::MangadexLogin;
@@ -16,7 +16,7 @@ pub struct Mangadex {
 }
 
 impl Scraping for Mangadex {
-    fn get_mangas(url: &String, param: Params, cookies: Vec<String>) -> GetMangasResponse {
+    fn get_mangas(url: &String, param: Params, cookies: Vec<String>) -> Result<Vec<Manga>> {
         let mut mangas: Vec<Manga> = Vec::new();
 
         let mut s = match param.sort_by.unwrap() {
@@ -64,10 +64,10 @@ impl Scraping for Mangadex {
             mangas.push(manga);
         }
 
-        GetMangasResponse { mangas }
+        Ok(mangas)
     }
 
-    fn get_manga_info(url: &String) -> GetMangaResponse {
+    fn get_manga_info(url: &String) -> Result<Manga> {
         let resp = ureq::get(url.as_str()).call();
         let mangadex_resp: tanoshi::mangadex::GetMangaResponse = serde_json::from_reader(resp.into_reader()).unwrap();
 
@@ -96,10 +96,10 @@ impl Scraping for Mangadex {
             is_favorite: false,
         };
 
-        GetMangaResponse { manga: m }
+        Ok(m)
     }
 
-    fn get_chapters(url: &String) -> GetChaptersResponse {
+    fn get_chapters(url: &String) -> Result<Vec<Chapter>> {
         let mut chapters: Vec<Chapter> = Vec::new();
 
         let resp = ureq::get(url.as_str()).call();
@@ -122,10 +122,10 @@ impl Scraping for Mangadex {
             }
         }
 
-        GetChaptersResponse { chapters }
+        Ok(chapters)
     }
 
-    fn get_pages(url: &String) -> GetPagesResponse {
+    fn get_pages(url: &String) -> Result<Vec<String>> {
         let mut pages = Vec::new();
 
         let resp = ureq::get(url.as_str()).call();
@@ -135,10 +135,7 @@ impl Scraping for Mangadex {
             pages.push(format!("{}{}/{}", mangadex_resp.server, mangadex_resp.hash, page));
         }
 
-        GetPagesResponse { 
-            manga_id: 0,
-            pages 
-        }
+        Ok(pages)
     }
 }
 

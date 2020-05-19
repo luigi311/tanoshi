@@ -1,10 +1,10 @@
 use fancy_regex::Regex;
 use serde_json::json;
+use anyhow::Result;
 
-use crate::scraper::Scraping;
+use tanoshi::scraping::Scraping;
 use tanoshi::manga::{
-    Chapter, GetChaptersResponse, GetMangaResponse, GetMangasResponse, GetPagesResponse, GetParams,
-    Manga, Params, SortOrderParam, SortByParam
+    Chapter, Manga, Params, SortOrderParam, SortByParam
 };
 use chrono::{DateTime, Local};
 
@@ -14,7 +14,7 @@ pub struct Mangasee {
 }
 
 impl Scraping for Mangasee {
-    fn get_mangas(url: &String, param: Params, _: Vec<String>) -> GetMangasResponse {
+    fn get_mangas(url: &String, param: Params, _: Vec<String>) -> Result<Vec<Manga>> {
         let mut mangas: Vec<Manga> = Vec::new();
 
         let sort_by = match param.sort_by.unwrap() {
@@ -64,10 +64,10 @@ impl Scraping for Mangasee {
             mangas.push(manga);
         }
 
-        GetMangasResponse { mangas }
+        Ok(mangas)
     }
 
-    fn get_manga_info(url: &String) -> GetMangaResponse {
+    fn get_manga_info(url: &String) -> Result<Manga> {
         let mut m = Manga::default();
 
         let resp = ureq::get(url.as_str()).call();
@@ -114,10 +114,10 @@ impl Scraping for Mangasee {
             }
         }
 
-        GetMangaResponse { manga: m }
+        Ok(m)
     }
 
-    fn get_chapters(url: &String) -> GetChaptersResponse {
+    fn get_chapters(url: &String) -> Result<Vec<Chapter>> {
         let mut chapters: Vec<Chapter> = Vec::new();
         let resp = ureq::get(url.as_str()).call();
         let html = resp.into_string().unwrap();
@@ -141,10 +141,10 @@ impl Scraping for Mangasee {
             chapters.push(chapter);
         }
 
-        GetChaptersResponse { chapters }
+        Ok(chapters)
     }
 
-    fn get_pages(url: &String) -> GetPagesResponse {
+    fn get_pages(url: &String) -> Result<Vec<String>> {
         let mut pages = Vec::new();
         let resp = ureq::get(url.as_str()).call();
         let html = resp.into_string().unwrap();
@@ -155,9 +155,6 @@ impl Scraping for Mangasee {
         for element in document.select(&selector) {
             pages.push(String::from(element.value().attr("src").unwrap()));
         }
-        GetPagesResponse { 
-            manga_id: 0, 
-            pages 
-        }
+        Ok(pages)
     }
 }

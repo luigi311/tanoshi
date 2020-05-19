@@ -6,7 +6,8 @@ use std::io::Read;
 use ureq;
 
 use crate::auth::Claims;
-use crate::scraper::{local::Local, mangadex::Mangadex, mangasee::Mangasee, repository, Scraping};
+use crate::scraper::{local::Local, mangadex::Mangadex, mangasee::Mangasee, repository};
+use tanoshi::scraping::Scraping;
 use tanoshi::manga::{GetParams, ImageProxyParam, Params};
 use tanoshi::mangadex::MangadexLogin;
 
@@ -38,8 +39,8 @@ pub async fn list_mangas(
                 &"/Users/fadhlika/Repos/tanoshi/mangas".to_string(),
                 param,
                 vec![],
-            ),
-            "mangasee" => Mangasee::get_mangas(&source.url, param, vec![]),
+            ).unwrap(),
+            "mangasee" => Mangasee::get_mangas(&source.url, param, vec![]).unwrap(),
             "mangadex" => {
                 let ret = sqlx::query!(
                     r#"SELECT mangadex_cookies FROM "user" WHERE username = $1"#,
@@ -48,13 +49,13 @@ pub async fn list_mangas(
                 .fetch_one(&db)
                 .await;
                 let ret = ret.unwrap();
-                Mangadex::get_mangas(&source.url, param, ret.mangadex_cookies.unwrap())
+                Mangadex::get_mangas(&source.url, param, ret.mangadex_cookies.unwrap()).unwrap()
             }
             &_ => return Err(warp::reject()),
         };
 
         let manga_ids =
-            match repository::insert_mangas(source_id, mangas.mangas.clone(), db.clone()).await {
+            match repository::insert_mangas(source_id, mangas.clone(), db.clone()).await {
                 Ok(ids) => ids,
                 Err(e) => {
                     return Err(warp::reject::custom(TransactionReject {
@@ -83,16 +84,16 @@ pub async fn get_manga_info(
         return Ok(warp::reply::json(&manga));
     } else if let Ok(url) = repository::get_manga_url(manga_id, db.clone()).await {
         let manga = if url.contains("mangasee") {
-            Mangasee::get_manga_info(&url)
+            Mangasee::get_manga_info(&url).unwrap()
         } else if url.contains("mangadex") {
-            Mangadex::get_manga_info(&url)
+            Mangadex::get_manga_info(&url).unwrap()
         } else if url.starts_with("/") {
-            Local::get_manga_info(&url)
+            Local::get_manga_info(&url).unwrap()
         } else {
             return Err(warp::reject());
         };
 
-        match repository::update_manga_info(manga_id, manga.manga, db.clone()).await {
+        match repository::update_manga_info(manga_id, manga, db.clone()).await {
             Ok(_) => {}
             Err(e) => {
                 return Err(warp::reject::custom(TransactionReject {
@@ -127,16 +128,16 @@ pub async fn get_chapters(
 
     if let Ok(url) = repository::get_manga_url(manga_id, db.clone()).await {
         let chapter = if url.contains("mangasee") {
-            Mangasee::get_chapters(&url)
+            Mangasee::get_chapters(&url).unwrap()
         } else if url.contains("mangadex") {
-            Mangadex::get_chapters(&url)
+            Mangadex::get_chapters(&url).unwrap()
         } else if url.starts_with("/") {
-            Local::get_chapters(&url)
+            Local::get_chapters(&url).unwrap()
         } else {
             return Err(warp::reject());
         };
 
-        match repository::insert_chapters(manga_id, chapter.chapters.clone(), db.clone()).await {
+        match repository::insert_chapters(manga_id, chapter.clone(), db.clone()).await {
             Ok(_) => {}
             Err(e) => {
                 return Err(warp::reject::custom(TransactionReject {
@@ -169,16 +170,16 @@ pub async fn get_pages(
 
     if let Ok(url) = repository::get_chapter_url(chapter_id, db.clone()).await {
         let pages = if url.contains("mangasee") {
-            Mangasee::get_pages(&url)
+            Mangasee::get_pages(&url).unwrap()
         } else if url.contains("mangadex") {
-            Mangadex::get_pages(&url)
+            Mangadex::get_pages(&url).unwrap()
         } else if url.starts_with("/") {
-            Local::get_pages(&url)
+            Local::get_pages(&url).unwrap()
         } else {
             return Err(warp::reject());
         };
 
-        match repository::insert_pages(chapter_id, pages.pages.clone(), db.clone()).await {
+        match repository::insert_pages(chapter_id, pages.clone(), db.clone()).await {
             Ok(_) => {}
             Err(e) => {
                 return Err(warp::reject::custom(TransactionReject {
