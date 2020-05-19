@@ -127,6 +127,3 @@ CREATE TABLE favorite
 );
 
 CREATE INDEX favorite_idx ON favorite (user_id, manga_id);
-
-INSERT INTO source(name, url)
-VALUES ('mangasee', 'https://mangaseeonline.us');
