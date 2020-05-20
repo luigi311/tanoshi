@@ -1,4 +1,3 @@
-
 pub mod mangadex {
     use serde::{Deserialize, Serialize};
     use std::collections::HashMap;
@@ -70,6 +69,7 @@ pub mod manga {
         pub id: i32,
         pub name: String,
         pub url: String,
+        pub need_login: bool,
     }
 
     #[derive(Debug, Deserialize, Serialize, Clone, Default)]
@@ -262,12 +262,10 @@ pub mod manga {
 }
 
 pub mod scraping {
-    use crate::manga::{
-        Manga, Chapter, Params
-    };
+    use crate::manga::{Chapter, Manga, Params};
     use anyhow::Result;
     pub trait Scraping {
-        fn get_mangas(url: &String, param: Params, cookies: Vec<String>) -> Result<Vec<Manga>> ;
+        fn get_mangas(url: &String, param: Params, cookies: Vec<String>) -> Result<Vec<Manga>>;
         fn get_manga_info(url: &String) -> Result<Manga>;
         fn get_chapters(url: &String) -> Result<Vec<Chapter>>;
         fn get_pages(url: &String) -> Result<Vec<String>>;

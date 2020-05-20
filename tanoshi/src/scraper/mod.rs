@@ -33,6 +33,7 @@ pub fn get_sources() -> Vec<Source> {
         id: 0,
         name: "local".to_string(),
         url: local_path,
+        need_login: false,
     });
     plugins
 }

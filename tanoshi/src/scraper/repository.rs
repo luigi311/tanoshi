@@ -3,12 +3,16 @@ use sqlx::postgres::{PgPool, PgRow, PgArguments, PgQueryAs};
 use tanoshi::manga::{Source, Chapter, GetChaptersResponse, GetMangaResponse, GetMangasResponse, GetPagesResponse, Manga};
 
 pub async fn get_sources(db: PgPool) -> Result<Vec<Source>, sqlx::Error> {
-    let sources = sqlx::query_as!(Source, "SELECT id, name, url FROM source").fetch_all(&db).await?;
+    let sources = sqlx::query_as!(
+        Source, "SELECT id, name, url, need_login FROM source")
+        .fetch_all(&db).await?;
     Ok(sources)
 }
 
 pub async fn get_source(source_id: i32, db: PgPool) -> Result<Source, sqlx::Error> {
-    let ret = sqlx::query_as!(Source, r#"SELECT id, name, url FROM source WHERE id = $1"#, source_id)
+    let ret = sqlx::query_as!(
+        Source, r#"SELECT id, name, url, need_login FROM source WHERE id = $1"#, 
+        source_id)
         .fetch_one(&db)
         .await?;
 
@@ -18,7 +22,7 @@ pub async fn get_source(source_id: i32, db: PgPool) -> Result<Source, sqlx::Erro
 pub async fn get_source_from_manga_id(manga_id: i32, db: PgPool) -> Result<Source, sqlx::Error> {
     let ret = sqlx::query_as!(
         Source, 
-        r#"SELECT source.id, source.name, source.url 
+        r#"SELECT source.id, source.name, source.url, source.need_login
         FROM manga
         JOIN source ON source.id = manga.source_id 
         WHERE manga.id = $1"#, 
@@ -32,7 +36,7 @@ pub async fn get_source_from_manga_id(manga_id: i32, db: PgPool) -> Result<Sourc
 pub async fn get_source_from_chapter_id(chapter_id: i32, db: PgPool) -> Result<Source, sqlx::Error> {
     let ret = sqlx::query_as!(
         Source, 
-        r#"SELECT source.id, source.name, source.url 
+        r#"SELECT source.id, source.name, source.url, source.need_login 
         FROM chapter
         JOIN manga ON manga.id = chapter.manga_id
         JOIN source ON source.id = manga.source_id 
