@@ -1,4 +1,3 @@
-use human_sort::compare;
 use std::{fs, io};
 use std::io::{BufReader, Read};
 use tanoshi::manga::{
@@ -10,14 +9,12 @@ use zip::result::ZipError;
 use fancy_regex::Regex;
 use anyhow::Result;
 
-#[derive(Clone)]
-pub struct Local {
-    pub path: String,
-}
+pub struct Local {}
 
 impl Scraping for Local {
     fn get_mangas(url: &String, param: Params, cookies: Vec<String>) -> Result<Vec<Manga>> {
-        let entries = fs::read_dir(url)
+        let local_path = std::env::var("MANGA_PATH").expect("MANGA_PATH not set");
+        let entries = fs::read_dir(url.clone())
             .expect("error read directory")
             .filter(|res| res.as_ref().unwrap().file_type().unwrap().is_dir())
             .map(|res| {
@@ -28,7 +25,7 @@ impl Scraping for Local {
                     //genre: vec![],
                     status: "".to_string(),
                     description: "".to_string(),
-                    path: e.path().to_str().unwrap().to_string(),
+                    path: e.path().to_str().unwrap().replace(local_path.as_str(), "").to_string(),
                     thumbnail_url: "".to_string(),
                     last_read: None,
                     last_page: None,
@@ -46,9 +43,9 @@ impl Scraping for Local {
     }
 
     fn get_chapters(url: &String) -> Result<Vec<Chapter>> {
+        let local_path = std::env::var("MANGA_PATH").expect("MANGA_PATH not set");
         let re = Regex::new(r"(?<=v)(\d+)|(?<=volume)\s*(\d+)|(?<=vol)\s*(\d+)|(?<=ch)(\d+)|(?<=chapter)\s*(\d+)|(\d+)").unwrap();
-        let entries = fs::read_dir(url)
-            .expect("error read directory")
+        let entries = fs::read_dir(url)?
             .filter(|res| res.as_ref().unwrap().file_type().unwrap().is_file() 
             && !res.as_ref().unwrap().file_name().as_os_str().to_str().unwrap().starts_with("."))
             .map(|res| {
@@ -58,7 +55,7 @@ impl Scraping for Local {
                     let mat = re.find(file_name.as_str()).unwrap();
                     ch.no = mat.unwrap().as_str().to_string();
                     ch.title = file_name;
-                    ch.url = e.path().to_str().unwrap().to_string();
+                    ch.url = e.path().to_str().unwrap().replace(local_path.as_str(), "").to_string();
                     ch
                 })
             })

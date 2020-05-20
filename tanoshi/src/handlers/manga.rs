@@ -8,12 +8,18 @@ use ureq;
 use crate::auth::Claims;
 use crate::scraper::{local::Local, repository};
 use tanoshi::scraping::Scraping;
-use tanoshi::manga::{GetParams, ImageProxyParam, Params};
+use tanoshi::manga::{Source, GetParams, ImageProxyParam, Params};
 use tanoshi::mangadex::MangadexLogin;
 
 use crate::handlers::TransactionReject;
 
 pub async fn list_sources(db: PgPool) -> Result<impl warp::Reply, Rejection> {
+    let sources = crate::scraper::get_sources();
+    match repository::insert_sources(sources, db.clone()).await {
+        Ok(_) => {},
+        Err(e) => return Err(warp::reject()),
+    }
+
     match repository::get_sources(db).await {
         Ok(sources) => Ok(warp::reply::json(&json!(
             {
@@ -34,24 +40,7 @@ pub async fn list_mangas(
     db: PgPool,
 ) -> Result<impl warp::Reply, Rejection> {
     if let Ok(source) = repository::get_source(source_id, db.clone()).await {
-        let mangas = match source.name.as_str() {
-            "local" => {
-                let path = std::env::var("MANGA_PATH").expect("MANGA_PATH not set");
-                Local::get_mangas(&path, param, vec![],).unwrap()
-            },
-            "mangasee" => crate::scraper::get_mangas(source.name, &source.url, param, vec![]).unwrap(),
-            "mangadex" => {
-                let ret = sqlx::query!(
-                    r#"SELECT mangadex_cookies FROM "user" WHERE username = $1"#,
-                    claim.sub.clone()
-                )
-                .fetch_one(&db)
-                .await;
-                let ret = ret.unwrap();
-                crate::scraper::get_mangas(source.name, &source.url, param, ret.mangadex_cookies.unwrap()).unwrap()
-            }
-            &_ => return Err(warp::reject()),
-        };
+        let mangas = crate::scraper::get_mangas(source.name, &source.url, param, vec![]).unwrap();
 
         let manga_ids =
             match repository::insert_mangas(source_id, mangas.clone(), db.clone()).await {
@@ -82,15 +71,11 @@ pub async fn get_manga_info(
     if let Ok(manga) = repository::get_manga_detail(manga_id, claim.sub.clone(), db.clone()).await {
         return Ok(warp::reply::json(&manga));
     } else if let Ok(url) = repository::get_manga_url(manga_id, db.clone()).await {
-        let manga = if url.contains("mangasee") {
-            crate::scraper::get_manga_info("mangasee".to_string(), &url).unwrap()
-        } else if url.contains("mangadex") {
-            crate::scraper::get_manga_info("mangadex".to_string(), &url).unwrap()
-        } else if url.starts_with("/") {
-            Local::get_manga_info(&url).unwrap()
-        } else {
-            return Err(warp::reject());
+        let source = match repository::get_source_from_manga_id(manga_id, db.clone()).await {
+            Ok(source) => source,
+            Err(e) => return Err(warp::reject())
         };
+        let manga = crate::scraper::get_manga_info(source.name, &url).unwrap();
 
         match repository::update_manga_info(manga_id, manga, db.clone()).await {
             Ok(_) => {}
@@ -126,15 +111,11 @@ pub async fn get_chapters(
     }
 
     if let Ok(url) = repository::get_manga_url(manga_id, db.clone()).await {
-        let chapter = if url.contains("mangasee") {
-            crate::scraper::get_chapters("mangasee".to_string(), &url).unwrap()
-        } else if url.contains("mangadex") {
-            crate::scraper::get_chapters("mangadex".to_string(), &url).unwrap()
-        } else if url.starts_with("/") {
-            Local::get_chapters(&url).unwrap()
-        } else {
-            return Err(warp::reject());
+        let source = match repository::get_source_from_manga_id(manga_id, db.clone()).await {
+            Ok(source) => source,
+            Err(e) => return Err(warp::reject())
         };
+        let chapter = crate::scraper::get_chapters(source.name, &url).unwrap();
 
         match repository::insert_chapters(manga_id, chapter.clone(), db.clone()).await {
             Ok(_) => {}
@@ -168,15 +149,11 @@ pub async fn get_pages(
     };
 
     if let Ok(url) = repository::get_chapter_url(chapter_id, db.clone()).await {
-        let pages = if url.contains("mangasee") {
-            crate::scraper::get_pages("mangasee".to_string(), &url).unwrap()
-        } else if url.contains("mangadex") {
-            crate::scraper::get_pages("mangadex".to_string(), &url).unwrap()
-        } else if url.starts_with("/") {
-            Local::get_pages(&url).unwrap()
-        } else {
-            return Err(warp::reject());
+        let source = match repository::get_source_from_chapter_id(chapter_id, db.clone()).await {
+            Ok(source) => source,
+            Err(e) => return Err(warp::reject())
         };
+        let pages = crate::scraper::get_pages(source.name, &url).unwrap();
 
         match repository::insert_pages(chapter_id, pages.clone(), db.clone()).await {
             Ok(_) => {}

@@ -15,6 +15,35 @@ pub async fn get_source(source_id: i32, db: PgPool) -> Result<Source, sqlx::Erro
     Ok(ret)
 }
 
+pub async fn get_source_from_manga_id(manga_id: i32, db: PgPool) -> Result<Source, sqlx::Error> {
+    let ret = sqlx::query_as!(
+        Source, 
+        r#"SELECT source.id, source.name, source.url 
+        FROM manga
+        JOIN source ON source.id = manga.source_id 
+        WHERE manga.id = $1"#, 
+        manga_id)
+        .fetch_one(&db)
+        .await?;
+
+    Ok(ret)
+}
+
+pub async fn get_source_from_chapter_id(chapter_id: i32, db: PgPool) -> Result<Source, sqlx::Error> {
+    let ret = sqlx::query_as!(
+        Source, 
+        r#"SELECT source.id, source.name, source.url 
+        FROM chapter
+        JOIN manga ON manga.id = chapter.manga_id
+        JOIN source ON source.id = manga.source_id 
+        WHERE chapter.id = $1"#, 
+        chapter_id)
+        .fetch_one(&db)
+        .await?;
+
+    Ok(ret)
+}
+
 pub async fn get_manga_url(manga_id: i32, db: PgPool) -> Result<String, sqlx::Error> {
     let ret = sqlx::query!(
         r#"SELECT CONCAT(source.url, manga.path) AS url FROM manga 
@@ -202,6 +231,20 @@ pub async fn get_pages(
     } else {
         Err(sqlx::Error::RowNotFound)
     }
+}
+
+pub async fn insert_sources(sources: Vec<Source>, db: PgPool) -> Result<(), sqlx::Error> {
+    let mut tx = db.begin().await?;
+    for source in sources {
+        sqlx::query!(
+            r"INSERT INTO source(name, url) VALUES ($1, $2) ON CONFLICT DO NOTHING", 
+            source.name, source.url)
+            .execute(&mut tx)
+            .await?;
+    }
+    tx.commit().await?;
+
+    Ok(())
 }
 
 pub async fn insert_mangas(source_id: i32, mangas: Vec<Manga>, db: PgPool) -> Result<Vec<i32>, sqlx::Error> {
