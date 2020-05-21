@@ -265,7 +265,7 @@ pub mod manga {
 
 #[cfg(feature = "extensions")]
 pub mod scraping {
-    use crate::manga::{Chapter, Manga, Params};
+    use tanoshi_lib::manga::{Chapter, Manga, Params};
     use anyhow::Result;
     pub trait Scraping {
         fn get_mangas(&self, url: &String, param: Params, cookies: Vec<String>) -> Result<Vec<Manga>>;
