@@ -270,6 +270,7 @@ pub mod manga {
 pub mod extensions {
     use crate::manga::{Chapter, Manga, Params};
     use anyhow::Result;
+
     pub trait Extension {
         fn get_mangas(
             &self,
@@ -292,7 +293,6 @@ pub mod extensions {
         fn register_function(&mut self, name: &str, extension: Box<dyn Extension>);
     }
 
-    #[macro_export]
     macro_rules! export_plugin {
         ($register:expr) => {
             #[doc(hidden)]
