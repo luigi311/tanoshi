@@ -222,20 +222,17 @@ pub async fn get_pages(
     Err(warp::reject())
 }
 
-pub async fn proxy_image(param: ImageProxyParam) -> Result<impl warp::Reply, Rejection> {
+pub async fn proxy_image(param: ImageProxyParam, exts: Arc<RwLock<Extensions>>, db: PgPool) -> Result<impl warp::Reply, Rejection> {
+    let url = param.url.clone();
+    let source = match repository::get_source_from_image_url(url.clone(), db.clone()).await {
+            Ok(source) => source,
+            Err(e) => return Err(warp::reject()),
+        };
+
     let mut bytes = vec![];
-    let mut content_type = "image/".to_string();
 
-    if param.url.starts_with("http") {
-        let resp = ureq::get(&param.url).call();
-        content_type = resp.content_type().to_owned();
-
-        let mut reader = resp.into_reader();
-        reader.read_to_end(&mut bytes).expect("error write image");
-    } else {
-        //let ext = Local::get_page(&param.url, &mut bytes).unwrap();
-        //content_type += ext.as_str();
-    }
+    let exts = exts.read().await;
+    let content_type = exts.extensions().get(&source.name).unwrap().get_page(&url, &mut bytes).unwrap();
 
     let resp = Response::builder()
         .header("Content-Type", content_type)

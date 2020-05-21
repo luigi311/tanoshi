@@ -33,6 +33,23 @@ pub async fn get_source_from_manga_id(manga_id: i32, db: PgPool) -> Result<Sourc
     Ok(ret)
 }
 
+pub async fn get_source_from_image_url(url: String, db: PgPool) -> Result<Source, sqlx::Error> {
+    let ret = sqlx::query_as!(
+        Source, 
+        r#"SELECT source.id, source.name, source.url, source.need_login
+        FROM page
+        JOIN chapter ON chapter.id = page.chapter_id
+        JOIN manga ON manga.id = chapter.manga_id
+        JOIN source ON source.id = manga.source_id 
+        WHERE page.url = $1"#, 
+        url)
+        .fetch_one(&db)
+        .await?;
+
+    Ok(ret)
+}
+
+
 pub async fn get_source_from_chapter_id(chapter_id: i32, db: PgPool) -> Result<Source, sqlx::Error> {
     let ret = sqlx::query_as!(
         Source, 
