@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::Row;
 use sqlx::postgres::{PgPool, PgRow};
 use std::convert::Infallible;
-use tanoshi::manga::{HistoryRequest, HistoryResponse, History};
+use tanoshi_lib::manga::{HistoryRequest, HistoryResponse, History};
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct HistoryParam {

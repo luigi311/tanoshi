@@ -5,7 +5,7 @@ use super::component::model::{
     BackgroundColor,
     PageRendering, ReadingDirection,
 };
-use tanoshi::manga::{
+use tanoshi_lib::manga::{
     Chapter as ChapterModel, GetChaptersResponse, GetMangaResponse, Manga as MangaModel,
 };
 

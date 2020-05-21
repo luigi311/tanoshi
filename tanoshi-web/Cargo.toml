@@ -29,7 +29,7 @@ quote = "1.0.1"
 js-sys = "*"
 base64 = "*"
 chrono = { version = "0.4", features = ["serde"] }
-tanoshi = { path = "../tanoshi", features = ["lib"] }
+tanoshi-lib = {git = "https://github.com/fadhlika/tanoshi-lib", branch = "master", features=["model"]}
 
 [dependencies.web-sys]
 version = "0.3"

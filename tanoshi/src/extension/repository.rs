@@ -1,6 +1,6 @@
 use sqlx::{Row, QueryAs, arguments::Arguments};
 use sqlx::postgres::{PgPool, PgRow, PgArguments, PgQueryAs};
-use tanoshi::manga::{Source, Chapter, GetChaptersResponse, GetMangaResponse, GetMangasResponse, GetPagesResponse, Manga};
+use tanoshi_lib::manga::{Source, Chapter, GetChaptersResponse, GetMangaResponse, GetMangasResponse, GetPagesResponse, Manga};
 
 pub async fn get_sources(db: PgPool) -> Result<Vec<Source>, sqlx::Error> {
     let sources = sqlx::query_as!(

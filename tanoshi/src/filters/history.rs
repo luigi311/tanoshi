@@ -1,7 +1,7 @@
 use crate::filters::{with_authorization, with_db};
 use crate::handlers::history as history_handler;
 use crate::handlers::history::{HistoryParam};
-use tanoshi::manga::HistoryRequest;
+use tanoshi_lib::manga::HistoryRequest;
 use sqlx::postgres::PgPool;
 use warp::Filter;
 

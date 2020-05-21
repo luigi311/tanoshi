@@ -4,5 +4,5 @@
 /dist/
 /db/
 .DS_Store
-../.env
 .vscode/
+.fish_env

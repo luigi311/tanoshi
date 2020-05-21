@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use yew::worker::*;
 
-use tanoshi::manga::HistoryRequest;
+use tanoshi_lib::manga::HistoryRequest;
 use yew::format::{Json, Text};
 use yew::services::fetch::{FetchService, FetchTask};
 
