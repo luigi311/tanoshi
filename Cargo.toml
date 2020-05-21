@@ -19,6 +19,7 @@ serde_derive = "1.0"
 anyhow = "*"
 chrono = { version = "0.4", features = ["serde"] }
 human-sort = {version = "0.2"}
+ureq = "1"
 
 [build-dependencies]
 rustc_version = "0.2"

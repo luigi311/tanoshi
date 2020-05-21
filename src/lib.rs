@@ -268,8 +268,9 @@ pub mod manga {
 
 #[cfg(feature = "extensions")]
 pub mod extensions {
-    use crate::manga::{Source, Chapter, Manga, Params};
+    use crate::manga::{Chapter, Manga, Params, Source};
     use anyhow::Result;
+    use std::io::Read;
 
     pub trait Extension: Send + Sync {
         fn info(&self) -> Source;
@@ -282,6 +283,15 @@ pub mod extensions {
         fn get_manga_info(&self, url: &String) -> Result<Manga>;
         fn get_chapters(&self, url: &String) -> Result<Vec<Chapter>>;
         fn get_pages(&self, url: &String) -> Result<Vec<String>>;
+        fn get_page(&self, url: &String) -> Vec<u8> {
+            let mut bytes = vec![];
+            let resp = ureq::get(&url).call();
+
+            let mut reader = resp.into_reader();
+            reader.read_to_end(&mut bytes).expect("error write image");
+
+            bytes
+        }
     }
 
     pub struct PluginDeclaration {
@@ -299,11 +309,12 @@ pub mod extensions {
         ($register:expr) => {
             #[doc(hidden)]
             #[no_mangle]
-            pub static plugin_declaration: $crate::extensions::PluginDeclaration = $crate::extensions::PluginDeclaration {
-                rustc_version: $crate::RUSTC_VERSION,
-                core_version: $crate::CORE_VERSION,
-                register: $register,
-            };
+            pub static plugin_declaration: $crate::extensions::PluginDeclaration =
+                $crate::extensions::PluginDeclaration {
+                    rustc_version: $crate::RUSTC_VERSION,
+                    core_version: $crate::CORE_VERSION,
+                    register: $register,
+                };
         };
     }
 }
