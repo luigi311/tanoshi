@@ -293,11 +293,12 @@ pub mod extensions {
         fn register_function(&mut self, name: &str, extension: Box<dyn Extension>);
     }
 
+    #[macro_export]
     macro_rules! export_plugin {
         ($register:expr) => {
             #[doc(hidden)]
             #[no_mangle]
-            pub static plugin_declaration: $crate::PluginDeclaration = $crate::PluginDeclaration {
+            pub static plugin_declaration: $crate::extensions::PluginDeclaration = $crate::extensions::PluginDeclaration {
                 rustc_version: $crate::RUSTC_VERSION,
                 core_version: $crate::CORE_VERSION,
                 register: $register,
