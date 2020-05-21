@@ -23,7 +23,7 @@ pub fn manga(
         .or(get_chapters(secret.clone(), exts.clone(), db.clone()))
         .or(get_pages(exts.clone(), db.clone()))
         .or(login(secret.clone(), db.clone()))
-        .or(proxy_image())
+        .or(proxy_image(exts.clone(), db.clone()))
         .boxed()
 }
 
@@ -96,10 +96,12 @@ pub fn get_pages(
         .boxed()
 }
 
-pub fn proxy_image() ->  BoxedFilter<(impl Reply, )>{
+pub fn proxy_image(exts: Arc<RwLock<Extensions>>, db: PgPool) ->  BoxedFilter<(impl Reply, )>{
     warp::path!("api" / "image")
         .and(warp::get())
         .and(warp::query::<ImageProxyParam>())
+        .and(with_extensions(exts))
+        .and(with_db(db))
         .and_then(manga::proxy_image)
         .boxed()
 }

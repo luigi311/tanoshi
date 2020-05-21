@@ -33,6 +33,10 @@ impl Extension for ExtensionProxy {
     fn get_pages(&self, url: &String) -> Result<Vec<String>> {
         self.extension.get_pages(url)
     }
+
+    fn get_page(&self, url: &String, bytes: &mut Vec<u8>) -> Result<String> {
+        self.extension.get_page(url, bytes)
+    }
 }
 
 pub struct Extensions {
