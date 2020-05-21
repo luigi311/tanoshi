@@ -269,7 +269,7 @@ pub mod manga {
 #[cfg(feature = "extensions")]
 pub mod extensions {
     use crate::manga::{Chapter, Manga, Params, Source};
-    use anyhow::Result;
+    use anyhow::{Result, anyhow};
     use std::io::Read;
 
     pub trait Extension: Send + Sync {
@@ -283,14 +283,15 @@ pub mod extensions {
         fn get_manga_info(&self, url: &String) -> Result<Manga>;
         fn get_chapters(&self, url: &String) -> Result<Vec<Chapter>>;
         fn get_pages(&self, url: &String) -> Result<Vec<String>>;
-        fn get_page(&self, url: &String) -> Vec<u8> {
-            let mut bytes = vec![];
+        fn get_page(&self, url: &String, bytes: &mut Vec<u8>) -> Result<String> {
             let resp = ureq::get(&url).call();
-
+            let content_type = resp.content_type().to_owned();
             let mut reader = resp.into_reader();
-            reader.read_to_end(&mut bytes).expect("error write image");
+            if reader.read_to_end(bytes).is_err() {
+                return Err(anyhow!("error write image"));
+            }
 
-            bytes
+            Ok(content_type)
         }
     }
 
