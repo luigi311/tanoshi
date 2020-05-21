@@ -1,6 +1,6 @@
 use crate::auth::Claims;
 use crate::favorites::{favorites::Favorites};
-use tanoshi::manga::FavoriteManga;
+use tanoshi_lib::manga::FavoriteManga;
 use sqlx::postgres::PgPool;
 use std::convert::Infallible;
 use std::sync::{Arc, Mutex};

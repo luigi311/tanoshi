@@ -1,5 +1,5 @@
 use sqlx::postgres::PgPool;
-use tanoshi::manga::{AddFavoritesResponse, FavoriteManga, GetFavoritesResponse};
+use tanoshi_lib::manga::{AddFavoritesResponse, FavoriteManga, GetFavoritesResponse};
 
 #[derive(Clone)]
 pub struct Favorites {}

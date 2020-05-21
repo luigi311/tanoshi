@@ -6,17 +6,32 @@ use std::io::Read;
 use ureq;
 
 use crate::auth::Claims;
-use crate::scraper::{local::Local, repository};
-use tanoshi_lib::scraping::Scraping;
-use tanoshi_lib::manga::{Source, GetParams, ImageProxyParam, Params};
+use crate::extension::{repository, ExtensionProxy, Extensions};
+use tanoshi_lib::extensions::Extension;
+use tanoshi_lib::manga::{GetParams, ImageProxyParam, Params, Source};
 use tanoshi_lib::mangadex::MangadexLogin;
 
 use crate::handlers::TransactionReject;
+use std::sync::{Arc, Mutex};
+use tokio::sync::RwLock;
 
-pub async fn list_sources(db: PgPool) -> Result<impl warp::Reply, Rejection> {
-    let sources = crate::scraper::get_sources();
+pub async fn list_sources(
+    exts: Arc<RwLock<Extensions>>,
+    db: PgPool,
+) -> Result<impl warp::Reply, Rejection> {
+    let exts = exts.read().await;
+    let sources = exts
+        .extensions()
+        .iter()
+        .map(|(key, ext)| {
+            info!("source name {}", key.clone());
+            ext.info()
+        })
+        .collect::<Vec<Source>>();
+    info!("sources {:?}", sources.clone());
+
     match repository::insert_sources(sources, db.clone()).await {
-        Ok(_) => {},
+        Ok(_) => {}
         Err(e) => return Err(warp::reject()),
     }
 
@@ -37,20 +52,27 @@ pub async fn list_mangas(
     source_id: i32,
     claim: Claims,
     param: Params,
+    exts: Arc<RwLock<Extensions>>,
     db: PgPool,
 ) -> Result<impl warp::Reply, Rejection> {
+    let exts = exts.read().await;
     if let Ok(source) = repository::get_source(source_id, db.clone()).await {
-        let mangas = crate::scraper::get_mangas(source.name, &source.url, param, vec![]).unwrap();
+        let mangas = exts
+            .extensions()
+            .get(&source.name)
+            .unwrap()
+            .get_mangas(&source.url, param, vec![])
+            .unwrap();
 
-        let manga_ids =
-            match repository::insert_mangas(source_id, mangas.clone(), db.clone()).await {
-                Ok(ids) => ids,
-                Err(e) => {
-                    return Err(warp::reject::custom(TransactionReject {
-                        message: e.to_string(),
-                    }))
-                }
-            };
+        let manga_ids = match repository::insert_mangas(source_id, mangas.clone(), db.clone()).await
+        {
+            Ok(ids) => ids,
+            Err(e) => {
+                return Err(warp::reject::custom(TransactionReject {
+                    message: e.to_string(),
+                }))
+            }
+        };
         match repository::get_mangas(claim.sub, manga_ids, db).await {
             Ok(mangas) => return Ok(warp::reply::json(&mangas)),
             Err(e) => {
@@ -66,16 +88,24 @@ pub async fn list_mangas(
 pub async fn get_manga_info(
     manga_id: i32,
     claim: Claims,
+    exts: Arc<RwLock<Extensions>>,
     db: PgPool,
 ) -> Result<impl warp::Reply, Rejection> {
+    let exts = exts.read().await;
     if let Ok(manga) = repository::get_manga_detail(manga_id, claim.sub.clone(), db.clone()).await {
         return Ok(warp::reply::json(&manga));
     } else if let Ok(url) = repository::get_manga_url(manga_id, db.clone()).await {
         let source = match repository::get_source_from_manga_id(manga_id, db.clone()).await {
             Ok(source) => source,
-            Err(e) => return Err(warp::reject())
+            Err(e) => return Err(warp::reject()),
         };
-        let manga = crate::scraper::get_manga_info(source.name, &url).unwrap();
+
+        let manga = exts
+            .extensions()
+            .get(&source.name)
+            .unwrap()
+            .get_manga_info(&url)
+            .unwrap();
 
         match repository::update_manga_info(manga_id, manga, db.clone()).await {
             Ok(_) => {}
@@ -101,8 +131,10 @@ pub async fn get_chapters(
     manga_id: i32,
     claim: Claims,
     param: GetParams,
+    exts: Arc<RwLock<Extensions>>,
     db: PgPool,
 ) -> Result<impl warp::Reply, Rejection> {
+    let exts = exts.read().await;
     if !param.refresh.unwrap_or(false) {
         match repository::get_chapters(manga_id, claim.sub.clone(), db.clone()).await {
             Ok(chapter) => return Ok(warp::reply::json(&chapter)),
@@ -113,9 +145,15 @@ pub async fn get_chapters(
     if let Ok(url) = repository::get_manga_url(manga_id, db.clone()).await {
         let source = match repository::get_source_from_manga_id(manga_id, db.clone()).await {
             Ok(source) => source,
-            Err(e) => return Err(warp::reject())
+            Err(e) => return Err(warp::reject()),
         };
-        let chapter = crate::scraper::get_chapters(source.name, &url).unwrap();
+
+        let chapter = exts
+            .extensions()
+            .get(&source.name)
+            .unwrap()
+            .get_chapters(&url)
+            .unwrap();
 
         match repository::insert_chapters(manga_id, chapter.clone(), db.clone()).await {
             Ok(_) => {}
@@ -141,8 +179,10 @@ pub async fn get_chapters(
 pub async fn get_pages(
     chapter_id: i32,
     _param: GetParams,
+    exts: Arc<RwLock<Extensions>>,
     db: PgPool,
 ) -> Result<impl warp::Reply, Rejection> {
+    let exts = exts.read().await;
     match repository::get_pages(chapter_id, db.clone()).await {
         Ok(pages) => return Ok(warp::reply::json(&pages)),
         Err(_) => {}
@@ -151,9 +191,15 @@ pub async fn get_pages(
     if let Ok(url) = repository::get_chapter_url(chapter_id, db.clone()).await {
         let source = match repository::get_source_from_chapter_id(chapter_id, db.clone()).await {
             Ok(source) => source,
-            Err(e) => return Err(warp::reject())
+            Err(e) => return Err(warp::reject()),
         };
-        let pages = crate::scraper::get_pages(source.name, &url).unwrap();
+
+        let pages = exts
+            .extensions()
+            .get(&source.name)
+            .unwrap()
+            .get_pages(&url)
+            .unwrap();
 
         match repository::insert_pages(chapter_id, pages.clone(), db.clone()).await {
             Ok(_) => {}
@@ -179,7 +225,7 @@ pub async fn get_pages(
 pub async fn proxy_image(param: ImageProxyParam) -> Result<impl warp::Reply, Rejection> {
     let mut bytes = vec![];
     let mut content_type = "image/".to_string();
-    
+
     if param.url.starts_with("http") {
         let resp = ureq::get(&param.url).call();
         content_type = resp.content_type().to_owned();
@@ -187,8 +233,8 @@ pub async fn proxy_image(param: ImageProxyParam) -> Result<impl warp::Reply, Rej
         let mut reader = resp.into_reader();
         reader.read_to_end(&mut bytes).expect("error write image");
     } else {
-            let ext = Local::get_page(&param.url, &mut bytes).unwrap();
-            content_type += ext.as_str();
+        //let ext = Local::get_page(&param.url, &mut bytes).unwrap();
+        //content_type += ext.as_str();
     }
 
     let resp = Response::builder()

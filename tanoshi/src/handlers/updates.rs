@@ -4,7 +4,7 @@ use chrono::Local;
 use sqlx::Row;
 use sqlx::postgres::{PgPool, PgRow};
 use warp::Rejection;
-use tanoshi::manga::{Update, UpdatesResponse};
+use tanoshi_lib::manga::{Update, UpdatesResponse};
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct UpdateParam {
