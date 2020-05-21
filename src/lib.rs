@@ -268,10 +268,11 @@ pub mod manga {
 
 #[cfg(feature = "extensions")]
 pub mod extensions {
-    use crate::manga::{Chapter, Manga, Params};
+    use crate::manga::{Source, Chapter, Manga, Params};
     use anyhow::Result;
 
     pub trait Extension {
+        fn info(self) -> Source;
         fn get_mangas(
             &self,
             url: &String,
