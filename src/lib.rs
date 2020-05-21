@@ -1,3 +1,6 @@
+pub static CORE_VERSION: &str = env!("CARGO_PKG_VERSION");
+pub static RUSTC_VERSION: &str = env!("RUSTC_VERSION");
+
 #[cfg(feature = "mangadex")]
 pub mod mangadex {
     use serde::{Deserialize, Serialize};
@@ -264,14 +267,41 @@ pub mod manga {
 }
 
 #[cfg(feature = "extensions")]
-pub mod scraping {
+pub mod extensions {
     use crate::manga::{Chapter, Manga, Params};
     use anyhow::Result;
-    pub trait Scraping {
-        fn get_mangas(&self, url: &String, param: Params, cookies: Vec<String>) -> Result<Vec<Manga>>;
+    pub trait Extension {
+        fn get_mangas(
+            &self,
+            url: &String,
+            param: Params,
+            cookies: Vec<String>,
+        ) -> Result<Vec<Manga>>;
         fn get_manga_info(&self, url: &String) -> Result<Manga>;
         fn get_chapters(&self, url: &String) -> Result<Vec<Chapter>>;
         fn get_pages(&self, url: &String) -> Result<Vec<String>>;
     }
-}
 
+    pub struct PluginDeclaration {
+        pub rustc_version: &'static str,
+        pub core_version: &'static str,
+        pub register: unsafe extern "C" fn(&mut dyn PluginRegistrar),
+    }
+
+    pub trait PluginRegistrar {
+        fn register_function(&mut self, name: &str, extension: Box<dyn Extension>);
+    }
+
+    #[macro_export]
+    macro_rules! export_plugin {
+        ($register:expr) => {
+            #[doc(hidden)]
+            #[no_mangle]
+            pub static plugin_declaration: $crate::PluginDeclaration = $crate::PluginDeclaration {
+                rustc_version: $crate::RUSTC_VERSION,
+                core_version: $crate::CORE_VERSION,
+                register: $register,
+            };
+        };
+    }
+}
