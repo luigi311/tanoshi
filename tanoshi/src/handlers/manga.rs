@@ -7,9 +7,9 @@ use ureq;
 
 use crate::auth::Claims;
 use crate::scraper::{local::Local, repository};
-use tanoshi::scraping::Scraping;
-use tanoshi::manga::{Source, GetParams, ImageProxyParam, Params};
-use tanoshi::mangadex::MangadexLogin;
+use tanoshi_lib::scraping::Scraping;
+use tanoshi_lib::manga::{Source, GetParams, ImageProxyParam, Params};
+use tanoshi_lib::mangadex::MangadexLogin;
 
 use crate::handlers::TransactionReject;
 

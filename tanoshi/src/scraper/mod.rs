@@ -3,9 +3,52 @@ pub mod repository;
 
 use anyhow::Result;
 use local::Local;
-use std::{env, fs};
-use tanoshi::manga::{Chapter, Manga, Params, Source};
-use tanoshi::scraping::Scraping;
+use std::{env, fs, rc::Rc, collections::HashMap};
+use lib::Library;
+use tanoshi_lib::manga::{Chapter, Manga, Params, Source};
+use tanoshi_lib::scraping::Scraping;
+
+pub struct ScrapingProxy {
+    scraper: Box<dyn Scraping>,
+    _lib: Rc<Library>,
+}
+
+impl Scraping for ScrapingProxy {
+    fn get_mangas(&self, url: &String, param: Params, cookies: Vec<String>) -> Result<Vec<Manga>> {
+        self.scraper.get_mangas(url, param, cookies)
+    }
+
+    fn get_manga_info(&self, url: &String) -> Result<Manga> {
+        self.scraper.get_manga_info(url) 
+    }
+
+    fn get_chapters(&self, url: &String) -> Result<Vec<Chapter>> {
+        self.scraper.get_chapters(url)
+    }
+    
+    fn get_pages(&self, url: &String) -> Result<Vec<String>> {
+        self.get_pages(url)  
+    }
+}
+
+pub struct Extensions {
+    scrapers: HashMap<String, ScrapingProxy>,
+    libraries: Vec<Rc<Library>>,
+}
+
+impl Extensions {
+    pub fn new() -> Extensions {
+        Extensions::default()
+    }
+
+    pub fn load<P: AsRef<OsStr>>(&mut self, library_path: P) -> io::Result {
+        unimplemented!()
+    }
+}
+
+pub struct PluginRegistar {
+        
+}
 
 fn get_source(path: &str) -> Result<Source> {
     let lib = lib::Library::new(path)?;
