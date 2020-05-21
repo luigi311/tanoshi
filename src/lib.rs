@@ -272,7 +272,7 @@ pub mod extensions {
     use anyhow::Result;
 
     pub trait Extension {
-        fn info(self) -> Source;
+        fn info(&self) -> Source;
         fn get_mangas(
             &self,
             url: &String,
