@@ -1,6 +1,6 @@
 use super::component::Manga;
 use web_sys::HtmlElement;
-use yew::format::{Json, Nothing};
+use yew::format::{Json, Nothing, Text};
 use yew::prelude::*;
 use yew::services::fetch::{FetchService, FetchTask};
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
@@ -11,7 +11,7 @@ use yew::services::storage::Area;
 use yew::services::StorageService;
 use yew::utils::{document, window};
 
-use tanoshi::manga::{GetMangasResponse, Manga as MangaModel, Params, SortByParam, SortOrderParam, Source as SourceModel};
+use tanoshi_lib::manga::{GetMangasResponse, Manga as MangaModel, Params, SortByParam, SortOrderParam, Source as SourceModel};
 
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
@@ -38,7 +38,7 @@ pub enum Msg {
     ScrolledDown,
     KeywordChanged(InputData),
     Search(Event),
-    Noop,
+Noop,
 }
 
 impl Component for Source {
@@ -107,6 +107,7 @@ impl Component for Source {
                 } else {
                     self.mangas.append(&mut mangas);
                 }
+                self.fetch_web();
             }
             Msg::ScrolledDown => {
                 if !self.is_fetching {
@@ -205,6 +206,29 @@ impl Source {
         ) {
             self.fetch_task = Some(FetchTask::from(task));
             self.is_fetching = true;
+        }
+    }
+
+    fn fetch_web(&mut self) {        
+        let req = Request::get("https://mangadex.org/login")
+        .body(Nothing)
+        .expect("failed to build request");
+
+        if let Ok(task) = FetchService::new().fetch(
+            req,
+            self.link.callback(
+                |response: Response<Text>| {
+                    if let (meta, Ok(data)) = response.into_parts() {
+                        if meta.status.is_success() {
+                            info!("{:?}", data);
+                            return Msg::Noop;
+                        }
+                    }
+                    Msg::Noop
+                },
+            ),
+        ) {
+            self.fetch_task = Some(FetchTask::from(task));
         }
     }
 }

@@ -10,7 +10,7 @@ use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 use yew_router::components::RouterAnchor;
 use yew_router::service::RouteService;
 
-use tanoshi::manga::{History as HistoryModel, HistoryResponse, Update as UpdateModel, UpdatesResponse};
+use tanoshi_lib::manga::{History as HistoryModel, HistoryResponse, Update as UpdateModel, UpdatesResponse};
 use super::component::{Spinner};
 use yew::utils::{document, window};
 

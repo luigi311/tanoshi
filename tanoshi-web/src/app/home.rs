@@ -5,7 +5,7 @@ use yew::services::storage::Area;
 use yew::services::{FetchService, StorageService};
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 
-use tanoshi::manga::{FavoriteManga, GetFavoritesResponse, GetMangasResponse};
+use tanoshi_lib::manga::{FavoriteManga, GetFavoritesResponse, GetMangasResponse};
 use super::component::{Manga, Spinner};
 
 #[derive(Deserialize, Debug)]

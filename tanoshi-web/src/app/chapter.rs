@@ -19,7 +19,7 @@ use super::component::model::{
     BackgroundColor, PageRendering, ReadingDirection, SettingParams
 };
 
-use tanoshi::manga::{Chapter as ChapterModel, GetChaptersResponse, GetPagesResponse, HistoryRequest};
+use tanoshi_lib::manga::{Chapter as ChapterModel, GetChaptersResponse, GetPagesResponse, HistoryRequest};
 
 #[derive(Clone, Properties)]
 pub struct Props {

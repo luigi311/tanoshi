@@ -11,7 +11,7 @@ use super::app::AppRoute;
 use super::browse::BrowseRoute;
 use super::catalogue::CatalogueRoute;
 
-use tanoshi::manga::{Source as SourceModel, GetSourceResponse};
+use tanoshi_lib::manga::{Source as SourceModel, GetSourceResponse};
 
 #[derive(Clone, Properties)]
 pub struct Props {}
