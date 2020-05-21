@@ -271,7 +271,7 @@ pub mod extensions {
     use crate::manga::{Source, Chapter, Manga, Params};
     use anyhow::Result;
 
-    pub trait Extension {
+    pub trait Extension: Send + Sync {
         fn info(&self) -> Source;
         fn get_mangas(
             &self,
