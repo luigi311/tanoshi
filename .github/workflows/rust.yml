@@ -26,7 +26,7 @@ jobs:
           --health-timeout 5s
           --health-retries 5
         volumes:
-          - /docker-entrypoint-initdb.d:tanoshi/migration
+          - ./tanoshi/migration:/docker-entrypoint-initdb.d
 
     steps:
     - uses: actions/checkout@v2
