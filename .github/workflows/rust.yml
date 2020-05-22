@@ -1,4 +1,4 @@
-name: Rust
+name: Build
 
 on:
   push:
@@ -10,8 +10,27 @@ jobs:
   build:
 
     runs-on: ubuntu-latest
+    services:
+      # Label used to access the service container
+      postgres:
+        # Docker Hub image
+        image: postgres
+        # Provide the password for postgres
+        env:
+          POSTGRES_PASSWORD: postgres
+        # Set health checks to wait until postgres has started
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
     - uses: actions/checkout@v2
+    - uses: Migration
+      run: psql -h postgres -d tanoshi -a -f tanoshi/migration/tanoshi.sql
     - name: Build
       run: cargo build --verbose
+      env:
+          # The hostname used to communicate with the PostgreSQL service container
+          DATABASE_URL: postgres://postgres:5432/tanoshi
