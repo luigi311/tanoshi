@@ -1,11 +1,9 @@
-use crate::auth::auth::Auth;
 use crate::auth::User;
 use crate::filters::with_db;
 use crate::handlers::auth as auth_handler;
 use sqlx::postgres::PgPool;
-use std::sync::{Arc, Mutex};
 use warp::Filter;
-use super::with_authorization;
+use super::{with_authorization, with_admin_role};
 
 pub fn authentication(
     secret: String,
@@ -33,6 +31,7 @@ pub fn register(
     warp::path!("api" / "register")
         .and(warp::post())
         .and(json_body())
+        .and(with_admin_role(secret))
         .and(with_db(db))
         .and_then(auth_handler::register)
 }

@@ -1,11 +1,8 @@
 use std::convert::Infallible;
-use std::sync::{Arc, Mutex};
-
 use serde_json::json;
 use sqlx::postgres::PgPool;
 use warp::Filter;
 
-use crate::auth::auth::Auth;
 use crate::auth::Claims;
 use crate::handlers::auth as auth_handler;
 
@@ -34,6 +31,22 @@ pub fn with_authorization(
         .and_then(|claim: Option<Claims>| async move {
             match claim {
                 Some(claim) => Ok(claim),
+                None => Err(warp::reject::custom(ExpiredOrInvalidToken)),
+            }
+        })
+}
+
+pub fn with_admin_role(
+ secret: String,
+) -> impl Filter<Extract = (Claims,), Error = warp::reject::Rejection> + Clone {
+    warp::header::header("authorization")
+        .map(move |token: String| auth_handler::validate(secret.clone(), token.to_string()))
+        .and_then(|claim: Option<Claims>| async move {
+            match claim {
+                Some(claim) => match claim.role.as_str() {
+                    "ADMIN" => Ok(claim),
+                    _ => Err(warp::reject::custom(ExpiredOrInvalidToken)),
+                },
                 None => Err(warp::reject::custom(ExpiredOrInvalidToken)),
             }
         })

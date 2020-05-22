@@ -13,11 +13,13 @@ impl Auth {
     pub async fn register(user: User, db: PgPool) -> UserResponse {
         let hashed = Auth::hash(user.password.as_bytes());
         match sqlx::query!(
-            r#"INSERT INTO "user"(username, password) VALUES ($1, $2)"#,
+            r#"INSERT INTO "user"(username, password, role) VALUES ($1, $2, $3)"#,
             user.username,
-            hashed
+            hashed,
+            user.role,
         )
-        .execute(&db).await
+        .execute(&db)
+        .await
         {
             Ok(_) => UserResponse {
                 claim: None,
@@ -35,7 +37,7 @@ impl Auth {
     pub async fn login(secret: String, user: User, db: PgPool) -> UserResponse {
         let account = sqlx::query_as!(
             User,
-            r#"SELECT username, password FROM "user" WHERE username = $1"#,
+            r#"SELECT username, password, role FROM "user" WHERE username = $1"#,
             user.username,
         )
         .fetch_one(&db)
@@ -44,7 +46,7 @@ impl Auth {
         if Auth::verify(account.unwrap().password, user.password.as_bytes()) {
             let user_claims = Claims {
                 sub: user.username,
-                company: "tanoshi".to_string(),
+                role: user.role,
                 exp: 10000000000,
             };
             let token = match encode(

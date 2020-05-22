@@ -1,5 +1,4 @@
 use crate::favorites::favorites::Favorites;
-use tanoshi_lib::manga::FavoriteManga;
 use crate::filters::{with_authorization, with_db};
 use crate::handlers::favorites as favorite_handler;
 use sqlx::postgres::PgPool;

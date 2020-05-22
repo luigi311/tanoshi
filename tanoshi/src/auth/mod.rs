@@ -3,16 +3,10 @@ use serde::{Deserialize, Serialize};
 pub mod auth;
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
-pub enum Role {
-    Admin,
-    Reader,
-}
-
-#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct User {
     pub username: String,
     pub password: String,
-    pub role: Role,
+    pub role: String,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -27,6 +21,6 @@ pub struct UserResponse {
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct Claims {
     pub sub: String,
-    pub role: Role,
+    pub role: String,
     pub exp: usize,
 }
