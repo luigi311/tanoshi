@@ -3,11 +3,6 @@
 # <img src="tanoshi-web/static/apple-touch-icon.png" alt="" width="30" height=30/> Tanoshi
 Selfhosted Tachiyomi-like web manga reader.
 
-## Goals
-After switching to iOS from android, I really missing tachiyomi for reading manga.
-Because I can't afford to pay for annual fee of app store, 
-I decided to make this a PWA instead with web scraping on backend.
-
 ## Features
 ### Currently working
 - Browse, search, and read manga from local, mangadex and [more](https://github.com/fadhlika/tanoshi-extensions)
