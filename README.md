@@ -1,5 +1,5 @@
 # <img src="tanoshi-web/static/apple-touch-icon.png" alt="" width="30" height=30/> Tanoshi
-Tachiyomi-like web manga reader.
+Selfhosted Tachiyomi-like web manga reader.
 
 ## Goals
 After switching to iOS from android, I really missing tachiyomi for reading manga.
