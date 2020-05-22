@@ -5,7 +5,8 @@ pub mod auth;
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct User {
     pub username: String,
-    pub password: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub password: Option<String>,
     pub role: String,
 }
 

@@ -9,7 +9,7 @@ pub fn authentication(
     secret: String,
     db: PgPool,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    login(secret.clone(), db.clone()).or(register(secret.clone(), db.clone())).or(validate(secret))
+    login(secret.clone(), db.clone()).or(register(secret.clone(), db.clone())).or(user_list(secret.clone(), db.clone())).or(validate(secret))
 }
 
 pub fn login(
@@ -34,6 +34,14 @@ pub fn register(
         .and(with_admin_role(secret))
         .and(with_db(db))
         .and_then(auth_handler::register)
+}
+
+pub fn user_list(secret: String, db: PgPool) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path!("api" / "user")
+        .and(warp::get())
+        .and(with_admin_role(secret))
+        .and(with_db(db))
+        .and_then(auth_handler::user_list)
 }
 
 pub fn validate(
