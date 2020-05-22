@@ -31,7 +31,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Migration
-      run: psql -h localhost -U tanoshi -P tanoshi -d tanoshi -a -f tanoshi/migration/tanoshi.sql
+      run: psql -h localhost -U tanoshi -P tanoshi -d tanoshi -a -f "tanoshi/migration/tanoshi.sql"
     - name: Build
       run: cargo build --verbose
       env:
