@@ -22,7 +22,7 @@ CREATE TABLE source
     id      SERIAL PRIMARY KEY,
     name    TEXT NOT NULL,
     url     TEXT NOT NULL,
-    need_login BOOLEAN DEFAULT FALSE,
+    version VARCHAR(8) DEFAULT "1.0",
     created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (name, url)

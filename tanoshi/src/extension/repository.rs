@@ -4,14 +4,14 @@ use tanoshi_lib::manga::{Source, Chapter, GetChaptersResponse, GetMangaResponse,
 
 pub async fn get_sources(db: PgPool) -> Result<Vec<Source>, sqlx::Error> {
     let sources = sqlx::query_as!(
-        Source, "SELECT id, name, url, need_login FROM source")
+        Source, "SELECT id, name, url, version FROM source")
         .fetch_all(&db).await?;
     Ok(sources)
 }
 
 pub async fn get_source(source_id: i32, db: PgPool) -> Result<Source, sqlx::Error> {
     let ret = sqlx::query_as!(
-        Source, r#"SELECT id, name, url, need_login FROM source WHERE id = $1"#, 
+        Source, r#"SELECT id, name, url, version FROM source WHERE id = $1"#, 
         source_id)
         .fetch_one(&db)
         .await?;
@@ -22,7 +22,7 @@ pub async fn get_source(source_id: i32, db: PgPool) -> Result<Source, sqlx::Erro
 pub async fn get_source_from_manga_id(manga_id: i32, db: PgPool) -> Result<Source, sqlx::Error> {
     let ret = sqlx::query_as!(
         Source, 
-        r#"SELECT source.id, source.name, source.url, source.need_login
+        r#"SELECT source.id, source.name, source.url, source.version
         FROM manga
         JOIN source ON source.id = manga.source_id 
         WHERE manga.id = $1"#, 
@@ -36,7 +36,7 @@ pub async fn get_source_from_manga_id(manga_id: i32, db: PgPool) -> Result<Sourc
 pub async fn get_source_from_image_url(url: String, db: PgPool) -> Result<Source, sqlx::Error> {
     let ret = sqlx::query_as!(
         Source, 
-        r#"SELECT source.id, source.name, source.url, source.need_login
+        r#"SELECT source.id, source.name, source.url, source.version
         FROM page
         JOIN chapter ON chapter.id = page.chapter_id
         JOIN manga ON manga.id = chapter.manga_id
@@ -53,7 +53,7 @@ pub async fn get_source_from_image_url(url: String, db: PgPool) -> Result<Source
 pub async fn get_source_from_chapter_id(chapter_id: i32, db: PgPool) -> Result<Source, sqlx::Error> {
     let ret = sqlx::query_as!(
         Source, 
-        r#"SELECT source.id, source.name, source.url, source.need_login 
+        r#"SELECT source.id, source.name, source.url, source.version 
         FROM chapter
         JOIN manga ON manga.id = chapter.manga_id
         JOIN source ON source.id = manga.source_id 
@@ -258,8 +258,8 @@ pub async fn insert_sources(sources: Vec<Source>, db: PgPool) -> Result<(), sqlx
     let mut tx = db.begin().await?;
     for source in sources {
         sqlx::query!(
-            r"INSERT INTO source(name, url) VALUES ($1, $2) ON CONFLICT DO NOTHING", 
-            source.name, source.url)
+            r"INSERT INTO source(name, url, version) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING", 
+            source.name, source.url, source.version)
             .execute(&mut tx)
             .await?;
     }

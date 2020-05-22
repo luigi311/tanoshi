@@ -9,7 +9,6 @@ use sqlx::postgres::PgPool;
 use std::sync::{Arc, Mutex};
 use tokio::sync::RwLock;
 use tanoshi_lib::manga::{GetParams, ImageProxyParam, Params};
-use tanoshi_lib::mangadex::MangadexLogin;
 use warp::{Filter, filters::BoxedFilter, Reply};
 
 pub fn manga(
@@ -22,7 +21,6 @@ pub fn manga(
         .or(get_manga_info(secret.clone(), exts.clone(), db.clone()))
         .or(get_chapters(secret.clone(), exts.clone(), db.clone()))
         .or(get_pages(exts.clone(), db.clone()))
-        .or(login(secret.clone(), db.clone()))
         .or(proxy_image(exts.clone(), db.clone()))
         .boxed()
 }
@@ -106,25 +104,8 @@ pub fn proxy_image(exts: Arc<RwLock<Extensions>>, db: PgPool) ->  BoxedFilter<(i
         .boxed()
 }
 
-pub fn login(
-    secret: String,
-    db: PgPool,
-) ->  BoxedFilter<(impl Reply, )>{
-    warp::path!("api" / "source" / "mangadex" / "login")
-        .and(warp::post())
-        .and(with_authorization(secret))
-        .and(json_body())
-        .and(with_db(db))
-        .and_then(manga::login)
-        .boxed()
-}
-
 fn with_extensions(
     exts: Arc<RwLock<Extensions>>,
 ) -> impl Filter<Extract = (Arc<RwLock<Extensions>>,), Error = std::convert::Infallible> + Clone {
     warp::any().map(move || exts.clone())
-}
-
-fn json_body() -> impl Filter<Extract = (MangadexLogin,), Error = warp::Rejection> + Clone {
-    warp::body::content_length_limit(1024 * 16).and(warp::body::json())
 }

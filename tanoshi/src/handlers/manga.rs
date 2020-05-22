@@ -9,7 +9,6 @@ use crate::auth::Claims;
 use crate::extension::{repository, ExtensionProxy, Extensions};
 use tanoshi_lib::extensions::Extension;
 use tanoshi_lib::manga::{GetParams, ImageProxyParam, Params, Source};
-use tanoshi_lib::mangadex::MangadexLogin;
 
 use crate::handlers::TransactionReject;
 use std::sync::{Arc, Mutex};
@@ -241,28 +240,4 @@ pub async fn proxy_image(param: ImageProxyParam, exts: Arc<RwLock<Extensions>>, 
         .unwrap();
 
     Ok(resp)
-}
-
-pub async fn login(
-    claim: Claims,
-    login: MangadexLogin,
-    db: PgPool,
-) -> Result<impl warp::Reply, Rejection> {
-    /* match Mangadex::login(&"https://mangadex.org".to_owned(), login) {
-        Ok(cookies) => {
-            sqlx::query!(
-                r#"
-                UPDATE "user"
-                SET mangadex_cookies = $1
-                WHERE username = $2"#,
-                cookies.as_slice(),
-                claim.sub,
-            )
-            .execute(&db)
-            .await;
-            return Ok(warp::reply());
-        }
-        Err(e) => return Err(warp::reject::custom(TransactionReject { message: e })),
-    } */
-    Ok(warp::reply())
 }
