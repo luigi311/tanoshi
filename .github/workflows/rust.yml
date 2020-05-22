@@ -31,7 +31,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Migration
-      run: psql postgres://tanoshi:tanoshi@localhost:5432/tanoshi -a -f "/home/runner/work/tanoshi/tanoshi/migration/tanoshi.sql"
+      run: psql postgres://tanoshi:tanoshi@localhost:5432/tanoshi -a -f "/home/runner/work/tanoshi/tanoshi/tanoshi/migration/tanoshi.sql"
     - name: Build
       run: cargo build --verbose
       env:
