@@ -13,7 +13,7 @@ Selfhosted Tachiyomi-like web manga reader.
 - Read from right to left or left to right
 
 ### Planned
-My planit to make this as close as tachiyomi features.
+My plan is to make this as close as tachiyomi features. Planned features are listed [here](https://github.com/faldez/tanoshi/issues?q=is%3Aopen+is%3Aissue+label%3Aenhancement)
 
 ## Why Rust
 Rust is the most loved programming language, I thought this is my chance to learn rust too.
