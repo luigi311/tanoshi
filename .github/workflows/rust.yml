@@ -30,6 +30,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
+    - name: Check dir
+      run: pwd
     - name: Migration
       run: psql -h localhost -U tanoshi -P tanoshi -d tanoshi -a -f "tanoshi/migration/tanoshi.sql"
     - name: Build
