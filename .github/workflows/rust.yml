@@ -18,22 +18,20 @@ jobs:
         # Provide the password for postgres
         env:
           POSTGRES_USER: tanoshi
+          POSTGRES_PASSWORD: tanoshi
         # Set health checks to wait until postgres has started
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-        ports:
-          # Maps tcp port 5432 on service container to the host
-          - 5432:5432
+        volumes:
+          - /docker-entrypoint-initdb.d:tanoshi/migration
 
     steps:
     - uses: actions/checkout@v2
-    - name: Migration
-      run: psql -h localhost -d tanoshi -a -f tanoshi/migration/tanoshi.sql
     - name: Build
       run: cargo build --verbose
       env:
           # The hostname used to communicate with the PostgreSQL service container
-          DATABASE_URL: postgres://tanoshi@localhost:5432/tanoshi
+          DATABASE_URL: postgres://tanoshi:tanoshi@postgres:5432/tanoshi
