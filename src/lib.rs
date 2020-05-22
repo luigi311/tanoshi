@@ -13,7 +13,7 @@ pub mod manga {
         pub id: i32,
         pub name: String,
         pub url: String,
-        pub need_login: bool,
+        pub version: &str,
     }
 
     #[derive(Debug, Deserialize, Serialize, Clone, Default)]
