@@ -36,4 +36,4 @@ jobs:
       run: cargo build --verbose
       env:
           # The hostname used to communicate with the PostgreSQL service container
-          DATABASE_URL: postgres://tanoshi:tanoshi@postgres:5432/tanoshi
+          DATABASE_URL: postgres://tanoshi:tanoshi@localhost:5432/tanoshi
