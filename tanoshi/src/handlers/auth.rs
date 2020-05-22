@@ -3,7 +3,7 @@ use sqlx::postgres::PgPool;
 use std::convert::Infallible;
 use std::sync::{Arc, Mutex};
 
-pub async fn register(user: User, db: PgPool) -> Result<impl warp::Reply, Infallible> {
+pub async fn register(user: User, _claims: Claims, db: PgPool) -> Result<impl warp::Reply, Infallible> {
     let res = Auth::register(user, db).await;
     Ok(warp::reply::with_status(
         warp::reply::json(&res),

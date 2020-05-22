@@ -6,6 +6,7 @@ pub mod auth;
 pub struct User {
     pub username: String,
     pub password: String,
+    pub role: String,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -20,6 +21,6 @@ pub struct UserResponse {
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct Claims {
     pub sub: String,
-    pub company: String,
+    pub role: String,
     pub exp: usize,
 }

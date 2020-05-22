@@ -1,12 +1,4 @@
-DROP TABLE IF EXISTS history;
-DROP TABLE IF EXISTS favorite;
-DROP TABLE IF EXISTS "user";
-DROP TABLE IF EXISTS page;
-DROP TABLE IF EXISTS chapter;
-DROP TABLE IF EXISTS manga;
-DROP TABLE IF EXISTS source;
-
-CREATE TABLE "user"
+CREATE TABLE IF NOT EXISTS "user"
 (
     id       SERIAL PRIMARY KEY,
     username TEXT NOT NULL UNIQUE,
@@ -15,9 +7,10 @@ CREATE TABLE "user"
     updated  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX username_idx ON "user" (username);
+CREATE INDEX IF NOT EXISTS username_idx ON "user" (username);
+ALTER TABLE "user" ADD COLUMN IF NOT EXISTS role VARCHAR(8) DEFAULT 'READER';
 
-CREATE TABLE source
+CREATE TABLE IF NOT EXISTS source
 (
     id      SERIAL PRIMARY KEY,
     name    TEXT NOT NULL,
@@ -28,9 +21,30 @@ CREATE TABLE source
     UNIQUE (name, url)
 );
 
-CREATE INDEX source_name_idx ON source (name);
+CREATE INDEX IF NOT EXISTS source_name_idx ON source (name);
 
-CREATE TABLE manga
+CREATE TABLE IF NOT EXISTS user_source
+(
+    id        SERIAL PRIMARY KEY,
+    user_id   INTEGER,
+    source_id INTEGER,
+    configuration JSON,
+    created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (user_id, source_id),
+    FOREIGN KEY (user_id)
+        REFERENCES "user" (id)
+        ON DELETE CASCADE
+        On UPDATE NO ACTION,
+    FOREIGN KEY (source_id)
+        REFERENCES source (id)
+        ON DELETE CASCADE
+        On UPDATE NO ACTION
+);
+
+CREATE INDEX IF NOT EXISTS user_source_ids ON user_source (user_id, source_id);
+
+CREATE TABLE IF NOT EXISTS manga
 (
     id            SERIAL PRIMARY KEY,
     source_id     INTEGER,
@@ -49,9 +63,9 @@ CREATE TABLE manga
         ON UPDATE NO ACTION
 );
 
-CREATE INDEX manga_title_idx ON manga (source_id, title);
+CREATE INDEX IF NOT EXISTS manga_title_idx ON manga (source_id, title);
 
-CREATE TABLE chapter
+CREATE TABLE IF NOT EXISTS chapter
 (
     id       SERIAL PRIMARY KEY,
     manga_id INTEGER,
@@ -68,9 +82,9 @@ CREATE TABLE chapter
         On UPDATE NO ACTION
 );
 
-CREATE INDEX chapter_idx ON chapter (manga_id, number);
+CREATE INDEX IF NOT EXISTS chapter_idx ON chapter (manga_id, number);
 
-CREATE TABLE page
+CREATE TABLE IF NOT EXISTS page
 (
     id         SERIAL PRIMARY KEY,
     chapter_id INTEGER,
@@ -85,9 +99,9 @@ CREATE TABLE page
         On UPDATE NO ACTION
 );
 
-CREATE INDEX page_idx ON page (chapter_id);
+CREATE INDEX IF NOT EXISTS page_idx ON page (chapter_id);
 
-CREATE TABLE history
+CREATE TABLE IF NOT EXISTS history
 (
     id         SERIAL PRIMARY KEY,
     user_id    INTEGER   NOT NULL,
@@ -107,9 +121,9 @@ CREATE TABLE history
         On UPDATE NO ACTION
 );
 
-CREATE INDEX history_idx ON history (user_id, chapter_id);
+CREATE INDEX IF NOT EXISTS history_idx ON history (user_id, chapter_id);
 
-CREATE TABLE favorite
+CREATE TABLE IF NOT EXISTS favorite
 (
     id       SERIAL PRIMARY KEY,
     user_id  INTEGER NOT NULL,
@@ -127,4 +141,4 @@ CREATE TABLE favorite
         On UPDATE NO ACTION
 );
 
-CREATE INDEX favorite_idx ON favorite (user_id, manga_id);
+CREATE INDEX IF NOT EXISTS favorite_idx ON favorite (user_id, manga_id);
