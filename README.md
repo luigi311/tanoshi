@@ -1,4 +1,5 @@
-![Rust](https://github.com/faldez/tanoshi/workflows/Rust/badge.svg?branch=master)
+![Build](https://github.com/faldez/tanoshi/workflows/Build/badge.svg)
+
 # <img src="tanoshi-web/static/apple-touch-icon.png" alt="" width="30" height=30/> Tanoshi
 Selfhosted Tachiyomi-like web manga reader.
 
