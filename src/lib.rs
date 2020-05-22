@@ -1,67 +1,6 @@
 pub static CORE_VERSION: &str = env!("CARGO_PKG_VERSION");
 pub static RUSTC_VERSION: &str = env!("RUSTC_VERSION");
 
-#[cfg(feature = "mangadex")]
-pub mod mangadex {
-    use serde::{Deserialize, Serialize};
-    use std::collections::HashMap;
-    #[derive(Deserialize, Serialize, Debug, Clone, Default)]
-    pub struct MangadexLogin {
-        pub login_username: String,
-        pub login_password: String,
-        pub remember_me: bool,
-        pub two_factor: String,
-    }
-
-    #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-    pub struct GetMangaResponse {
-        pub manga: Manga,
-        pub status: String,
-    }
-    #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-    pub struct GetChapterResponse {
-        pub chapter: HashMap<String, Chapter>,
-        pub status: String,
-    }
-
-    #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-    pub struct Manga {
-        pub cover_url: String,
-        pub description: String,
-        pub title: String,
-        pub artist: String,
-        pub author: String,
-        pub status: i64,
-        pub genres: Vec<i64>,
-        pub last_chapter: String,
-        pub lang_name: String,
-        pub lang_flag: String,
-        pub hentai: i64,
-    }
-
-    #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-    pub struct Chapter {
-        pub volume: String,
-        pub chapter: String,
-        pub title: String,
-        pub lang_code: String,
-        pub timestamp: i64,
-    }
-
-    #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-    pub struct GetPagesResponse {
-        pub id: i64,
-        pub timestamp: i64,
-        pub hash: String,
-        pub volume: String,
-        pub chapter: String,
-        pub title: String,
-        pub server: String,
-        pub page_array: Vec<String>,
-        pub status: String,
-    }
-}
-
 #[cfg(feature = "model")]
 pub mod manga {
     use chrono::Local;
