@@ -27,7 +27,7 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - uses: Migration
+    - name: Migration
       run: psql -h postgres -d tanoshi -a -f tanoshi/migration/tanoshi.sql
     - name: Build
       run: cargo build --verbose
