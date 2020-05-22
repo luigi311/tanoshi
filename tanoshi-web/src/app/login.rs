@@ -18,12 +18,13 @@ use crate::app::AppRoute;
 pub struct User {
     pub username: String,
     pub password: String,
+    pub role: String,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Claims {
     pub sub: String,
-    pub company: String,
+    pub role: String,
     pub exp: i64,
 }
 
@@ -69,6 +70,7 @@ impl Component for Login {
             user: User {
                 username: "".to_string(),
                 password: "".to_string(),
+                role: "".to_string(),
             },
         }
     }
