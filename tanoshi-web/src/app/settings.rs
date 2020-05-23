@@ -9,6 +9,11 @@ use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 
 use serde::Deserialize;
 
+pub struct UserRow {
+    pub user: User,
+    pub is_edit: bool,
+}
+
 #[derive(Deserialize)]
 pub struct UserListResponse {
     users: Vec<User>,
@@ -24,7 +29,7 @@ pub struct Settings {
     settings: SettingParams,
     token: String,
     is_admin: bool,
-    users: Vec<User>,
+    users: Vec<UserRow>,
 }
 
 pub enum Msg {
@@ -34,6 +39,7 @@ pub enum Msg {
     Authorized(Claims),
     UserListReady(Vec<User>),
     NewUser,
+    EditUser(usize),
     Noop,
 }
 
@@ -83,14 +89,23 @@ impl Component for Settings {
                 }
             }
             Msg::UserListReady(users) => {
-                self.users = users;
+                self.users = users.iter().map(|user| UserRow{
+                    user: user.clone(), 
+                    is_edit: false
+                }).collect();
             }
             Msg::NewUser => {
-                self.users.push(User{
-                    username: "New user".to_string(),
-                    password: None,
-                    role: "READER".to_string()
+                self.users.push(UserRow{
+                    user: User{
+                        username: "New user".to_string(),
+                        password: None,
+                        role: "READER".to_string(),
+                    },
+                    is_edit: true,
                 })
+            }
+            Msg::EditUser(i) => {
+                self.users[i].is_edit = true;
             }
             Msg::Noop => {
                 return false;
@@ -196,7 +211,7 @@ impl Settings {
                 {self.separator("Users")}
                 {
                     html! {
-                        <table class="table-auto w-full text-left">
+                        <table class="table-fixed w-full text-left">
                             <thead class="border-b">
                                 <tr>
                                     <th class="p-2">{"Username"}</th>
@@ -206,12 +221,26 @@ impl Settings {
                             </thead>
                             <tbody>
                             {
-                            for self.users.iter().map(|user| html!{            
+                            for (0..self.users.len()).map(|i| html!{            
                                 <tr class="border-b">
-                                    <td class="p-2">{user.username.clone()}</td>
-                                    <td class="p-2">{user.role.clone()}</td>
-                                    <td class="p-2">
-                                        <button class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold px-4 rounded-l">{"Edit"}</button>
+                                    <td class="p-2">{
+                                        if !self.users[i].is_edit {
+                                           html!{self.users[i].user.username.clone()}
+                                        } else {
+                                            html!{
+                                                <input 
+                                                    class="w-full border-b border-grey-light"
+                                                    value=self.users[i].user.username.clone()/>
+                                            }
+                                        }
+                                    }</td>
+                                    <td class="p-2">{self.users[i].user.role.clone()}</td>
+                                    <td class="p-2"> 
+                                        <button 
+                                            class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold px-4 rounded"
+                                            onclick=self.link.callback(move |_| Msg::EditUser(i))>
+                                            {if !self.users[i].is_edit{"Edit"} else {"Save"}}
+                                        </button>
                                     </td>
                                 </tr>
                             })
