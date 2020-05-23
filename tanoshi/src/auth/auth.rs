@@ -11,7 +11,7 @@ pub struct Auth {}
 
 impl Auth {
     pub async fn register(user: User, db: PgPool) -> UserResponse {
-        let hashed = Auth::hash(user.password.unwrap().as_bytes());
+        let hashed = Auth::hash(user.password.unwrap_or("tanoshi123".to_string()).as_bytes());
         match sqlx::query!(
             r#"INSERT INTO "user"(username, password, role) VALUES ($1, $2, $3)"#,
             user.username,

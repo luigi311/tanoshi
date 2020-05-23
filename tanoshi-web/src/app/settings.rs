@@ -1,7 +1,7 @@
 use super::component::model::{
     BackgroundColor, Claims, PageRendering, ReadingDirection, SettingParams, User,
 };
-use yew::format::{Json, Nothing};
+use yew::format::{Json, Nothing, Text};
 use yew::services::fetch::{FetchService, FetchTask, Request, Response};
 use yew::services::storage::Area;
 use yew::services::StorageService;
@@ -12,6 +12,7 @@ use serde::Deserialize;
 pub struct UserRow {
     pub user: User,
     pub is_edit: bool,
+    pub is_new: bool,
 }
 
 #[derive(Deserialize)]
@@ -42,6 +43,8 @@ pub enum Msg {
     EditUser(usize),
     UsernameChange(usize, String),
     RoleChange(usize, ChangeData),
+    SaveUser(usize),
+    SaveUserSuccess(usize),
     Noop,
 }
 
@@ -93,7 +96,8 @@ impl Component for Settings {
             Msg::UserListReady(users) => {
                 self.users = users.iter().map(|user| UserRow{
                     user: user.clone(), 
-                    is_edit: false
+                    is_edit: false,
+                    is_new: false,
                 }).collect();
             }
             Msg::NewUser => {
@@ -104,6 +108,7 @@ impl Component for Settings {
                         role: "READER".to_string(),
                     },
                     is_edit: true,
+                    is_new: true,
                 })
             }
             Msg::EditUser(i) => {
@@ -112,11 +117,23 @@ impl Component for Settings {
             Msg::UsernameChange(i, username) => {
                 self.users[i].user.username = username;
             }
-            Msg::RoleChange(i, role) => {
-                match role {
-                    ChangeData::Value(role) => self.users[i].user.role = role,
+            Msg::RoleChange(i, e) => {
+                match e {
+                    ChangeData::Select(el) => {
+                        info!("{}", el.value().clone());
+                        self.users[i].user.role = el.value().clone();
+                    },
                     _ => {}
                 }
+            }
+            Msg::SaveUser(i) => {
+                if self.users[i].is_new {
+                    self.register_user(i);
+                }
+            }
+            Msg::SaveUserSuccess(i) => {
+                self.users[i].is_edit = false;
+                self.users[i].is_new = false;
             }
             Msg::Noop => {
                 return false;
@@ -199,6 +216,29 @@ impl Settings {
         }
     }
 
+    fn register_user(&mut self, i: usize) {
+        let req = Request::post("/api/register")
+            .header("Authorization", self.token.clone())
+            .header("Content-Type", "application/json")
+            .body(Json(&self.users[i].user))
+            .expect("failed to build request");
+
+        if let Ok(task) = FetchService::new().fetch(
+            req,
+            self.link
+                .callback(move |response: Response<Text>| {
+                    if let (meta, _res) = response.into_parts() {
+                        if meta.status.is_success() {
+                            return Msg::SaveUserSuccess(i);
+                        }
+                    }
+                    Msg::Noop
+                }),
+        ) {
+            self.fetch_task = Some(FetchTask::from(task));
+        }
+    }
+
     fn separator(&self, text: &str) -> Html {
         html! {
             <div class={"shadow p-2 bg-tachiyomi-blue"}>
@@ -235,7 +275,7 @@ impl Settings {
                             for (0..self.users.len()).map(|i| html!{            
                                 <tr class="border-b">
                                     <td class="p-2">{
-                                        if !self.users[i].is_edit {
+                                        if !self.users[i].is_edit || !self.users[i].is_new {
                                            html!{self.users[i].user.username.clone()}
                                         } else {
                                             html!{
@@ -253,8 +293,8 @@ impl Settings {
                                         } else {
                                             html!{
                                                 <select onchange=self.link.callback(move |e: ChangeData| Msg::RoleChange(i, e))>
-                                                    <option value="ADMIN">{"ADMIN"}</option>
                                                     <option value="READER">{"READER"}</option>
+                                                    <option value="ADMIN">{"ADMIN"}</option>
                                                 </select>
                                             }
                                         }
@@ -263,8 +303,14 @@ impl Settings {
                                     <td class="p-2"> 
                                         <button 
                                             class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold px-4 rounded"
-                                            onclick=self.link.callback(move |_| Msg::EditUser(i))>
-                                            {if !self.users[i].is_edit{"Edit"} else {"Save"}}
+                                            onclick={
+                                                if !self.users[i].is_edit {
+                                                    self.link.callback(move |_| Msg::EditUser(i))
+                                                } else {
+                                                    self.link.callback(move |_| Msg::SaveUser(i))
+                                                }
+                                            }>
+                                            {if !self.users[i].is_edit {"Edit"} else {"Save"}}
                                         </button>
                                     </td>
                                 </tr>
