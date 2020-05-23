@@ -5,7 +5,7 @@ use yew::format::{Json, Nothing};
 use yew::services::fetch::{FetchService, FetchTask, Request, Response};
 use yew::services::storage::Area;
 use yew::services::StorageService;
-use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
+use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender, InputData, ChangeData};
 
 use serde::Deserialize;
 
@@ -40,6 +40,8 @@ pub enum Msg {
     UserListReady(Vec<User>),
     NewUser,
     EditUser(usize),
+    UsernameChange(usize, String),
+    RoleChange(usize, ChangeData),
     Noop,
 }
 
@@ -106,6 +108,15 @@ impl Component for Settings {
             }
             Msg::EditUser(i) => {
                 self.users[i].is_edit = true;
+            }
+            Msg::UsernameChange(i, username) => {
+                self.users[i].user.username = username;
+            }
+            Msg::RoleChange(i, role) => {
+                match role {
+                    ChangeData::Value(role) => self.users[i].user.role = role,
+                    _ => {}
+                }
             }
             Msg::Noop => {
                 return false;
@@ -207,7 +218,7 @@ impl Settings {
 
     fn admin_settings(&self) -> Html {
         html! {            
-            <div class="flex flex-col rounded-lg border border-grey-light m-2" id="updates">
+            <div class="flex flex-col rounded-lg border border-grey-light m-2" id="admin">
                 {self.separator("Users")}
                 {
                     html! {
@@ -230,11 +241,25 @@ impl Settings {
                                             html!{
                                                 <input 
                                                     class="w-full border-b border-grey-light"
-                                                    value=self.users[i].user.username.clone()/>
+                                                    value=self.users[i].user.username.clone()
+                                                    oninput=self.link.callback(move |e: InputData| Msg::UsernameChange(i, e.value))/>
                                             }
                                         }
                                     }</td>
-                                    <td class="p-2">{self.users[i].user.role.clone()}</td>
+                                    <td class="p-2">
+                                    {
+                                        if !self.users[i].is_edit {
+                                            html!{self.users[i].user.role.clone()}
+                                        } else {
+                                            html!{
+                                                <select onchange=self.link.callback(move |e: ChangeData| Msg::RoleChange(i, e))>
+                                                    <option value="ADMIN">{"ADMIN"}</option>
+                                                    <option value="READER">{"READER"}</option>
+                                                </select>
+                                            }
+                                        }
+                                    }
+                                    </td>
                                     <td class="p-2"> 
                                         <button 
                                             class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold px-4 rounded"
