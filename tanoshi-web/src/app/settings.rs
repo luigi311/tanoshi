@@ -33,6 +33,7 @@ pub enum Msg {
     SetPageRendering(PageRendering),
     Authorized(Claims),
     UserListReady(Vec<User>),
+    NewUser,
     Noop,
 }
 
@@ -83,6 +84,13 @@ impl Component for Settings {
             }
             Msg::UserListReady(users) => {
                 self.users = users;
+            }
+            Msg::NewUser => {
+                self.users.push(User{
+                    username: "New user".to_string(),
+                    password: None,
+                    role: "READER".to_string()
+                })
             }
             Msg::Noop => {
                 return false;
@@ -197,19 +205,25 @@ impl Settings {
                                 </tr>
                             </thead>
                             <tbody>
-                        {
+                            {
                             for self.users.iter().map(|user| html!{            
                                 <tr class="border-b">
                                     <td class="p-2">{user.username.clone()}</td>
                                     <td class="p-2">{user.role.clone()}</td>
-                                    <td class="p-2"></td>
+                                    <td class="p-2">
+                                        <button class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold px-4 rounded-l">{"Edit"}</button>
+                                    </td>
                                 </tr>
                             })
-                        }
+                            }
                             </tbody>
                         </table>
                     }
-                }
+                } 
+                <button class={"bg-grey-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-r"}
+                    onclick=self.link.callback(|_| Msg::NewUser)>
+                    {"New User"}
+                </button>
             </div>
         }
     }
