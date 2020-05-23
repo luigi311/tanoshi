@@ -11,11 +11,9 @@ use yew_router::components::RouterAnchor;
 use yew_router::service::RouteService;
 
 use tanoshi_lib::manga::{History as HistoryModel, HistoryResponse, Update as UpdateModel, UpdatesResponse};
-use super::component::{Spinner};
+use super::component::Spinner;
 use yew::utils::{document, window};
 
-use crate::app::component::model::{};
-use chrono::{DateTime, FixedOffset, Local, NaiveDateTime, Utc};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 

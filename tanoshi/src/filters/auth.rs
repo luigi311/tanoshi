@@ -50,8 +50,8 @@ pub fn validate(
     warp::path!("api" / "validate")
     .and(warp::get())
     .and(with_authorization(secret))
-    .map(|_| {
-        Ok(warp::reply())
+    .map(|claim| {
+        Ok(warp::reply::json(&claim))
     })
 }
 

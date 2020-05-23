@@ -1,32 +1,38 @@
-use yew::services::fetch::{FetchService, FetchTask, Request, Response};
-use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
-
 use super::component::model::{
-    BackgroundColor,
-    PageRendering, ReadingDirection,
+    BackgroundColor, Claims, PageRendering, ReadingDirection, SettingParams, User,
 };
-use tanoshi_lib::manga::{
-    Chapter as ChapterModel, GetChaptersResponse, GetMangaResponse, Manga as MangaModel,
-};
-
-use crate::app::component::model::SettingParams;
-use anyhow;
+use yew::format::{Json, Nothing};
+use yew::services::fetch::{FetchService, FetchTask, Request, Response};
 use yew::services::storage::Area;
 use yew::services::StorageService;
+use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
+
+use serde::Deserialize;
+
+#[derive(Deserialize)]
+pub struct UserListResponse {
+    users: Vec<User>,
+}
 
 #[derive(Clone, Properties)]
 pub struct Props {}
 
 pub struct Settings {
+    fetch_task: Option<FetchTask>,
     link: ComponentLink<Self>,
     storage: StorageService,
     settings: SettingParams,
+    token: String,
+    is_admin: bool,
+    users: Vec<User>,
 }
 
 pub enum Msg {
     SetReadingDirection(ReadingDirection),
     SetBackgroundColor(BackgroundColor),
     SetPageRendering(PageRendering),
+    Authorized(Claims),
+    UserListReady(Vec<User>),
     Noop,
 }
 
@@ -43,10 +49,15 @@ impl Component for Settings {
                 SettingParams::default()
             }
         };
+
         Settings {
+            fetch_task: None,
             link,
             storage,
             settings,
+            token: "".to_string(),
+            is_admin: false,
+            users: vec![],
         }
     }
 
@@ -64,6 +75,15 @@ impl Component for Settings {
                 self.settings.page_rendering = value;
                 self.storage.store("settings", &self.settings)
             }
+            Msg::Authorized(claim) => {
+                self.is_admin = claim.role == "ADMIN".to_string();
+                if self.is_admin {
+                    self.fetch_users();
+                }
+            }
+            Msg::UserListReady(users) => {
+                self.users = users;
+            }
             Msg::Noop => {
                 return false;
             }
@@ -75,71 +95,190 @@ impl Component for Settings {
         false
     }
 
+    fn rendered(&mut self, first_render: bool) {
+        if first_render {
+            if let Ok(token) = self.storage.restore("token") {
+                self.token = token;
+                self.validate_token();
+            }
+        }
+    }
+
     fn view(&self) -> Html {
         html! {
             <div class="container pb-20" style="padding-top: calc(env(safe-area-inset-top) + .5rem)">
-            <div class="flex flex-col rounded-lg border border-grey-light m-2" id="updates">
-                <div class="flex justify-between border-b border-gray-light p-2 content-center">
-                    <span class="font-semibold">{"Reading Direction"}</span>
-                    <div class="inline-flex">
-                        <button class={
-                            format!("{} hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-l",
-                            if self.settings.reading_direction == ReadingDirection::RightToLeft { "bg-gray-400" } else {"bg-gray-300"})}
-                            onclick=self.link.callback(|_| Msg::SetReadingDirection(ReadingDirection::RightToLeft))>
-                            {"Right to Left"}
-                        </button>
-                        <button class={
-                            format!("{} hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-r",
-                            if self.settings.reading_direction == ReadingDirection::LeftToRight { "bg-gray-400" } else {"bg-gray-300"})}
-                            onclick=self.link.callback(|_| Msg::SetReadingDirection(ReadingDirection::LeftToRight))>
-                            {"Left to Right"}
-                        </button>
-                    </div>
-                </div>
-                <div class="flex justify-between border-b border-gray-light p-2 content-center">
-                    <span class="font-semibold">{"Background Color"}</span>
-                    <div class="inline-flex">
-                        <button class={
-                            format!("{} hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-l",
-                            if self.settings.background_color == BackgroundColor::White { "bg-gray-400" } else {"bg-gray-300"})}
-                            onclick=self.link.callback(|_| Msg::SetBackgroundColor(BackgroundColor::White))>
-                            {"White"}
-                        </button>
-                        <button class={
-                            format!("{} hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-r",
-                            if self.settings.background_color == BackgroundColor::Black { "bg-gray-400" } else {"bg-gray-300"})}
-                            onclick=self.link.callback(|_| Msg::SetBackgroundColor(BackgroundColor::Black))>
-                            {"Black"}
-                        </button>
-                    </div>
-                </div>
-                <div class="flex justify-between border-b border-gray-light p-2 content-center ">
-                    <span class="font-semibold">{"Page Rendering"}</span>
-                    <div class="inline-flex">
-                        <button class={
-                            format!("{} hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-l",
-                            if self.settings.page_rendering == PageRendering::SinglePage { "bg-gray-400" } else {"bg-gray-300"})}
-                            onclick=self.link.callback(|_| Msg::SetPageRendering(PageRendering::SinglePage))>
-                            {"Single"}
-                        </button>
-                        <button class={
-                            format!("{} hover:bg-gray-400 text-gray-800 font-bold py-2 px-4",
-                            if self.settings.page_rendering == PageRendering::DoublePage { "bg-gray-400" } else {"bg-gray-300"})}
-                            onclick=self.link.callback(|_| Msg::SetPageRendering(PageRendering::DoublePage))>
-                            {"Double"}
-                        </button>
-                        <button class={
-                            format!("{} hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-r",
-                            if self.settings.page_rendering == PageRendering::LongStrip { "bg-gray-400" } else {"bg-gray-300"})}
-                            onclick=self.link.callback(|_| Msg::SetPageRendering(PageRendering::LongStrip))>
-                            {"Long Strip"}
-                        </button>
-                    </div>
-                </div>
-            </div>
+                {
+                    if self.is_admin {
+                        self.admin_settings()
+                    } else {
+                        html!{}
+                    }
+                }
+                {self.reading_settings()}
             </div>
         }
     }
 }
 
-impl Settings {}
+impl Settings {
+    fn validate_token(&mut self) {
+        let req = Request::get("/api/validate")
+            .header("Authorization", self.token.clone())
+            .body(Nothing)
+            .expect("failed to build request");
+
+        if let Ok(task) = FetchService::new().fetch(
+            req,
+            self.link
+                .callback(|response: Response<Json<Result<Claims, anyhow::Error>>>| {
+                    if let (meta, Json(Ok(res))) = response.into_parts() {
+                        if meta.status.is_success() {
+                            return Msg::Authorized(res);
+                        }
+                    }
+                    Msg::Noop
+                }),
+        ) {
+            self.fetch_task = Some(FetchTask::from(task));
+        }
+    }
+    
+    fn fetch_users(&mut self) {
+        let req = Request::get("/api/user")
+            .header("Authorization", self.token.clone())
+            .body(Nothing)
+            .expect("failed to build request");
+
+        if let Ok(task) = FetchService::new().fetch(
+            req,
+            self.link
+                .callback(|response: Response<Json<Result<UserListResponse, anyhow::Error>>>| {
+                    if let (meta, Json(Ok(res))) = response.into_parts() {
+                        if meta.status.is_success() {
+                            return Msg::UserListReady(res.users);
+                        }
+                    }
+                    Msg::Noop
+                }),
+        ) {
+            self.fetch_task = Some(FetchTask::from(task));
+        }
+    }
+
+    fn separator(&self, text: &str) -> Html {
+        html! {
+            <div class={"shadow p-2 bg-tachiyomi-blue"}>
+                <span class="text-semibold text-white">{text}</span>
+            </div>
+        }
+    }
+
+    fn setting_card(&self, label: &str, child: Html) -> Html {
+        html! {
+            <div class="flex justify-between border-b border-gray-light p-2 content-center">
+                <span class="font-semibold">{label}</span>
+                <div class="inline-flex">{child}</div>
+            </div>
+        }
+    }
+
+    fn admin_settings(&self) -> Html {
+        html! {            
+            <div class="flex flex-col rounded-lg border border-grey-light m-2" id="updates">
+                {self.separator("Admin Settings")}
+                {
+                    html! {
+                        <table class="table-auto w-full text-left">
+                            <thead>
+                                <tr>
+                                    <th class="p-2">{"Username"}</th>
+                                    <th class="p-2">{"Role"}</th>
+                                    <th class="p-2">{"Actions"}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                        {
+                            for self.users.iter().map(|user| html!{            
+                                <tr class="border-b">
+                                    <td class="p-2">{user.username.clone()}</td>
+                                    <td class="p-2">{user.role.clone()}</td>
+                                    <td class="p-2"></td>
+                                </tr>
+                            })
+                        }
+                            </tbody>
+                        </table>
+                    }
+                }
+            </div>
+        }
+    }
+
+    fn reading_settings(&self) -> Html {
+        html! {
+            <div class="flex flex-col rounded-lg border border-grey-light m-2" id="updates">
+                {self.separator("Reading Settings")}
+                {
+                    self.setting_card("Reading Direction", html! {
+                        <>
+                            <button class={
+                                format!("{} hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-l",
+                                if self.settings.reading_direction == ReadingDirection::RightToLeft { "bg-gray-400" } else {"bg-gray-300"})}
+                                onclick=self.link.callback(|_| Msg::SetReadingDirection(ReadingDirection::RightToLeft))>
+                                {"Right to Left"}
+                            </button>
+                            <button class={
+                                format!("{} hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-r",
+                                if self.settings.reading_direction == ReadingDirection::LeftToRight { "bg-gray-400" } else {"bg-gray-300"})}
+                                onclick=self.link.callback(|_| Msg::SetReadingDirection(ReadingDirection::LeftToRight))>
+                                {"Left to Right"}
+                            </button>
+                        </>
+                    })
+                }
+                {
+                    self.setting_card("Background Color", html! {
+                        <>
+                            <button class={
+                                format!("{} hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-l",
+                                if self.settings.background_color == BackgroundColor::White { "bg-gray-400" } else {"bg-gray-300"})}
+                                onclick=self.link.callback(|_| Msg::SetBackgroundColor(BackgroundColor::White))>
+                                {"White"}
+                            </button>
+                            <button class={
+                                format!("{} hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-r",
+                                if self.settings.background_color == BackgroundColor::Black { "bg-gray-400" } else {"bg-gray-300"})}
+                                onclick=self.link.callback(|_| Msg::SetBackgroundColor(BackgroundColor::Black))>
+                                {"Black"}
+                            </button>
+                        </>
+                    })
+                }
+                {
+                    self.setting_card("Page Rendering", html! {
+                        <>
+                            <button class={
+                                format!("{} hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-l",
+                                if self.settings.page_rendering == PageRendering::SinglePage { "bg-gray-400" } else {"bg-gray-300"})}
+                                onclick=self.link.callback(|_| Msg::SetPageRendering(PageRendering::SinglePage))>
+                                {"Single"}
+                            </button>
+                            <button class={
+                                format!("{} hover:bg-gray-400 text-gray-800 font-bold py-2 px-4",
+                                if self.settings.page_rendering == PageRendering::DoublePage { "bg-gray-400" } else {"bg-gray-300"})}
+                                onclick=self.link.callback(|_| Msg::SetPageRendering(PageRendering::DoublePage))>
+                                {"Double"}
+                            </button>
+                            <button class={
+                                 format!("{} hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-r",
+                                 if self.settings.page_rendering == PageRendering::LongStrip { "bg-gray-400" } else {"bg-gray-300"})}
+                                 onclick=self.link.callback(|_| Msg::SetPageRendering(PageRendering::LongStrip))>
+                                 {"Long Strip"}
+                             </button>
+                        </>
+                    })
+                }
+            </div>
+        }
+    }
+}
