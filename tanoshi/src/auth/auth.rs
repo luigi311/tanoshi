@@ -5,6 +5,7 @@ use rand;
 use rand::Rng;
 use sqlx::{self, Row};
 use sqlx::postgres::{PgPool, PgRow};
+use anyhow::Result;
 
 #[derive(Clone)]
 pub struct Auth {}
@@ -83,6 +84,11 @@ impl Auth {
 
         users.unwrap_or(vec![])
         
+    }
+
+    pub async fn modify_user_role(user: User, db: PgPool) -> Result<()> {
+        sqlx::query!(r#"UPDATE "user" SET role = $1 WHERE username = $2"#, user.role, user.username).execute(&db).await?;
+        Ok(())
     }
 
     pub fn validate(secret: String, token: String) -> Option<Claims> {

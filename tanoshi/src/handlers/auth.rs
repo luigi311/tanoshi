@@ -21,6 +21,11 @@ pub async fn user_list(_claims: Claims, db: PgPool) -> Result<impl warp::Reply, 
    Ok(warp::reply::json(&json!({"users" : res})))
 }
 
+pub async fn modify_user_role(user: User, _claims: Claims, db: PgPool) -> Result<impl warp::Reply, Infallible> {
+   Auth::modify_user_role(user, db).await;
+   Ok(warp::reply())
+}
+
 pub fn validate(secret: String, token: String) -> Option<Claims> {
     Auth::validate(secret, token)
 }

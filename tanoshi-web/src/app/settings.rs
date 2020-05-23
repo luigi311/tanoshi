@@ -129,6 +129,8 @@ impl Component for Settings {
             Msg::SaveUser(i) => {
                 if self.users[i].is_new {
                     self.register_user(i);
+                } else {
+                    self.modify_user_role(i);
                 }
             }
             Msg::SaveUserSuccess(i) => {
@@ -216,6 +218,29 @@ impl Settings {
         }
     }
 
+    fn modify_user_role(&mut self, i: usize) {
+        let req = Request::put("/api/user")
+            .header("Authorization", self.token.clone())
+            .header("Content-Type", "application/json")
+            .body(Json(&self.users[i].user))
+            .expect("failed to build request");
+
+        if let Ok(task) = FetchService::new().fetch(
+            req,
+            self.link
+                .callback(move |response: Response<Text>| {
+                    if let (meta, _res) = response.into_parts() {
+                        if meta.status.is_success() {
+                            return Msg::SaveUserSuccess(i);
+                        }
+                    }
+                    Msg::Noop
+                }),
+        ) {
+            self.fetch_task = Some(FetchTask::from(task));
+        }
+    }
+
     fn register_user(&mut self, i: usize) {
         let req = Request::post("/api/register")
             .header("Authorization", self.token.clone())
@@ -293,8 +318,8 @@ impl Settings {
                                         } else {
                                             html!{
                                                 <select onchange=self.link.callback(move |e: ChangeData| Msg::RoleChange(i, e))>
-                                                    <option value="READER">{"READER"}</option>
-                                                    <option value="ADMIN">{"ADMIN"}</option>
+                                                    <option value="READER" selected={self.users[i].user.role.clone() == "READER".to_string()}>{"READER"}</option>
+                                                    <option value="ADMIN" selected={self.users[i].user.role.clone() == "ADMIN".to_string()}>{"ADMIN"}</option>
                                                 </select>
                                             }
                                         }
