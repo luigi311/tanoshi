@@ -176,7 +176,7 @@ impl Settings {
     fn setting_card(&self, label: &str, child: Html) -> Html {
         html! {
             <div class="flex justify-between border-b border-gray-light p-2 content-center">
-                <span class="font-semibold">{label}</span>
+                <span class="font-semibold my-auto">{label}</span>
                 <div class="inline-flex">{child}</div>
             </div>
         }
@@ -185,11 +185,11 @@ impl Settings {
     fn admin_settings(&self) -> Html {
         html! {            
             <div class="flex flex-col rounded-lg border border-grey-light m-2" id="updates">
-                {self.separator("Admin Settings")}
+                {self.separator("Users")}
                 {
                     html! {
                         <table class="table-auto w-full text-left">
-                            <thead>
+                            <thead class="border-b">
                                 <tr>
                                     <th class="p-2">{"Username"}</th>
                                     <th class="p-2">{"Role"}</th>
@@ -217,9 +217,9 @@ impl Settings {
     fn reading_settings(&self) -> Html {
         html! {
             <div class="flex flex-col rounded-lg border border-grey-light m-2" id="updates">
-                {self.separator("Reading Settings")}
+                {self.separator("Reader")}
                 {
-                    self.setting_card("Reading Direction", html! {
+                    self.setting_card("Direction", html! {
                         <>
                             <button class={
                                 format!("{} hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-l",
@@ -237,7 +237,7 @@ impl Settings {
                     })
                 }
                 {
-                    self.setting_card("Background Color", html! {
+                    self.setting_card("Background", html! {
                         <>
                             <button class={
                                 format!("{} hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-l",
@@ -255,7 +255,7 @@ impl Settings {
                     })
                 }
                 {
-                    self.setting_card("Page Rendering", html! {
+                    self.setting_card("Mode", html! {
                         <>
                             <button class={
                                 format!("{} hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-l",
@@ -273,7 +273,7 @@ impl Settings {
                                  format!("{} hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-r",
                                  if self.settings.page_rendering == PageRendering::LongStrip { "bg-gray-400" } else {"bg-gray-300"})}
                                  onclick=self.link.callback(|_| Msg::SetPageRendering(PageRendering::LongStrip))>
-                                 {"Long Strip"}
+                                 {"Webtoon"}
                              </button>
                         </>
                     })
