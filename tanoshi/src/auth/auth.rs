@@ -3,15 +3,16 @@ use argon2::{self, Config};
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
 use rand;
 use rand::Rng;
-use sqlx;
-use sqlx::postgres::PgPool;
+use sqlx::{self, Row};
+use sqlx::postgres::{PgPool, PgRow};
+use anyhow::Result;
 
 #[derive(Clone)]
 pub struct Auth {}
 
 impl Auth {
     pub async fn register(user: User, db: PgPool) -> UserResponse {
-        let hashed = Auth::hash(user.password.as_bytes());
+        let hashed = Auth::hash(user.password.unwrap_or("tanoshi123".to_string()).as_bytes());
         match sqlx::query!(
             r#"INSERT INTO "user"(username, password, role) VALUES ($1, $2, $3)"#,
             user.username,
@@ -43,10 +44,11 @@ impl Auth {
         .fetch_one(&db)
         .await;
 
-        if Auth::verify(account.unwrap().password, user.password.as_bytes()) {
+        let account = account.unwrap();
+        if Auth::verify(account.password.unwrap(), user.password.unwrap().as_bytes()) {
             let user_claims = Claims {
-                sub: user.username,
-                role: user.role,
+                sub: account.username,
+                role: account.role,
                 exp: 10000000000,
             };
             let token = match encode(
@@ -68,6 +70,25 @@ impl Auth {
             token: None,
             status: "failed".to_string(),
         };
+    }
+
+    pub async fn user_list(db: PgPool) -> Vec<User> {
+        let users = sqlx::query(r#"SELECT username, role FROM "user""#)
+        .map(|row: PgRow| User {
+            username: row.get(0),
+            role: row.get(1),
+            password: None,
+        })
+        .fetch_all(&db)
+        .await;
+
+        users.unwrap_or(vec![])
+        
+    }
+
+    pub async fn modify_user_role(user: User, db: PgPool) -> Result<()> {
+        sqlx::query!(r#"UPDATE "user" SET role = $1 WHERE username = $2"#, user.role, user.username).execute(&db).await?;
+        Ok(())
     }
 
     pub fn validate(secret: String, token: String) -> Option<Claims> {

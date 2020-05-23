@@ -23,9 +23,8 @@ async fn main() -> Result<()> {
     let secret = std::env::var("TOKEN_SECRET_KEY").unwrap();
     let static_path = std::env::var("STATIC_FILES_PATH").unwrap_or("./dist".to_string());
     let plugin_path = std::env::var("PLUGIN_PATH").unwrap_or("./plugins".to_string());
-    let manga_path = std::env::var("MANGA_PATH").unwrap_or("./manga".to_string());
 
-    let mut extensions = Arc::new(RwLock::new(extension::Extensions::new()));
+    let extensions = Arc::new(RwLock::new(extension::Extensions::new()));
     for entry in std::fs::read_dir(plugin_path)? {
         let entry = entry?;
         let path = entry.path();

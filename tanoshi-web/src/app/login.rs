@@ -13,19 +13,8 @@ use yew_router::{agent::RouteRequest, prelude::*};
 use web_sys::{Event, HtmlElement};
 
 use crate::app::AppRoute;
+use super::component::model::{User, Claims};
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct User {
-    pub username: String,
-    pub password: String,
-}
-
-#[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct Claims {
-    pub sub: String,
-    pub company: String,
-    pub exp: i64,
-}
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct UserResponse {
@@ -68,7 +57,8 @@ impl Component for Login {
             storage,
             user: User {
                 username: "".to_string(),
-                password: "".to_string(),
+                password: None,
+                role: "".to_string(),
             },
         }
     }
@@ -83,7 +73,7 @@ impl Component for Login {
                 self.user.username = e.value;
             }
             Msg::PasswordChange(e) => {
-                self.user.password = e.value;
+                self.user.password = Some(e.value);
             }
             Msg::Submit(e) => {
                 e.prevent_default();
@@ -136,7 +126,7 @@ impl Component for Login {
                                     class="w-full px-3 py-2 mb-3 text-sm leading-tight text-gray-700 border rounded shadow appearance-none focus:outline-none focus:shadow-outline"
                                     id="password"
                                     type="password"
-                                    value=self.user.password.to_owned()
+                                    value=self.user.password.clone().unwrap_or("".to_string()).to_owned()
                                     oninput=self.link.callback(|e| Msg::PasswordChange(e))
                                 />
                             </div>

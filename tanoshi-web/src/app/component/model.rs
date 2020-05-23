@@ -1,6 +1,20 @@
 use serde::{Deserialize, Serialize};
 use yew::format::Text;
 
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct User {
+    pub username: String,
+    pub password: Option<String>,
+    pub role: String,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct Claims {
+    pub sub: String,
+    pub role: String,
+    pub exp: i64,
+}
+
 #[derive(Deserialize, Serialize, Clone, PartialEq)]
 pub enum ReadingDirection {
     LeftToRight,

@@ -1,10 +1,12 @@
 use yew::services::storage::Area;
-use yew::services::StorageService;
+use yew::services::{fetch::FetchTask, StorageService, FetchService};
 use yew::{
     html, Bridge, Bridged, Component, ComponentLink, Html, Properties, ShouldRender,
 };
+use yew::format::{Json, Nothing};
 use yew_router::prelude::{Route, RouteAgent};
 use yew_router::{router::Router, Switch};
+use http::{Response, Request};
 
 use crate::app::catalogue::{CatalogueRoute};
 
@@ -14,6 +16,8 @@ use super::detail::Detail;
 use super::history::History;
 use super::home::Home;
 use super::settings::Settings;
+
+use super::component::model::Claims;
 
 #[derive(Switch, Debug, Clone)]
 pub enum BrowseRoute {
@@ -65,6 +69,7 @@ impl Component for Browse {
         let storage = StorageService::new(Area::Local).unwrap();
         let callback = link.callback(|route| Msg::RouterCallback(route));
         let router = RouteAgent::bridge(callback);
+
         Browse {
             props,
             link,
