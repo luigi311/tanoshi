@@ -36,7 +36,6 @@ pub mod manga {
     #[derive(Debug, Deserialize, Serialize, Clone, Eq, PartialEq, Ord)]
     pub struct Chapter {
         pub id: i32,
-        pub manga_id: i32,
         pub no: String,
         pub title: String,
         pub url: String,
@@ -48,7 +47,6 @@ pub mod manga {
         fn default() -> Self {
             Chapter {
                 id: 0,
-                manga_id: 0,
                 no: "".to_string(),
                 title: "".to_string(),
                 url: "".to_string(),
@@ -105,10 +103,6 @@ pub mod manga {
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct GetMangaResponse {
         pub manga: Manga,
-    }
-
-    #[derive(Debug, Deserialize, Serialize, Clone)]
-    pub struct GetChaptersResponse {
         pub chapters: Vec<Chapter>,
     }
 
