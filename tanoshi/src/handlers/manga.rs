@@ -57,7 +57,6 @@ pub async fn list_mangas(
     let exts = exts.read().await;
     if let Ok(source) = repository::get_source(source_id, db.clone()).await {
         let mangas = exts
-            .extensions()
             .get(&source.name)
             .unwrap()
             .get_mangas(&source.url, param, vec![])
@@ -100,7 +99,6 @@ pub async fn get_manga_info(
         };
 
         let manga = exts
-            .extensions()
             .get(&source.name)
             .unwrap()
             .get_manga_info(&url)
@@ -147,12 +145,7 @@ pub async fn get_chapters(
             Err(e) => return Err(warp::reject()),
         };
 
-        let chapter = exts
-            .extensions()
-            .get(&source.name)
-            .unwrap()
-            .get_chapters(&url)
-            .unwrap();
+        let chapter = exts.get(&source.name).unwrap().get_chapters(&url).unwrap();
 
         match repository::insert_chapters(manga_id, chapter.clone(), db.clone()).await {
             Ok(_) => {}
@@ -193,12 +186,7 @@ pub async fn get_pages(
             Err(e) => return Err(warp::reject()),
         };
 
-        let pages = exts
-            .extensions()
-            .get(&source.name)
-            .unwrap()
-            .get_pages(&url)
-            .unwrap();
+        let pages = exts.get(&source.name).unwrap().get_pages(&url).unwrap();
 
         match repository::insert_pages(chapter_id, pages.clone(), db.clone()).await {
             Ok(_) => {}
@@ -221,17 +209,25 @@ pub async fn get_pages(
     Err(warp::reject())
 }
 
-pub async fn proxy_image(param: ImageProxyParam, exts: Arc<RwLock<Extensions>>, db: PgPool) -> Result<impl warp::Reply, Rejection> {
+pub async fn proxy_image(
+    param: ImageProxyParam,
+    exts: Arc<RwLock<Extensions>>,
+    db: PgPool,
+) -> Result<impl warp::Reply, Rejection> {
     let url = param.url.clone();
     let source = match repository::get_source_from_image_url(url.clone(), db.clone()).await {
-            Ok(source) => source,
-            Err(e) => return Err(warp::reject()),
-        };
+        Ok(source) => source,
+        Err(e) => return Err(warp::reject()),
+    };
 
     let mut bytes = vec![];
 
     let exts = exts.read().await;
-    let content_type = exts.extensions().get(&source.name).unwrap().get_page(&url, &mut bytes).unwrap();
+    let content_type = exts
+        .get(&source.name)
+        .unwrap()
+        .get_page(&url, &mut bytes)
+        .unwrap();
 
     let resp = Response::builder()
         .header("Content-Type", content_type)

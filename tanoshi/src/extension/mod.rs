@@ -1,7 +1,7 @@
 //pub mod local;
 pub mod repository;
 
-use anyhow::{Result, anyhow};
+use anyhow::{anyhow, Result};
 //use local::Local;
 use lib::Library;
 use std::{collections::HashMap, env, ffi::OsStr, fs, io, sync::Arc};
@@ -17,7 +17,7 @@ impl Extension for ExtensionProxy {
     fn info(&self) -> Source {
         self.extension.info()
     }
-    
+
     fn get_mangas(&self, url: &String, param: Params, cookies: Vec<String>) -> Result<Vec<Manga>> {
         self.extension.get_mangas(url, param, cookies)
     }
@@ -53,15 +53,23 @@ impl Extensions {
     }
 
     pub fn extensions(&self) -> &HashMap<String, ExtensionProxy> {
-       &self.extensions
+        &self.extensions
+    }
+
+    pub fn get(&self, name: &String) -> Option<&ExtensionProxy> {
+        self.extensions.get(name)
     }
 
     pub unsafe fn load<P: AsRef<OsStr>>(&mut self, library_path: P) -> Result<()> {
         let library = Arc::new(Library::new(library_path)?);
 
-        let decl = library.get::<*mut PluginDeclaration>(b"plugin_declaration\0")?.read();
+        let decl = library
+            .get::<*mut PluginDeclaration>(b"plugin_declaration\0")?
+            .read();
 
-        if decl.rustc_version != tanoshi_lib::RUSTC_VERSION || decl.core_version != tanoshi_lib::CORE_VERSION {
+        if decl.rustc_version != tanoshi_lib::RUSTC_VERSION
+            || decl.core_version != tanoshi_lib::CORE_VERSION
+        {
             return Err(anyhow!("Version mismatch"));
         }
 
