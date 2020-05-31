@@ -123,6 +123,11 @@ pub mod manga {
     }
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
+    pub struct GetChaptersResponse {
+        pub chapters: Vec<Chapter>,
+    }
+
+    #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct GetPagesResponse {
         pub manga_id: i32,
         pub pages: Vec<String>,
