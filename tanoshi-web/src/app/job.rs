@@ -14,7 +14,8 @@ use anyhow::Result;
 
 use tanoshi_lib::manga::{
     GetChaptersResponse, GetMangaResponse, GetMangasResponse, GetPagesResponse, HistoryRequest,
-    Manga as MangaModel, Params, SortByParam, SortOrderParam, Source as SourceModel,
+    Manga as MangaModel, Params, SortByParam, SortOrderParam, Source as SourceModel, SourceLogin,
+    SourceLoginResult,
 };
 
 #[derive(Deserialize, Serialize)]
@@ -24,6 +25,7 @@ pub enum Request {
     FetchManga(i32),
     FetchChapters(i32, bool),
     FetchPages(i32),
+    PostLogin(i32, SourceLogin),
 }
 
 #[derive(Deserialize, Serialize)]
@@ -33,6 +35,7 @@ pub enum Response {
     MangaFetched(GetMangaResponse),
     ChaptersFetched(GetChaptersResponse),
     PagesFetched(GetPagesResponse),
+    LoginPosted(SourceLoginResult),
 }
 
 pub struct Worker {
@@ -48,6 +51,7 @@ pub enum Msg {
     MangaReady(HandlerId, GetMangaResponse),
     ChaptersReady(HandlerId, GetChaptersResponse),
     PagesReady(HandlerId, GetPagesResponse),
+    LoginReady(HandlerId, SourceLoginResult),
     Noop,
 }
 
@@ -92,6 +96,14 @@ impl Agent for Worker {
                 self.fetch_task.remove(&id.clone());
                 self.link.respond(id, Response::PagesFetched(data));
             }
+            Msg::LoginReady(id, data) => {
+                self.fetch_task.remove(&id.clone());
+                self.storage.store(
+                    format!("source-token-{}", &data.clone().source_id).as_str(),
+                    Ok(data.clone().value),
+                );
+                self.link.respond(id, Response::LoginPosted(data));
+            }
             Msg::Noop => {}
         }
     }
@@ -124,21 +136,12 @@ impl Agent for Worker {
 
                 let source_auth = self
                     .storage
-                    .restore::<Result<String>>("source-token")
+                    .restore::<Result<String>>(format!("source-token-{}", source_id).as_str())
                     .unwrap_or("".to_string());
-
-                let source_auth =
-                    serde_json::from_str(&source_auth).unwrap_or(HashMap::<i32, String>::new());
 
                 let req = HttpRequest::get(format!("/api/source/{}?{}", source_id, params))
                     .header("Authorization", self.token.clone())
-                    .header(
-                        "SourceAuthorization",
-                        source_auth
-                            .get(&source_id)
-                            .unwrap_or(&"".to_string())
-                            .as_str(),
-                    )
+                    .header("SourceAuthorization", source_auth.as_str())
                     .body(Nothing)
                     .expect("failed to build request");
 
@@ -217,6 +220,29 @@ impl Agent for Worker {
                             if let (meta, Json(Ok(data))) = response.into_parts() {
                                 if meta.status.is_success() {
                                     return Msg::PagesReady(id, data);
+                                }
+                            }
+                            Msg::Noop
+                        },
+                    ),
+                ) {
+                    self.fetch_task.insert(id.clone(), FetchTask::from(task));
+                }
+            }
+            Request::PostLogin(source_id, login) => {
+                let req = HttpRequest::post(format!("/api/{}/login", source_id))
+                    .header("Authorization", self.token.to_string())
+                    .header("Content-Type", "application/json")
+                    .body(Json(&login))
+                    .expect("failed to build request");
+
+                if let Ok(task) = FetchService::new().fetch(
+                    req,
+                    self.link.callback(
+                        move |response: HttpResponse<Json<Result<SourceLoginResult>>>| {
+                            if let (meta, Json(Ok(data))) = response.into_parts() {
+                                if meta.status.is_success() {
+                                    return Msg::LoginReady(id, data);
                                 }
                             }
                             Msg::Noop

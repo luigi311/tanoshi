@@ -248,6 +248,8 @@ pub async fn source_login(
     let exts = exts.read().await;
     if let Ok(source) = repository::get_source(source_id, db.clone()).await {
         if let Ok(result) = exts.get(&source.name).unwrap().login(login_info) {
+            let mut result = result;
+            result.source_id = source_id;
             return Ok(warp::reply::json(&result));
         }
     }

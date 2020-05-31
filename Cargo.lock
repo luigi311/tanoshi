@@ -2333,7 +2333,7 @@ dependencies = [
 [[package]]
 name = "tanoshi-lib"
 version = "0.1.0"
-source = "git+https://github.com/fadhlika/tanoshi-lib#7700af840821ddb50be62023652823f6f30932a6"
+source = "git+https://github.com/fadhlika/tanoshi-lib#e797abd4043bca6237cf9c5e0492af944ae3df4f"
 dependencies = [
  "anyhow",
  "chrono",

@@ -40,6 +40,7 @@ pub enum Msg {
     ScrolledDown,
     KeywordChanged(InputData),
     Search(Event),
+    SourceLogin,
     Noop,
 }
 
@@ -122,6 +123,7 @@ impl Component for Source {
                 self.page = 1;
                 self.fetch_mangas();
             }
+            Msg::SourceLogin => {}
             Msg::Noop => {
                 info!("Noop");
             }
@@ -134,22 +136,26 @@ impl Component for Source {
             Some(_) => {}
             None => window().set_onscroll(Some(self.closure.as_ref().unchecked_ref())),
         }
+
         return html! {
             <div class="container mx-auto pb-20"  style="padding-top: env(safe-area-inset-top)">
                 <div class="w-full p-2 flex justify-between block fixed inset-x-0 md:top-0 z-50 bg-tachiyomi-blue shadow">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" class="mx-2 self-center flex-none">
-                <path class="heroicon-ui" d="M4.06 13a8 8 0 0 0 5.18 6.51A18.5 18.5 0 0 1 8.02 13H4.06zm0-2h3.96a18.5 18.5 0 0 1 1.22-6.51A8 8 0 0 0 4.06 11zm15.88 0a8 8 0 0 0-5.18-6.51A18.5 18.5 0 0 1 15.98 11h3.96zm0 2h-3.96a18.5 18.5 0 0 1-1.22 6.51A8 8 0 0 0 19.94 13zm-9.92 0c.16 3.95 1.23 7 1.98 7s1.82-3.05 1.98-7h-3.96zm0-2h3.96c-.16-3.95-1.23-7-1.98-7s-1.82 3.05-1.98 7zM12 22a10 10 0 1 1 0-20 10 10 0 0 1 0 20z"/>
-                </svg>
-                <form class="mx-2 flex-grow" onsubmit=self.link.callback(|e| Msg::Search(e))>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" class="mx-2 self-center flex-none">
+                        <path class="heroicon-ui" d="M4.06 13a8 8 0 0 0 5.18 6.51A18.5 18.5 0 0 1 8.02 13H4.06zm0-2h3.96a18.5 18.5 0 0 1 1.22-6.51A8 8 0 0 0 4.06 11zm15.88 0a8 8 0 0 0-5.18-6.51A18.5 18.5 0 0 1 15.98 11h3.96zm0 2h-3.96a18.5 18.5 0 0 1-1.22 6.51A8 8 0 0 0 19.94 13zm-9.92 0c.16 3.95 1.23 7 1.98 7s1.82-3.05 1.98-7h-3.96zm0-2h3.96c-.16-3.95-1.23-7-1.98-7s-1.82 3.05-1.98 7zM12 22a10 10 0 1 1 0-20 10 10 0 0 1 0 20z"/>
+                    </svg>
+                    <form class="mx-2 flex-grow" onsubmit=self.link.callback(|e| Msg::Search(e))>
                     <input
-                        type="search"
-                        class="w-full px-3 py-2 focus:outline-none text-sm leading-tight text-white bg-tachiyomi-blue-darker rounded appearance-none"
-                        placeholder={"Search"}
-                        oninput=self.link.callback(|e| Msg::KeywordChanged(e))/>
-                </form>
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" class="mx-2 self-center flex-none">
-                    <path class="heroicon-ui" d="M4 15a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm0-2a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm8 2a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm0-2a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm8 2a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm0-2a1 1 0 1 0 0-2 1 1 0 0 0 0 2z"/>
-                </svg>
+                            type="search"
+                            class="w-full px-3 py-2 focus:outline-none text-sm leading-tight text-white bg-tachiyomi-blue-darker shadow-inner rounded appearance-none"
+                            placeholder={"Search"}
+                            oninput=self.link.callback(|e| Msg::KeywordChanged(e))/>
+                    </form>
+                    <button onclick=self.link.callback(|_| Msg::SourceLogin)
+                        class="hover:bg-tachiyomi-blue-darker focus:bg-tachiyomi-blue-darker rounded flex-none">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" class="mx-2 my-auto self-center">
+                            <path class="heroicon-ui" d="M19 10h2a1 1 0 0 1 0 2h-2v2a1 1 0 0 1-2 0v-2h-2a1 1 0 0 1 0-2h2V8a1 1 0 0 1 2 0v2zM9 12A5 5 0 1 1 9 2a5 5 0 0 1 0 10zm0-2a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm8 11a1 1 0 0 1-2 0v-2a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3v2a1 1 0 0 1-2 0v-2a5 5 0 0 1 5-5h5a5 5 0 0 1 5 5v2z"/>
+                        </svg>
+                    </button>
                 </div>
                 <div class="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 pt-12 mt-2" id="catalogue">
                     { for self.mangas.iter().map(|manga| html!{
