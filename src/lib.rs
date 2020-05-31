@@ -228,12 +228,7 @@ pub mod extensions {
 
     pub trait Extension: Send + Sync {
         fn info(&self) -> Source;
-        fn get_mangas(
-            &self,
-            url: &String,
-            param: Params,
-            cookies: Vec<String>,
-        ) -> Result<Vec<Manga>>;
+        fn get_mangas(&self, url: &String, param: Params, auth: String) -> Result<Vec<Manga>>;
         fn get_manga_info(&self, url: &String) -> Result<Manga>;
         fn get_chapters(&self, url: &String) -> Result<Vec<Chapter>>;
         fn get_pages(&self, url: &String) -> Result<Vec<String>>;
