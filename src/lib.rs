@@ -120,7 +120,6 @@ pub mod manga {
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct GetMangaResponse {
         pub manga: Manga,
-        pub chapters: Vec<Chapter>,
     }
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
