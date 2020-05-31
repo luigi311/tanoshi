@@ -195,7 +195,7 @@ impl Component for Detail {
                         }>
                             <RouterAnchor<AppRoute>
                             classes="px-2 py-2 text-left block hover:shadow"
-                            route=AppRoute::Chapter(chapter.manga_id, chapter.id, (chapter.read + 1) as usize)>
+                            route=AppRoute::Chapter(chapter.id, (chapter.read + 1) as usize)>
                                 {format!("Ch. {} {}", chapter.no.to_owned(), chapter.title.to_owned())}
                             </RouterAnchor<AppRoute>>
                         </div>

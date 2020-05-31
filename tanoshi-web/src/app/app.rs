@@ -19,8 +19,8 @@ use yew::prelude::*;
 
 #[derive(Switch, Debug, Clone)]
 pub enum AppRoute {
-    #[to = "/manga/{manga_id}/chapter/{chapter_id}/page/{page}"]
-    Chapter(i32, i32, usize),
+    #[to = "/chapter/{chapter_id}/page/{page}"]
+    Chapter(i32, usize),
     #[to = "/login"]
     Login,
     #[to = "/logout"]
@@ -104,7 +104,7 @@ impl Component for App {
                 <Router<AppRoute, ()>
                 render = Router::render(|switch: AppRoute| {
                 match switch {
-                    AppRoute::Chapter(manga_id, chapter_id, page) => html!{<Chapter manga_id=manga_id chapter_id=chapter_id page=page/>},
+                    AppRoute::Chapter(chapter_id, page) => html!{<Chapter chapter_id=chapter_id page=page/>},
                     AppRoute::Login => html!{<Login />},
                     AppRoute::Logout => html!{<Logout />},
                     AppRoute::Browse(route) => {

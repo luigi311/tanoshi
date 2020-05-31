@@ -23,7 +23,6 @@ use tanoshi_lib::manga::{
 
 #[derive(Clone, Properties)]
 pub struct Props {
-    pub manga_id: i32,
     pub chapter_id: i32,
     pub page: usize,
 }
@@ -121,7 +120,7 @@ impl Component for Chapter {
             link,
             router,
             token,
-            manga_id: props.manga_id,
+            manga_id: 0,
             current_chapter_id: props.chapter_id,
             chapter: ChapterModel::default(),
             current_page: props.page.checked_sub(1).unwrap_or(0),
@@ -146,7 +145,6 @@ impl Component for Chapter {
         if self.current_chapter_id != props.chapter_id
             || self.current_page != props.page.checked_sub(1).unwrap_or(0)
         {
-            self.manga_id = props.manga_id;
             self.current_chapter_id = props.chapter_id;
             self.current_page = props.page.checked_sub(1).unwrap_or(0);
             return true;
@@ -157,7 +155,7 @@ impl Component for Chapter {
     fn rendered(&mut self, _first_render: bool) {
         if self.should_fetch {
             self.should_fetch = false;
-            self.get_chapters();
+            self.get_pages();
         }
         document()
             .get_element_by_id("manga-reader")
@@ -182,10 +180,10 @@ impl Component for Chapter {
                     None => 0,
                 };
                 self.chapter = data.chapters[idx].clone();
-                self.get_pages();
-                return false;
+                self.is_fetching = false;
             }
             Msg::PagesReady(data) => {
+                self.manga_id = data.manga_id;
                 self.pages = data.pages;
                 self.page_refs.clear();
                 for i in 0..self.pages.len() + 1 {
@@ -198,8 +196,8 @@ impl Component for Chapter {
                         None => window().set_onscroll(Some(self.closure.as_ref().unchecked_ref())),
                     };
                 }
-
-                self.is_fetching = false;
+                self.get_chapters();
+                return false;
             }
             Msg::PageForward => {
                 if self.settings.page_rendering == PageRendering::LongStrip {

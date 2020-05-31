@@ -122,9 +122,23 @@ impl Agent for Worker {
             Request::FetchMangas(source_id, params) => {
                 let params = serde_urlencoded::to_string(params).unwrap();
 
+                let source_auth = self
+                    .storage
+                    .restore::<Result<String>>("SourceAuthorization")
+                    .unwrap_or("".to_string());
+
+                let source_auth =
+                    serde_json::from_str(&source_auth).unwrap_or(HashMap::<i32, String>::new());
+
                 let req = HttpRequest::get(format!("/api/source/{}?{}", source_id, params))
                     .header("Authorization", self.token.clone())
-                    .header("SourceAuthorization", "")
+                    .header(
+                        "source-token",
+                        source_auth
+                            .get(&source_id)
+                            .unwrap_or(&"".to_string())
+                            .as_str(),
+                    )
                     .body(Nothing)
                     .expect("failed to build request");
 
