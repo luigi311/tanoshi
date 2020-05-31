@@ -8,7 +8,7 @@ use ureq;
 use crate::auth::Claims;
 use crate::extension::{repository, ExtensionProxy, Extensions};
 use tanoshi_lib::extensions::Extension;
-use tanoshi_lib::manga::{GetParams, ImageProxyParam, Params, Source};
+use tanoshi_lib::manga::{GetParams, ImageProxyParam, Params, Source, SourceLogin};
 
 use crate::handlers::TransactionReject;
 use std::sync::{Arc, Mutex};
@@ -236,4 +236,17 @@ pub async fn proxy_image(
         .unwrap();
 
     Ok(resp)
+}
+
+pub async fn source_login(
+    source: String,
+    login_info: SourceLogin,
+    exts: Arc<RwLock<Extensions>>,
+) -> Result<impl warp::Reply, Rejection> {
+    let exts = exts.read().await;
+    let result = match exts.get(&source).unwrap().login(login_info) {
+        Ok(result) => result,
+        Err(e) => return Err(warp::reject()),
+    };
+    Ok(warp::reply::json(&result))
 }
