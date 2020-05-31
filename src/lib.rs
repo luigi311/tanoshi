@@ -17,6 +17,13 @@ pub mod manga {
     }
 
     #[derive(Debug, Deserialize, Serialize, Clone, Default)]
+    pub struct SourceLoginResult {
+        pub name: String,
+        pub auth_type: String,
+        pub value: String,
+    }
+
+    #[derive(Debug, Deserialize, Serialize, Clone, Default)]
     pub struct Source {
         pub id: i32,
         pub name: String,
@@ -211,7 +218,7 @@ pub mod manga {
 
 #[cfg(feature = "extensions")]
 pub mod extensions {
-    use crate::manga::{Chapter, Manga, Params, Source, SourceLogin};
+    use crate::manga::{Chapter, Manga, Params, Source, SourceLogin, SourceLoginResult};
     use anyhow::{anyhow, Result};
     use std::io::Read;
 
@@ -236,7 +243,7 @@ pub mod extensions {
 
             Ok(content_type)
         }
-        fn login(&self, _: SourceLogin) -> Result<String> {
+        fn login(&self, _: SourceLogin) -> Result<SourceLoginResult> {
             Err(anyhow!("not implemented"))
         }
     }
