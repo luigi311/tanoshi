@@ -9,6 +9,14 @@ pub mod manga {
     use std::cmp::Ordering;
 
     #[derive(Debug, Deserialize, Serialize, Clone, Default)]
+    pub struct SourceLogin {
+        pub username: String,
+        pub password: String,
+        pub remember_me: Option<bool>,
+        pub two_factor: Option<String>,
+    }
+
+    #[derive(Debug, Deserialize, Serialize, Clone, Default)]
     pub struct Source {
         pub id: i32,
         pub name: String,
@@ -201,8 +209,8 @@ pub mod manga {
 
 #[cfg(feature = "extensions")]
 pub mod extensions {
-    use crate::manga::{Chapter, Manga, Params, Source};
-    use anyhow::{Result, anyhow};
+    use crate::manga::{Chapter, Manga, Params, Source, SourceLogin};
+    use anyhow::{anyhow, Result};
     use std::io::Read;
 
     pub trait Extension: Send + Sync {
@@ -225,6 +233,9 @@ pub mod extensions {
             }
 
             Ok(content_type)
+        }
+        fn login(&self, _: SourceLogin) -> Result<String> {
+            Err(anyhow!("not implemented"))
         }
     }
 
