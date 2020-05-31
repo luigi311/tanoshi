@@ -1,15 +1,21 @@
 use yew::services::storage::Area;
-use yew::services::{fetch::FetchTask, StorageService, FetchService};
-use yew::{html, Bridge, Bridged, Component, ComponentLink, Html, ShouldRender, format::{Text, Nothing}};
+use yew::services::{fetch::FetchTask, FetchService, StorageService};
+use yew::{
+    format::{Nothing, Text},
+    html, Bridge, Bridged, Component, ComponentLink, Html, ShouldRender,
+};
 use yew_router::agent::RouteRequest;
 use yew_router::prelude::{Route, RouteAgent};
 use yew_router::{router::Router, Switch};
 
 use super::browse::{self, Browse, BrowseRoute};
 use super::chapter::Chapter;
+use super::job;
 use super::login::Login;
 use super::logout::Logout;
-use http::{Response, Request};
+use http::{Request, Response};
+
+use yew::prelude::*;
 
 #[derive(Switch, Debug, Clone)]
 pub enum AppRoute {
@@ -29,6 +35,7 @@ pub struct App {
     router: Box<dyn Bridge<RouteAgent>>,
     route: String,
     fetch_task: Option<FetchTask>,
+    worker: Box<dyn Bridge<job::Worker>>,
 }
 
 pub enum Msg {
@@ -45,12 +52,17 @@ impl Component for App {
         let storage = StorageService::new(Area::Local).unwrap();
         let callback = link.callback(|route| Msg::RouterCallback(route));
         let router = RouteAgent::bridge(callback);
+
+        let worker_callback = link.callback(|_| Msg::Noop);
+        let worker = job::Worker::bridge(worker_callback);
+
         App {
             link,
             storage,
             router,
             route: "/".to_string(),
             fetch_task: None,
+            worker,
         }
     }
 
@@ -77,7 +89,7 @@ impl Component for App {
             }
             Msg::TokenInvalidorExpired => {
                 self.router
-                .send(RouteRequest::ChangeRoute(Route::from("/login".to_string())));
+                    .send(RouteRequest::ChangeRoute(Route::from("/login".to_string())));
             }
             Msg::Noop => {
                 return false;
@@ -114,16 +126,14 @@ impl App {
 
         if let Ok(task) = FetchService::new().fetch(
             req,
-            self.link.callback(
-                |response: Response<Text>| {
-                    let (meta, _res) = response.into_parts();
-                    let status = meta.status;
-                    if status == http::StatusCode::UNAUTHORIZED {
-                        return Msg::TokenInvalidorExpired
-                    }
-                    Msg::Noop
-                },
-            ),
+            self.link.callback(|response: Response<Text>| {
+                let (meta, _res) = response.into_parts();
+                let status = meta.status;
+                if status == http::StatusCode::UNAUTHORIZED {
+                    return Msg::TokenInvalidorExpired;
+                }
+                Msg::Noop
+            }),
         ) {
             self.fetch_task = Some(FetchTask::from(task));
         }

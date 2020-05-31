@@ -1,17 +1,20 @@
-use super::component::Manga;
+use super::component::{Manga, Spinner};
 use web_sys::HtmlElement;
 use yew::format::{Json, Nothing, Text};
 use yew::prelude::*;
 use yew::services::fetch::{FetchService, FetchTask};
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 
-use super::component::Spinner;
-use http::{Request, Response};
 use yew::services::storage::Area;
 use yew::services::StorageService;
 use yew::utils::{document, window};
 
-use tanoshi_lib::manga::{GetMangasResponse, Manga as MangaModel, Params, SortByParam, SortOrderParam, Source as SourceModel};
+use tanoshi_lib::manga::{
+    GetMangasResponse, Manga as MangaModel, Params, SortByParam, SortOrderParam,
+    Source as SourceModel,
+};
+
+use crate::app::job;
 
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
@@ -31,6 +34,7 @@ pub struct Source {
     token: String,
     closure: Closure<dyn Fn()>,
     keyword: String,
+    worker: Box<dyn Bridge<job::Worker>>,
 }
 
 pub enum Msg {
@@ -38,7 +42,7 @@ pub enum Msg {
     ScrolledDown,
     KeywordChanged(InputData),
     Search(Event),
-Noop,
+    Noop,
 }
 
 impl Component for Source {
@@ -69,7 +73,13 @@ impl Component for Source {
                 tmp_link.send_message(Msg::ScrolledDown);
             }
         }) as Box<dyn Fn()>);
-        
+
+        let worker_callback = link.callback(|msg| match msg {
+            job::Response::MangasFetched(data) => Msg::MangaReady(data),
+            _ => Msg::Noop,
+        });
+        let worker = job::Worker::bridge(worker_callback);
+
         Source {
             fetch_task: None,
             link,
@@ -80,6 +90,7 @@ impl Component for Source {
             token,
             closure,
             keyword: "".to_string(),
+            worker,
         }
     }
 
@@ -87,7 +98,7 @@ impl Component for Source {
         if self.source_id != props.clone().source_id.unwrap() {
             self.source_id = props.source_id.unwrap();
             return true;
-        } 
+        }
         return false;
     }
 
@@ -107,7 +118,6 @@ impl Component for Source {
                 } else {
                     self.mangas.append(&mut mangas);
                 }
-                self.fetch_web();
             }
             Msg::ScrolledDown => {
                 if !self.is_fetching {
@@ -175,60 +185,14 @@ impl Component for Source {
 
 impl Source {
     fn fetch_mangas(&mut self) {
-        let params = Params{
-            keyword: Some(self.keyword.to_owned()),
-            sort_by: Some(SortByParam::Views),
-            sort_order: Some(SortOrderParam::Desc),
-            page: Some(self.page.to_string())
-        };
-        let params = serde_urlencoded::to_string(params).unwrap();
-        
-        let req = Request::get(format!(
-            "/api/source/{}?{}",
-            self.source_id, params
-        ))
-        .header("Authorization", self.token.clone())
-        .body(Nothing)
-        .expect("failed to build request");
-
-        if let Ok(task) = FetchService::new().fetch(
-            req,
-            self.link.callback(
-                |response: Response<Json<Result<GetMangasResponse, anyhow::Error>>>| {
-                    if let (meta, Json(Ok(data))) = response.into_parts() {
-                        if meta.status.is_success() {
-                            return Msg::MangaReady(data);
-                        }
-                    }
-                    Msg::Noop
-                },
-            ),
-        ) {
-            self.fetch_task = Some(FetchTask::from(task));
-            self.is_fetching = true;
-        }
-    }
-
-    fn fetch_web(&mut self) {        
-        let req = Request::get("https://mangadex.org/login")
-        .body(Nothing)
-        .expect("failed to build request");
-
-        if let Ok(task) = FetchService::new().fetch(
-            req,
-            self.link.callback(
-                |response: Response<Text>| {
-                    if let (meta, Ok(data)) = response.into_parts() {
-                        if meta.status.is_success() {
-                            info!("{:?}", data);
-                            return Msg::Noop;
-                        }
-                    }
-                    Msg::Noop
-                },
-            ),
-        ) {
-            self.fetch_task = Some(FetchTask::from(task));
-        }
+        self.worker.send(job::Request::FetchMangas(
+            self.source_id,
+            Params {
+                keyword: Some(self.keyword.to_owned()),
+                sort_by: Some(SortByParam::Views),
+                sort_order: Some(SortOrderParam::Desc),
+                page: Some(self.page.to_string()),
+            },
+        ));
     }
 }
