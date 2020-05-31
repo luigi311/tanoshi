@@ -18,7 +18,8 @@ pub mod manga {
 
     #[derive(Debug, Deserialize, Serialize, Clone, Default)]
     pub struct SourceLoginResult {
-        pub name: String,
+        pub source_id: i32,
+        pub source_name: String,
         pub auth_type: String,
         pub value: String,
     }
