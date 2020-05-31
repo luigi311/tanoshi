@@ -230,7 +230,7 @@ impl Agent for Worker {
                 }
             }
             Request::PostLogin(source_id, login) => {
-                let req = HttpRequest::post(format!("/api/{}/login", source_id))
+                let req = HttpRequest::post(format!("/api/login/{}", source_id))
                     .header("Authorization", self.token.to_string())
                     .header("Content-Type", "application/json")
                     .body(Json(&login))
