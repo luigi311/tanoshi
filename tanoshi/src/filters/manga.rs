@@ -43,6 +43,7 @@ pub fn list_mangas(
     warp::path!("api" / "source" / i32)
         .and(warp::get())
         .and(with_authorization(secret))
+        .and(with_source_authorization())
         .and(warp::query::<Params>())
         .and(with_extensions(exts))
         .and(with_db(db))
@@ -116,4 +117,9 @@ fn with_extensions(
     exts: Arc<RwLock<Extensions>>,
 ) -> impl Filter<Extract = (Arc<RwLock<Extensions>>,), Error = std::convert::Infallible> + Clone {
     warp::any().map(move || exts.clone())
+}
+
+pub fn with_source_authorization(
+) -> impl Filter<Extract = (String,), Error = warp::reject::Rejection> + Clone {
+    warp::header::header("sourceauthorization").map(move |token: String| token.clone())
 }

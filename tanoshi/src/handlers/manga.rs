@@ -50,6 +50,7 @@ pub async fn list_sources(
 pub async fn list_mangas(
     source_id: i32,
     claim: Claims,
+    source_auth: String,
     param: Params,
     exts: Arc<RwLock<Extensions>>,
     db: PgPool,
@@ -59,7 +60,7 @@ pub async fn list_mangas(
         let mangas = exts
             .get(&source.name)
             .unwrap()
-            .get_mangas(&source.url, param, vec![])
+            .get_mangas(&source.url, param, source_auth)
             .unwrap();
 
         let manga_ids = match repository::insert_mangas(source_id, mangas.clone(), db.clone()).await

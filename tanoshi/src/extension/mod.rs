@@ -18,8 +18,8 @@ impl Extension for ExtensionProxy {
         self.extension.info()
     }
 
-    fn get_mangas(&self, url: &String, param: Params, cookies: Vec<String>) -> Result<Vec<Manga>> {
-        self.extension.get_mangas(url, param, cookies)
+    fn get_mangas(&self, url: &String, param: Params, auth: String) -> Result<Vec<Manga>> {
+        self.extension.get_mangas(url, param, auth)
     }
 
     fn get_manga_info(&self, url: &String) -> Result<Manga> {
