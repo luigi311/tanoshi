@@ -240,14 +240,16 @@ pub async fn proxy_image(
 }
 
 pub async fn source_login(
-    source: String,
+    source_id: i32,
     login_info: SourceLogin,
     exts: Arc<RwLock<Extensions>>,
+    db: PgPool,
 ) -> Result<impl warp::Reply, Rejection> {
     let exts = exts.read().await;
-    let result = match exts.get(&source).unwrap().login(login_info) {
-        Ok(result) => result,
-        Err(e) => return Err(warp::reject()),
-    };
-    Ok(warp::reply::json(&result))
+    if let Ok(source) = repository::get_source(source_id, db.clone()).await {
+        if let Ok(result) = exts.get(&source.name).unwrap().login(login_info) {
+            return Ok(warp::reply::json(&result));
+        }
+    }
+    Err(warp::reject())
 }
