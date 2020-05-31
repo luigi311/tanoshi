@@ -1,14 +1,12 @@
-use yew::services::storage::Area;
-use yew::services::{fetch::FetchTask, StorageService, FetchService};
-use yew::{
-    html, Bridge, Bridged, Component, ComponentLink, Html, Properties, ShouldRender,
-};
+use http::{Request, Response};
 use yew::format::{Json, Nothing};
+use yew::services::storage::Area;
+use yew::services::{fetch::FetchTask, FetchService, StorageService};
+use yew::{html, Bridge, Bridged, Component, ComponentLink, Html, Properties, ShouldRender};
 use yew_router::prelude::{Route, RouteAgent};
 use yew_router::{router::Router, Switch};
-use http::{Response, Request};
 
-use crate::app::catalogue::{CatalogueRoute};
+use crate::app::catalogue::CatalogueRoute;
 
 use super::catalogue::Catalogue;
 use super::component::NavigationBar;
@@ -99,7 +97,7 @@ impl Component for Browse {
     fn view(&self) -> Html {
         html! {
                 <>
-                    <div class="block fixed inset-x-0 top-0 z-50 bg-tachiyomi-blue safe-top z-50 shadow"></div>
+                    <div class="block fixed inset-x-0 top-0 z-50 bg-tachiyomi-blue safe-top"></div>
                     <NavigationBar />
                     <Router<BrowseRoute>
                     render = Router::render(|switch: BrowseRoute| {

@@ -3,6 +3,8 @@ module.exports = {
         extend: {
             colors: {
                 'tachiyomi-blue': '#5b749b',
+                'tachiyomi-blue-lighter': '#7e93b3',
+                'tachiyomi-blue-darker': '#455876'
             }
         },
         container: {

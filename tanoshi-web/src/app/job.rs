@@ -124,7 +124,7 @@ impl Agent for Worker {
 
                 let source_auth = self
                     .storage
-                    .restore::<Result<String>>("SourceAuthorization")
+                    .restore::<Result<String>>("source-token")
                     .unwrap_or("".to_string());
 
                 let source_auth =
@@ -133,7 +133,7 @@ impl Agent for Worker {
                 let req = HttpRequest::get(format!("/api/source/{}?{}", source_id, params))
                     .header("Authorization", self.token.clone())
                     .header(
-                        "source-token",
+                        "SourceAuthorization",
                         source_auth
                             .get(&source_id)
                             .unwrap_or(&"".to_string())
