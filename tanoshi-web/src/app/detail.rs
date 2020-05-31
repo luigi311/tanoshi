@@ -1,18 +1,24 @@
 use yew::format::{Json, Nothing};
+use yew::prelude::*;
 use yew::services::fetch::{FetchService, FetchTask, Request, Response};
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 use yew_router::components::RouterAnchor;
 
 use super::component::Spinner;
-use crate::app::AppRoute;
+use crate::app::{job, AppRoute};
 
-use tanoshi_lib::manga::{GetMangaResponse, Manga as MangaModel, Chapter as ChapterModel, GetChaptersResponse};
+use tanoshi_lib::manga::{
+    Chapter as ChapterModel, GetChaptersResponse, GetMangaResponse, Manga as MangaModel,
+};
 
 use serde::{Deserialize, Serialize};
 
 use anyhow;
 use yew::services::storage::Area;
 use yew::services::StorageService;
+
+use wasm_bindgen::prelude::*;
+use wasm_bindgen::JsCast;
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct FavoriteManga {
@@ -37,9 +43,9 @@ pub struct Detail {
     manga_id: i32,
     manga: MangaModel,
     chapters: Vec<ChapterModel>,
-    is_fetching_manga: bool,
-    is_fetching_chapter: bool,
+    is_fetching: bool,
     should_fetch: bool,
+    worker: Box<dyn Bridge<job::Worker>>,
 }
 
 pub enum Msg {
@@ -65,6 +71,15 @@ impl Component for Detail {
                 "".to_string()
             }
         };
+
+        let worker_callback = link.callback(|msg| match msg {
+            job::Response::MangaFetched(data) => Msg::MangaReady(data),
+            job::Response::ChaptersFetched(data) => Msg::ChapterReady(data),
+            _ => Msg::Noop,
+        });
+        let worker = job::Worker::bridge(worker_callback);
+
+        info!("create");
         Detail {
             fetch_task: None,
             link,
@@ -72,21 +87,24 @@ impl Component for Detail {
             manga_id: props.manga_id,
             manga: MangaModel::default(),
             chapters: vec![],
-            is_fetching_manga: false,
-            is_fetching_chapter: false,
+            is_fetching: false,
             should_fetch: true,
+            worker,
         }
     }
 
     fn change(&mut self, props: Self::Properties) -> ShouldRender {
+        info!("changed");
         if self.manga_id != props.manga_id {
             self.manga_id = props.manga_id;
+            self.should_fetch = true;
             return true;
         }
         false
     }
 
     fn rendered(&mut self, first_render: bool) {
+        info!("rendered {}", first_render);
         if self.should_fetch {
             self.get_manga_info();
             self.should_fetch = false;
@@ -94,15 +112,16 @@ impl Component for Detail {
     }
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
+        info!("update");
         match msg {
             Msg::MangaReady(data) => {
                 self.manga = data.manga;
                 self.get_chapters(false);
-                self.is_fetching_manga = false;
+                self.is_fetching = false;
             }
             Msg::ChapterReady(data) => {
                 self.chapters = data.chapters;
-                self.is_fetching_chapter = false;
+                self.is_fetching = false;
             }
             Msg::Refresh => {
                 self.get_chapters(true);
@@ -134,7 +153,7 @@ impl Component for Detail {
     fn view(&self) -> Html {
         html! {
             <div class="container pb-20" style="padding-top: calc(env(safe-area-inset-top) + .5rem)">
-            <Spinner is_active={self.is_fetching_manga || self.is_fetching_chapter} is_fullscreen=true />
+            <Spinner is_active={self.is_fetching} is_fullscreen=true />
             <div class="m-2 flex md:flex-row sm:flex-col">
                 <div class="flex-shrink-0 lg:m-2 sm:mx-auto sm:my-2">
                     <div class="relative my-4">
@@ -176,7 +195,7 @@ impl Component for Detail {
                         }>
                             <RouterAnchor<AppRoute>
                             classes="px-2 py-2 text-left block hover:shadow"
-                            route=AppRoute::Chapter(chapter.manga_id, chapter.id, (chapter.read + 1) as usize)>
+                            route=AppRoute::Chapter(chapter.id, (chapter.read + 1) as usize)>
                                 {format!("Ch. {} {}", chapter.no.to_owned(), chapter.title.to_owned())}
                             </RouterAnchor<AppRoute>>
                         </div>
@@ -190,55 +209,16 @@ impl Component for Detail {
 
 impl Detail {
     fn get_manga_info(&mut self) {
-        let req = Request::get(format!("/api/manga/{}", self.manga_id))
-            .header("Authorization", self.token.to_string())
-            .body(Nothing)
-            .expect("failed to build request");
-
-        if let Ok(task) = FetchService::new().fetch(
-            req,
-            self.link.callback(
-                |response: Response<Json<Result<GetMangaResponse, anyhow::Error>>>| {
-                    if let (meta, Json(Ok(data))) = response.into_parts() {
-                        if meta.status.is_success() {
-                            return Msg::MangaReady(data);
-                        }
-                    }
-                    Msg::Noop
-                },
-            ),
-        ) {
-            self.fetch_task = Some(FetchTask::from(task));
-            self.is_fetching_manga = true;
-        }
+        self.worker.send(job::Request::FetchManga(self.manga_id));
+        self.is_fetching = true;
     }
 
     fn get_chapters(&mut self, refresh: bool) {
-        let req = Request::get(format!(
-            "/api/manga/{}/chapter?refresh={}",
-            self.manga_id, refresh
-        ))
-        .header("Authorization", self.token.to_string())
-        .body(Nothing)
-        .expect("failed to build request");
-
-        if let Ok(task) = FetchService::new().fetch(
-            req,
-            self.link.callback(
-                |response: Response<Json<Result<GetChaptersResponse, anyhow::Error>>>| {
-                    if let (meta, Json(Ok(data))) = response.into_parts() {
-                        if meta.status.is_success() {
-                            return Msg::ChapterReady(data);
-                        }
-                    }
-                    Msg::Noop
-                },
-            ),
-        ) {
-            self.fetch_task = Some(FetchTask::from(task));
-            self.is_fetching_chapter = true;
-        }
+        self.worker
+            .send(job::Request::FetchChapters(self.manga_id, refresh));
+        self.is_fetching = true;
     }
+
     fn favorite(&mut self) {
         let req = Request::post(format!("/api/favorites/manga/{}", self.manga_id))
             .header("Authorization", self.token.to_owned())
@@ -265,9 +245,9 @@ impl Detail {
 
     fn unfavorite(&mut self) {
         let req = Request::delete(format!("/api/favorites/manga/{}", self.manga_id))
-        .header("Authorization", self.token.to_owned())
-        .body(Nothing)
-        .expect("failed to build request");
+            .header("Authorization", self.token.to_owned())
+            .body(Nothing)
+            .expect("failed to build request");
 
         if let Ok(task) = FetchService::new().fetch(
             req,

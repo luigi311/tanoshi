@@ -10,8 +10,10 @@ use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 use yew_router::components::RouterAnchor;
 use yew_router::service::RouteService;
 
-use tanoshi_lib::manga::{History as HistoryModel, HistoryResponse, Update as UpdateModel, UpdatesResponse};
 use super::component::Spinner;
+use tanoshi_lib::manga::{
+    History as HistoryModel, HistoryResponse, Update as UpdateModel, UpdatesResponse,
+};
 use yew::utils::{document, window};
 
 use wasm_bindgen::prelude::*;
@@ -20,7 +22,7 @@ use wasm_bindgen::JsCast;
 #[derive(Debug, Eq, PartialEq)]
 pub enum PageType {
     History,
-    Updates
+    Updates,
 }
 
 impl Into<PageType> for String {
@@ -34,9 +36,7 @@ impl Into<PageType> for String {
 }
 
 #[derive(Clone, Properties)]
-pub struct Props {
-
-}
+pub struct Props {}
 
 pub struct History {
     fetch_task: Option<FetchTask>,
@@ -90,7 +90,7 @@ impl Component for History {
         }) as Box<dyn Fn()>);
 
         let route_service: RouteService<()> = RouteService::new();
-        let page_type : PageType = route_service.get_path().into();
+        let page_type: PageType = route_service.get_path().into();
         info!("create {:?}", page_type);
 
         History {
@@ -110,7 +110,7 @@ impl Component for History {
     }
 
     fn change(&mut self, _props: Self::Properties) -> ShouldRender {
-        let page_type : PageType = self.route_service.get_path().into();
+        let page_type: PageType = self.route_service.get_path().into();
         if self.page_type != page_type {
             self.page_type = page_type;
             self.should_fetch = true;
@@ -211,9 +211,9 @@ impl History {
         let today = chrono::NaiveDateTime::from_timestamp(secs, nanoes);
         today.signed_duration_since(at).num_days()
     }
-    
-    fn show_separator(&self, show_sep: Option<bool>, days: Option<i64>) -> Html{
-        html!{
+
+    fn show_separator(&self, show_sep: Option<bool>, days: Option<i64>) -> Html {
+        html! {
             <div class={if show_sep.unwrap_or(false) {"shadow p-2 bg-tachiyomi-blue"} else {"hidden"}}>
                 <span class="text-semibold text-white">{
                     match days.unwrap_or(0) {
@@ -236,7 +236,7 @@ impl History {
                             {self.show_separator(h.show_sep, h.days)}
                             <RouterAnchor<AppRoute>
                             classes="flex inline-flex border-b border-gray-light p-2 content-center hover:bg-gray-200"
-                            route=AppRoute::Chapter(h.manga_id, h.chapter_id, (h.read + 1) as usize)>
+                            route=AppRoute::Chapter(h.chapter_id, (h.read + 1) as usize)>
                                 <div class="mr-4 my-2 h-16 w-16 object-fit object-center bg-center bg-cover rounded-full" style={format!("background-image: url({})", h.thumbnail_url.clone().unwrap_or("".to_string()))}/>
                                 <div class="flex flex-col my-auto">
                                     <span class="text-lg font-semibold">{h.title.clone()}</span>
@@ -254,7 +254,7 @@ impl History {
                             {self.show_separator(update.show_sep, update.days)}
                             <RouterAnchor<AppRoute>
                             classes="flex inline-flex border-b border-gray-light p-2 content-center hover:bg-gray-200"
-                            route=AppRoute::Chapter(update.manga_id, update.chapter_id, 1)>
+                            route=AppRoute::Chapter(update.chapter_id, 1)>
                                 <div class="mr-4 my-2 h-16 w-16 object-fit object-center bg-center bg-cover rounded-full" style={format!("background-image: url({})", update.thumbnail_url.clone())}/>
                                 <div class="flex flex-col my-auto">
                                     <span class="text-lg font-semibold">{update.title.clone()}</span>

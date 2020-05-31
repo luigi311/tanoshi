@@ -5,7 +5,6 @@ extern crate chrono;
 extern crate web_logger;
 
 mod utils;
-
 use wasm_bindgen::prelude::*;
 
 mod app;

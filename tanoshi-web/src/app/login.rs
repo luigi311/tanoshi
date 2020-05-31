@@ -12,9 +12,8 @@ use yew_router::{agent::RouteRequest, prelude::*};
 
 use web_sys::{Event, HtmlElement};
 
+use super::component::model::{Claims, User};
 use crate::app::AppRoute;
-use super::component::model::{User, Claims};
-
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct UserResponse {
@@ -104,7 +103,6 @@ impl Component for Login {
                 <div class="flex justify-center px-6 my-12">
                 <div class="w-full xl:w-3/4 lg:w-11/12 flex">
                     <div class="w-full  bg-white p-5 rounded-lg lg:rounded-l-none">
-                        <h3 class="pt-4 text-2xl text-center">{"Welcome Back!"}</h3>
                         <form class="px-8 pt-6 pb-8 mb-4 bg-white rounded" onsubmit=self.link.callback(|e| Msg::Submit(e))>
                             <div class="mb-4">
                                 <label class="block mb-2 text-sm font-bold text-gray-700" for="username">

@@ -8,7 +8,7 @@ use ureq;
 use crate::auth::Claims;
 use crate::extension::{repository, ExtensionProxy, Extensions};
 use tanoshi_lib::extensions::Extension;
-use tanoshi_lib::manga::{GetParams, ImageProxyParam, Params, Source};
+use tanoshi_lib::manga::{GetParams, ImageProxyParam, Params, Source, SourceLogin};
 
 use crate::handlers::TransactionReject;
 use std::sync::{Arc, Mutex};
@@ -50,6 +50,7 @@ pub async fn list_sources(
 pub async fn list_mangas(
     source_id: i32,
     claim: Claims,
+    source_auth: String,
     param: Params,
     exts: Arc<RwLock<Extensions>>,
     db: PgPool,
@@ -59,7 +60,7 @@ pub async fn list_mangas(
         let mangas = exts
             .get(&source.name)
             .unwrap()
-            .get_mangas(&source.url, param, vec![])
+            .get_mangas(&source.url, param, source_auth)
             .unwrap();
 
         let manga_ids = match repository::insert_mangas(source_id, mangas.clone(), db.clone()).await
@@ -236,4 +237,21 @@ pub async fn proxy_image(
         .unwrap();
 
     Ok(resp)
+}
+
+pub async fn source_login(
+    source_id: i32,
+    login_info: SourceLogin,
+    exts: Arc<RwLock<Extensions>>,
+    db: PgPool,
+) -> Result<impl warp::Reply, Rejection> {
+    let exts = exts.read().await;
+    if let Ok(source) = repository::get_source(source_id, db.clone()).await {
+        if let Ok(result) = exts.get(&source.name).unwrap().login(login_info) {
+            let mut result = result;
+            result.source_id = source_id;
+            return Ok(warp::reply::json(&result));
+        }
+    }
+    Err(warp::reject())
 }
