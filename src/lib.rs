@@ -43,7 +43,7 @@ pub mod manga {
         pub path: String,
         pub thumbnail_url: String,
         #[serde(skip_serializing_if = "Option::is_none")]
-        pub last_read: Option<String>,
+        pub last_read: Option<i32>,
         #[serde(skip_serializing_if = "Option::is_none")]
         pub last_page: Option<i32>,
         pub is_favorite: bool,
