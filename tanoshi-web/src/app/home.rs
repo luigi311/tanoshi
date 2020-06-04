@@ -129,21 +129,15 @@ impl Component for Home {
 impl Home {
     fn fetch_manga_chapter(&mut self) {
         if let Some(manga_id) = self.update_queue.pop() {
-            let req = Request::get(format!("/api/manga/{}/chapter", manga_id))
+            let req = Request::get(format!("/api/manga/{}/chapter?refresh=true", manga_id))
                 .header("Authorization", self.token.to_string())
                 .body(Nothing)
                 .expect("failed to build request");
 
             if let Ok(task) = FetchService::new().fetch(
                 req,
-                self.link.callback(|response: Response<Text>| {
-                    if let (meta, Ok(_)) = response.into_parts() {
-                        if meta.status.is_success() {
-                            return Msg::MangaUpdated;
-                        }
-                    }
-                    Msg::Noop
-                }),
+                self.link
+                    .callback(|response: Response<Text>| Msg::MangaUpdated),
             ) {
                 self.fetch_task = Some(FetchTask::from(task));
                 self.is_fetching = true;
