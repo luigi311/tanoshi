@@ -18,7 +18,8 @@ use super::component::model::{BackgroundColor, PageRendering, ReadingDirection, 
 use super::component::Spinner;
 
 use tanoshi_lib::manga::{
-    Chapter as ChapterModel, GetChaptersResponse, GetPagesResponse, HistoryRequest,
+    Chapter as ChapterModel, GetChaptersResponse, GetMangaResponse, GetPagesResponse,
+    HistoryRequest, Manga as MangaModel,
 };
 
 #[derive(Clone, Properties)]
@@ -33,6 +34,7 @@ pub struct Chapter {
     router: Box<dyn Bridge<RouteAgent>>,
     token: String,
     manga_id: i32,
+    manga: MangaModel,
     chapter: ChapterModel,
     current_chapter_id: i32,
     current_page: usize,
@@ -52,6 +54,7 @@ pub struct Chapter {
 }
 
 pub enum Msg {
+    MangaReady(GetMangaResponse),
     ChapterReady(GetChaptersResponse),
     PagesReady(GetPagesResponse),
     PageForward,
@@ -107,6 +110,7 @@ impl Component for Chapter {
         }) as Box<dyn Fn()>);
 
         let worker_callback = link.callback(|msg| match msg {
+            job::Response::MangaFetched(data) => Msg::MangaReady(data),
             job::Response::ChaptersFetched(data) => Msg::ChapterReady(data),
             job::Response::PagesFetched(data) => Msg::PagesReady(data),
             job::Response::HistoryPosted => Msg::SetHistoryRequested,
@@ -121,6 +125,7 @@ impl Component for Chapter {
             router,
             token,
             manga_id: 0,
+            manga: MangaModel::default(),
             current_chapter_id: props.chapter_id,
             chapter: ChapterModel::default(),
             current_page: props.page.checked_sub(1).unwrap_or(0),
@@ -168,6 +173,10 @@ impl Component for Chapter {
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
+            Msg::MangaReady(data) => {
+                self.manga = data.manga.clone();
+                self.is_fetching = false;
+            }
             Msg::ChapterReady(data) => {
                 self.is_fetching = false;
                 self.chapters = data.chapters.clone();
@@ -180,6 +189,7 @@ impl Component for Chapter {
                     None => 0,
                 };
                 self.chapter = data.chapters[idx].clone();
+                self.get_manga();
                 self.is_fetching = false;
             }
             Msg::PagesReady(data) => {
@@ -309,13 +319,17 @@ impl Component for Chapter {
         <div>
             <div
             ref=self.refs[0].clone()
-            class="animated slideInDown faster block fixed inset-x-0 top-0 z-50 bg-gray-900 z-50 content-end flex opacity-75"
+            class="flex items-center animated slideInDown faster block fixed inset-x-0 top-0 z-50 bg-gray-900 z-50 content-end flex opacity-75"
             style="padding-top: calc(env(safe-area-inset-top) + .5rem)">
-                <RouterAnchor<AppRoute> classes="z-50 ml-2 mb-2 text-white" route=AppRoute::Browse(BrowseRoute::Detail(self.manga_id))>
+                <RouterAnchor<AppRoute> classes="z-50 mx-2 mb-2 text-white" route=AppRoute::Browse(BrowseRoute::Detail(self.manga_id))>
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" class="fill-current inline-block mb-1">
                         <path class="heroicon-ui" d="M5.41 11H21a1 1 0 0 1 0 2H5.41l5.3 5.3a1 1 0 0 1-1.42 1.4l-7-7a1 1 0 0 1 0-1.4l7-7a1 1 0 0 1 1.42 1.4L5.4 11z"/>
                     </svg>
                </RouterAnchor<AppRoute>>
+               <div class="flex flex-col mx-2 mb-2">
+                <span class="text-white">{self.manga.title.to_owned()}</span>
+                <span class="text-white text-sm">{format!("Chapter {}", self.chapter.no.to_owned())}</span>
+               </div>
             </div>
             <div class="h-screen m-0 outline-none" id="manga-reader" tabindex="0" onkeydown=self.link.callback(|e: KeyboardEvent|
                 match e.key().as_str() {
@@ -489,6 +503,11 @@ impl Chapter {
                 style={"background: transparent url('/assets/loading.gif') no-repeat scroll center center"}
             />
         }).collect()
+    }
+
+    fn get_manga(&mut self) {
+        self.worker.send(job::Request::FetchManga(self.manga_id));
+        self.is_fetching = true;
     }
 
     fn get_chapters(&mut self) {
