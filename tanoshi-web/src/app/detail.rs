@@ -87,7 +87,7 @@ impl Component for Detail {
             manga_id: props.manga_id,
             manga: MangaModel::default(),
             chapters: vec![],
-            is_fetching: false,
+            is_fetching: true,
             should_fetch: true,
             worker,
         }
