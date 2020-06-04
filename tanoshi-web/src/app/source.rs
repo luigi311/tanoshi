@@ -166,7 +166,7 @@ impl Component for Source {
 
         return html! {
             <div class="container mx-auto pb-20">
-                <div class="w-full px-2 pb-2 flex justify-between block fixed inset-x-0 md:top-0 z-50 bg-tachiyomi-blue shadow" style="padding-top: calc(env(safe-area-inset-top) + .5rem)">
+                <div class="w-full px-2 pb-2 flex justify-between block fixed inset-x-0 top-0 z-50 bg-tachiyomi-blue shadow" style="padding-top: calc(env(safe-area-inset-top) + .5rem)">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" class="mx-2 self-center flex-none">
                         <path class="heroicon-ui" d="M4.06 13a8 8 0 0 0 5.18 6.51A18.5 18.5 0 0 1 8.02 13H4.06zm0-2h3.96a18.5 18.5 0 0 1 1.22-6.51A8 8 0 0 0 4.06 11zm15.88 0a8 8 0 0 0-5.18-6.51A18.5 18.5 0 0 1 15.98 11h3.96zm0 2h-3.96a18.5 18.5 0 0 1-1.22 6.51A8 8 0 0 0 19.94 13zm-9.92 0c.16 3.95 1.23 7 1.98 7s1.82-3.05 1.98-7h-3.96zm0-2h3.96c-.16-3.95-1.23-7-1.98-7s-1.82 3.05-1.98 7zM12 22a10 10 0 1 1 0-20 10 10 0 0 1 0 20z"/>
                     </svg>
@@ -197,7 +197,7 @@ impl Source {
     fn view_mangas(&self) -> Html {
         html! {
             <>
-                <div class="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 pt-12 mt-2" id="catalogue">
+                <div class="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 pt-12" id="catalogue" style="margin-top: calc(env(safe-area-inset-top) + .5rem)">
                     { for self.mangas.iter().map(|manga| html!{
                         <Manga
                         id=manga.id
@@ -221,7 +221,7 @@ impl Source {
 
     fn view_login_page(&self) -> Html {
         html! {
-            <div class="flex justify-center px-6 my-12">
+            <div class="flex justify-center px-6 my-12" style="margin-top: calc(env(safe-area-inset-top) + .5rem)">
                 <div class="w-full xl:w-3/4 lg:w-11/12 flex">
                     <div class="w-full  bg-white p-5 rounded-lg lg:rounded-l-none">
                         <form class="px-8 pt-6 pb-8 mb-4 bg-white rounded" onsubmit=self.link.callback(|e| Msg::Submit(e))>
