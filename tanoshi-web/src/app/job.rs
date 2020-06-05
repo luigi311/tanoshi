@@ -10,7 +10,7 @@ use http::response::Response as HttpResponse;
 
 use std::collections::HashMap;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 
 use tanoshi_lib::manga::{
     GetChaptersResponse, GetMangaResponse, GetMangasResponse, GetPagesResponse, HistoryRequest,
@@ -26,6 +26,7 @@ pub enum Request {
     FetchChapters(i32, bool),
     FetchPages(i32),
     PostLogin(i32, SourceLogin),
+    ValidateToken,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -36,6 +37,7 @@ pub enum Response {
     ChaptersFetched(GetChaptersResponse),
     PagesFetched(GetPagesResponse),
     LoginPosted(SourceLoginResult),
+    TokenInvalidorExpired,
 }
 
 pub struct Worker {
@@ -52,6 +54,7 @@ pub enum Msg {
     ChaptersReady(HandlerId, GetChaptersResponse),
     PagesReady(HandlerId, GetPagesResponse),
     LoginReady(HandlerId, SourceLoginResult),
+    ValidateTokenReady(HandlerId),
     Noop,
 }
 
@@ -104,6 +107,9 @@ impl Agent for Worker {
                     Ok(data.clone().value),
                 );
                 self.link.respond(id, Response::LoginPosted(data));
+            }
+            Msg::ValidateTokenReady(id) => {
+                self.link.respond(id, Response::TokenInvalidorExpired);
             }
             Msg::Noop => {}
         }
@@ -253,10 +259,35 @@ impl Agent for Worker {
                     self.fetch_task.insert(id.clone(), FetchTask::from(task));
                 }
             }
+            Request::ValidateToken => {
+                let req = HttpRequest::get("/api/validate")
+                    .header("Authorization", self.token.clone())
+                    .body(Nothing)
+                    .expect("failed to build request");
+
+                if let Ok(task) = FetchService::new().fetch(
+                    req,
+                    self.link.callback(move |response: HttpResponse<Text>| {
+                        let (meta, _res) = response.into_parts();
+                        let status = meta.status;
+                        if status == http::StatusCode::UNAUTHORIZED {
+                            return Msg::ValidateTokenReady(id);
+                        }
+                        Msg::Noop
+                    }),
+                ) {
+                    self.fetch_task.insert(id.clone(), FetchTask::from(task));
+                }
+            }
         }
     }
 
-    fn connected(&mut self, _id: HandlerId) {}
+    fn connected(&mut self, _id: HandlerId) {
+        self.token = self
+            .storage
+            .restore::<Result<String>>("token")
+            .unwrap_or("".to_string());
+    }
 
     fn disconnected(&mut self, _id: HandlerId) {}
 

@@ -31,10 +31,8 @@ pub enum AppRoute {
 
 pub struct App {
     link: ComponentLink<Self>,
-    storage: StorageService,
     router: Box<dyn Bridge<RouteAgent>>,
     route: String,
-    fetch_task: Option<FetchTask>,
     worker: Box<dyn Bridge<job::Worker>>,
 }
 
@@ -49,19 +47,19 @@ impl Component for App {
     type Properties = ();
 
     fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self {
-        let storage = StorageService::new(Area::Local).unwrap();
         let callback = link.callback(|route| Msg::RouterCallback(route));
         let router = RouteAgent::bridge(callback);
 
-        let worker_callback = link.callback(|_| Msg::Noop);
+        let worker_callback = link.callback(|msg| match msg {
+            job::Response::TokenInvalidorExpired => Msg::TokenInvalidorExpired,
+            _ => Msg::Noop,
+        });
         let worker = job::Worker::bridge(worker_callback);
 
         App {
             link,
-            storage,
             router,
             route: "/".to_string(),
-            fetch_task: None,
             worker,
         }
     }
@@ -72,12 +70,7 @@ impl Component for App {
 
     fn rendered(&mut self, first_render: bool) {
         if first_render {
-            if let Ok(token) = self.storage.restore("token") {
-                self.validate_token(token);
-            } else {
-                self.router
-                    .send(RouteRequest::ChangeRoute(Route::from("/login".to_string())));
-            }
+            self.validate_token();
         }
     }
 
@@ -117,24 +110,7 @@ impl Component for App {
 }
 
 impl App {
-    fn validate_token(&mut self, token: String) {
-        let req = Request::get("/api/validate")
-            .header("Authorization", token)
-            .body(Nothing)
-            .expect("failed to build request");
-
-        if let Ok(task) = FetchService::new().fetch(
-            req,
-            self.link.callback(|response: Response<Text>| {
-                let (meta, _res) = response.into_parts();
-                let status = meta.status;
-                if status == http::StatusCode::UNAUTHORIZED {
-                    return Msg::TokenInvalidorExpired;
-                }
-                Msg::Noop
-            }),
-        ) {
-            self.fetch_task = Some(FetchTask::from(task));
-        }
+    fn validate_token(&mut self) {
+        self.worker.send(job::Request::ValidateToken);
     }
 }

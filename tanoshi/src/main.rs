@@ -1,20 +1,21 @@
 extern crate argon2;
 extern crate libloading as lib;
 extern crate pretty_env_logger;
-#[macro_use] extern crate log;
+#[macro_use]
+extern crate log;
 
+use anyhow::Result;
+use sqlx::postgres::PgPool;
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 use tokio::sync::RwLock;
-use sqlx::postgres::PgPool;
 use warp::Filter;
-use anyhow::Result;
 
 mod auth;
+mod extension;
 mod favorites;
 mod filters;
 mod handlers;
-mod extension;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -28,7 +29,11 @@ async fn main() -> Result<()> {
     for entry in std::fs::read_dir(plugin_path)? {
         let entry = entry?;
         let path = entry.path();
-        let ext = path.extension().unwrap_or("".as_ref()).to_str().unwrap_or("");
+        let ext = path
+            .extension()
+            .unwrap_or("".as_ref())
+            .to_str()
+            .unwrap_or("");
         if ext == "so" || ext == "dll" || ext == "dylib" {
             info!("load plugin from {:?}", path.clone());
             let mut exts = extensions.write().await;
@@ -41,7 +46,11 @@ async fn main() -> Result<()> {
     let exts = exts.read().await;
     info!("there are {} plugins", exts.extensions().len());
 
-    let static_files = warp::fs::dir(static_path);
+    let static_files = warp::fs::dir(static_path)
+        .map(|res: warp::fs::File| {
+            warp::reply::with_header(res, "cache-control", "max-age=31536000")
+        })
+        .with(warp::compression::gzip());
 
     let pool = PgPool::builder()
         .max_size(5) // maximum number of connections in the pool
@@ -72,5 +81,5 @@ async fn main() -> Result<()> {
     warp::serve(routes)
         .run(std::net::SocketAddrV4::from_str(format!("0.0.0.0:{}", port).as_str()).unwrap())
         .await;
-        Ok(())
+    Ok(())
 }
