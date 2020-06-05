@@ -39,7 +39,10 @@ async fn main() -> Result<()> {
             info!("load plugin from {:?}", path.clone());
             let mut exts = extensions.write().await;
             unsafe {
-                exts.load(path).expect("not a valid extension");
+                match exts.load(path) {
+                    Ok(_) => {}
+                    Err(_) => error!("not a valid extensions"),
+                }
             }
         }
     }
