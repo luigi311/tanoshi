@@ -62,9 +62,10 @@ impl Agent for Worker {
     type Output = Response;
 
     fn create(link: AgentLink<Self>) -> Self {
-        info!("create");
         let storage = StorageService::new(Area::Local).unwrap();
-        let token = storage.restore::<Result<String>>("token").unwrap();
+        let token = storage
+            .restore::<Result<String>>("token")
+            .unwrap_or("".to_string());
 
         Worker {
             link,
@@ -255,15 +256,9 @@ impl Agent for Worker {
         }
     }
 
-    fn connected(&mut self, _id: HandlerId) {
-        info!("connected");
-    }
+    fn connected(&mut self, _id: HandlerId) {}
 
-    fn disconnected(&mut self, _id: HandlerId) {
-        info!("disconnected");
-    }
+    fn disconnected(&mut self, _id: HandlerId) {}
 
-    fn destroy(&mut self) {
-        info!("destroyed");
-    }
+    fn destroy(&mut self) {}
 }

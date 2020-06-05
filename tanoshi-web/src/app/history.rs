@@ -91,7 +91,6 @@ impl Component for History {
 
         let route_service: RouteService<()> = RouteService::new();
         let page_type: PageType = route_service.get_path().into();
-        info!("create {:?}", page_type);
 
         History {
             fetch_task: None,

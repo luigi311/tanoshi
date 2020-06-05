@@ -79,7 +79,6 @@ impl Component for Detail {
         });
         let worker = job::Worker::bridge(worker_callback);
 
-        info!("create");
         Detail {
             fetch_task: None,
             link,
@@ -94,7 +93,6 @@ impl Component for Detail {
     }
 
     fn change(&mut self, props: Self::Properties) -> ShouldRender {
-        info!("changed");
         if self.manga_id != props.manga_id {
             self.manga_id = props.manga_id;
             self.should_fetch = true;
@@ -104,7 +102,6 @@ impl Component for Detail {
     }
 
     fn rendered(&mut self, first_render: bool) {
-        info!("rendered {}", first_render);
         if self.should_fetch {
             self.get_manga_info();
             self.should_fetch = false;
@@ -112,7 +109,6 @@ impl Component for Detail {
     }
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
-        info!("update");
         match msg {
             Msg::MangaReady(data) => {
                 self.manga = data.manga;

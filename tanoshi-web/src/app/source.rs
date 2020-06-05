@@ -146,14 +146,11 @@ impl Component for Source {
             }
             Msg::RememberMeChange(e) => {
                 self.login.remember_me = Some(!self.login.remember_me.unwrap_or(false));
-                info!("remember me {}", self.login.remember_me.unwrap());
             }
             Msg::TwoFactorChange(e) => {
                 self.login.two_factor = Some(e.value);
             }
-            Msg::Noop => {
-                info!("Noop");
-            }
+            Msg::Noop => {}
         }
         true
     }

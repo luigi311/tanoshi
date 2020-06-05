@@ -89,7 +89,6 @@ impl Component for Login {
                 }
             },
             Msg::Noop => {
-                info!("Noop");
                 return false;
             }
         }

@@ -5,7 +5,7 @@ use yew::format::{Json, Nothing, Text};
 use yew::services::fetch::{FetchService, FetchTask, Request, Response};
 use yew::services::storage::Area;
 use yew::services::StorageService;
-use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender, InputData, ChangeData};
+use yew::{html, ChangeData, Component, ComponentLink, Html, InputData, Properties, ShouldRender};
 
 use serde::Deserialize;
 
@@ -94,38 +94,36 @@ impl Component for Settings {
                 }
             }
             Msg::UserListReady(users) => {
-                self.users = users.iter().map(|user| UserRow{
-                    user: user.clone(), 
-                    is_edit: false,
-                    is_new: false,
-                }).collect();
+                self.users = users
+                    .iter()
+                    .map(|user| UserRow {
+                        user: user.clone(),
+                        is_edit: false,
+                        is_new: false,
+                    })
+                    .collect();
             }
-            Msg::NewUser => {
-                self.users.push(UserRow{
-                    user: User{
-                        username: "New user".to_string(),
-                        password: None,
-                        role: "READER".to_string(),
-                    },
-                    is_edit: true,
-                    is_new: true,
-                })
-            }
+            Msg::NewUser => self.users.push(UserRow {
+                user: User {
+                    username: "New user".to_string(),
+                    password: None,
+                    role: "READER".to_string(),
+                },
+                is_edit: true,
+                is_new: true,
+            }),
             Msg::EditUser(i) => {
                 self.users[i].is_edit = true;
             }
             Msg::UsernameChange(i, username) => {
                 self.users[i].user.username = username;
             }
-            Msg::RoleChange(i, e) => {
-                match e {
-                    ChangeData::Select(el) => {
-                        info!("{}", el.value().clone());
-                        self.users[i].user.role = el.value().clone();
-                    },
-                    _ => {}
+            Msg::RoleChange(i, e) => match e {
+                ChangeData::Select(el) => {
+                    self.users[i].user.role = el.value().clone();
                 }
-            }
+                _ => {}
+            },
             Msg::SaveUser(i) => {
                 if self.users[i].is_new {
                     self.register_user(i);
@@ -195,7 +193,7 @@ impl Settings {
             self.fetch_task = Some(FetchTask::from(task));
         }
     }
-    
+
     fn fetch_users(&mut self) {
         let req = Request::get("/api/user")
             .header("Authorization", self.token.clone())
@@ -204,15 +202,16 @@ impl Settings {
 
         if let Ok(task) = FetchService::new().fetch(
             req,
-            self.link
-                .callback(|response: Response<Json<Result<UserListResponse, anyhow::Error>>>| {
+            self.link.callback(
+                |response: Response<Json<Result<UserListResponse, anyhow::Error>>>| {
                     if let (meta, Json(Ok(res))) = response.into_parts() {
                         if meta.status.is_success() {
                             return Msg::UserListReady(res.users);
                         }
                     }
                     Msg::Noop
-                }),
+                },
+            ),
         ) {
             self.fetch_task = Some(FetchTask::from(task));
         }
@@ -227,15 +226,14 @@ impl Settings {
 
         if let Ok(task) = FetchService::new().fetch(
             req,
-            self.link
-                .callback(move |response: Response<Text>| {
-                    if let (meta, _res) = response.into_parts() {
-                        if meta.status.is_success() {
-                            return Msg::SaveUserSuccess(i);
-                        }
+            self.link.callback(move |response: Response<Text>| {
+                if let (meta, _res) = response.into_parts() {
+                    if meta.status.is_success() {
+                        return Msg::SaveUserSuccess(i);
                     }
-                    Msg::Noop
-                }),
+                }
+                Msg::Noop
+            }),
         ) {
             self.fetch_task = Some(FetchTask::from(task));
         }
@@ -250,15 +248,14 @@ impl Settings {
 
         if let Ok(task) = FetchService::new().fetch(
             req,
-            self.link
-                .callback(move |response: Response<Text>| {
-                    if let (meta, _res) = response.into_parts() {
-                        if meta.status.is_success() {
-                            return Msg::SaveUserSuccess(i);
-                        }
+            self.link.callback(move |response: Response<Text>| {
+                if let (meta, _res) = response.into_parts() {
+                    if meta.status.is_success() {
+                        return Msg::SaveUserSuccess(i);
                     }
-                    Msg::Noop
-                }),
+                }
+                Msg::Noop
+            }),
         ) {
             self.fetch_task = Some(FetchTask::from(task));
         }
@@ -282,7 +279,7 @@ impl Settings {
     }
 
     fn admin_settings(&self) -> Html {
-        html! {            
+        html! {
             <div class="flex flex-col rounded-lg border border-grey-light m-2" id="admin">
                 {self.separator("Users")}
                 {
@@ -297,14 +294,14 @@ impl Settings {
                             </thead>
                             <tbody>
                             {
-                            for (0..self.users.len()).map(|i| html!{            
+                            for (0..self.users.len()).map(|i| html!{
                                 <tr class="border-b">
                                     <td class="p-2">{
                                         if !self.users[i].is_edit || !self.users[i].is_new {
                                            html!{self.users[i].user.username.clone()}
                                         } else {
                                             html!{
-                                                <input 
+                                                <input
                                                     class="w-full border-b border-grey-light"
                                                     value=self.users[i].user.username.clone()
                                                     oninput=self.link.callback(move |e: InputData| Msg::UsernameChange(i, e.value))/>
@@ -325,8 +322,8 @@ impl Settings {
                                         }
                                     }
                                     </td>
-                                    <td class="p-2"> 
-                                        <button 
+                                    <td class="p-2">
+                                        <button
                                             class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold px-4 rounded"
                                             onclick={
                                                 if !self.users[i].is_edit {
@@ -344,7 +341,7 @@ impl Settings {
                             </tbody>
                         </table>
                     }
-                } 
+                }
                 <button class={"bg-grey-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-r"}
                     onclick=self.link.callback(|_| Msg::NewUser)>
                     {"New User"}

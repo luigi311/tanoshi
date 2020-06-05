@@ -118,7 +118,6 @@ impl Component for Chapter {
         });
         let worker = job::Worker::bridge(worker_callback);
 
-        info!("create");
         Chapter {
             fetch_task: None,
             link,
@@ -146,7 +145,6 @@ impl Component for Chapter {
     }
 
     fn change(&mut self, props: Self::Properties) -> ShouldRender {
-        info!("change");
         if self.current_chapter_id != props.chapter_id
             || self.current_page != props.page.checked_sub(1).unwrap_or(0)
         {

@@ -1,6 +1,6 @@
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 
-use yew_router::{Switch};
+use yew_router::Switch;
 
 use super::select::Select;
 use super::source::Source;
@@ -40,9 +40,7 @@ impl Component for Catalogue {
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
-            Msg::Noop => {
-                info!("Noop");
-            }
+            Msg::Noop => {}
         }
         true
     }

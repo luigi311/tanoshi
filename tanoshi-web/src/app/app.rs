@@ -82,7 +82,6 @@ impl Component for App {
     }
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
-        info!("update");
         match msg {
             Msg::RouterCallback(route) => {
                 self.route = route.route;

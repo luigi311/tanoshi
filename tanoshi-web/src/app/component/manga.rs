@@ -115,7 +115,6 @@ impl Component for Manga {
                 self.is_dragging = true;
             }
             Msg::MouseDownTimeout => {
-                info!("timeout");
                 if !self.is_dragging {
                     if self.is_favorite {
                         self.unfavorite();
@@ -197,9 +196,9 @@ impl Manga {
 
     fn unfavorite(&mut self) {
         let req = Request::delete(format!("/api/favorites/manga/{}", self.id))
-        .header("Authorization", self.token.to_owned())
-        .body(Nothing)
-        .expect("failed to build request");
+            .header("Authorization", self.token.to_owned())
+            .body(Nothing)
+            .expect("failed to build request");
 
         if let Ok(task) = FetchService::new().fetch(
             req,

@@ -5,13 +5,13 @@ use yew_router::components::RouterAnchor;
 
 use super::component::Spinner;
 use http::{Request, Response};
-use yew::utils::{window};
+use yew::utils::window;
 
 use super::app::AppRoute;
 use super::browse::BrowseRoute;
 use super::catalogue::CatalogueRoute;
 
-use tanoshi_lib::manga::{Source as SourceModel, GetSourceResponse};
+use tanoshi_lib::manga::{GetSourceResponse, Source as SourceModel};
 
 #[derive(Clone, Properties)]
 pub struct Props {}
@@ -56,11 +56,8 @@ impl Component for Select {
             Msg::SourceReady(data) => {
                 self.sources = data.sources;
                 self.is_fetching = false;
-                info!("{:?}", self.sources.clone());
             }
-            Msg::Noop => {
-                info!("Noop");
-            }
+            Msg::Noop => {}
         }
         true
     }

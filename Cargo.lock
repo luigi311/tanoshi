@@ -2204,8 +2204,6 @@ checksum = "d022496b16281348b52d0e30ae99e01a73d737b2f45d38fed4edf79f9325a1d5"
 dependencies = [
  "discard",
  "rustc_version",
- "serde",
- "serde_json",
  "stdweb-derive",
  "stdweb-internal-macros",
  "stdweb-internal-runtime",
@@ -2351,7 +2349,6 @@ name = "tanoshi-web"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "base64 0.12.1",
  "chrono",
  "console_error_panic_hook",
  "enclose",
@@ -2366,8 +2363,8 @@ dependencies = [
  "tanoshi-lib",
  "wasm-bindgen",
  "wasm-bindgen-test",
+ "wasm-logger",
  "web-sys",
- "web_logger",
  "wee_alloc",
  "yew",
  "yew-router",
@@ -2846,23 +2843,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "wasm-logger"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "074649a66bb306c8f2068c9016395fa65d8e08d2affcbf95acf3c24c3ab19718"
+dependencies = [
+ "log 0.4.8",
+ "wasm-bindgen",
+ "web-sys",
+]
+
+[[package]]
 name = "web-sys"
 version = "0.3.40"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7b72fe77fd39e4bd3eaa4412fd299a0be6b3dfe9d2597e2f1c20beb968f41d17"
 dependencies = [
  "js-sys",
- "wasm-bindgen",
-]
-
-[[package]]
-name = "web_logger"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f50afec20c2e728ca33ffb77d1ed049c8559f1d2e59e0fea36f6586d5bc74683"
-dependencies = [
- "log 0.4.8",
- "stdweb",
  "wasm-bindgen",
 ]
 
