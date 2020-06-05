@@ -41,7 +41,7 @@ async fn main() -> Result<()> {
             unsafe {
                 match exts.load(path) {
                     Ok(_) => {}
-                    Err(_) => error!("not a valid extensions"),
+                    Err(e) => error!("not a valid extensions {}", e),
                 }
             }
         }
