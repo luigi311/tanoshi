@@ -1,6 +1,6 @@
-use std::convert::Infallible;
 use serde_json::json;
 use sqlx::postgres::PgPool;
+use std::convert::Infallible;
 use warp::Filter;
 
 use crate::auth::Claims;
@@ -37,7 +37,7 @@ pub fn with_authorization(
 }
 
 pub fn with_admin_role(
- secret: String,
+    secret: String,
 ) -> impl Filter<Extract = (Claims,), Error = warp::reject::Rejection> + Clone {
     warp::header::header("authorization")
         .map(move |token: String| auth_handler::validate(secret.clone(), token.to_string()))
@@ -54,7 +54,7 @@ pub fn with_admin_role(
 
 pub async fn handle_rejection(
     err: warp::reject::Rejection,
-) -> Result<impl warp::Reply, Infallible> {
+) -> Result<impl warp::Reply, warp::reject::Rejection> {
     let code;
     let message;
 

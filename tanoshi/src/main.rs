@@ -23,6 +23,7 @@ async fn main() -> Result<()> {
 
     let secret = std::env::var("TOKEN_SECRET_KEY").unwrap();
     let static_path = std::env::var("STATIC_FILES_PATH").unwrap_or("./dist".to_string());
+    let static_path = std::path::PathBuf::from(static_path);
     let plugin_path = std::env::var("PLUGIN_PATH").unwrap_or("./plugins".to_string());
 
     let extensions = Arc::new(RwLock::new(extension::Extensions::new()));
@@ -46,11 +47,14 @@ async fn main() -> Result<()> {
     let exts = exts.read().await;
     info!("there are {} plugins", exts.extensions().len());
 
-    let static_files = warp::fs::dir(static_path)
+    let static_files = warp::fs::dir(static_path.clone())
         .map(|res: warp::fs::File| {
             warp::reply::with_header(res, "cache-control", "max-age=31536000")
         })
         .with(warp::compression::gzip());
+    let index = warp::get().and(warp::fs::file(static_path.join("index.html")));
+
+    let static_files = static_files.or(index);
 
     let pool = PgPool::builder()
         .max_size(5) // maximum number of connections in the pool
