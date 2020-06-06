@@ -5,11 +5,12 @@ extern crate pretty_env_logger;
 extern crate log;
 
 use anyhow::Result;
+use rust_embed::RustEmbed;
 use sqlx::postgres::PgPool;
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 use tokio::sync::RwLock;
-use warp::Filter;
+use warp::{http::header::HeaderValue, path::Tail, reply::Response, Filter, Rejection, Reply};
 
 mod auth;
 mod extension;
@@ -17,13 +18,15 @@ mod favorites;
 mod filters;
 mod handlers;
 
+#[derive(RustEmbed)]
+#[folder = "../tanoshi-web/dist/"]
+struct Asset;
+
 #[tokio::main]
 async fn main() -> Result<()> {
     pretty_env_logger::init();
 
     let secret = std::env::var("TOKEN_SECRET_KEY").unwrap();
-    let static_path = std::env::var("STATIC_FILES_PATH").unwrap_or("./dist".to_string());
-    let static_path = std::path::PathBuf::from(static_path);
     let plugin_path = std::env::var("PLUGIN_PATH").unwrap_or("./plugins".to_string());
 
     let extensions = Arc::new(RwLock::new(extension::Extensions::new()));
@@ -50,12 +53,8 @@ async fn main() -> Result<()> {
     let exts = exts.read().await;
     info!("there are {} plugins", exts.extensions().len());
 
-    let static_files = warp::fs::dir(static_path.clone())
-        .map(|res: warp::fs::File| {
-            warp::reply::with_header(res, "cache-control", "max-age=31536000")
-        })
-        .with(warp::compression::gzip());
-    let index = warp::get().and(warp::fs::file(static_path.join("index.html")));
+    let static_files = warp::get().and(warp::path::tail()).and_then(serve);
+    let index = warp::get().and_then(serve_index);
 
     let static_files = static_files.or(index);
 
@@ -88,4 +87,24 @@ async fn main() -> Result<()> {
         .run(std::net::SocketAddrV4::from_str(format!("0.0.0.0:{}", port).as_str()).unwrap())
         .await;
     Ok(())
+}
+
+async fn serve_index() -> Result<impl Reply, Rejection> {
+    serve_impl("index.html")
+}
+
+async fn serve(path: Tail) -> Result<impl Reply, Rejection> {
+    serve_impl(path.as_str())
+}
+
+fn serve_impl(path: &str) -> Result<impl Reply, Rejection> {
+    let asset = Asset::get(path).ok_or_else(warp::reject::not_found)?;
+    let mime = mime_guess::from_path(path).first_or_octet_stream();
+
+    let mut res = Response::new(asset.into());
+    res.headers_mut().insert(
+        "content-type",
+        HeaderValue::from_str(mime.as_ref()).unwrap(),
+    );
+    Ok(res)
 }

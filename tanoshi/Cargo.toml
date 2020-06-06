@@ -27,3 +27,5 @@ human-sort = {version = "0.2"}
 zip = {version = "0.5"}
 anyhow = "1"
 libloading = {version = "0.6"}
+rust-embed= {version="5.5.1"}
+mime_guess = "2"
