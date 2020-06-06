@@ -229,7 +229,6 @@ pub mod extensions {
     use std::io::Read;
 
     pub trait Extension: Send + Sync {
-        fn init(&mut self, cfg: serde_yaml::Value) -> Result<()>;
         fn info(&self) -> Source;
         fn get_mangas(&self, url: &String, param: Params, auth: String) -> Result<Vec<Manga>>;
         fn get_manga_info(&self, url: &String) -> Result<Manga>;
@@ -253,7 +252,7 @@ pub mod extensions {
     pub struct PluginDeclaration {
         pub rustc_version: &'static str,
         pub core_version: &'static str,
-        pub register: unsafe extern "C" fn(&mut dyn PluginRegistrar),
+        pub register: unsafe extern "C" fn(&mut dyn PluginRegistrar, serde_yaml::Value),
     }
 
     pub trait PluginRegistrar {
