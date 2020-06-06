@@ -32,7 +32,7 @@ jobs:
     - name: Migration
       run: psql postgres://tanoshi:tanoshi@localhost:5432/tanoshi -a -f "/home/runner/work/tanoshi/tanoshi/tanoshi/migration/tanoshi.sql"
     - name: Build Frontend
-      run: yarn build
+      run: cd /home/runner/work/tanoshi/tanoshi/tanoshi-web && yarn build
     - name: Build Backend
       run: cargo build --release
       env:
