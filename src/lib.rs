@@ -229,7 +229,7 @@ pub mod extensions {
     use std::io::Read;
 
     pub trait Extension: Send + Sync {
-        fn init(&mut self, cfg: serde_yaml::Value);
+        fn init(&mut self, cfg: serde_yaml::Value) -> Result<()>;
         fn info(&mut self) -> Source;
         fn get_mangas(&mut self, url: &String, param: Params, auth: String) -> Result<Vec<Manga>>;
         fn get_manga_info(&mut self, url: &String) -> Result<Manga>;
