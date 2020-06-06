@@ -38,5 +38,3 @@ jobs:
         env:
           # The hostname used to communicate with the PostgreSQL service container
           DATABASE_URL: postgres://tanoshi:tanoshi@localhost:5432/tanoshi
-      - name: List Files
-        run: ls -la
