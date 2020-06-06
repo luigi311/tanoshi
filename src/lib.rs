@@ -252,7 +252,7 @@ pub mod extensions {
     pub struct PluginDeclaration {
         pub rustc_version: &'static str,
         pub core_version: &'static str,
-        pub register: unsafe extern "C" fn(&mut dyn PluginRegistrar, serde_yaml::Value),
+        pub register: unsafe extern "C" fn(&mut dyn PluginRegistrar, Option<&serde_yaml::Value>),
     }
 
     pub trait PluginRegistrar {
