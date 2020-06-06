@@ -34,7 +34,7 @@ jobs:
       - name: Build Frontend
         run: cd /home/runner/work/tanoshi/tanoshi/tanoshi-web && yarn install && cargo install wasm-bindgen-cli wasm-pack && yarn build
       - name: Build Backend
-        run: cargo build
+        run: cd /home/runner/work/tanoshi/tanoshi/tanoshi && cargo build
         env:
           # The hostname used to communicate with the PostgreSQL service container
           DATABASE_URL: postgres://tanoshi:tanoshi@localhost:5432/tanoshi
