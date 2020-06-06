@@ -2,12 +2,11 @@ name: Release
 
 on:
   push:
-    tags:        
+    tags:
       - v*
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
     services:
       # Label used to access the service container
@@ -28,33 +27,33 @@ jobs:
           - 5432:5432
 
     steps:
-    - uses: actions/checkout@v2
-    - name: Migration
-      run: psql postgres://tanoshi:tanoshi@localhost:5432/tanoshi -a -f "/home/runner/work/tanoshi/tanoshi/tanoshi/migration/tanoshi.sql"
-    - name: Build Frontend
-      run: cd /home/runner/work/tanoshi/tanoshi/tanoshi-web && yarn build
-    - name: Build Backend
-      run: cargo build --release
-      env:
+      - uses: actions/checkout@v2
+      - name: Migration
+        run: psql postgres://tanoshi:tanoshi@localhost:5432/tanoshi -a -f "/home/runner/work/tanoshi/tanoshi/tanoshi/migration/tanoshi.sql"
+      - name: Build Frontend
+        run: cd /home/runner/work/tanoshi/tanoshi/tanoshi-web && yarn install && yarn build
+      - name: Build Backend
+        run: cargo build --release
+        env:
           # The hostname used to communicate with the PostgreSQL service container
           DATABASE_URL: postgres://tanoshi:tanoshi@localhost:5432/tanoshi
-    - name: Create Release
-      id: create_release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ github.ref }}
-        release_name: Release ${{ github.ref }}
-        draft: false
-        prerelease: false
-    - name: Upload Release Asset
-      id: upload-release-asset 
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps 
-        asset_path: /home/runner/work/tanoshi/tanoshi/target/release/tanoshi
-        asset_name: tanoshi
-        asset_content_type: application/octet-stream
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          draft: false
+          prerelease: false
+      - name: Upload Release Asset
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps
+          asset_path: /home/runner/work/tanoshi/tanoshi/target/release/tanoshi
+          asset_name: tanoshi
+          asset_content_type: application/octet-stream

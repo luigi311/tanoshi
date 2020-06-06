@@ -2,13 +2,12 @@ name: Build
 
 on:
   push:
-    branches: [ master ]
+    branches: [master]
   pull_request:
-    branches: [ master ]
+    branches: [master]
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
     services:
       # Label used to access the service container
@@ -29,11 +28,13 @@ jobs:
           - 5432:5432
 
     steps:
-    - uses: actions/checkout@v2
-    - name: Migration
-      run: psql postgres://tanoshi:tanoshi@localhost:5432/tanoshi -a -f "/home/runner/work/tanoshi/tanoshi/tanoshi/migration/tanoshi.sql"
-    - name: Build
-      run: cargo build --verbose
-      env:
+      - uses: actions/checkout@v2
+      - name: Migration
+        run: psql postgres://tanoshi:tanoshi@localhost:5432/tanoshi -a -f "/home/runner/work/tanoshi/tanoshi/tanoshi/migration/tanoshi.sql"
+      - name: Build Frontend
+        run: cd /home/runner/work/tanoshi/tanoshi/tanoshi-web && yarn install && yarn build
+      - name: Build Backend
+        run: cargo build
+        env:
           # The hostname used to communicate with the PostgreSQL service container
           DATABASE_URL: postgres://tanoshi:tanoshi@localhost:5432/tanoshi
