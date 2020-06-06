@@ -54,8 +54,8 @@ impl Component for App {
             job::Response::TokenInvalidorExpired => Msg::TokenInvalidorExpired,
             _ => Msg::Noop,
         });
-        let worker = job::Worker::bridge(worker_callback);
-
+        let mut worker = job::Worker::bridge(worker_callback);
+        worker.send(job::Request::ValidateToken);
         App {
             link,
             router,
@@ -68,11 +68,7 @@ impl Component for App {
         false
     }
 
-    fn rendered(&mut self, first_render: bool) {
-        if first_render {
-            self.validate_token();
-        }
-    }
+    fn rendered(&mut self, first_render: bool) {}
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
@@ -106,11 +102,5 @@ impl Component for App {
                 }}) />
             </div>
         }
-    }
-}
-
-impl App {
-    fn validate_token(&mut self) {
-        self.worker.send(job::Request::ValidateToken);
     }
 }

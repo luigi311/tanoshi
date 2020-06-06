@@ -277,7 +277,7 @@ pub async fn insert_sources(sources: Vec<Source>, db: PgPool) -> Result<(), sqlx
     let mut tx = db.begin().await?;
     for source in sources {
         sqlx::query!(
-            r"INSERT INTO source(name, url, version) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING",
+            r"INSERT INTO source(name, url, version) VALUES ($1, $2, $3) ON CONFLICT DO UPDATE SET url=EXCLUDED.url",
             source.name,
             source.url,
             source.version

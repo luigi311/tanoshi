@@ -109,6 +109,7 @@ impl Agent for Worker {
                 self.link.respond(id, Response::LoginPosted(data));
             }
             Msg::ValidateTokenReady(id) => {
+                self.fetch_task.remove(&id.clone());
                 self.link.respond(id, Response::TokenInvalidorExpired);
             }
             Msg::Noop => {}
@@ -127,7 +128,7 @@ impl Agent for Worker {
                 if let Ok(task) = FetchService::new().fetch(
                     req,
                     self.link.callback(move |response: HttpResponse<Text>| {
-                        if let (meta, Ok(data)) = response.into_parts() {
+                        if let (meta, Ok(_)) = response.into_parts() {
                             if meta.status.is_success() {
                                 return Msg::HistoryPosted(id);
                             }

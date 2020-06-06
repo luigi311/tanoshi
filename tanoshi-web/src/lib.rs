@@ -1,7 +1,7 @@
 #![recursion_limit = "2048"]
 #[macro_use]
-extern crate log;
 extern crate chrono;
+extern crate log;
 extern crate wee_alloc;
 
 mod utils;

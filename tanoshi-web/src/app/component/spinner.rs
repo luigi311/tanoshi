@@ -11,7 +11,7 @@ use yew::prelude::*;
 #[derive(Clone, PartialEq, Properties)]
 pub struct Props {
     pub is_active: bool,
-    pub is_fullscreen: bool
+    pub is_fullscreen: bool,
 }
 
 pub struct Spinner {
@@ -49,13 +49,11 @@ impl Component for Spinner {
     fn view(&self) -> Html {
         html! {
                 <div class={
-                    if !self.is_active {"hidden"} 
-                    else if self.is_fullscreen{"w-full h-full fixed block top-0 left-0 bg-white opacity-75 z-10"}
-                    else {"w-full h-full block m-auto bg-white opacity-75 z-10"}
+                    if !self.is_active {"hidden"}
+                    else if self.is_fullscreen{"w-full h-full fixed flex top-0 left-0 bg-white opacity-75 z-10 justify-center"}
+                    else {"w-full h-full block flex m-auto bg-white opacity-75 z-10 justify-center"}
                 }>
-                  <span class="text-green-500 opacity-75 top-1/2 my-0 mx-auto block relative w-20 h-20" style="top: 50%;">
-                    <i class=format!("fas fa-circle-notch fa-spin fa-5x")></i>
-                  </span>
+                    <div class="loader self-center "></div>
                 </div>
         }
     }
