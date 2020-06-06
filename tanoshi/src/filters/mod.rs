@@ -59,8 +59,7 @@ pub async fn handle_rejection(
     let message;
 
     if err.is_not_found() {
-        code = warp::http::StatusCode::NOT_FOUND;
-        message = "Resource not found".to_string();
+        return Err(warp::reject());
     } else if let Some(ExpiredOrInvalidToken) = err.find() {
         code = warp::http::StatusCode::UNAUTHORIZED;
         message = "Unauthorized".to_string();
@@ -68,10 +67,11 @@ pub async fn handle_rejection(
         code = warp::http::StatusCode::UNAUTHORIZED;
         message = format!("Mission {} header", e.clone());
     } else {
-        eprintln!("unhandled rejection: {:?}", err);
         code = warp::http::StatusCode::INTERNAL_SERVER_ERROR;
         message = "Unhandled".to_string();
     }
+
+    error!("code: {}, message: {:?}", code.clone(), err);
 
     Ok(warp::reply::with_status(
         warp::reply::json(&json!({ "message": message })),

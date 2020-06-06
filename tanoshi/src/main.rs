@@ -79,10 +79,9 @@ async fn main() -> Result<()> {
         .or(fav_api)
         .or(history_api)
         .or(updates_api)
-        .or(static_files)
         .recover(filters::handle_rejection);
 
-    let routes = api.with(warp::log("manga"));
+    let routes = api.or(static_files).with(warp::log("manga"));
 
     let port = std::env::var("PORT").unwrap_or("80".to_string());
     warp::serve(routes)
