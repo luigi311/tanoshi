@@ -228,12 +228,12 @@ pub mod extensions {
     use std::io::Read;
 
     pub trait Extension: Send + Sync {
-        fn info(&self) -> Source;
-        fn get_mangas(&self, url: &String, param: Params, auth: String) -> Result<Vec<Manga>>;
-        fn get_manga_info(&self, url: &String) -> Result<Manga>;
-        fn get_chapters(&self, url: &String) -> Result<Vec<Chapter>>;
-        fn get_pages(&self, url: &String) -> Result<Vec<String>>;
-        fn get_page(&self, url: &String, bytes: &mut Vec<u8>) -> Result<String> {
+        fn info(&mut self) -> Source;
+        fn get_mangas(&mut self, url: &String, param: Params, auth: String) -> Result<Vec<Manga>>;
+        fn get_manga_info(&mut self, url: &String) -> Result<Manga>;
+        fn get_chapters(&mut self, url: &String) -> Result<Vec<Chapter>>;
+        fn get_pages(&mut self, url: &String) -> Result<Vec<String>>;
+        fn get_page(&mut self, url: &String, bytes: &mut Vec<u8>) -> Result<String> {
             let resp = ureq::get(&url).call();
             let content_type = resp.content_type().to_owned();
             let mut reader = resp.into_reader();
@@ -243,7 +243,7 @@ pub mod extensions {
 
             Ok(content_type)
         }
-        fn login(&self, _: SourceLogin) -> Result<SourceLoginResult> {
+        fn login(&mut self, _: SourceLogin) -> Result<SourceLoginResult> {
             Err(anyhow!("not implemented"))
         }
     }
