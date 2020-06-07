@@ -5,10 +5,13 @@ extern crate pretty_env_logger;
 extern crate log;
 
 use anyhow::Result;
+use clap::Clap;
 use rust_embed::RustEmbed;
 use sqlx::postgres::PgPool;
+use std::collections::BTreeMap;
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
+use tanoshi_lib::extensions::Extension;
 use tokio::sync::RwLock;
 use warp::{http::header::HeaderValue, path::Tail, reply::Response, Filter, Rejection, Reply};
 
@@ -22,46 +25,97 @@ mod handlers;
 #[folder = "../tanoshi-web/dist/"]
 struct Asset;
 
+#[derive(serde::Deserialize)]
+struct Config {
+    pub port: Option<String>,
+    pub database_url: String,
+    pub secret: String,
+    pub plugin_path: Option<String>,
+    pub plugin_config: Option<BTreeMap<String, serde_yaml::Value>>,
+}
+
+#[derive(Clap)]
+struct Opts {
+    /// Create inital admin user account
+    #[clap(long)]
+    create_admin: bool,
+    /// Path to config file
+    #[clap(long, default_value = "~/config/tanoshi/config.yml")]
+    config: String,
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     pretty_env_logger::init();
 
-    let secret = std::env::var("TOKEN_SECRET_KEY").unwrap();
-    let plugin_path = std::env::var("PLUGIN_PATH").unwrap_or("./plugins".to_string());
+    let opts: Opts = Opts::parse();
+
+    let config: Config = serde_yaml::from_slice(&std::fs::read(opts.config)?)?;
+
+    let pool = PgPool::builder()
+        .max_size(5) // maximum number of connections in the pool
+        .build(config.database_url.as_str())
+        .await?;
+
+    if opts.create_admin {
+        use auth::User;
+        let user = User {
+            username: "admin".to_string(),
+            password: Some("admin".to_string()),
+            role: "ADMIN".to_string(),
+        };
+        auth::auth::Auth::register(user, pool).await;
+        return Ok(());
+    }
+
+    let secret = config.secret;
+    let plugin_config = config.plugin_config.unwrap_or(BTreeMap::new());
 
     let extensions = Arc::new(RwLock::new(extension::Extensions::new()));
-    for entry in std::fs::read_dir(plugin_path)? {
-        let entry = entry?;
-        let path = entry.path();
-        let ext = path
-            .extension()
-            .unwrap_or("".as_ref())
+    for entry in std::fs::read_dir(
+        config
+            .plugin_path
+            .unwrap_or("~/.tanoshi/plugins".to_string()),
+    )?
+    .into_iter()
+    .filter(move |path| {
+        if let Ok(p) = path {
+            let ext = p
+                .clone()
+                .path()
+                .extension()
+                .unwrap_or("".as_ref())
+                .to_owned();
+            if ext == "so" || ext == "dll" || ext == "dylib" {
+                return true;
+            }
+        }
+        return false;
+    }) {
+        let path = entry?.path();
+        let mut name = path
+            .file_stem()
+            .unwrap_or_default()
             .to_str()
-            .unwrap_or("");
-        if ext == "so" || ext == "dll" || ext == "dylib" {
-            info!("load plugin from {:?}", path.clone());
-            let mut exts = extensions.write().await;
-            unsafe {
-                match exts.load(path) {
-                    Ok(_) => {}
-                    Err(e) => error!("not a valid extensions {}", e),
-                }
+            .unwrap_or_default()
+            .to_string()
+            .replace("lib", "");
+        info!("{}", name.clone());
+        info!("load plugin from {:?}", path.clone());
+        let config = plugin_config.get(&name);
+        let mut exts = extensions.write().await;
+        unsafe {
+            match exts.load(path, config) {
+                Ok(_) => {}
+                Err(e) => error!("not a valid extensions {}", e),
             }
         }
     }
-    let exts = extensions.clone();
-    let exts = exts.read().await;
-    info!("there are {} plugins", exts.extensions().len());
 
     let static_files = warp::get().and(warp::path::tail()).and_then(serve);
     let index = warp::get().and_then(serve_index);
 
     let static_files = static_files.or(index);
-
-    let pool = PgPool::builder()
-        .max_size(5) // maximum number of connections in the pool
-        .build(std::env::var("DATABASE_URL").unwrap().as_str())
-        .await?;
 
     let auth_api = filters::auth::authentication(secret.clone(), pool.clone());
     let manga_api = filters::manga::manga(secret.clone(), extensions, pool.clone());
@@ -82,11 +136,12 @@ async fn main() -> Result<()> {
 
     let routes = api.or(static_files).with(warp::log("manga"));
 
-    let port = std::env::var("PORT").unwrap_or("80".to_string());
+    let port = config.port.unwrap_or("80".to_string());
     warp::serve(routes)
         .run(std::net::SocketAddrV4::from_str(format!("0.0.0.0:{}", port).as_str()).unwrap())
         .await;
-    Ok(())
+
+    return Ok(());
 }
 
 async fn serve_index() -> Result<impl Reply, Rejection> {
