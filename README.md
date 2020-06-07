@@ -62,7 +62,7 @@ plugin_config:
 
 ## Demo Video
 ### Mobile
-![Imgur](https://imgur.com/fzrIlP0)'
+![mobile](screenshots/mobile.gif)
 
 ### Desktop
-![Imgur](https://imgur.com/7M7FlTc)
+![desktop](screenshots/desktop.gif)
