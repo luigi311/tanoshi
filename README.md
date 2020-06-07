@@ -11,7 +11,7 @@ Selfhosted Tachiyomi-like web manga reader.
 - See chapter updates
 - Read in single page, double page, or long strip
 - Read from right to left or left to right
-- Web readar is PWA and optimized for standalone mode on mobile
+- Web reader is PWA and optimized for standalone mode on mobile
 
 ### Planned
 My plan is to make this as close as tachiyomi features. Planned features are listed [here](https://github.com/faldez/tanoshi/issues?q=is%3Aopen+is%3Aissue+label%3Aenhancement)
