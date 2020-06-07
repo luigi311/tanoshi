@@ -20,6 +20,7 @@ mod extension;
 mod favorites;
 mod filters;
 mod handlers;
+mod worker;
 
 #[derive(RustEmbed)]
 #[folder = "../tanoshi-web/dist/"]
@@ -111,6 +112,9 @@ async fn main() -> Result<()> {
             }
         }
     }
+
+    let mut update_worker = worker::Worker::new();
+    update_worker.start(30);
 
     let static_files = warp::get().and(warp::path::tail()).and_then(serve);
     let index = warp::get().and_then(serve_index);

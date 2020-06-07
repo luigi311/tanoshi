@@ -2532,9 +2532,10 @@ dependencies = [
 
 [[package]]
 name = "tanoshi"
-version = "0.3.1"
+version = "0.4.0"
 dependencies = [
  "anyhow",
+ "bytes",
  "chrono",
  "clap",
  "fancy-regex",
@@ -2542,7 +2543,7 @@ dependencies = [
  "human-sort",
  "jsonwebtoken",
  "libloading",
- "log 0.4.8",
+ "log 0.3.9",
  "mime_guess 2.0.3",
  "pretty_env_logger",
  "rand 0.7.3",
