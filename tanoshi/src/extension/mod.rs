@@ -64,7 +64,15 @@ impl Extensions {
         self.extensions.get(name)
     }
 
-    pub unsafe fn load<P: AsRef<OsStr>>(&mut self, library_path: P) -> Result<()> {
+    pub fn get_mut(&mut self, name: &String) -> Option<&mut ExtensionProxy> {
+        self.extensions.get_mut(name)
+    }
+
+    pub unsafe fn load<P: AsRef<OsStr>>(
+        &mut self,
+        library_path: P,
+        config: Option<&serde_yaml::Value>,
+    ) -> Result<()> {
         let library = Arc::new(Library::new(library_path)?);
 
         let decl = library
@@ -78,7 +86,7 @@ impl Extensions {
         }
 
         let mut registrar = PluginRegistrar::new(Arc::clone(&library));
-        (decl.register)(&mut registrar);
+        (decl.register)(&mut registrar, config);
 
         self.extensions.extend(registrar.extensions);
         self.libraries.push(library);
