@@ -112,6 +112,8 @@ impl Component for History {
         let page_type: PageType = self.route_service.get_path().into();
         if self.page_type != page_type {
             self.page_type = page_type;
+            self.history.clear();
+            self.updates.clear();
             self.should_fetch = true;
             true
         } else {

@@ -26,6 +26,7 @@ wasm-logger = "0.2"
 enclose = "*"
 anyhow = "1"
 quote = "1"
+jsonwebtoken = "7"
 js-sys = "*"
 chrono = { version = "0.4", features = ["serde"] }
 tanoshi-lib = {git = "https://github.com/fadhlika/tanoshi-lib", branch = "master", features=["model"]}
