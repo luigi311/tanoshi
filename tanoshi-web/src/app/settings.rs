@@ -1,13 +1,16 @@
 use super::component::model::{
     BackgroundColor, Claims, PageRendering, ReadingDirection, SettingParams, User,
 };
+use jsonwebtoken::dangerous_unsafe_decode;
+use serde::Deserialize;
 use yew::format::{Json, Nothing, Text};
 use yew::services::fetch::{FetchService, FetchTask, Request, Response};
 use yew::services::storage::Area;
 use yew::services::StorageService;
 use yew::{html, ChangeData, Component, ComponentLink, Html, InputData, Properties, ShouldRender};
+use yew_router::components::RouterAnchor;
 
-use serde::Deserialize;
+use crate::app::AppRoute;
 
 pub struct UserRow {
     pub user: User,
@@ -31,6 +34,11 @@ pub struct Settings {
     token: String,
     is_admin: bool,
     users: Vec<UserRow>,
+    me_username: String,
+    me_role: String,
+    me_password: Option<String>,
+    me_confirm_password: Option<String>,
+    change_password: bool,
 }
 
 pub enum Msg {
@@ -43,6 +51,11 @@ pub enum Msg {
     EditUser(usize),
     UsernameChange(usize, String),
     RoleChange(usize, ChangeData),
+    ChangePassword,
+    PasswordChange(InputData),
+    ConfirmPasswordChange(InputData),
+    SubmitPassword,
+    PasswordChangedReady,
     SaveUser(usize),
     SaveUserSuccess(usize),
     Noop,
@@ -62,14 +75,23 @@ impl Component for Settings {
             }
         };
 
+        let token = storage
+            .restore::<Result<String, _>>("token")
+            .unwrap_or("".to_string());
+
         Settings {
             fetch_task: None,
             link,
             storage,
             settings,
-            token: "".to_string(),
+            token: token,
             is_admin: false,
             users: vec![],
+            me_username: "".to_string(),
+            me_role: "".to_string(),
+            me_confirm_password: None,
+            me_password: None,
+            change_password: false,
         }
     }
 
@@ -89,6 +111,8 @@ impl Component for Settings {
             }
             Msg::Authorized(claim) => {
                 self.is_admin = claim.role == "ADMIN".to_string();
+                self.me_username = claim.sub;
+                self.me_role = claim.role;
                 if self.is_admin {
                     self.fetch_users();
                 }
@@ -124,6 +148,23 @@ impl Component for Settings {
                 }
                 _ => {}
             },
+            Msg::ChangePassword => {
+                self.change_password = !self.change_password;
+            }
+            Msg::PasswordChange(e) => {
+                self.me_password = Some(e.value);
+            }
+            Msg::ConfirmPasswordChange(e) => {
+                self.me_confirm_password = Some(e.value);
+            }
+            Msg::SubmitPassword => {
+                self.change_password();
+            }
+            Msg::PasswordChangedReady => {
+                self.me_password = None;
+                self.me_confirm_password = None;
+                self.change_password = false;
+            }
             Msg::SaveUser(i) => {
                 if self.users[i].is_new {
                     self.register_user(i);
@@ -148,16 +189,14 @@ impl Component for Settings {
 
     fn rendered(&mut self, first_render: bool) {
         if first_render {
-            if let Ok(token) = self.storage.restore("token") {
-                self.token = token;
-                self.validate_token();
-            }
+            self.validate_token();
         }
     }
 
     fn view(&self) -> Html {
         html! {
             <div class="container pb-20" style="padding-top: calc(env(safe-area-inset-top) + .5rem)">
+                {self.account_setting()}
                 {
                     if self.is_admin {
                         self.admin_settings()
@@ -218,7 +257,7 @@ impl Settings {
     }
 
     fn modify_user_role(&mut self, i: usize) {
-        let req = Request::put("/api/user")
+        let req = Request::put("/api/user/role")
             .header("Authorization", self.token.clone())
             .header("Content-Type", "application/json")
             .body(Json(&self.users[i].user))
@@ -230,6 +269,32 @@ impl Settings {
                 if let (meta, _res) = response.into_parts() {
                     if meta.status.is_success() {
                         return Msg::SaveUserSuccess(i);
+                    }
+                }
+                Msg::Noop
+            }),
+        ) {
+            self.fetch_task = Some(FetchTask::from(task));
+        }
+    }
+
+    fn change_password(&mut self) {
+        if self.me_password != self.me_confirm_password {
+            return;
+        }
+
+        let req = Request::put("/api/user/password")
+            .header("Authorization", self.token.clone())
+            .header("Content-Type", "text/plain")
+            .body(Ok(self.me_password.clone().unwrap()))
+            .expect("failed to build request");
+
+        if let Ok(task) = FetchService::new().fetch(
+            req,
+            self.link.callback(move |response: Response<Text>| {
+                if let (meta, _res) = response.into_parts() {
+                    if meta.status.is_success() {
+                        return Msg::PasswordChangedReady;
                     }
                 }
                 Msg::Noop
@@ -263,7 +328,7 @@ impl Settings {
 
     fn separator(&self, text: &str) -> Html {
         html! {
-            <div class={"shadow p-2 bg-tachiyomi-blue"}>
+            <div class={"shadow p-2 bg-tachiyomi-blue rounded-t"}>
                 <span class="text-semibold text-white">{text}</span>
             </div>
         }
@@ -350,9 +415,68 @@ impl Settings {
         }
     }
 
+    fn account_setting(&self) -> Html {
+        html! {
+            <div class="flex flex-col rounded-lg border border-grey-light m-2" id="account-setting">
+                {self.separator("Account")}
+                {self.setting_card("Username", html! {
+                    <span>{self.me_username.clone()}</span>
+                })}
+                {self.setting_card("Role", html! {
+                    <span>{self.me_role.clone()}</span>
+                })}
+                {
+                    if self.change_password {
+                        html!{
+                            <>
+                            {self.setting_card("New Password", html! {
+                                <input
+                                    class="w-full border-b border-grey-light"
+                                    type="password"
+                                    value=self.me_password.clone().unwrap_or("".to_string()).to_owned()
+                                    oninput=self.link.callback(|e| Msg::PasswordChange(e))/>
+                            })}
+                            {self.setting_card("Confirm Password", html! {
+                                <div class="flex flex-col">
+                                <input
+                                    class="w-full border-b border-grey-light"
+                                    type="confirm-password"
+                                    value=self.me_confirm_password.clone().unwrap_or("".to_string()).to_owned()
+                                    oninput=self.link.callback(|e| Msg::ConfirmPasswordChange(e))/>
+                                {
+                                    if self.me_password != self.me_confirm_password {
+                                        html!{<span class="text-xs text-red-500">{"Password doesn't match"}</span>}
+                                    }
+                                    else {
+                                        html!{}
+                                    }
+                                }
+                                </div>
+                            })}
+                            <button class={"bg-grey-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-r border-b"}
+                                onclick=self.link.callback(|_| Msg::SubmitPassword)>
+                                {"Submit"}
+                            </button>
+                            </>
+                        }
+                    } else {
+                        html!{}
+                    }
+                }
+                <button class={"bg-grey-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-r border-b"}
+                    onclick=self.link.callback(|_| Msg::ChangePassword)>
+                    {if !self.change_password {"Change Password"} else {"Cancel"}}
+                </button>
+                <RouterAnchor<AppRoute> route=AppRoute::Logout classes={"bg-grey-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-r text-center"}>
+                    {"Logout"}
+                </RouterAnchor<AppRoute>>
+            </div>
+        }
+    }
+
     fn reading_settings(&self) -> Html {
         html! {
-            <div class="flex flex-col rounded-lg border border-grey-light m-2" id="updates">
+            <div class="flex flex-col rounded-lg border border-grey-light m-2" id="reading-setting">
                 {self.separator("Reader")}
                 {
                     self.setting_card("Direction", html! {

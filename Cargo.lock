@@ -2591,6 +2591,7 @@ dependencies = [
  "failure",
  "http",
  "js-sys",
+ "jsonwebtoken",
  "log 0.4.8",
  "quote",
  "serde",

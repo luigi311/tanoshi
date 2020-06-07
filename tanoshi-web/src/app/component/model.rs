@@ -8,7 +8,7 @@ pub struct User {
     pub role: String,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone, Default)]
 pub struct Claims {
     pub sub: String,
     pub role: String,
