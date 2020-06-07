@@ -26,6 +26,9 @@ Tanoshi use postgresql for database, simply create user, database, and run migra
 ### Prebuilt Binary
 Download and run binary from latest release, aside from plugins all dependencies are statically linked.
 
+### Plugins
+To browse and read manga, tanoshi needs plugins. Plugins can be donwnloaded from (here)[https://github.com/faldez/tanoshi-extensions] in `repo` branch. You can download individual plugins and store in on your selected `plugins_path` in `config.yml`, or clone `repo` branch and copy all of plugins to `plugins_path`.
+
 ## Usage
 ### CLI
 ```
