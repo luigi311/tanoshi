@@ -20,6 +20,7 @@ chrono = { version = "0.4", features = ["serde"] }
 human-sort = {version = "0.2"}
 ureq = "1"
 serde_yaml = "0.8"
+dirs = "2.0.2"
 
 [build-dependencies]
 rustc_version = "0.2"

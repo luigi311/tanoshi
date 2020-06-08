@@ -133,6 +133,13 @@ pub mod manga {
         pub manga_id: i32,
         pub pages: Vec<String>,
     }
+    #[derive(Debug, Deserialize, Serialize, Clone)]
+    pub struct Image {
+        pub source_id: i32,
+        pub source_name: String,
+        pub path: String,
+        pub file_name: String,
+    }
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct ImageProxyParam {
@@ -223,7 +230,7 @@ pub mod manga {
 
 #[cfg(feature = "extensions")]
 pub mod extensions {
-    use crate::manga::{Chapter, Manga, Params, Source, SourceLogin, SourceLoginResult};
+    use crate::manga::{Chapter, Image, Manga, Params, Source, SourceLogin, SourceLoginResult};
     use anyhow::{anyhow, Result};
     use serde_yaml;
     use std::io::Read;
@@ -234,16 +241,33 @@ pub mod extensions {
         fn get_manga_info(&self, url: &String) -> Result<Manga>;
         fn get_chapters(&self, url: &String) -> Result<Vec<Chapter>>;
         fn get_pages(&self, url: &String) -> Result<Vec<String>>;
-        fn get_page(&self, url: &String, bytes: &mut Vec<u8>) -> Result<String> {
-            let resp = ureq::get(&url).call();
-            let content_type = resp.content_type().to_owned();
-            let mut reader = resp.into_reader();
-            if reader.read_to_end(bytes).is_err() {
-                return Err(anyhow!("error write image"));
-            }
+        fn get_page(&self, url: &String, image: Image) -> Result<Vec<u8>> {
+            let mut cache_path = dirs::home_dir().expect("should have home dir");
+            cache_path = cache_path.join(".tanoshi/cache").join(image.path);
 
-            Ok(content_type)
+            let bytes = match std::fs::read(cache_path.join(image.file_name.clone()).clone()) {
+                Ok(data) => data,
+                Err(_) => {
+                    let resp = ureq::get(&url).call();
+                    let mut reader = resp.into_reader();
+                    let mut bytes = vec![];
+                    if reader.read_to_end(&mut bytes).is_err() {
+                        return Err(anyhow!("error write image"));
+                    }
+                    if std::fs::create_dir_all(&cache_path.clone()).is_ok() {
+                        if std::fs::write(&cache_path.join(image.file_name.clone()), bytes.clone())
+                            .is_err()
+                        {
+                            return Err(anyhow!("error write image"));
+                        }
+                    }
+                    bytes
+                }
+            };
+
+            Ok(bytes)
         }
+
         fn login(&self, _: SourceLogin) -> Result<SourceLoginResult> {
             Err(anyhow!("not implemented"))
         }
