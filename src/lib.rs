@@ -139,10 +139,6 @@ pub mod manga {
         pub source_name: String,
         pub path: String,
         pub file_name: String,
-    }
-
-    #[derive(Debug, Deserialize, Serialize, Clone)]
-    pub struct ImageProxyParam {
         pub url: String,
     }
 
@@ -241,14 +237,14 @@ pub mod extensions {
         fn get_manga_info(&self, url: &String) -> Result<Manga>;
         fn get_chapters(&self, url: &String) -> Result<Vec<Chapter>>;
         fn get_pages(&self, url: &String) -> Result<Vec<String>>;
-        fn get_page(&self, url: &String, image: Image) -> Result<Vec<u8>> {
+        fn get_page(&self, image: Image) -> Result<Vec<u8>> {
             let mut cache_path = dirs::home_dir().expect("should have home dir");
             cache_path = cache_path.join(".tanoshi/cache").join(image.path);
 
             let bytes = match std::fs::read(cache_path.join(image.file_name.clone()).clone()) {
                 Ok(data) => data,
                 Err(_) => {
-                    let resp = ureq::get(&url).call();
+                    let resp = ureq::get(&image.url).call();
                     let mut reader = resp.into_reader();
                     let mut bytes = vec![];
                     if reader.read_to_end(&mut bytes).is_err() {
