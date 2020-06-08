@@ -39,20 +39,21 @@ pub async fn get_source_from_manga_id(manga_id: i32, db: PgPool) -> Result<Sourc
     Ok(ret)
 }
 
-pub async fn get_image_from_image_url(url: String, db: PgPool) -> Result<Image, sqlx::Error> {
+pub async fn get_image_from_page_id(page_id: i32, db: PgPool) -> Result<Image, sqlx::Error> {
     let ret = sqlx::query_as!(
         Image,
         r#"SELECT 
         s.id AS source_id, 
         s.name AS source_name, 
         s.id::TEXT || '/' || m.id::TEXT || '/' || c.id::TEXT AS path,
-        page.rank::TEXT || substring(page.url from '\.[a-zA-Z]+$') AS file_name 
+        page.rank::TEXT || substring(page.url from '\.[a-zA-Z]+$') AS file_name,
+        page.url AS url
         FROM page
         JOIN chapter c on page.chapter_id = c.id
         JOIN manga m on c.manga_id = m.id
         JOIN source s on m.source_id = s.id
-        WHERE page.url = $1"#,
-        url
+        WHERE page.id = $1"#,
+        page_id
     )
     .fetch_one(&db)
     .await?;
@@ -257,7 +258,7 @@ pub async fn get_pages(chapter_id: i32, db: PgPool) -> Result<GetPagesResponse, 
 
     let pages: Vec<String> = sqlx::query(
         r#"SELECT 
-        CONCAT('/api/image?url=', page.url) AS url
+        CONCAT('/api/page/', page.id) AS url
         FROM page
         WHERE page.chapter_id = $1
         ORDER BY page.rank"#,

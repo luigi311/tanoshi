@@ -6,7 +6,7 @@ use serde_json::json;
 use crate::auth::Claims;
 use crate::extension::{repository, Extensions};
 use tanoshi_lib::extensions::Extension;
-use tanoshi_lib::manga::{GetParams, ImageProxyParam, Params, Source, SourceLogin};
+use tanoshi_lib::manga::{GetParams, Params, Source, SourceLogin};
 
 use crate::handlers::TransactionReject;
 use std::sync::Arc;
@@ -209,12 +209,11 @@ pub async fn get_pages(
 }
 
 pub async fn proxy_image(
-    param: ImageProxyParam,
+    page_id: i32,
     exts: Arc<RwLock<Extensions>>,
     db: PgPool,
 ) -> Result<impl warp::Reply, Rejection> {
-    let url = param.url.clone();
-    let image = match repository::get_image_from_image_url(url.clone(), db.clone()).await {
+    let image = match repository::get_image_from_page_id(page_id, db.clone()).await {
         Ok(image) => image,
         Err(_) => return Err(warp::reject()),
     };
@@ -223,7 +222,7 @@ pub async fn proxy_image(
     let bytes = exts
         .get(&image.source_name)
         .unwrap()
-        .get_page(&url, image.clone())
+        .get_page(image.clone())
         .unwrap();
 
     let path = std::path::PathBuf::from(image.path).join(image.file_name);

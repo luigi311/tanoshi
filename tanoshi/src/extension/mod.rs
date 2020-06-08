@@ -34,8 +34,8 @@ impl Extension for ExtensionProxy {
         self.extension.get_pages(url)
     }
 
-    fn get_page(&self, url: &String, image: Image) -> Result<Vec<u8>> {
-        self.extension.get_page(url, image)
+    fn get_page(&self, image: Image) -> Result<Vec<u8>> {
+        self.extension.get_page(image)
     }
 
     fn login(&self, login_info: SourceLogin) -> Result<SourceLoginResult> {
