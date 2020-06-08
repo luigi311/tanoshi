@@ -40,7 +40,10 @@ features = [
   'HtmlImageElement',
   'Node',
   'Window',
-  'CssStyleDeclaration'
+  'CssStyleDeclaration',
+  'Blob',
+  'BlobPropertyBag',
+  'Url'
 ]
 
 [dev-dependencies]
