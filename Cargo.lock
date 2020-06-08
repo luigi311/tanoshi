@@ -2582,6 +2582,7 @@ dependencies = [
  "bytes",
  "chrono",
  "clap",
+ "dirs",
  "fancy-regex",
  "futures",
  "human-sort",

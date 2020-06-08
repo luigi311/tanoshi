@@ -31,6 +31,7 @@ struct Config {
     pub port: Option<String>,
     pub database_url: String,
     pub secret: String,
+    pub cache_ttl: u64,
     pub plugin_path: Option<String>,
     pub plugin_config: Option<BTreeMap<String, serde_yaml::Value>>,
 }
@@ -114,6 +115,7 @@ async fn main() -> Result<()> {
     }
 
     let mut update_worker = worker::Worker::new();
+    update_worker.remove_cache(config.cache_ttl);
 
     let static_files = warp::get().and(warp::path::tail()).and_then(serve);
     let index = warp::get().and_then(serve_index);

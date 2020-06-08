@@ -11,6 +11,7 @@ impl Worker {
         Self {
             rt: runtime::Builder::new()
                 .threaded_scheduler()
+                .enable_all()
                 .build()
                 .unwrap(),
         }
@@ -23,7 +24,7 @@ impl Worker {
         self.rt.spawn(async move {
             loop {
                 f();
-                delay_for(Duration::from_secs(interval));
+                delay_for(Duration::from_secs(interval)).await;
             }
         });
     }
@@ -33,5 +34,21 @@ impl Worker {
         F: FnOnce() + Send + 'static,
     {
         self.rt.spawn(async move { f() });
+    }
+
+    pub fn remove_cache(&self, interval: u64) {
+        if interval == 0 {
+            return;
+        }
+
+        self.start_interval(interval * 84600, move || {
+            if let Some(cache_dir) = dirs::home_dir() {
+                let cache_dir = cache_dir.join(".tanoshi/cache");
+                match std::fs::remove_dir_all(cache_dir) {
+                    Ok(_) => {}
+                    Err(e) => error!("error remove cache: {}", e),
+                }
+            }
+        });
     }
 }
