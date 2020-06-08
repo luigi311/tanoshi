@@ -56,6 +56,8 @@ port: 3030
 database_url: postgres://username:password@127.0.0.1:5432/tanoshi
 # JWT secret, any random value, changing this will render any active token invalid
 secret: secret
+# Cache time to live, period in days for cache purge
+cache_ttl: 1
 # Where plugin is stored
 plugin_path: ~/.tanoshi/plugins
 #This section is for plugin configuration
