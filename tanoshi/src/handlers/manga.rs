@@ -2,16 +2,14 @@ use sqlx::postgres::PgPool;
 use warp::{http::Response, Rejection};
 
 use serde_json::json;
-use std::io::Read;
-use ureq;
 
 use crate::auth::Claims;
-use crate::extension::{repository, ExtensionProxy, Extensions};
+use crate::extension::{repository, Extensions};
 use tanoshi_lib::extensions::Extension;
-use tanoshi_lib::manga::{GetParams, ImageProxyParam, Params, Source, SourceLogin};
+use tanoshi_lib::manga::{GetParams, Params, Source, SourceLogin};
 
 use crate::handlers::TransactionReject;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use tokio::sync::RwLock;
 
 pub async fn list_sources(
@@ -211,27 +209,26 @@ pub async fn get_pages(
 }
 
 pub async fn proxy_image(
-    param: ImageProxyParam,
+    page_id: i32,
     exts: Arc<RwLock<Extensions>>,
     db: PgPool,
 ) -> Result<impl warp::Reply, Rejection> {
-    let url = param.url.clone();
-    let source = match repository::get_source_from_image_url(url.clone(), db.clone()).await {
-        Ok(source) => source,
-        Err(e) => return Err(warp::reject()),
+    let image = match repository::get_image_from_page_id(page_id, db.clone()).await {
+        Ok(image) => image,
+        Err(_) => return Err(warp::reject()),
     };
 
-    let mut bytes = vec![];
-
     let exts = exts.read().await;
-    let content_type = exts
-        .get(&source.name)
+    let bytes = exts
+        .get(&image.source_name)
         .unwrap()
-        .get_page(&url, &mut bytes)
+        .get_page(image.clone())
         .unwrap();
 
+    let path = std::path::PathBuf::from(image.path).join(image.file_name);
+    let mime = mime_guess::from_path(&path).first_or_octet_stream();
     let resp = Response::builder()
-        .header("Content-Type", content_type)
+        .header("Content-Type", mime.as_ref())
         .header("Content-Length", bytes.len())
         .body(bytes)
         .unwrap();

@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use yew::worker::*;
 
-use yew::format::{Json, Nothing, Text};
+use yew::format::{Binary, Json, Nothing, Text};
 use yew::services::fetch::{FetchService, FetchTask};
 use yew::services::storage::{Area, StorageService};
 
@@ -25,6 +25,7 @@ pub enum Request {
     FetchManga(i32),
     FetchChapters(i32, bool),
     FetchPages(i32),
+    FetchPage(String),
     PostLogin(i32, SourceLogin),
     ValidateToken,
 }
@@ -36,6 +37,7 @@ pub enum Response {
     MangaFetched(GetMangaResponse),
     ChaptersFetched(GetChaptersResponse),
     PagesFetched(GetPagesResponse),
+    PageFetched(Vec<u8>),
     LoginPosted(SourceLoginResult),
     TokenInvalidorExpired,
 }
@@ -53,6 +55,7 @@ pub enum Msg {
     MangaReady(HandlerId, GetMangaResponse),
     ChaptersReady(HandlerId, GetChaptersResponse),
     PagesReady(HandlerId, GetPagesResponse),
+    PageReady(HandlerId, Vec<u8>),
     LoginReady(HandlerId, SourceLoginResult),
     ValidateTokenReady(HandlerId),
     Noop,
@@ -99,6 +102,10 @@ impl Agent for Worker {
             Msg::PagesReady(id, data) => {
                 self.fetch_task.remove(&id.clone());
                 self.link.respond(id, Response::PagesFetched(data));
+            }
+            Msg::PageReady(id, data) => {
+                self.fetch_task.remove(&id.clone());
+                self.link.respond(id, Response::PageFetched(data));
             }
             Msg::LoginReady(id, data) => {
                 self.fetch_task.remove(&id.clone());
@@ -233,6 +240,25 @@ impl Agent for Worker {
                             Msg::Noop
                         },
                     ),
+                ) {
+                    self.fetch_task.insert(id.clone(), FetchTask::from(task));
+                }
+            }
+            Request::FetchPage(path) => {
+                let req = HttpRequest::get(path)
+                    .body(Nothing)
+                    .expect("failed to build request");
+
+                if let Ok(task) = FetchService::new().fetch_binary(
+                    req,
+                    self.link.callback(move |response: HttpResponse<Binary>| {
+                        if let (meta, Ok(data)) = response.into_parts() {
+                            if meta.status.is_success() {
+                                return Msg::PageReady(id, data);
+                            }
+                        }
+                        Msg::Noop
+                    }),
                 ) {
                     self.fetch_task.insert(id.clone(), FetchTask::from(task));
                 }

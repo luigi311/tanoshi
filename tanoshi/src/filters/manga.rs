@@ -7,7 +7,7 @@ use crate::filters::{with_authorization, with_db};
 use crate::handlers::manga;
 use sqlx::postgres::PgPool;
 use std::sync::{Arc, Mutex};
-use tanoshi_lib::manga::{GetParams, ImageProxyParam, Params, SourceLogin};
+use tanoshi_lib::manga::{GetParams, Params, SourceLogin};
 use tokio::sync::RwLock;
 use warp::{filters::BoxedFilter, Filter, Reply};
 
@@ -91,9 +91,8 @@ pub fn get_pages(exts: Arc<RwLock<Extensions>>, db: PgPool) -> BoxedFilter<(impl
 }
 
 pub fn proxy_image(exts: Arc<RwLock<Extensions>>, db: PgPool) -> BoxedFilter<(impl Reply,)> {
-    warp::path!("api" / "image")
+    warp::path!("api" / "page" / i32)
         .and(warp::get())
-        .and(warp::query::<ImageProxyParam>())
         .and(with_extensions(exts))
         .and(with_db(db))
         .and_then(manga::proxy_image)
