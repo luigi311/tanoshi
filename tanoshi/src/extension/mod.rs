@@ -6,7 +6,7 @@ use anyhow::{anyhow, Result};
 use lib::Library;
 use std::{collections::HashMap, env, ffi::OsStr, fs, io, sync::Arc};
 use tanoshi_lib::extensions::{Extension, PluginDeclaration};
-use tanoshi_lib::manga::{Chapter, Manga, Params, Source, SourceLogin, SourceLoginResult};
+use tanoshi_lib::manga::{Chapter, Image, Manga, Params, Source, SourceLogin, SourceLoginResult};
 
 pub struct ExtensionProxy {
     extension: Box<dyn Extension>,
@@ -34,8 +34,8 @@ impl Extension for ExtensionProxy {
         self.extension.get_pages(url)
     }
 
-    fn get_page(&self, url: &String, bytes: &mut Vec<u8>) -> Result<String> {
-        self.extension.get_page(url, bytes)
+    fn get_page(&self, url: &String, image: Image) -> Result<Vec<u8>> {
+        self.extension.get_page(url, image)
     }
 
     fn login(&self, login_info: SourceLogin) -> Result<SourceLoginResult> {
@@ -62,10 +62,6 @@ impl Extensions {
 
     pub fn get(&self, name: &String) -> Option<&ExtensionProxy> {
         self.extensions.get(name)
-    }
-
-    pub fn get_mut(&mut self, name: &String) -> Option<&mut ExtensionProxy> {
-        self.extensions.get_mut(name)
     }
 
     pub unsafe fn load<P: AsRef<OsStr>>(

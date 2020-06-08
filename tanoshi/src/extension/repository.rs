@@ -1,8 +1,8 @@
 use sqlx::postgres::{PgArguments, PgPool, PgQueryAs, PgRow};
-use sqlx::{arguments::Arguments, QueryAs, Row};
+use sqlx::{arguments::Arguments, Row};
 use tanoshi_lib::manga::{
-    Chapter, GetChaptersResponse, GetMangaResponse, GetMangasResponse, GetPagesResponse, Manga,
-    Source,
+    Chapter, GetChaptersResponse, GetMangaResponse, GetMangasResponse, GetPagesResponse, Image,
+    Manga, Source,
 };
 
 pub async fn get_sources(db: PgPool) -> Result<Vec<Source>, sqlx::Error> {
@@ -39,14 +39,18 @@ pub async fn get_source_from_manga_id(manga_id: i32, db: PgPool) -> Result<Sourc
     Ok(ret)
 }
 
-pub async fn get_source_from_image_url(url: String, db: PgPool) -> Result<Source, sqlx::Error> {
+pub async fn get_image_from_image_url(url: String, db: PgPool) -> Result<Image, sqlx::Error> {
     let ret = sqlx::query_as!(
-        Source,
-        r#"SELECT source.id, source.name, source.url, source.version
+        Image,
+        r#"SELECT 
+        s.id AS source_id, 
+        s.name AS source_name, 
+        s.id::TEXT || '/' || m.id::TEXT || '/' || c.id::TEXT AS path,
+        page.rank::TEXT || substring(page.url from '\.[a-zA-Z]+$') AS file_name 
         FROM page
-        JOIN chapter ON chapter.id = page.chapter_id
-        JOIN manga ON manga.id = chapter.manga_id
-        JOIN source ON source.id = manga.source_id 
+        JOIN chapter c on page.chapter_id = c.id
+        JOIN manga m on c.manga_id = m.id
+        JOIN source s on m.source_id = s.id
         WHERE page.url = $1"#,
         url
     )
