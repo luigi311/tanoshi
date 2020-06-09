@@ -69,28 +69,27 @@ async fn main() -> Result<()> {
 
     let secret = config.secret;
     let plugin_config = config.plugin_config.unwrap_or(BTreeMap::new());
-
+    let plugin_path = config
+        .plugin_path
+        .unwrap_or("~/.tanoshi/plugins".to_string());
     let extensions = Arc::new(RwLock::new(extension::Extensions::new()));
-    for entry in std::fs::read_dir(
-        config
-            .plugin_path
-            .unwrap_or("~/.tanoshi/plugins".to_string()),
-    )?
-    .into_iter()
-    .filter(move |path| {
-        if let Ok(p) = path {
-            let ext = p
-                .clone()
-                .path()
-                .extension()
-                .unwrap_or("".as_ref())
-                .to_owned();
-            if ext == "so" || ext == "dll" || ext == "dylib" {
-                return true;
+    for entry in std::fs::read_dir(plugin_path.clone())?
+        .into_iter()
+        .filter(move |path| {
+            if let Ok(p) = path {
+                let ext = p
+                    .clone()
+                    .path()
+                    .extension()
+                    .unwrap_or("".as_ref())
+                    .to_owned();
+                if ext == "so" || ext == "dll" || ext == "dylib" {
+                    return true;
+                }
             }
-        }
-        return false;
-    }) {
+            return false;
+        })
+    {
         let path = entry?.path();
         let name = path
             .file_stem()
@@ -123,7 +122,12 @@ async fn main() -> Result<()> {
     let auth_api = filters::auth::authentication(secret.clone(), auth.clone());
 
     let manga = extension::manga::Manga::new(config.database_path.clone());
-    let manga_api = filters::manga::manga(secret.clone(), extensions, manga);
+    let manga_api = filters::manga::manga(
+        secret.clone(),
+        extensions,
+        config.plugin_path.clone().unwrap(),
+        manga,
+    );
 
     let fav = favorites::Favorites::new(config.database_path.clone());
     let fav_api = filters::favorites::favorites(secret.clone(), fav);

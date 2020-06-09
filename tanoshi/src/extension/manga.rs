@@ -7,7 +7,7 @@ use tanoshi_lib::manga::{GetParams, Params, Source, SourceLogin};
 use tokio::sync::RwLock;
 use warp::{http::Response, Rejection};
 
-use rusqlite::Connection;
+use std::io::Read;
 
 use crate::auth::Claims;
 use crate::extension::{repository::Repository, Extensions};
@@ -60,6 +60,38 @@ impl Manga {
             Err(e) => {
                 error!("error get source {}", e.to_string());
                 Err(warp::reject::custom(TransactionReject {
+                    message: e.to_string(),
+                }))
+            }
+        }
+    }
+
+    pub async fn install_source(
+        &self,
+        name: String,
+        exts: Arc<RwLock<Extensions>>,
+        plugin_path: String,
+    ) -> Result<impl warp::Reply, Rejection> {
+        let resp = ureq::get(
+            format!(
+                "https://raw.githubusercontent.com/faldez/tanoshi-extensions/repo/library/lib{}.so",
+                name.clone()
+            )
+            .as_str(),
+        )
+        .call();
+        let mut reader = resp.into_reader();
+        let mut bytes = vec![];
+        reader.read_to_end(&mut bytes);
+
+        let path = std::path::PathBuf::from(plugin_path);
+        let path = path.join(format!("lib{}.so", name));
+        match std::fs::write(path.clone(), &bytes) {
+            Ok(_) => {}
+            Ok(_) => {}
+            Err(e) => return Err(warp::reject()),
+            Err(e) => {
+                return Err(warp::reject::custom(TransactionReject {
                     message: e.to_string(),
                 }))
             }

@@ -16,6 +16,7 @@ use warp::{filters::BoxedFilter, Filter, Reply};
 pub fn manga(
     secret: String,
     exts: Arc<RwLock<Extensions>>,
+    plugin_path: String,
     manga: Manga,
 ) -> BoxedFilter<(impl Reply,)> {
     list_sources(exts.clone(), manga.clone())
@@ -25,6 +26,7 @@ pub fn manga(
         .or(get_pages(exts.clone(), manga.clone()))
         .or(proxy_image(exts.clone(), manga.clone()))
         .or(source_login(exts.clone(), manga.clone()))
+        .or(install_source(exts.clone(), plugin_path, manga.clone()))
         .boxed()
 }
 
@@ -34,6 +36,20 @@ pub fn list_sources(exts: Arc<RwLock<Extensions>>, manga: Manga) -> BoxedFilter<
         .and(with_extensions(exts))
         .and(with_manga(manga))
         .and_then(manga::list_sources)
+        .boxed()
+}
+
+pub fn install_source(
+    exts: Arc<RwLock<Extensions>>,
+    plugin_path: String,
+    manga: Manga,
+) -> BoxedFilter<(impl Reply,)> {
+    warp::path!("api" / "source" / "install" / String)
+        .and(warp::post())
+        .and(with_extensions(exts))
+        .and(with_plugin_path(plugin_path))
+        .and(with_manga(manga))
+        .and_then(manga::install_source)
         .boxed()
 }
 
@@ -113,6 +129,12 @@ pub fn source_login(exts: Arc<RwLock<Extensions>>, manga: Manga) -> BoxedFilter<
 
 fn json_body() -> impl Filter<Extract = (SourceLogin,), Error = warp::Rejection> + Clone {
     warp::body::content_length_limit(1024 * 16).and(warp::body::json())
+}
+
+fn with_plugin_path(
+    plugin_path: String,
+) -> impl Filter<Extract = (String,), Error = std::convert::Infallible> + Clone {
+    warp::any().map(move || plugin_path.clone())
 }
 
 fn with_extensions(

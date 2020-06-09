@@ -17,6 +17,15 @@ pub async fn list_sources(
     manga.list_sources(exts).await
 }
 
+pub async fn install_source(
+    name: String,
+    exts: Arc<RwLock<Extensions>>,
+    plugin_path: String,
+    manga: Manga,
+) -> Result<impl warp::Reply, Rejection> {
+    manga.install_source(name, exts, plugin_path).await
+}
+
 pub async fn list_mangas(
     source_id: i32,
     claim: Claims,
