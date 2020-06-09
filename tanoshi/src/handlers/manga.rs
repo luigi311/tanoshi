@@ -10,6 +10,7 @@ use crate::extension::manga::Manga;
 use crate::extension::Extensions;
 
 pub async fn list_sources(
+    param: String,
     exts: Arc<RwLock<Extensions>>,
     manga: Manga,
 ) -> Result<impl warp::Reply, Rejection> {

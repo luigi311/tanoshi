@@ -29,7 +29,7 @@ pub fn manga(
 }
 
 pub fn list_sources(exts: Arc<RwLock<Extensions>>, manga: Manga) -> BoxedFilter<(impl Reply,)> {
-    warp::path!("api" / "source")
+    warp::path!("api" / "source" / String)
         .and(warp::get())
         .and(with_extensions(exts))
         .and(with_manga(manga))

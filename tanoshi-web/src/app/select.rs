@@ -13,6 +13,11 @@ use super::catalogue::CatalogueRoute;
 
 use tanoshi_lib::manga::{GetSourceResponse, Source as SourceModel};
 
+pub enum Tab {
+    Installed,
+    Available,
+}
+
 #[derive(Clone, Properties)]
 pub struct Props {}
 
@@ -21,10 +26,13 @@ pub struct Select {
     link: ComponentLink<Self>,
     sources: Vec<SourceModel>,
     is_fetching: bool,
+    active_tab: Tab,
 }
 
 pub enum Msg {
     SourceReady(GetSourceResponse),
+    ChangeToAvailableTab,
+    ChangeToInstalledTab,
     Noop,
 }
 
@@ -32,12 +40,13 @@ impl Component for Select {
     type Message = Msg;
     type Properties = Props;
 
-    fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
+    fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self {
         Select {
             fetch_task: None,
             link,
             sources: vec![],
             is_fetching: false,
+            active_tab: Tab::Installed,
         }
     }
 
@@ -57,6 +66,8 @@ impl Component for Select {
                 self.sources = data.sources;
                 self.is_fetching = false;
             }
+            Msg::ChangeToInstalledTab => self.active_tab = Tab::Installed,
+            Msg::ChangeToAvailableTab => self.active_tab = Tab::Available,
             Msg::Noop => {}
         }
         true
@@ -64,19 +75,24 @@ impl Component for Select {
 
     fn view(&self) -> Html {
         html! {
-            <div class="container mx-auto pb-20"  style="padding-top: calc(env(safe-area-inset-top) + .5rem)">
-                <Spinner is_active=self.is_fetching is_fullscreen=true />
-                <div class="flex flex-col rounded-lg border border-grey-light m-2 shadow">
-                {
-                    for self.sources.iter().map(|source| html!{
-                        <RouterAnchor<BrowseRoute>
-                            classes="flex inline-flex border-b border-gray-light p-2 content-center hover:bg-gray-200"
-                            route=BrowseRoute::Catalogue(CatalogueRoute::Source(source.id))>
-                            <span class="text-lg font-semibold">{source.name.to_owned()}</span>
-                        </RouterAnchor<BrowseRoute>>
-                    })
-                }
+            <div class="container mx-auto pb-20 pt-12">
+                <div class="w-full px-2 pb-2 flex justify-around block fixed inset-x-0 top-0 z-50 bg-tachiyomi-blue shadow" style="padding-top: calc(env(safe-area-inset-top) + .5rem)">
+                    <button onclick=self.link.callback(|_| Msg::ChangeToInstalledTab)
+                        class="hover:bg-tachiyomi-blue-darker rounded flex-grow">
+                        <span class="text-white m-1">{"Installed"}</span>
+                    </button>
+                    <button onclick=self.link.callback(|_| Msg::ChangeToAvailableTab)
+                        class="hover:bg-tachiyomi-blue-darker rounded flex-grow">
+                        <span class="text-white m-1">{"Available"}</span>
+                    </button>
                 </div>
+                <Spinner is_active=self.is_fetching is_fullscreen=true />
+                {
+                    match self.active_tab {
+                        Tab::Installed => self.installed_view(),
+                        Tab::Available => self.available_view(),
+                    }
+                }
             </div>
         }
     }
@@ -87,6 +103,26 @@ impl Component for Select {
 }
 
 impl Select {
+    fn installed_view(&self) -> Html {
+        html! {
+            <div class="flex flex-col rounded-lg border border-grey-light mx-2 shadow">
+            {
+                for self.sources.iter().map(|source| html!{
+                    <RouterAnchor<BrowseRoute>
+                        classes="flex inline-flex border-b border-gray-light p-2 content-center hover:bg-gray-200"
+                        route=BrowseRoute::Catalogue(CatalogueRoute::Source(source.id))>
+                        <span class="text-lg font-semibold">{source.name.to_owned()}</span>
+                    </RouterAnchor<BrowseRoute>>
+                })
+            }
+            </div>
+        }
+    }
+
+    fn available_view(&self) -> Html {
+        html! {}
+    }
+
     fn fetch_sources(&mut self) {
         let req = Request::get("/api/source")
             .body(Nothing)

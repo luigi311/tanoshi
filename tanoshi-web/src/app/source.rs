@@ -3,8 +3,6 @@ use web_sys::HtmlElement;
 use yew::prelude::*;
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 
-use yew::services::storage::Area;
-use yew::services::StorageService;
 use yew::utils::{document, window};
 
 use tanoshi_lib::manga::{
