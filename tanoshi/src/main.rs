@@ -21,6 +21,7 @@ mod favorites;
 mod filters;
 mod handlers;
 mod history;
+mod update;
 mod worker;
 
 #[derive(RustEmbed)]
@@ -127,7 +128,8 @@ async fn main() -> Result<()> {
     let history = history::History::new();
     let history_api = filters::history::history(secret.clone(), history.clone());
 
-    let updates_api = filters::updates::updates(secret.clone());
+    let update = update::Update::new();
+    let updates_api = filters::updates::updates(secret.clone(), update.clone());
 
     let api = manga_api
         .or(auth_api)
