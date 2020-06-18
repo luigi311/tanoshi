@@ -1,27 +1,29 @@
-use crate::auth::{Claims, User, UserResponse};
 use anyhow::Result;
 use argon2::{self, Config};
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
 use rand;
 use rand::Rng;
+use rusqlite::{params, Connection};
 use sqlx::postgres::{PgPool, PgRow};
 use sqlx::{self, Row};
+
+use crate::auth::{Claims, User, UserResponse};
 
 #[derive(Clone)]
 pub struct Auth {}
 
 impl Auth {
-    pub async fn register(user: User, db: PgPool) -> UserResponse {
+    fn connect_db() -> Connection {
+        Connection::open("./tanoshi.db").unwrap()
+    }
+
+    pub async fn register(user: User) -> UserResponse {
+        let db = Auth::connect_db();
         let hashed = Auth::hash(user.password.unwrap_or("tanoshi123".to_string()).as_bytes());
-        match sqlx::query!(
+        match db.execute(
             r#"INSERT INTO "user"(username, password, role) VALUES ($1, $2, $3)"#,
-            user.username,
-            hashed,
-            user.role,
-        )
-        .execute(&db)
-        .await
-        {
+            params![user.username, hashed, user.role],
+        ) {
             Ok(_) => UserResponse {
                 claim: None,
                 token: None,
@@ -35,16 +37,22 @@ impl Auth {
         }
     }
 
-    pub async fn login(secret: String, user: User, db: PgPool) -> UserResponse {
-        let account = sqlx::query_as!(
-            User,
-            r#"SELECT username, password, role FROM "user" WHERE username = $1"#,
-            user.username,
-        )
-        .fetch_one(&db)
-        .await;
+    pub async fn login(secret: String, user: User) -> UserResponse {
+        let db = Auth::connect_db();
+        let account = db
+            .query_row(
+                r#"SELECT username, password, role FROM "user" WHERE username = $1"#,
+                params![user.username],
+                |row| {
+                    Ok(User {
+                        username: row.get(0)?,
+                        password: row.get(1)?,
+                        role: row.get(2)?,
+                    })
+                },
+            )
+            .unwrap();
 
-        let account = account.unwrap();
         if Auth::verify(account.password.unwrap(), user.password.unwrap().as_bytes()) {
             let user_claims = Claims {
                 sub: account.username,
@@ -72,39 +80,37 @@ impl Auth {
         };
     }
 
-    pub async fn user_list(db: PgPool) -> Vec<User> {
-        let users = sqlx::query(r#"SELECT username, role FROM "user""#)
-            .map(|row: PgRow| User {
-                username: row.get(0),
-                role: row.get(1),
+    pub async fn user_list() -> Vec<User> {
+        let db = Auth::connect_db();
+        let mut stmt = db.prepare(r#"SELECT username, role FROM "user""#).unwrap();
+        stmt.query_map(params![], |row| {
+            Ok(User {
+                username: row.get(0)?,
+                role: row.get(1)?,
                 password: None,
             })
-            .fetch_all(&db)
-            .await;
-
-        users.unwrap_or(vec![])
+        })
+        .unwrap()
+        .filter_map(|u| u.ok())
+        .collect()
     }
 
-    pub async fn change_password(username: String, password: String, db: PgPool) -> Result<()> {
+    pub async fn change_password(username: String, password: String) -> Result<()> {
+        let db = Auth::connect_db();
         let hashed = Auth::hash(password.as_bytes());
-        sqlx::query!(
+        db.execute(
             r#"UPDATE "user" SET password = $1 WHERE username = $2"#,
-            hashed,
-            username
-        )
-        .execute(&db)
-        .await?;
+            params![hashed, username],
+        )?;
         Ok(())
     }
 
-    pub async fn modify_user_role(user: User, db: PgPool) -> Result<()> {
-        sqlx::query!(
+    pub async fn modify_user_role(user: User) -> Result<()> {
+        let db = Auth::connect_db();
+        db.execute(
             r#"UPDATE "user" SET role = $1 WHERE username = $2"#,
-            user.role,
-            user.username
-        )
-        .execute(&db)
-        .await?;
+            params![user.role, user.username],
+        )?;
         Ok(())
     }
 

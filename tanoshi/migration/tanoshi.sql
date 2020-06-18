@@ -1,31 +1,31 @@
 CREATE TABLE IF NOT EXISTS "user"
 (
-    id       SERIAL PRIMARY KEY,
+    id       INTEGER PRIMARY KEY,
     username TEXT NOT NULL UNIQUE,
     password TEXT NOT NULL,
+    role VARCHAR(8) DEFAULT 'READER',
     created  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS username_idx ON "user" (username);
-ALTER TABLE "user" ADD COLUMN IF NOT EXISTS role VARCHAR(8) DEFAULT 'READER';
 
 CREATE TABLE IF NOT EXISTS source
 (
-    id      SERIAL PRIMARY KEY,
+    id      INTEGER PRIMARY KEY,
     name    TEXT NOT NULL UNIQUE,
     url     TEXT NOT NULL,
     version VARCHAR(8) DEFAULT '1.0',
     created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE (name, url)
+    UNIQUE (name, url) ON CONFLICT REPLACE
 );
 
 CREATE INDEX IF NOT EXISTS source_name_idx ON source (name);
 
 CREATE TABLE IF NOT EXISTS user_source
 (
-    id        SERIAL PRIMARY KEY,
+    id        INTEGER PRIMARY KEY,
     user_id   INTEGER,
     source_id INTEGER,
     configuration JSON,
@@ -46,7 +46,7 @@ CREATE INDEX IF NOT EXISTS user_source_ids ON user_source (user_id, source_id);
 
 CREATE TABLE IF NOT EXISTS manga
 (
-    id            SERIAL PRIMARY KEY,
+    id            INTEGER PRIMARY KEY,
     source_id     INTEGER,
     title         TEXT NOT NULL,
     author        TEXT,
@@ -67,7 +67,7 @@ CREATE INDEX IF NOT EXISTS manga_title_idx ON manga (source_id, title);
 
 CREATE TABLE IF NOT EXISTS chapter
 (
-    id       SERIAL PRIMARY KEY,
+    id       INTEGER PRIMARY KEY,
     manga_id INTEGER,
     title    TEXT,
     number   TEXT NOT NULL,
@@ -86,7 +86,7 @@ CREATE INDEX IF NOT EXISTS chapter_idx ON chapter (manga_id, number);
 
 CREATE TABLE IF NOT EXISTS page
 (
-    id         SERIAL PRIMARY KEY,
+    id         INTEGER PRIMARY KEY,
     chapter_id INTEGER,
     rank       INTEGER NOT NULL,
     url        TEXT    NOT NULL,
@@ -103,7 +103,7 @@ CREATE INDEX IF NOT EXISTS page_idx ON page (chapter_id);
 
 CREATE TABLE IF NOT EXISTS history
 (
-    id         SERIAL PRIMARY KEY,
+    id         INTEGER PRIMARY KEY,
     user_id    INTEGER   NOT NULL,
     chapter_id INTEGER   NOT NULL,
     last_page  INTEGER,
@@ -125,7 +125,7 @@ CREATE INDEX IF NOT EXISTS history_idx ON history (user_id, chapter_id);
 
 CREATE TABLE IF NOT EXISTS favorite
 (
-    id       SERIAL PRIMARY KEY,
+    id       INTEGER PRIMARY KEY,
     user_id  INTEGER NOT NULL,
     manga_id INTEGER NOT NULL,
     created  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

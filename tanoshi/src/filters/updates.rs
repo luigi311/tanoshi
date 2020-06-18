@@ -1,25 +1,21 @@
-use crate::filters::{with_authorization, with_db};
+use crate::filters::with_authorization;
 use crate::handlers::updates;
 use crate::handlers::updates::UpdateParam;
-use sqlx::postgres::PgPool;
-use std::sync::{Arc, Mutex};
-use warp::{path, Filter};
+
+use warp::Filter;
 
 pub fn updates(
     secret: String,
-    db: PgPool,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    get_updates(secret.clone(), db.clone())
+    get_updates(secret.clone())
 }
 
 pub fn get_updates(
     secret: String,
-    db: PgPool,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::path!("api" / "updates")
         .and(warp::get())
         .and(with_authorization(secret))
         .and(warp::query::<UpdateParam>())
-        .and(with_db(db))
         .and_then(updates::get_updates)
 }

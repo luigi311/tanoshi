@@ -7,7 +7,7 @@ extern crate log;
 use anyhow::Result;
 use clap::Clap;
 use rust_embed::RustEmbed;
-use sqlx::postgres::PgPool;
+
 use std::collections::BTreeMap;
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
@@ -54,11 +54,6 @@ async fn main() -> Result<()> {
 
     let config: Config = serde_yaml::from_slice(&std::fs::read(opts.config)?)?;
 
-    let pool = PgPool::builder()
-        .max_size(5) // maximum number of connections in the pool
-        .build(config.database_url.as_str())
-        .await?;
-
     if opts.create_admin {
         use auth::User;
         let user = User {
@@ -66,7 +61,7 @@ async fn main() -> Result<()> {
             password: Some("admin".to_string()),
             role: "ADMIN".to_string(),
         };
-        auth::auth::Auth::register(user, pool).await;
+        auth::auth::Auth::register(user).await;
         return Ok(());
     }
 
@@ -122,15 +117,15 @@ async fn main() -> Result<()> {
 
     let static_files = static_files.or(index);
 
-    let auth_api = filters::auth::authentication(secret.clone(), pool.clone());
-    let manga_api = filters::manga::manga(secret.clone(), extensions, pool.clone());
+    let auth_api = filters::auth::authentication(secret.clone());
+    let manga_api = filters::manga::manga(secret.clone(), extensions);
 
     let fav = favorites::Favorites::new();
-    let fav_api = filters::favorites::favorites(secret.clone(), fav, pool.clone());
+    let fav_api = filters::favorites::favorites(secret.clone(), fav);
 
-    let history_api = filters::history::history(secret.clone(), pool.clone());
+    let history_api = filters::history::history(secret.clone());
 
-    let updates_api = filters::updates::updates(secret.clone(), pool.clone());
+    let updates_api = filters::updates::updates(secret.clone());
 
     let api = manga_api
         .or(auth_api)

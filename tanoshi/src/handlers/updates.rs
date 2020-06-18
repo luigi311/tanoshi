@@ -1,25 +1,27 @@
-use serde::{Deserialize, Serialize};
 use crate::auth::Claims;
 use chrono::Local;
-use sqlx::Row;
+use rusqlite::{params, Connection};
+use serde::{Deserialize, Serialize};
 use sqlx::postgres::{PgPool, PgRow};
-use warp::Rejection;
+use sqlx::Row;
 use tanoshi_lib::manga::{Update, UpdatesResponse};
+use warp::Rejection;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct UpdateParam {
     page: i32,
 }
 
-pub async fn get_updates(
-    claim: Claims,
-    param: UpdateParam,
-    db: PgPool,
-) -> Result<impl warp::Reply, Rejection> {
+fn connect_db() -> Connection {
+    Connection::open("./tanoshi.db").unwrap()
+}
+
+pub async fn get_updates(claim: Claims, param: UpdateParam) -> Result<impl warp::Reply, Rejection> {
+    let db = connect_db();
     let limit = 10;
     let offset = (param.page * limit) - limit;
-
-    let updates = sqlx::query(
+    let mut stmt = db
+        .prepare(
             r#"SELECT 
             manga.title AS title, 
             manga.thumbnail_url AS thumbnail_url, 
@@ -33,25 +35,28 @@ pub async fn get_updates(
             JOIN favorite ON favorite.manga_id = manga.id
             JOIN "user" ON "user".id = favorite.user_id
             WHERE "user".username = $1 ORDER BY uploaded DESC
-            LIMIT $2 OFFSET $3"#
+            LIMIT $2 OFFSET $3"#,
         )
-        .bind(claim.sub)
-        .bind(limit as i64)
-        .bind(offset as i64)
-        .map(|row: PgRow| Update {
-            title: row.get(0),
-            thumbnail_url: row.get(1),
-            uploaded: row.get(2),
-            number: row.get(3),
-            chapter_id: row.get(4),
-            manga_id: row.get(5),
-            days: None,
-            show_sep: None,
+        .unwrap();
+    let updates = stmt
+        .query_map(params![claim.sub, limit as i64, offset as i64], |row| {
+            Ok(Update {
+                title: row.get(0)?,
+                thumbnail_url: row.get(1)?,
+                uploaded: row.get(2)?,
+                number: row.get(3)?,
+                chapter_id: row.get(4)?,
+                manga_id: row.get(5)?,
+                days: None,
+                show_sep: None,
+            })
         })
-        .fetch_all(&db).await;
+        .unwrap()
+        .filter_map(|u| u.ok())
+        .collect();
 
     let res = UpdatesResponse {
-        updates: updates.unwrap(),
+        updates,
         status: "success".to_string(),
     };
 

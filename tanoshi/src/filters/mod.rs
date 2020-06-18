@@ -1,6 +1,5 @@
 use serde_json::json;
-use sqlx::postgres::PgPool;
-use std::convert::Infallible;
+
 use warp::Filter;
 
 use crate::auth::Claims;
@@ -16,12 +15,6 @@ pub mod updates;
 pub struct ExpiredOrInvalidToken;
 
 impl warp::reject::Reject for ExpiredOrInvalidToken {}
-
-pub fn with_db(
-    db: PgPool,
-) -> impl Filter<Extract = (PgPool,), Error = std::convert::Infallible> + Clone {
-    warp::any().map(move || db.clone())
-}
 
 pub fn with_authorization(
     secret: String,
