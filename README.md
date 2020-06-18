@@ -20,15 +20,14 @@ My plan is to make this as close as tachiyomi features. Planned features are lis
 Rust is the most loved programming language, I thought this is my chance to learn rust too.
 
 ## Installation
-### Database
-Tanoshi use postgresql for database, simply create user, database, and run migration script from `tanoshi/migration/tanoshi.sql` and you are good to go.
-
 ### Prebuilt Binary
-Download and run binary from latest release, aside from plugins all dependencies are statically linked.
+Download and run binary from latest release, aside from plugins all dependencies are statically linked. It should run find on any linux x64 machine.
 
 ### Plugins
 To browse and read manga, tanoshi needs plugins. Plugins can be donwnloaded from [here](https://github.com/fadhlika/tanoshi-extensions) in `repo` branch. 
 You can download individual plugins and store in on your selected `plugins_path` in `config.yml`, or clone `repo` branch and copy all of plugins to `plugins_path`.
+
+Or you can install from web and restart tanoshi afterward.
 
 ## Usage
 ### CLI
