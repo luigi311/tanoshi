@@ -3,16 +3,20 @@ use serde_json::json;
 
 use std::convert::Infallible;
 
-pub async fn register(user: User, _claims: Claims) -> Result<impl warp::Reply, Infallible> {
-    let res = Auth::register(user).await;
+pub async fn register(
+    user: User,
+    _claims: Claims,
+    auth: Auth,
+) -> Result<impl warp::Reply, Infallible> {
+    let res = auth.register(user).await;
     Ok(warp::reply::with_status(
         warp::reply::json(&res),
         warp::http::StatusCode::CREATED,
     ))
 }
 
-pub async fn login(user: User, token: String) -> Result<impl warp::Reply, Infallible> {
-    let res = Auth::login(token, user).await;
+pub async fn login(user: User, token: String, auth: Auth) -> Result<impl warp::Reply, Infallible> {
+    let res = auth.login(token, user).await;
     if res.status == "failed" {
         return Ok(warp::reply::with_status(
             warp::reply::json(&res),
@@ -25,13 +29,17 @@ pub async fn login(user: User, token: String) -> Result<impl warp::Reply, Infall
     ))
 }
 
-pub async fn user_list(_claims: Claims) -> Result<impl warp::Reply, Infallible> {
-    let res = Auth::user_list().await;
+pub async fn user_list(_claims: Claims, auth: Auth) -> Result<impl warp::Reply, Infallible> {
+    let res = auth.user_list().await;
     Ok(warp::reply::json(&json!({ "users": res })))
 }
 
-pub async fn modify_user_role(user: User, _claims: Claims) -> Result<impl warp::Reply, Infallible> {
-    match Auth::modify_user_role(user).await {
+pub async fn modify_user_role(
+    user: User,
+    _claims: Claims,
+    auth: Auth,
+) -> Result<impl warp::Reply, Infallible> {
+    match auth.modify_user_role(user).await {
         Ok(_) => Ok(warp::reply::with_status(
             warp::reply(),
             warp::http::status::StatusCode::OK,
@@ -46,8 +54,9 @@ pub async fn modify_user_role(user: User, _claims: Claims) -> Result<impl warp::
 pub async fn change_password(
     password: String,
     claims: Claims,
+    auth: Auth,
 ) -> Result<impl warp::Reply, Infallible> {
-    match Auth::change_password(claims.sub, password).await {
+    match auth.change_password(claims.sub, password).await {
         Ok(_) => Ok(warp::reply::with_status(
             warp::reply(),
             warp::http::status::StatusCode::OK,

@@ -4,8 +4,6 @@ use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation}
 use rand;
 use rand::Rng;
 use rusqlite::{params, Connection};
-use sqlx::postgres::{PgPool, PgRow};
-use sqlx::{self, Row};
 
 use crate::auth::{Claims, User, UserResponse};
 
@@ -13,12 +11,16 @@ use crate::auth::{Claims, User, UserResponse};
 pub struct Auth {}
 
 impl Auth {
-    fn connect_db() -> Connection {
+    pub fn new() -> Self {
+        Self {}
+    }
+
+    fn connect_db(&self) -> Connection {
         Connection::open("./tanoshi.db").unwrap()
     }
 
-    pub async fn register(user: User) -> UserResponse {
-        let db = Auth::connect_db();
+    pub async fn register(&self, user: User) -> UserResponse {
+        let db = self.connect_db();
         let hashed = Auth::hash(user.password.unwrap_or("tanoshi123".to_string()).as_bytes());
         match db.execute(
             r#"INSERT INTO "user"(username, password, role) VALUES ($1, $2, $3)"#,
@@ -37,8 +39,8 @@ impl Auth {
         }
     }
 
-    pub async fn login(secret: String, user: User) -> UserResponse {
-        let db = Auth::connect_db();
+    pub async fn login(&self, secret: String, user: User) -> UserResponse {
+        let db = self.connect_db();
         let account = db
             .query_row(
                 r#"SELECT username, password, role FROM "user" WHERE username = $1"#,
@@ -80,8 +82,8 @@ impl Auth {
         };
     }
 
-    pub async fn user_list() -> Vec<User> {
-        let db = Auth::connect_db();
+    pub async fn user_list(&self) -> Vec<User> {
+        let db = self.connect_db();
         let mut stmt = db.prepare(r#"SELECT username, role FROM "user""#).unwrap();
         stmt.query_map(params![], |row| {
             Ok(User {
@@ -95,8 +97,8 @@ impl Auth {
         .collect()
     }
 
-    pub async fn change_password(username: String, password: String) -> Result<()> {
-        let db = Auth::connect_db();
+    pub async fn change_password(&self, username: String, password: String) -> Result<()> {
+        let db = self.connect_db();
         let hashed = Auth::hash(password.as_bytes());
         db.execute(
             r#"UPDATE "user" SET password = $1 WHERE username = $2"#,
@@ -105,8 +107,8 @@ impl Auth {
         Ok(())
     }
 
-    pub async fn modify_user_role(user: User) -> Result<()> {
-        let db = Auth::connect_db();
+    pub async fn modify_user_role(&self, user: User) -> Result<()> {
+        let db = self.connect_db();
         db.execute(
             r#"UPDATE "user" SET role = $1 WHERE username = $2"#,
             params![user.role, user.username],

@@ -63,7 +63,7 @@ async fn main() -> Result<()> {
             password: Some("admin".to_string()),
             role: "ADMIN".to_string(),
         };
-        auth::auth::Auth::register(user).await;
+        //auth::auth::Auth::register(user).await;
         return Ok(());
     }
 
@@ -119,7 +119,9 @@ async fn main() -> Result<()> {
 
     let static_files = static_files.or(index);
 
-    let auth_api = filters::auth::authentication(secret.clone());
+    let auth = auth::auth::Auth::new();
+    let auth_api = filters::auth::authentication(secret.clone(), auth.clone());
+
     let manga_api = filters::manga::manga(secret.clone(), extensions);
 
     let fav = favorites::Favorites::new();
