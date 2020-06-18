@@ -43,7 +43,9 @@ features = [
   'CssStyleDeclaration',
   'Blob',
   'BlobPropertyBag',
-  'Url'
+  'Url',
+  'Cache',
+  'CacheStorage'
 ]
 
 [dev-dependencies]
