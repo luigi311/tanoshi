@@ -27,29 +27,16 @@ impl Manga {
 
     pub async fn list_sources(
         &self,
+        param: String,
         exts: Arc<RwLock<Extensions>>,
     ) -> Result<impl warp::Reply, Rejection> {
-        let exts = exts.read().await;
-        let sources = exts
-            .extensions()
-            .iter()
-            .map(|(key, ext)| {
-                info!("source name {}", key.clone());
-                ext.info()
-            })
-            .collect::<Vec<Source>>();
-
-        match self.repo.insert_sources(sources).await {
-            Ok(_) => {}
-            Err(e) => {
-                error!("error get source {}", e.to_string());
-                return Err(warp::reject());
-            }
-        }
-
-        match self.repo.get_sources().await {
-            Ok(sources) => {
-                debug!("sources {:?}", sources.clone());
+        match param.as_str() {
+            "available" => {
+                let resp = ureq::get(
+                    "https://raw.githubusercontent.com/faldez/tanoshi-extensions/repo/index.json",
+                )
+                .call();
+                let sources = resp.into_json_deserialize::<Vec<Source>>().unwrap();
                 Ok(warp::reply::json(&json!(
                     {
                         "sources": sources,
@@ -57,12 +44,44 @@ impl Manga {
                     }
                 )))
             }
-            Err(e) => {
-                error!("error get source {}", e.to_string());
-                Err(warp::reject::custom(TransactionReject {
-                    message: e.to_string(),
-                }))
+            "installed" => {
+                let exts = exts.read().await;
+                let sources = exts
+                    .extensions()
+                    .iter()
+                    .map(|(key, ext)| {
+                        info!("source name {}", key.clone());
+                        ext.info()
+                    })
+                    .collect::<Vec<Source>>();
+
+                match self.repo.insert_sources(sources).await {
+                    Ok(_) => {}
+                    Err(e) => {
+                        error!("error get source {}", e.to_string());
+                        return Err(warp::reject());
+                    }
+                }
+
+                match self.repo.get_sources().await {
+                    Ok(sources) => {
+                        debug!("sources {:?}", sources.clone());
+                        Ok(warp::reply::json(&json!(
+                            {
+                                "sources": sources,
+                                "status": "success"
+                            }
+                        )))
+                    }
+                    Err(e) => {
+                        error!("error get source {}", e.to_string());
+                        Err(warp::reject::custom(TransactionReject {
+                            message: e.to_string(),
+                        }))
+                    }
+                }
             }
+            _ => Err(warp::reject()),
         }
     }
 
@@ -87,9 +106,7 @@ impl Manga {
         let path = std::path::PathBuf::from(plugin_path);
         let path = path.join(format!("lib{}.so", name));
         match std::fs::write(path.clone(), &bytes) {
-            Ok(_) => {}
-            Ok(_) => {}
-            Err(e) => return Err(warp::reject()),
+            Ok(_) => Ok(warp::reply()),
             Err(e) => {
                 return Err(warp::reject::custom(TransactionReject {
                     message: e.to_string(),
