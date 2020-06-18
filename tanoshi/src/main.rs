@@ -40,9 +40,6 @@ struct Config {
 
 #[derive(Clap)]
 struct Opts {
-    /// Create inital admin user account
-    #[clap(long)]
-    create_admin: bool,
     /// Path to config file
     #[clap(long, default_value = "~/config/tanoshi/config.yml")]
     config: String,
@@ -60,6 +57,14 @@ async fn main() -> Result<()> {
         let query = include_str!("../migration/tanoshi.sql");
         let conn = rusqlite::Connection::open(config.database_path.clone())?;
         conn.execute_batch(query)?;
+
+        let auth = auth::auth::Auth::new(config.database_path.clone());
+        auth.register(auth::User {
+            username: "admin".to_string(),
+            password: Some("admin".to_string()),
+            role: "ADMIN".to_string(),
+        })
+        .await;
     }
 
     let secret = config.secret;
