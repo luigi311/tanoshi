@@ -9,6 +9,10 @@ use yew::services::StorageService;
 use yew::{html, ChangeData, Component, ComponentLink, Html, InputData, Properties, ShouldRender};
 use yew_router::components::RouterAnchor;
 
+use wasm_bindgen::prelude::*;
+use wasm_bindgen::JsCast;
+use web_sys::{window, Cache};
+
 use crate::app::AppRoute;
 
 pub struct UserRow {
@@ -38,6 +42,7 @@ pub struct Settings {
     me_password: Option<String>,
     me_confirm_password: Option<String>,
     change_password: bool,
+    closure: Closure<dyn FnMut(JsValue)>,
 }
 
 pub enum Msg {
@@ -57,6 +62,7 @@ pub enum Msg {
     PasswordChangedReady,
     SaveUser(usize),
     SaveUserSuccess(usize),
+    ClearCache,
     Noop,
 }
 
@@ -78,6 +84,10 @@ impl Component for Settings {
             .restore::<Result<String, _>>("token")
             .unwrap_or("".to_string());
 
+        let closure = Closure::wrap(Box::new(move |value| {
+            log::info!("cache {:?}", value);
+        }) as Box<dyn FnMut(JsValue)>);
+
         Settings {
             fetch_task: None,
             link,
@@ -91,6 +101,7 @@ impl Component for Settings {
             me_confirm_password: None,
             me_password: None,
             change_password: false,
+            closure,
         }
     }
 
@@ -175,6 +186,14 @@ impl Component for Settings {
                 self.users[i].is_edit = false;
                 self.users[i].is_new = false;
             }
+            Msg::ClearCache => {
+                window()
+                    .unwrap()
+                    .caches()
+                    .unwrap()
+                    .delete("tanoshi")
+                    .then(&self.closure);
+            }
             Msg::Noop => {
                 return false;
             }
@@ -204,6 +223,7 @@ impl Component for Settings {
                     }
                 }
                 {self.reading_settings()}
+                {self.misc_settings()}
             </div>
         }
     }
@@ -535,6 +555,22 @@ impl Settings {
                                  {"Webtoon"}
                              </button>
                         </>
+                    })
+                }
+            </div>
+        }
+    }
+
+    fn misc_settings(&self) -> Html {
+        html! {
+            <div class="flex flex-col rounded-lg border border-grey-light m-2" id="misc-setting">
+                {self.separator("Miscellaneous")}
+                {
+                    self.setting_card("Clear Cache", html! {
+                        <button class={"bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-l"}
+                            onclick=self.link.callback(|_| Msg::ClearCache)>
+                            {"Clear"}
+                        </button>
                     })
                 }
             </div>
