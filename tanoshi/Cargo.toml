@@ -21,7 +21,6 @@ rand = {version = "0.7"}
 log = {version = "*"}
 pretty_env_logger = {version = "0.4"}
 jsonwebtoken = {version = "7"}
-sqlx = { version = "0.3", default-features = false, features = [ "runtime-tokio", "macros", "chrono", "postgres", "tls"] }
 chrono = { version = "0.4", features = ["serde"] }
 futures = {version = "*"}
 human-sort = {version = "0.2"}
@@ -33,3 +32,4 @@ mime_guess = "2"
 clap = "3.0.0-beta.1"
 bytes = "0.5"
 dirs = "2.0.2"
+rusqlite = {version = "0.23", features=["bundled", "chrono", "serde_json", "url", "array", "modern_sqlite"]}

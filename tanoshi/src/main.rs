@@ -7,10 +7,10 @@ extern crate log;
 use anyhow::Result;
 use clap::Clap;
 use rust_embed::RustEmbed;
-use sqlx::postgres::PgPool;
+
 use std::collections::BTreeMap;
 use std::str::FromStr;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use tanoshi_lib::extensions::Extension;
 use tokio::sync::RwLock;
 use warp::{http::header::HeaderValue, path::Tail, reply::Response, Filter, Rejection, Reply};
@@ -20,6 +20,8 @@ mod extension;
 mod favorites;
 mod filters;
 mod handlers;
+mod history;
+mod update;
 mod worker;
 
 #[derive(RustEmbed)]
@@ -29,7 +31,7 @@ struct Asset;
 #[derive(serde::Deserialize)]
 struct Config {
     pub port: Option<String>,
-    pub database_url: String,
+    pub database_path: String,
     pub secret: String,
     pub cache_ttl: u64,
     pub plugin_path: Option<String>,
@@ -38,9 +40,6 @@ struct Config {
 
 #[derive(Clap)]
 struct Opts {
-    /// Create inital admin user account
-    #[clap(long)]
-    create_admin: bool,
     /// Path to config file
     #[clap(long, default_value = "~/config/tanoshi/config.yml")]
     config: String,
@@ -54,20 +53,18 @@ async fn main() -> Result<()> {
 
     let config: Config = serde_yaml::from_slice(&std::fs::read(opts.config)?)?;
 
-    let pool = PgPool::builder()
-        .max_size(5) // maximum number of connections in the pool
-        .build(config.database_url.as_str())
-        .await?;
+    if !std::path::Path::new(&config.database_path.clone()).exists() {
+        let query = include_str!("../migration/tanoshi.sql");
+        let conn = rusqlite::Connection::open(config.database_path.clone())?;
+        conn.execute_batch(query)?;
 
-    if opts.create_admin {
-        use auth::User;
-        let user = User {
+        let auth = auth::auth::Auth::new(config.database_path.clone());
+        auth.register(auth::User {
             username: "admin".to_string(),
             password: Some("admin".to_string()),
             role: "ADMIN".to_string(),
-        };
-        auth::auth::Auth::register(user, pool).await;
-        return Ok(());
+        })
+        .await;
     }
 
     let secret = config.secret;
@@ -95,7 +92,7 @@ async fn main() -> Result<()> {
         return false;
     }) {
         let path = entry?.path();
-        let mut name = path
+        let name = path
             .file_stem()
             .unwrap_or_default()
             .to_str()
@@ -114,7 +111,7 @@ async fn main() -> Result<()> {
         }
     }
 
-    let mut update_worker = worker::Worker::new();
+    let update_worker = worker::Worker::new();
     update_worker.remove_cache(config.cache_ttl);
 
     let static_files = warp::get().and(warp::path::tail()).and_then(serve);
@@ -122,15 +119,20 @@ async fn main() -> Result<()> {
 
     let static_files = static_files.or(index);
 
-    let auth_api = filters::auth::authentication(secret.clone(), pool.clone());
-    let manga_api = filters::manga::manga(secret.clone(), extensions, pool.clone());
+    let auth = auth::auth::Auth::new(config.database_path.clone());
+    let auth_api = filters::auth::authentication(secret.clone(), auth.clone());
 
-    let fav = favorites::Favorites::new();
-    let fav_api = filters::favorites::favorites(secret.clone(), fav, pool.clone());
+    let manga = extension::manga::Manga::new(config.database_path.clone());
+    let manga_api = filters::manga::manga(secret.clone(), extensions, manga);
 
-    let history_api = filters::history::history(secret.clone(), pool.clone());
+    let fav = favorites::Favorites::new(config.database_path.clone());
+    let fav_api = filters::favorites::favorites(secret.clone(), fav);
 
-    let updates_api = filters::updates::updates(secret.clone(), pool.clone());
+    let history = history::History::new(config.database_path.clone());
+    let history_api = filters::history::history(secret.clone(), history.clone());
+
+    let update = update::Update::new(config.database_path.clone());
+    let updates_api = filters::updates::updates(secret.clone(), update.clone());
 
     let api = manga_api
         .or(auth_api)

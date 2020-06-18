@@ -9,32 +9,9 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    services:
-      # Label used to access the service container
-      postgres:
-        # Docker Hub image
-        image: postgres
-        # Provide the password for postgres
-        env:
-          POSTGRES_USER: tanoshi
-          POSTGRES_PASSWORD: tanoshi
-        # Set health checks to wait until postgres has started
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
-
     steps:
       - uses: actions/checkout@v2
-      - name: Migration
-        run: psql postgres://tanoshi:tanoshi@localhost:5432/tanoshi -a -f "/home/runner/work/tanoshi/tanoshi/tanoshi/migration/tanoshi.sql"
       - name: Build Frontend
         run: cd /home/runner/work/tanoshi/tanoshi/tanoshi-web && yarn install && cargo install wasm-bindgen-cli wasm-pack && yarn build
       - name: Build Backend
         run: cd /home/runner/work/tanoshi/tanoshi/tanoshi && cargo build
-        env:
-          # The hostname used to communicate with the PostgreSQL service container
-          DATABASE_URL: postgres://tanoshi:tanoshi@localhost:5432/tanoshi
