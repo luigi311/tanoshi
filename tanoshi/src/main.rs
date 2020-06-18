@@ -56,15 +56,10 @@ async fn main() -> Result<()> {
 
     let config: Config = serde_yaml::from_slice(&std::fs::read(opts.config)?)?;
 
-    if opts.create_admin {
-        use auth::User;
-        let user = User {
-            username: "admin".to_string(),
-            password: Some("admin".to_string()),
-            role: "ADMIN".to_string(),
-        };
-        //auth::auth::Auth::register(user).await;
-        return Ok(());
+    if !std::path::Path::new(&config.database_path.clone()).exists() {
+        let query = include_str!("../migration/tanoshi.sql");
+        let conn = rusqlite::Connection::open(config.database_path.clone())?;
+        conn.execute_batch(query)?;
     }
 
     let secret = config.secret;
@@ -111,7 +106,7 @@ async fn main() -> Result<()> {
         }
     }
 
-    let mut update_worker = worker::Worker::new();
+    let update_worker = worker::Worker::new();
     update_worker.remove_cache(config.cache_ttl);
 
     let static_files = warp::get().and(warp::path::tail()).and_then(serve);
