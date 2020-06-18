@@ -101,18 +101,21 @@ impl Manga {
         .call();
         let mut reader = resp.into_reader();
         let mut bytes = vec![];
-        reader.read_to_end(&mut bytes);
+        if let Err(e) = reader.read_to_end(&mut bytes) {
+            return Err(warp::reject::custom(TransactionReject {
+                message: e.to_string(),
+            }));
+        }
 
         let path = std::path::PathBuf::from(plugin_path);
         let path = path.join(format!("lib{}.so", name));
-        match std::fs::write(path.clone(), &bytes) {
-            Ok(_) => Ok(warp::reply()),
-            Err(e) => {
-                return Err(warp::reject::custom(TransactionReject {
-                    message: e.to_string(),
-                }))
-            }
+        if let Err(e) = std::fs::write(path.clone(), &bytes) {
+            return Err(warp::reject::custom(TransactionReject {
+                message: e.to_string(),
+            }));
         }
+
+        Ok(warp::reply())
     }
 
     pub async fn list_mangas(
