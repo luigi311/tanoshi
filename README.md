@@ -29,6 +29,9 @@ You can download individual plugins and store in on your selected `plugins_path`
 
 Or you can install from web and restart tanoshi afterward.
 
+### Account
+Tanoshi will create default account with username: admin and password admin. You can change the password or create new account.
+
 ## Usage
 ### CLI
 ```
@@ -38,7 +41,6 @@ USAGE:
     tanoshi [FLAGS] [OPTIONS]
 
 FLAGS:
-        --create-admin    Create initial admin user account
     -h, --help            Prints help information
     -V, --version         Prints version information
 
