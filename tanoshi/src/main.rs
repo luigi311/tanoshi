@@ -20,6 +20,7 @@ mod extension;
 mod favorites;
 mod filters;
 mod handlers;
+mod history;
 mod worker;
 
 #[derive(RustEmbed)]
@@ -123,7 +124,8 @@ async fn main() -> Result<()> {
     let fav = favorites::Favorites::new();
     let fav_api = filters::favorites::favorites(secret.clone(), fav);
 
-    let history_api = filters::history::history(secret.clone());
+    let history = history::History::new();
+    let history_api = filters::history::history(secret.clone(), history.clone());
 
     let updates_api = filters::updates::updates(secret.clone());
 
