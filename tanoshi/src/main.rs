@@ -122,7 +122,8 @@ async fn main() -> Result<()> {
     let auth = auth::auth::Auth::new();
     let auth_api = filters::auth::authentication(secret.clone(), auth.clone());
 
-    let manga_api = filters::manga::manga(secret.clone(), extensions);
+    let manga = extension::manga::Manga::new();
+    let manga_api = filters::manga::manga(secret.clone(), extensions, manga);
 
     let fav = favorites::Favorites::new();
     let fav_api = filters::favorites::favorites(secret.clone(), fav);

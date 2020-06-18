@@ -1,4 +1,5 @@
 //pub mod local;
+pub mod manga;
 pub mod repository;
 
 use anyhow::{anyhow, Result};
