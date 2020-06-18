@@ -5,6 +5,8 @@ use yew::services::fetch::{FetchService, FetchTask};
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 use yew_router::components::RouterAnchor;
 
+use std::collections::HashMap;
+
 use super::component::Spinner;
 use http::{Request, Response};
 use yew::utils::window;
@@ -25,7 +27,8 @@ pub struct Props {}
 pub struct Select {
     fetch_task: Option<FetchTask>,
     link: ComponentLink<Self>,
-    sources: Vec<SourceModel>,
+    available_sources: Vec<SourceModel>,
+    installed_sources: Vec<SourceModel>,
     is_fetching: bool,
     active_tab: Tab,
     button_refs: Vec<NodeRef>,
@@ -48,7 +51,8 @@ impl Component for Select {
         Select {
             fetch_task: None,
             link,
-            sources: vec![],
+            available_sources: vec![],
+            installed_sources: vec![],
             is_fetching: false,
             active_tab: Tab::Installed,
             button_refs: vec![NodeRef::default(), NodeRef::default()],
@@ -68,7 +72,10 @@ impl Component for Select {
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
             Msg::SourceReady(data) => {
-                self.sources = data.sources;
+                match self.active_tab {
+                    Tab::Installed => self.installed_sources = data.sources,
+                    Tab::Available => self.available_sources = data.sources,
+                };
                 self.is_fetching = false;
             }
             Msg::ChangeToInstalledTab => {
@@ -104,7 +111,7 @@ impl Component for Select {
                 }
             }
             Msg::InstallExtension(index) => {
-                self.install_source(self.sources[index].name.clone());
+                self.install_source(self.available_sources[index].name.clone());
             }
             Msg::ExtensionInstalled => {
                 log::info!("extension installed");
@@ -151,7 +158,7 @@ impl Select {
         html! {
             <div class="flex flex-col rounded-lg border border-grey-light mx-2 shadow">
             {
-                for self.sources.iter().map(|source| html!{
+                for self.installed_sources.iter().map(|source| html!{
                     <RouterAnchor<BrowseRoute>
                         classes="flex inline-flex border-b border-gray-light p-2 content-center hover:bg-gray-200"
                         route=BrowseRoute::Catalogue(CatalogueRoute::Source(source.id))>
@@ -167,19 +174,28 @@ impl Select {
         html! {
             <div class="flex flex-col rounded-lg border border-grey-light mx-2 shadow">
             {
-                for (0..self.sources.len()).map(|i| html!{
+                for (0..self.available_sources.len()).map(|i| html!{
                     <div
                         class="flex inline-flex justify-between border-b border-gray-light p-2 content-center hover:bg-gray-200">
-                        <span class="text-lg font-semibold">{self.sources[i].name.clone()}</span>
+                        <span class="text-lg font-semibold">{self.available_sources[i].name.clone()}</span>
                         <button class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold px-4 rounded"
+                            disabled={self.is_installed(self.available_sources[i].name.clone())}
                             onclick={self.link.callback(move |_| Msg::InstallExtension(i))}>
-                            {"Install"}
+                            {if !self.is_installed(self.available_sources[i].name.clone()) {"Install"} else {"Installed"}}
                         </button>
                     </div>
                 })
             }
             </div>
         }
+    }
+
+    fn is_installed(&self, name: String) -> bool {
+        self.installed_sources
+            .clone()
+            .iter()
+            .find(|s| s.name == name)
+            .is_some()
     }
 
     fn fetch_sources(&mut self) {
