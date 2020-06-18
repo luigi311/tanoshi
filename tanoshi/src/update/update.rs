@@ -11,15 +11,17 @@ pub struct UpdateParam {
 }
 
 #[derive(Debug, Clone)]
-pub struct Update {}
+pub struct Update {
+    database_path: String,
+}
 
 impl Update {
-    pub fn new() -> Self {
-        Self {}
+    pub fn new(database_path: String) -> Self {
+        Self { database_path }
     }
 
     fn connect_db(&self) -> Connection {
-        Connection::open("./tanoshi.db").unwrap()
+        Connection::open(self.database_path.clone()).unwrap()
     }
 
     pub async fn get_updates(

@@ -4,20 +4,16 @@ use tanoshi_lib::manga::{AddFavoritesResponse, FavoriteManga, GetFavoritesRespon
 
 #[derive(Clone)]
 pub struct Favorites {
-    db_path: String,
-    flags: OpenFlags,
+    database_path: String,
 }
 
 impl Favorites {
-    pub fn new() -> Self {
-        Favorites {
-            db_path: "./tanoshi.db".to_string(),
-            flags: OpenFlags::SQLITE_OPEN_NO_MUTEX,
-        }
+    pub fn new(database_path: String) -> Self {
+        Favorites { database_path }
     }
 
     fn connect_db(&self) -> Connection {
-        Connection::open("./tanoshi.db").unwrap()
+        Connection::open(self.database_path.clone()).unwrap()
     }
 
     pub async fn get_favorites(&self, username: String) -> GetFavoritesResponse {

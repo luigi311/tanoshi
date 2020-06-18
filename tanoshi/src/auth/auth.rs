@@ -8,15 +8,17 @@ use rusqlite::{params, Connection};
 use crate::auth::{Claims, User, UserResponse};
 
 #[derive(Clone)]
-pub struct Auth {}
+pub struct Auth {
+    database_path: String,
+}
 
 impl Auth {
-    pub fn new() -> Self {
-        Self {}
+    pub fn new(database_path: String) -> Self {
+        Self { database_path }
     }
 
     fn connect_db(&self) -> Connection {
-        Connection::open("./tanoshi.db").unwrap()
+        Connection::open(self.database_path.clone()).unwrap()
     }
 
     pub async fn register(&self, user: User) -> UserResponse {

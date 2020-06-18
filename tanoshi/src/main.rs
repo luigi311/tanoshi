@@ -10,7 +10,7 @@ use rust_embed::RustEmbed;
 
 use std::collections::BTreeMap;
 use std::str::FromStr;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use tanoshi_lib::extensions::Extension;
 use tokio::sync::RwLock;
 use warp::{http::header::HeaderValue, path::Tail, reply::Response, Filter, Rejection, Reply};
@@ -31,7 +31,7 @@ struct Asset;
 #[derive(serde::Deserialize)]
 struct Config {
     pub port: Option<String>,
-    pub database_url: String,
+    pub database_path: String,
     pub secret: String,
     pub cache_ttl: u64,
     pub plugin_path: Option<String>,
@@ -92,7 +92,7 @@ async fn main() -> Result<()> {
         return false;
     }) {
         let path = entry?.path();
-        let mut name = path
+        let name = path
             .file_stem()
             .unwrap_or_default()
             .to_str()
@@ -119,19 +119,19 @@ async fn main() -> Result<()> {
 
     let static_files = static_files.or(index);
 
-    let auth = auth::auth::Auth::new();
+    let auth = auth::auth::Auth::new(config.database_path.clone());
     let auth_api = filters::auth::authentication(secret.clone(), auth.clone());
 
-    let manga = extension::manga::Manga::new();
+    let manga = extension::manga::Manga::new(config.database_path.clone());
     let manga_api = filters::manga::manga(secret.clone(), extensions, manga);
 
-    let fav = favorites::Favorites::new();
+    let fav = favorites::Favorites::new(config.database_path.clone());
     let fav_api = filters::favorites::favorites(secret.clone(), fav);
 
-    let history = history::History::new();
+    let history = history::History::new(config.database_path.clone());
     let history_api = filters::history::history(secret.clone(), history.clone());
 
-    let update = update::Update::new();
+    let update = update::Update::new(config.database_path.clone());
     let updates_api = filters::updates::updates(secret.clone(), update.clone());
 
     let api = manga_api

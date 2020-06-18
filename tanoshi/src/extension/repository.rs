@@ -11,15 +11,17 @@ use std::rc::Rc;
 use anyhow::{anyhow, Result};
 
 #[derive(Debug, Clone)]
-pub struct Repository {}
+pub struct Repository {
+    database_path: String,
+}
 
 impl Repository {
-    pub fn new() -> Self {
-        Self {}
+    pub fn new(database_path: String) -> Self {
+        Self { database_path }
     }
 
     fn connect_db(&self) -> Connection {
-        Connection::open("./tanoshi.db").unwrap()
+        Connection::open(self.database_path.clone()).unwrap()
     }
 
     fn source_from_row(row: &Row) -> Result<Source, rusqlite::Error> {

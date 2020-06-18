@@ -19,9 +19,9 @@ pub struct Manga {
 }
 
 impl Manga {
-    pub fn new() -> Self {
+    pub fn new(database_path: String) -> Self {
         Self {
-            repo: Repository::new(),
+            repo: Repository::new(database_path),
         }
     }
 
