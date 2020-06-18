@@ -1,22 +1,13 @@
-use serde::{Deserialize, Serialize};
-use yew::format::Json;
-use yew::services::fetch::{FetchService, FetchTask, Request, Response};
 use yew::services::{storage::Area, StorageService};
-use yew::{
-    html, Bridge, Bridged, Component, ComponentLink, Html, InputData, Properties, ShouldRender,
-};
+use yew::{html, Bridge, Bridged, Component, ComponentLink, Html, Properties, ShouldRender};
 
 use yew_router::components::RouterAnchor;
 use yew_router::{agent::RouteRequest, prelude::*};
-
-use crate::app::AppRoute;
 
 #[derive(Clone, PartialEq, Properties)]
 pub struct Props {}
 
 pub struct Logout {
-    fetch_task: Option<FetchTask>,
-    link: ComponentLink<Self>,
     router: Box<dyn Bridge<RouteAgent>>,
     storage: StorageService,
 }
@@ -29,16 +20,11 @@ impl Component for Logout {
     type Message = Msg;
     type Properties = Props;
 
-    fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
+    fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self {
         let storage = StorageService::new(Area::Local).unwrap();
         let callback = link.callback(|_| Msg::Noop);
         let router = RouteAgent::bridge(callback);
-        Logout {
-            fetch_task: None,
-            link,
-            router,
-            storage,
-        }
+        Logout { router, storage }
     }
 
     fn change(&mut self, _props: Self::Properties) -> ShouldRender {

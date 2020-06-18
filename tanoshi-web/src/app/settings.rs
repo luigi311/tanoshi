@@ -1,7 +1,6 @@
 use super::component::model::{
     BackgroundColor, Claims, PageRendering, ReadingDirection, SettingParams, User,
 };
-use jsonwebtoken::dangerous_unsafe_decode;
 use serde::Deserialize;
 use yew::format::{Json, Nothing, Text};
 use yew::services::fetch::{FetchService, FetchTask, Request, Response};

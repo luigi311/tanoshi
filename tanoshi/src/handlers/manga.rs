@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use tanoshi_lib::extensions::Extension;
 use tanoshi_lib::manga::{GetParams, Params, SourceLogin};
 use tokio::sync::RwLock;
 use warp::Rejection;
@@ -10,10 +9,20 @@ use crate::extension::manga::Manga;
 use crate::extension::Extensions;
 
 pub async fn list_sources(
+    param: String,
     exts: Arc<RwLock<Extensions>>,
     manga: Manga,
 ) -> Result<impl warp::Reply, Rejection> {
-    manga.list_sources(exts).await
+    manga.list_sources(param, exts).await
+}
+
+pub async fn install_source(
+    name: String,
+    exts: Arc<RwLock<Extensions>>,
+    plugin_path: String,
+    manga: Manga,
+) -> Result<impl warp::Reply, Rejection> {
+    manga.install_source(name, exts, plugin_path).await
 }
 
 pub async fn list_mangas(
