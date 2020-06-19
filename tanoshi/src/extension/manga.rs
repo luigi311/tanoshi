@@ -13,23 +13,21 @@ use crate::auth::Claims;
 use crate::extension::{repository::Repository, Extensions};
 use crate::handlers::TransactionReject;
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Manga {
     repo: Repository,
+    exts: Arc<RwLock<Extensions>>,
 }
 
 impl Manga {
-    pub fn new(database_path: String) -> Self {
+    pub fn new(database_path: String, exts: Arc<RwLock<Extensions>>) -> Self {
         Self {
             repo: Repository::new(database_path),
+            exts,
         }
     }
 
-    pub async fn list_sources(
-        &self,
-        param: String,
-        exts: Arc<RwLock<Extensions>>,
-    ) -> Result<impl warp::Reply, Rejection> {
+    pub async fn list_sources(&self, param: String) -> Result<impl warp::Reply, Rejection> {
         match param.as_str() {
             "available" => {
                 let resp = ureq::get(
@@ -45,7 +43,7 @@ impl Manga {
                 )))
             }
             "installed" => {
-                let exts = exts.read().await;
+                let exts = self.exts.read().await;
                 let sources = exts
                     .extensions()
                     .iter()
@@ -88,7 +86,6 @@ impl Manga {
     pub async fn install_source(
         &self,
         name: String,
-        exts: Arc<RwLock<Extensions>>,
         plugin_path: String,
     ) -> Result<impl warp::Reply, Rejection> {
         let resp = ureq::get(
@@ -124,9 +121,8 @@ impl Manga {
         claim: Claims,
         source_auth: String,
         param: Params,
-        exts: Arc<RwLock<Extensions>>,
     ) -> Result<impl warp::Reply, Rejection> {
-        let exts = exts.read().await;
+        let exts = self.exts.read().await;
         if let Ok(source) = self.repo.get_source(source_id).await {
             let mangas = exts
                 .get(&source.name)
@@ -162,9 +158,8 @@ impl Manga {
         &self,
         manga_id: i32,
         claim: Claims,
-        exts: Arc<RwLock<Extensions>>,
     ) -> Result<impl warp::Reply, Rejection> {
-        let exts = exts.read().await;
+        let exts = self.exts.read().await;
         if let Ok(manga) = self
             .repo
             .get_manga_detail(manga_id, claim.sub.clone())
@@ -211,9 +206,8 @@ impl Manga {
         manga_id: i32,
         claim: Claims,
         param: GetParams,
-        exts: Arc<RwLock<Extensions>>,
     ) -> Result<impl warp::Reply, Rejection> {
-        let exts = exts.read().await;
+        let exts = self.exts.read().await;
         if !param.refresh.unwrap_or(false) {
             match self.repo.get_chapters(manga_id, claim.sub.clone()).await {
                 Ok(chapter) => return Ok(warp::reply::json(&chapter)),
@@ -254,9 +248,8 @@ impl Manga {
         &self,
         chapter_id: i32,
         _param: GetParams,
-        exts: Arc<RwLock<Extensions>>,
     ) -> Result<impl warp::Reply, Rejection> {
-        let exts = exts.read().await;
+        let exts = self.exts.read().await;
         match self.repo.get_pages(chapter_id).await {
             Ok(pages) => return Ok(warp::reply::json(&pages)),
             Err(_) => {}
@@ -291,17 +284,13 @@ impl Manga {
         Err(warp::reject())
     }
 
-    pub async fn proxy_image(
-        &self,
-        page_id: i32,
-        exts: Arc<RwLock<Extensions>>,
-    ) -> Result<impl warp::Reply, Rejection> {
-        let image = match self.repo.get_image_from_page_id(page_id).await {
+    pub async fn proxy_image(&self, page_id: i32) -> Result<impl warp::Reply, Rejection> {
+        /* let image = match self.repo.get_image_from_page_id(page_id).await {
             Ok(image) => image,
             Err(_) => return Err(warp::reject()),
         };
 
-        let exts = exts.read().await;
+        let exts = self.exts.read().await;
         let bytes = exts
             .get(&image.source_name)
             .unwrap()
@@ -316,16 +305,19 @@ impl Manga {
             .body(bytes)
             .unwrap();
 
-        Ok(resp)
+        Ok(resp) */
+        Ok(warp::reply::with_status(
+            warp::reply(),
+            warp::http::StatusCode::ACCEPTED,
+        ))
     }
 
     pub async fn source_login(
         &self,
         source_id: i32,
         login_info: SourceLogin,
-        exts: Arc<RwLock<Extensions>>,
     ) -> Result<impl warp::Reply, Rejection> {
-        let exts = exts.read().await;
+        let exts = self.exts.read().await;
         if let Ok(source) = self.repo.get_source(source_id).await {
             if let Ok(result) = exts.get(&source.name).unwrap().login(login_info) {
                 let mut result = result;

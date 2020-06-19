@@ -122,8 +122,8 @@ async fn main() -> Result<()> {
     let auth = auth::auth::Auth::new(config.database_path.clone());
     let auth_api = filters::auth::authentication(secret.clone(), auth.clone());
 
-    let manga = extension::manga::Manga::new(config.database_path.clone());
-    let manga_api = filters::manga::manga(secret.clone(), extensions, plugin_path.clone(), manga);
+    let manga = extension::manga::Manga::new(config.database_path.clone(), extensions.clone());
+    let manga_api = filters::manga::manga(secret.clone(), plugin_path.clone(), manga);
 
     let fav = favorites::Favorites::new(config.database_path.clone());
     let fav_api = filters::favorites::favorites(secret.clone(), fav);
