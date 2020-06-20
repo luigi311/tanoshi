@@ -7,11 +7,27 @@ on:
     branches: [master]
 
 jobs:
-  build:
+  build-linux:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
       - name: Build Frontend
-        run: cd /home/runner/work/tanoshi/tanoshi/tanoshi-web && yarn install && cargo install wasm-bindgen-cli wasm-pack && yarn build
+        run: cd $GITHUB_WORKSPACE/tanoshi-web && yarn install && cargo install wasm-bindgen-cli wasm-pack && yarn build
       - name: Build Backend
-        run: cd /home/runner/work/tanoshi/tanoshi/tanoshi && cargo build
+        run: cd $GITHUB_WORKSPACE/tanoshi && cargo build
+  build-macos:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Build Frontend
+        run: cd $GITHUB_WORKSPACE/tanoshi-web && yarn install && cargo install wasm-bindgen-cli wasm-pack && yarn build
+      - name: Build Backend
+        run: cd $GITHUB_WORKSPACE/tanoshi && cargo build
+  build-wiundows:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Build Frontend
+        run: cd $Env:$GITHUB_WORKSPACE\tanoshi-web && yarn install && cargo install wasm-bindgen-cli wasm-pack && yarn build
+      - name: Build Backend
+        run: cd $Env:$GITHUB_WORKSPACE\tanoshi && cargo build
