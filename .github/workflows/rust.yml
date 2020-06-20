@@ -16,15 +16,15 @@ jobs:
       - name: Build Backend
         run: cd $GITHUB_WORKSPACE/tanoshi && cargo build
   build-macos:
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v2
       - name: Build Frontend
         run: cd $GITHUB_WORKSPACE/tanoshi-web && yarn install && cargo install wasm-bindgen-cli wasm-pack && yarn build
       - name: Build Backend
         run: cd $GITHUB_WORKSPACE/tanoshi && cargo build
-  build-wiundows:
-    runs-on: ubuntu-latest
+  build-windows:
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v2
       - name: Build Frontend
