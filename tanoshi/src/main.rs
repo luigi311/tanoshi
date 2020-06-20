@@ -10,8 +10,7 @@ use rust_embed::RustEmbed;
 
 use std::collections::BTreeMap;
 use std::str::FromStr;
-use std::sync::Arc;
-use tokio::sync::RwLock;
+use std::sync::{Arc, RwLock};
 use warp::{http::header::HeaderValue, path::Tail, reply::Response, Filter, Rejection, Reply};
 
 mod auth;
@@ -101,7 +100,7 @@ async fn main() -> Result<()> {
         info!("{}", name.clone());
         info!("load plugin from {:?}", path.clone());
         let config = plugin_config.get(&name);
-        let mut exts = extensions.write().await;
+        let mut exts = extensions.write().unwrap();
         unsafe {
             match exts.load(path, config) {
                 Ok(_) => {}

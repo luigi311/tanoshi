@@ -1,10 +1,8 @@
-use std::sync::Arc;
-
 use serde_json::json;
 
+use std::sync::{Arc, RwLock};
 use tanoshi_lib::extensions::Extension;
-use tanoshi_lib::manga::{GetParams, Params, Source, SourceLogin};
-use tokio::sync::RwLock;
+use tanoshi_lib::manga::{GetPagesResponse, GetParams, Params, Source, SourceLogin};
 use warp::Rejection;
 
 use std::io::Read;
@@ -12,6 +10,9 @@ use std::io::Read;
 use crate::auth::Claims;
 use crate::extension::{repository::Repository, Extensions};
 use crate::handlers::TransactionReject;
+
+use std::convert::Infallible;
+use warp::sse::ServerSentEvent;
 
 #[derive(Clone)]
 pub struct Manga {
@@ -43,7 +44,7 @@ impl Manga {
                 )))
             }
             "installed" => {
-                let exts = self.exts.read().await;
+                let exts = self.exts.read().unwrap();
                 let sources = exts
                     .extensions()
                     .iter()
@@ -53,7 +54,7 @@ impl Manga {
                     })
                     .collect::<Vec<Source>>();
 
-                match self.repo.insert_sources(sources).await {
+                match self.repo.insert_sources(sources) {
                     Ok(_) => {}
                     Err(e) => {
                         error!("error get source {}", e.to_string());
@@ -61,7 +62,7 @@ impl Manga {
                     }
                 }
 
-                match self.repo.get_sources().await {
+                match self.repo.get_sources() {
                     Ok(sources) => {
                         debug!("sources {:?}", sources.clone());
                         Ok(warp::reply::json(&json!(
@@ -122,8 +123,8 @@ impl Manga {
         source_auth: String,
         param: Params,
     ) -> Result<impl warp::Reply, Rejection> {
-        let exts = self.exts.read().await;
-        if let Ok(source) = self.repo.get_source(source_id).await {
+        let exts = self.exts.read().unwrap();
+        if let Ok(source) = self.repo.get_source(source_id) {
             let mangas = exts
                 .get(&source.name)
                 .unwrap()
@@ -131,7 +132,7 @@ impl Manga {
                 .unwrap();
             debug!("mangas {:?}", mangas.clone());
 
-            let manga_ids = match self.repo.insert_mangas(source_id, mangas.clone()).await {
+            let manga_ids = match self.repo.insert_mangas(source_id, mangas.clone()) {
                 Ok(ids) => {
                     debug!("manga ids {:?}", ids);
                     ids
@@ -142,7 +143,7 @@ impl Manga {
                     }));
                 }
             };
-            match self.repo.get_mangas(claim.sub, manga_ids).await {
+            match self.repo.get_mangas(claim.sub, manga_ids) {
                 Ok(mangas) => return Ok(warp::reply::json(&mangas)),
                 Err(e) => {
                     return Err(warp::reject::custom(TransactionReject {
@@ -159,15 +160,11 @@ impl Manga {
         manga_id: i32,
         claim: Claims,
     ) -> Result<impl warp::Reply, Rejection> {
-        let exts = self.exts.read().await;
-        if let Ok(manga) = self
-            .repo
-            .get_manga_detail(manga_id, claim.sub.clone())
-            .await
-        {
+        let exts = self.exts.read().unwrap();
+        if let Ok(manga) = self.repo.get_manga_detail(manga_id, claim.sub.clone()) {
             return Ok(warp::reply::json(&manga));
-        } else if let Ok(url) = self.repo.get_manga_url(manga_id).await {
-            let source = match self.repo.get_source_from_manga_id(manga_id).await {
+        } else if let Ok(url) = self.repo.get_manga_url(manga_id) {
+            let source = match self.repo.get_source_from_manga_id(manga_id) {
                 Ok(source) => source,
                 Err(e) => {
                     error!("error get_manga_url {}", e.to_string());
@@ -181,7 +178,7 @@ impl Manga {
                 .get_manga_info(&url)
                 .unwrap();
 
-            match self.repo.update_manga_info(manga_id, manga).await {
+            match self.repo.update_manga_info(manga_id, manga) {
                 Ok(_) => {}
                 Err(e) => {
                     return Err(warp::reject::custom(TransactionReject {
@@ -189,7 +186,8 @@ impl Manga {
                     }));
                 }
             }
-            match self.repo.get_manga_detail(manga_id, claim.sub).await {
+
+            match self.repo.get_manga_detail(manga_id, claim.sub) {
                 Ok(res) => return Ok(warp::reply::json(&res)),
                 Err(e) => {
                     return Err(warp::reject::custom(TransactionReject {
@@ -207,16 +205,16 @@ impl Manga {
         claim: Claims,
         param: GetParams,
     ) -> Result<impl warp::Reply, Rejection> {
-        let exts = self.exts.read().await;
+        let exts = self.exts.read().unwrap();
         if !param.refresh.unwrap_or(false) {
-            match self.repo.get_chapters(manga_id, claim.sub.clone()).await {
+            match self.repo.get_chapters(manga_id, claim.sub.clone()) {
                 Ok(chapter) => return Ok(warp::reply::json(&chapter)),
                 Err(_e) => {}
             };
         }
 
-        if let Ok(url) = self.repo.get_manga_url(manga_id).await {
-            let source = match self.repo.get_source_from_manga_id(manga_id).await {
+        if let Ok(url) = self.repo.get_manga_url(manga_id) {
+            let source = match self.repo.get_source_from_manga_id(manga_id) {
                 Ok(source) => source,
                 Err(e) => {
                     return Err(warp::reject::custom(TransactionReject {
@@ -227,7 +225,7 @@ impl Manga {
 
             let chapter = exts.get(&source.name).unwrap().get_chapters(&url).unwrap();
 
-            match self.repo.insert_chapters(manga_id, chapter.clone()).await {
+            match self.repo.insert_chapters(manga_id, chapter.clone()) {
                 Ok(_) => {}
                 Err(e) => {
                     return Err(warp::reject::custom(TransactionReject {
@@ -236,7 +234,7 @@ impl Manga {
                 }
             }
 
-            match self.repo.get_chapters(manga_id, claim.sub).await {
+            match self.repo.get_chapters(manga_id, claim.sub) {
                 Ok(chapter) => return Ok(warp::reply::json(&chapter)),
                 Err(e) => {
                     return Err(warp::reject::custom(TransactionReject {
@@ -252,53 +250,44 @@ impl Manga {
         &self,
         chapter_id: i32,
         _param: GetParams,
-    ) -> Result<impl warp::Reply, Rejection> {
-        let exts = self.exts.read().await;
-        match self.repo.get_pages(chapter_id).await {
-            Ok(pages) => return Ok(warp::reply::json(&pages)),
-            Err(_) => {}
+    ) -> anyhow::Result<GetPagesResponse> {
+        let exts = self.exts.read().unwrap();
+        if let Ok(pages) = self.repo.get_pages(chapter_id) {
+            return Ok(pages);
         };
 
-        if let Ok(url) = self.repo.get_chapter_url(chapter_id).await {
-            let source = match self.repo.get_source_from_chapter_id(chapter_id).await {
+        if let Ok(url) = self.repo.get_chapter_url(chapter_id) {
+            let source = match self.repo.get_source_from_chapter_id(chapter_id) {
                 Ok(source) => source,
-                Err(e) => {
-                    return Err(warp::reject::custom(TransactionReject {
-                        message: e.to_string(),
-                    }))
-                }
+                Err(e) => return Err(anyhow::anyhow!("{}", e.to_string())),
             };
 
             let pages = exts.get(&source.name).unwrap().get_pages(&url).unwrap();
 
-            match self.repo.insert_pages(chapter_id, pages.clone()).await {
+            match self.repo.insert_pages(chapter_id, pages.clone()) {
                 Ok(_) => {}
                 Err(e) => {
-                    return Err(warp::reject::custom(TransactionReject {
-                        message: e.to_string(),
-                    }));
+                    return Err(anyhow::anyhow!("{}", e.to_string()));
                 }
             }
 
-            match self.repo.get_pages(chapter_id).await {
-                Ok(pages) => return Ok(warp::reply::json(&pages)),
+            match self.repo.get_pages(chapter_id) {
+                Ok(pages) => return Ok(pages),
                 Err(e) => {
-                    return Err(warp::reject::custom(TransactionReject {
-                        message: e.to_string(),
-                    }));
+                    return Err(anyhow::anyhow!("{}", e.to_string()));
                 }
             };
         }
-        Err(warp::reject())
+        Err(anyhow::anyhow!("pages not found"))
     }
 
     pub async fn proxy_image(&self, page_id: i32) -> Result<impl warp::Reply, Rejection> {
-        let image = match self.repo.get_image_from_page_id(page_id).await {
+        let image = match self.repo.get_image_from_page_id(page_id) {
             Ok(image) => image,
             Err(_) => return Err(warp::reject()),
         };
 
-        let exts = self.exts.read().await;
+        let exts = self.exts.read().unwrap();
         let bytes = exts
             .get(&image.source_name)
             .unwrap()
@@ -321,8 +310,8 @@ impl Manga {
         source_id: i32,
         login_info: SourceLogin,
     ) -> Result<impl warp::Reply, Rejection> {
-        let exts = self.exts.read().await;
-        if let Ok(source) = self.repo.get_source(source_id).await {
+        let exts = self.exts.read().unwrap();
+        if let Ok(source) = self.repo.get_source(source_id) {
             if let Ok(result) = exts.get(&source.name).unwrap().login(login_info) {
                 let mut result = result;
                 result.source_id = source_id;
@@ -330,5 +319,21 @@ impl Manga {
             }
         }
         Err(warp::reject())
+    }
+
+    pub fn get_image(&self, page_id: i32) -> Result<impl ServerSentEvent, Infallible> {
+        if page_id == -1 {
+            return Ok(warp::sse::data("done".to_string()));
+        }
+        let image = self.repo.get_image_from_page_id(page_id).unwrap();
+
+        let exts = self.exts.read().unwrap();
+        let _ = exts
+            .get(&image.source_name)
+            .unwrap()
+            .get_page(image.clone())
+            .unwrap();
+
+        Ok(warp::sse::data(format!("/api/image/{}", page_id)))
     }
 }

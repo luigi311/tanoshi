@@ -33,7 +33,7 @@ impl Repository {
         })
     }
 
-    pub async fn get_sources(&self) -> Result<Vec<Source>, rusqlite::Error> {
+    pub fn get_sources(&self) -> Result<Vec<Source>, rusqlite::Error> {
         let db = self.connect_db();
         let mut stmt = db.prepare("SELECT id, name, url, version FROM source")?;
         let sources = stmt
@@ -43,7 +43,7 @@ impl Repository {
         Ok(sources)
     }
 
-    pub async fn get_source(&self, source_id: i32) -> Result<Source, rusqlite::Error> {
+    pub fn get_source(&self, source_id: i32) -> Result<Source, rusqlite::Error> {
         let db = self.connect_db();
         let ret = db.query_row(
             r#"SELECT id, name, url, version FROM source WHERE id = ?1"#,
@@ -54,7 +54,7 @@ impl Repository {
         Ok(ret)
     }
 
-    pub async fn get_source_from_manga_id(&self, manga_id: i32) -> Result<Source, rusqlite::Error> {
+    pub fn get_source_from_manga_id(&self, manga_id: i32) -> Result<Source, rusqlite::Error> {
         let db = self.connect_db();
         let ret = db.query_row(
             r#"SELECT source.id, source.name, source.url, source.version
@@ -68,7 +68,7 @@ impl Repository {
         Ok(ret)
     }
 
-    pub async fn get_image_from_page_id(&self, page_id: i32) -> Result<Image, rusqlite::Error> {
+    pub fn get_image_from_page_id(&self, page_id: i32) -> Result<Image, rusqlite::Error> {
         let db = self.connect_db();
         let ret = db.query_row(
             r#"SELECT
@@ -97,10 +97,7 @@ impl Repository {
         Ok(ret)
     }
 
-    pub async fn get_source_from_chapter_id(
-        &self,
-        chapter_id: i32,
-    ) -> Result<Source, rusqlite::Error> {
+    pub fn get_source_from_chapter_id(&self, chapter_id: i32) -> Result<Source, rusqlite::Error> {
         let db = self.connect_db();
         let ret = db.query_row(
             r#"SELECT source.id, source.name, source.url, source.version
@@ -115,7 +112,7 @@ impl Repository {
         Ok(ret)
     }
 
-    pub async fn get_manga_url(&self, manga_id: i32) -> Result<String, rusqlite::Error> {
+    pub fn get_manga_url(&self, manga_id: i32) -> Result<String, rusqlite::Error> {
         let db = self.connect_db();
         let ret = db.query_row(
             r#"SELECT source.url || manga.path AS url FROM manga
@@ -128,7 +125,7 @@ impl Repository {
         Ok(ret)
     }
 
-    pub async fn get_chapter_url(&self, chapter_id: i32) -> Result<String, rusqlite::Error> {
+    pub fn get_chapter_url(&self, chapter_id: i32) -> Result<String, rusqlite::Error> {
         let db = self.connect_db();
         let ret = db.query_row(
             "SELECT source.url || chapter.path AS url FROM chapter
@@ -142,7 +139,7 @@ impl Repository {
         Ok(ret)
     }
 
-    pub async fn get_mangas(
+    pub fn get_mangas(
         &self,
         username: String,
         manga_ids: Vec<i32>,
@@ -208,7 +205,7 @@ impl Repository {
         Ok(GetMangasResponse { mangas })
     }
 
-    pub async fn get_manga_detail(
+    pub fn get_manga_detail(
         &self,
         manga_id: i32,
         username: String,
@@ -256,7 +253,7 @@ impl Repository {
         Ok(GetMangaResponse { manga })
     }
 
-    pub async fn get_chapters(
+    pub fn get_chapters(
         &self,
         manga_id: i32,
         username: String,
@@ -299,7 +296,7 @@ impl Repository {
         }
     }
 
-    pub async fn get_pages(&self, chapter_id: i32) -> Result<GetPagesResponse, rusqlite::Error> {
+    pub fn get_pages(&self, chapter_id: i32) -> Result<GetPagesResponse, rusqlite::Error> {
         let db = self.connect_db();
         let manga_id = db.query_row(
             r#"SELECT manga.id
@@ -329,7 +326,7 @@ impl Repository {
         }
     }
 
-    pub async fn insert_sources(&self, sources: Vec<Source>) -> Result<(), rusqlite::Error> {
+    pub fn insert_sources(&self, sources: Vec<Source>) -> Result<(), rusqlite::Error> {
         let mut db = self.connect_db();
         let tx = db.transaction()?;
         for source in sources {
@@ -344,7 +341,7 @@ impl Repository {
         Ok(())
     }
 
-    pub async fn insert_mangas(&self, source_id: i32, mangas: Vec<Manga>) -> Result<Vec<i32>> {
+    pub fn insert_mangas(&self, source_id: i32, mangas: Vec<Manga>) -> Result<Vec<i32>> {
         let mut ids = vec![];
         let mut db = self.connect_db();
         let tx = db.transaction()?;
@@ -372,7 +369,7 @@ impl Repository {
         Ok(ids)
     }
 
-    pub async fn insert_chapters(
+    pub fn insert_chapters(
         &self,
         manga_id: i32,
         chapters: Vec<Chapter>,
@@ -395,11 +392,7 @@ impl Repository {
         Ok(())
     }
 
-    pub async fn insert_pages(
-        &self,
-        chapter_id: i32,
-        pages: Vec<String>,
-    ) -> Result<(), rusqlite::Error> {
+    pub fn insert_pages(&self, chapter_id: i32, pages: Vec<String>) -> Result<(), rusqlite::Error> {
         let mut db = self.connect_db();
         let tx = db.transaction()?;
         for i in 0..pages.len() {
@@ -416,11 +409,7 @@ impl Repository {
         Ok(())
     }
 
-    pub async fn update_manga_info(
-        &self,
-        manga_id: i32,
-        manga: Manga,
-    ) -> Result<(), rusqlite::Error> {
+    pub fn update_manga_info(&self, manga_id: i32, manga: Manga) -> Result<(), rusqlite::Error> {
         let db = self.connect_db();
         db.execute(
             "UPDATE manga SET author = $1, status = $2, description = $3 WHERE manga.id = $4",

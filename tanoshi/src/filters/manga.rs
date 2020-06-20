@@ -17,6 +17,7 @@ pub fn manga(secret: String, plugin_path: String, manga: Manga) -> BoxedFilter<(
         .or(get_chapters(secret.clone(), manga.clone()))
         .or(get_pages(manga.clone()))
         .or(proxy_image(manga.clone()))
+        .or(image_sse(manga.clone()))
         .or(source_login(manga.clone()))
         .or(install_source(plugin_path, manga.clone()))
         .boxed()
@@ -75,6 +76,14 @@ pub fn get_pages(manga: Manga) -> BoxedFilter<(impl Reply,)> {
         .and(warp::query::<GetParams>())
         .and(with_manga(manga))
         .and_then(manga::get_pages)
+        .boxed()
+}
+
+pub fn image_sse(manga: Manga) -> BoxedFilter<(impl Reply,)> {
+    warp::path!("api" / "chapter" / i32 / "prepare")
+        .and(warp::get())
+        .and(with_manga(manga))
+        .and_then(manga::image_sse)
         .boxed()
 }
 
