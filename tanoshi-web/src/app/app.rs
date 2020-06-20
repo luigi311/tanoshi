@@ -1,9 +1,4 @@
-use yew::services::storage::Area;
-use yew::services::{fetch::FetchTask, FetchService, StorageService};
-use yew::{
-    format::{Nothing, Text},
-    html, Bridge, Bridged, Component, ComponentLink, Html, ShouldRender,
-};
+use yew::{html, Bridge, Bridged, Component, ComponentLink, Html, ShouldRender};
 use yew_router::agent::RouteRequest;
 use yew_router::prelude::{Route, RouteAgent};
 use yew_router::{router::Router, Switch};
@@ -13,9 +8,6 @@ use super::chapter::Chapter;
 use super::job;
 use super::login::Login;
 use super::logout::Logout;
-use http::{Request, Response};
-
-use yew::prelude::*;
 
 #[derive(Switch, Debug, Clone)]
 pub enum AppRoute {
@@ -54,13 +46,11 @@ impl Component for App {
             job::Response::TokenInvalidorExpired => Msg::TokenInvalidorExpired,
             _ => Msg::Noop,
         });
-        let mut worker = job::Worker::bridge(worker_callback);
-        worker.send(job::Request::ValidateToken);
         App {
             link,
             router,
             route: "/".to_string(),
-            worker,
+            worker: job::Worker::bridge(worker_callback),
         }
     }
 
@@ -68,7 +58,11 @@ impl Component for App {
         false
     }
 
-    fn rendered(&mut self, first_render: bool) {}
+    fn rendered(&mut self, first_render: bool) {
+        if first_render {
+            self.worker.send(job::Request::ValidateToken);
+        }
+    }
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {

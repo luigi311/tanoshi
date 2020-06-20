@@ -1,7 +1,6 @@
 use crate::app::AppRoute;
-use serde::Deserialize;
 use web_sys::HtmlElement;
-use yew::format::{Json, Nothing, Text};
+use yew::format::{Json, Nothing};
 use yew::services::fetch::{FetchTask, Request, Response};
 use yew::services::storage::Area;
 use yew::services::{FetchService, StorageService};
@@ -121,7 +120,7 @@ impl Component for History {
         }
     }
 
-    fn rendered(&mut self, first_render: bool) {
+    fn rendered(&mut self, _first_render: bool) {
         if self.should_fetch {
             window().set_onscroll(Some(self.closure.as_ref().unchecked_ref()));
             match self.page_type {

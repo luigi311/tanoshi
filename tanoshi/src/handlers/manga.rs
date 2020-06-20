@@ -1,12 +1,8 @@
-use std::sync::Arc;
-
 use tanoshi_lib::manga::{GetParams, Params, SourceLogin};
-use tokio::sync::RwLock;
 use warp::Rejection;
 
 use crate::auth::Claims;
 use crate::extension::manga::Manga;
-use crate::extension::Extensions;
 
 pub async fn list_sources(param: String, manga: Manga) -> Result<impl warp::Reply, Rejection> {
     manga.list_sources(param).await

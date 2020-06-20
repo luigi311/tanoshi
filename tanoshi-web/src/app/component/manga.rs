@@ -94,14 +94,14 @@ impl Component for Manga {
             Msg::Click(e) => {
                 e.prevent_default();
             }
-            Msg::MouseDown(e) => {
+            Msg::MouseDown(_e) => {
                 self.start_timer();
             }
             Msg::MouseUp(e) => {
                 e.prevent_default();
                 self.to_detail();
             }
-            Msg::TouchStart(e) => {
+            Msg::TouchStart(_e) => {
                 self.start_timer();
                 self.is_dragging = false;
             }
@@ -111,7 +111,7 @@ impl Component for Manga {
                     self.to_detail();
                 }
             }
-            Msg::TouchMove(e) => {
+            Msg::TouchMove(_e) => {
                 self.is_dragging = true;
             }
             Msg::MouseDownTimeout => {
@@ -134,8 +134,7 @@ impl Component for Manga {
                     self.is_favorite = false;
                 }
             }
-            Msg::Noop => {}
-            _ => {}
+            Msg::Noop => return false,
         }
         true
     }

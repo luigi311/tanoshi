@@ -1,12 +1,4 @@
-use serde::{Deserialize, Serialize};
-use wasm_bindgen::__rt::core::time::Duration;
-use yew::format::{Json, Nothing, Text};
-use yew::services::fetch::{FetchTask, Request, Response};
-use yew::services::storage::Area;
-use yew::services::{FetchService, StorageService, Task, TimeoutService};
-use yew::{html, Bridge, Bridged, Component, ComponentLink, Html, Properties, ShouldRender};
-
-use yew::prelude::*;
+use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 
 #[derive(Clone, PartialEq, Properties)]
 pub struct Props {
@@ -19,22 +11,20 @@ pub struct Spinner {
     is_fullscreen: bool,
 }
 
-pub enum Msg {
-    Noop,
-}
+pub enum Msg {}
 
 impl Component for Spinner {
     type Message = Msg;
     type Properties = Props;
 
-    fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
+    fn create(props: Self::Properties, _link: ComponentLink<Self>) -> Self {
         Spinner {
             is_active: props.is_active,
             is_fullscreen: props.is_fullscreen,
         }
     }
 
-    fn update(&mut self, msg: Self::Message) -> ShouldRender {
+    fn update(&mut self, _msg: Self::Message) -> ShouldRender {
         true
     }
 

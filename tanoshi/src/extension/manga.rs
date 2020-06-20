@@ -5,7 +5,7 @@ use serde_json::json;
 use tanoshi_lib::extensions::Extension;
 use tanoshi_lib::manga::{GetParams, Params, Source, SourceLogin};
 use tokio::sync::RwLock;
-use warp::{http::Response, Rejection};
+use warp::Rejection;
 
 use std::io::Read;
 
@@ -218,7 +218,11 @@ impl Manga {
         if let Ok(url) = self.repo.get_manga_url(manga_id).await {
             let source = match self.repo.get_source_from_manga_id(manga_id).await {
                 Ok(source) => source,
-                Err(e) => return Err(warp::reject()),
+                Err(e) => {
+                    return Err(warp::reject::custom(TransactionReject {
+                        message: e.to_string(),
+                    }))
+                }
             };
 
             let chapter = exts.get(&source.name).unwrap().get_chapters(&url).unwrap();
@@ -258,7 +262,11 @@ impl Manga {
         if let Ok(url) = self.repo.get_chapter_url(chapter_id).await {
             let source = match self.repo.get_source_from_chapter_id(chapter_id).await {
                 Ok(source) => source,
-                Err(e) => return Err(warp::reject()),
+                Err(e) => {
+                    return Err(warp::reject::custom(TransactionReject {
+                        message: e.to_string(),
+                    }))
+                }
             };
 
             let pages = exts.get(&source.name).unwrap().get_pages(&url).unwrap();
@@ -285,7 +293,7 @@ impl Manga {
     }
 
     pub async fn proxy_image(&self, page_id: i32) -> Result<impl warp::Reply, Rejection> {
-        /* let image = match self.repo.get_image_from_page_id(page_id).await {
+        let image = match self.repo.get_image_from_page_id(page_id).await {
             Ok(image) => image,
             Err(_) => return Err(warp::reject()),
         };
@@ -299,17 +307,13 @@ impl Manga {
 
         let path = std::path::PathBuf::from(image.path).join(image.file_name);
         let mime = mime_guess::from_path(&path).first_or_octet_stream();
-        let resp = Response::builder()
+        let resp = warp::http::Response::builder()
             .header("Content-Type", mime.as_ref())
             .header("Content-Length", bytes.len())
             .body(bytes)
             .unwrap();
 
-        Ok(resp) */
-        Ok(warp::reply::with_status(
-            warp::reply(),
-            warp::http::StatusCode::ACCEPTED,
-        ))
+        Ok(resp)
     }
 
     pub async fn source_login(

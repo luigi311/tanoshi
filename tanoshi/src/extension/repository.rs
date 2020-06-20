@@ -8,7 +8,7 @@ use tanoshi_lib::manga::{
 
 use std::rc::Rc;
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 
 #[derive(Debug, Clone)]
 pub struct Repository {
@@ -347,7 +347,7 @@ impl Repository {
     pub async fn insert_mangas(&self, source_id: i32, mangas: Vec<Manga>) -> Result<Vec<i32>> {
         let mut ids = vec![];
         let mut db = self.connect_db();
-        let mut tx = db.transaction()?;
+        let tx = db.transaction()?;
         for m in mangas {
             let last_id = match tx.query_row(
                 "SELECT id FROM manga WHERE source_id = ?1 AND path = ?2",
@@ -378,7 +378,7 @@ impl Repository {
         chapters: Vec<Chapter>,
     ) -> Result<(), rusqlite::Error> {
         let mut db = self.connect_db();
-        let mut tx = db.transaction()?;
+        let tx = db.transaction()?;
         for c in chapters {
             tx.execute(
                 "INSERT INTO chapter(manga_id, number, title, path, uploaded)

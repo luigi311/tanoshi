@@ -5,8 +5,6 @@ use yew::services::fetch::{FetchService, FetchTask};
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 use yew_router::components::RouterAnchor;
 
-use std::collections::HashMap;
-
 use super::component::Spinner;
 use http::{Request, Response};
 use yew::utils::window;
@@ -202,7 +200,6 @@ impl Select {
         let url = match self.active_tab {
             Tab::Installed => "/api/source/installed",
             Tab::Available => "/api/source/available",
-            _ => "",
         };
         let req = Request::get(url)
             .body(Nothing)

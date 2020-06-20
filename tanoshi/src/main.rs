@@ -11,7 +11,6 @@ use rust_embed::RustEmbed;
 use std::collections::BTreeMap;
 use std::str::FromStr;
 use std::sync::Arc;
-use tanoshi_lib::extensions::Extension;
 use tokio::sync::RwLock;
 use warp::{http::header::HeaderValue, path::Tail, reply::Response, Filter, Rejection, Reply};
 

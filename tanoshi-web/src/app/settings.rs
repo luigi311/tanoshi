@@ -10,8 +10,7 @@ use yew::{html, ChangeData, Component, ComponentLink, Html, InputData, Propertie
 use yew_router::components::RouterAnchor;
 
 use wasm_bindgen::prelude::*;
-use wasm_bindgen::JsCast;
-use web_sys::{window, Cache};
+use web_sys::window;
 
 use crate::app::AppRoute;
 
@@ -70,7 +69,7 @@ impl Component for Settings {
     type Message = Msg;
     type Properties = Props;
 
-    fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
+    fn create(_props: Self::Properties, link: ComponentLink<Self>) -> Self {
         let storage = StorageService::new(Area::Local).unwrap();
         let settings = {
             if let Ok(settings) = storage.restore("settings") {
@@ -187,7 +186,7 @@ impl Component for Settings {
                 self.users[i].is_new = false;
             }
             Msg::ClearCache => {
-                window()
+                let _ = window()
                     .unwrap()
                     .caches()
                     .unwrap()
@@ -285,7 +284,7 @@ impl Settings {
         if let Ok(task) = FetchService::new().fetch(
             req,
             self.link.callback(move |response: Response<Text>| {
-                if let (meta, _res) = response.into_parts() {
+                if let (meta, Ok(_res)) = response.into_parts() {
                     if meta.status.is_success() {
                         return Msg::SaveUserSuccess(i);
                     }
@@ -311,7 +310,7 @@ impl Settings {
         if let Ok(task) = FetchService::new().fetch(
             req,
             self.link.callback(move |response: Response<Text>| {
-                if let (meta, _res) = response.into_parts() {
+                if let (meta, Ok(_res)) = response.into_parts() {
                     if meta.status.is_success() {
                         return Msg::PasswordChangedReady;
                     }
@@ -333,7 +332,7 @@ impl Settings {
         if let Ok(task) = FetchService::new().fetch(
             req,
             self.link.callback(move |response: Response<Text>| {
-                if let (meta, _res) = response.into_parts() {
+                if let (meta, Ok(_res)) = response.into_parts() {
                     if meta.status.is_success() {
                         return Msg::SaveUserSuccess(i);
                     }

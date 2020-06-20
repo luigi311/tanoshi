@@ -137,7 +137,7 @@ impl Home {
             if let Ok(task) = FetchService::new().fetch(
                 req,
                 self.link
-                    .callback(|response: Response<Text>| Msg::MangaUpdated),
+                    .callback(|_response: Response<Text>| Msg::MangaUpdated),
             ) {
                 self.fetch_task = Some(FetchTask::from(task));
                 self.is_fetching = true;

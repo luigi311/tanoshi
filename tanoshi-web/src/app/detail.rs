@@ -17,9 +17,6 @@ use anyhow;
 use yew::services::storage::Area;
 use yew::services::StorageService;
 
-use wasm_bindgen::prelude::*;
-use wasm_bindgen::JsCast;
-
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct FavoriteManga {
     pub source: String,
@@ -101,7 +98,7 @@ impl Component for Detail {
         false
     }
 
-    fn rendered(&mut self, first_render: bool) {
+    fn rendered(&mut self, _first_render: bool) {
         if self.should_fetch {
             self.get_manga_info();
             self.should_fetch = false;

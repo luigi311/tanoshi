@@ -1,11 +1,8 @@
-use anyhow;
 use js_sys;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use web_sys::{HtmlElement, HtmlImageElement};
-use yew::format::{Json, Nothing};
 use yew::prelude::*;
-use yew::services::fetch::{FetchService, FetchTask, Request, Response};
 use yew::services::storage::Area;
 use yew::services::StorageService;
 use yew::utils::{document, window};
@@ -29,7 +26,6 @@ pub struct Props {
 }
 
 pub struct Chapter {
-    fetch_task: Option<FetchTask>,
     link: ComponentLink<Self>,
     router: Box<dyn Bridge<RouteAgent>>,
     token: String,
@@ -116,10 +112,8 @@ impl Component for Chapter {
             job::Response::HistoryPosted => Msg::SetHistoryRequested,
             _ => Msg::Noop,
         });
-        let worker = job::Worker::bridge(worker_callback);
 
         Chapter {
-            fetch_task: None,
             link,
             router,
             token,
@@ -139,7 +133,7 @@ impl Component for Chapter {
             container_ref: NodeRef::default(),
             closure,
             is_history_fetching: false,
-            worker,
+            worker: job::Worker::bridge(worker_callback),
             should_fetch: true,
         }
     }
@@ -194,7 +188,7 @@ impl Component for Chapter {
                 self.manga_id = data.manga_id;
                 self.pages = data.pages;
                 self.page_refs.clear();
-                for i in 0..self.pages.len() + 1 {
+                for _i in 0..self.pages.len() + 1 {
                     self.page_refs.push(NodeRef::default());
                 }
 
@@ -430,7 +424,7 @@ impl Component for Chapter {
 impl Chapter {
     fn single_page_view(&self) -> Html {
         let mut pages = Vec::new();
-        for i in (0..self.pages.len()) {
+        for i in 0..self.pages.len() {
             pages.push((i, self.pages[i].to_owned()));
         }
         pages.clone().into_iter().map(|(i, page)| html! {
@@ -489,7 +483,7 @@ impl Chapter {
 
     fn long_strip_view(&self) -> Html {
         let mut pages = Vec::new();
-        for i in (0..self.pages.len()) {
+        for i in 0..self.pages.len() {
             pages.push((i, self.pages[i].to_owned()));
         }
         pages.clone().into_iter().map(|(i, page)| html! {
