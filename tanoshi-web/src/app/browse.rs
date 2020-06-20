@@ -1,5 +1,3 @@
-use yew::services::storage::Area;
-use yew::services::StorageService;
 use yew::{html, Bridge, Bridged, Component, ComponentLink, Html, Properties, ShouldRender};
 use yew_router::prelude::{Route, RouteAgent};
 use yew_router::{router::Router, Switch};
@@ -45,7 +43,9 @@ impl Into<Props> for BrowseRoute {
 
 pub struct Browse {
     props: Props,
+    #[allow(dead_code)]
     link: ComponentLink<Self>,
+    #[allow(dead_code)]
     router: Box<dyn Bridge<RouteAgent>>,
     route: String,
 }

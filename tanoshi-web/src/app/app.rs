@@ -22,6 +22,7 @@ pub enum AppRoute {
 }
 
 pub struct App {
+    #[allow(dead_code)]
     link: ComponentLink<Self>,
     router: Box<dyn Bridge<RouteAgent>>,
     route: String,
