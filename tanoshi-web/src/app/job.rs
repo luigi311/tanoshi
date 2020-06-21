@@ -10,12 +10,11 @@ use http::response::Response as HttpResponse;
 
 use std::collections::HashMap;
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 
 use tanoshi_lib::manga::{
     GetChaptersResponse, GetMangaResponse, GetMangasResponse, GetPagesResponse, HistoryRequest,
-    Manga as MangaModel, Params, SortByParam, SortOrderParam, Source as SourceModel, SourceLogin,
-    SourceLoginResult,
+    Params, SourceLogin, SourceLoginResult,
 };
 
 #[derive(Deserialize, Serialize)]

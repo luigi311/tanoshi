@@ -1,12 +1,7 @@
 use crate::auth::Claims;
 use crate::history::{History, HistoryParam};
-use rusqlite::{params, Connection};
 use std::convert::Infallible;
 use tanoshi_lib::manga::HistoryRequest;
-
-fn connect_db() -> Connection {
-    Connection::open("./tanoshi.db").unwrap()
-}
 
 pub async fn get_history(
     claim: Claims,

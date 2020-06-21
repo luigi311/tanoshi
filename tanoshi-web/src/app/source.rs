@@ -69,7 +69,7 @@ impl Component for Source {
 
         let worker_callback = link.callback(|msg| match msg {
             job::Response::MangasFetched(data) => Msg::MangaReady(data),
-            job::Response::LoginPosted(data) => Msg::SourceLogin,
+            job::Response::LoginPosted(_data) => Msg::SourceLogin,
             _ => Msg::Noop,
         });
         let worker = job::Worker::bridge(worker_callback);
@@ -142,7 +142,7 @@ impl Component for Source {
             Msg::PasswordChange(e) => {
                 self.login.password = e.value;
             }
-            Msg::RememberMeChange(e) => {
+            Msg::RememberMeChange(_e) => {
                 self.login.remember_me = Some(!self.login.remember_me.unwrap_or(false));
             }
             Msg::TwoFactorChange(e) => {

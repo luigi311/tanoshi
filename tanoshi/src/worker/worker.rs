@@ -1,6 +1,6 @@
 use std::time::Duration;
 use tokio::runtime::{self, Runtime};
-use tokio::time::{self, delay_for};
+use tokio::time::delay_for;
 
 pub struct Worker {
     pub rt: Runtime,
@@ -27,13 +27,6 @@ impl Worker {
                 delay_for(Duration::from_secs(interval)).await;
             }
         });
-    }
-
-    pub fn start_once<F>(&self, f: F)
-    where
-        F: FnOnce() + Send + 'static,
-    {
-        self.rt.spawn(async move { f() });
     }
 
     pub fn remove_cache(&self, interval: u64) {

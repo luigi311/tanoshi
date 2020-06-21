@@ -1,7 +1,3 @@
-use http::{Request, Response};
-use yew::format::{Json, Nothing};
-use yew::services::storage::Area;
-use yew::services::{fetch::FetchTask, FetchService, StorageService};
 use yew::{html, Bridge, Bridged, Component, ComponentLink, Html, Properties, ShouldRender};
 use yew_router::prelude::{Route, RouteAgent};
 use yew_router::{router::Router, Switch};
@@ -14,8 +10,6 @@ use super::detail::Detail;
 use super::history::History;
 use super::home::Home;
 use super::settings::Settings;
-
-use super::component::model::Claims;
 
 #[derive(Switch, Debug, Clone)]
 pub enum BrowseRoute {
@@ -49,8 +43,9 @@ impl Into<Props> for BrowseRoute {
 
 pub struct Browse {
     props: Props,
+    #[allow(dead_code)]
     link: ComponentLink<Self>,
-    storage: StorageService,
+    #[allow(dead_code)]
     router: Box<dyn Bridge<RouteAgent>>,
     route: String,
 }
@@ -64,15 +59,12 @@ impl Component for Browse {
     type Properties = Props;
 
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
-        let storage = StorageService::new(Area::Local).unwrap();
         let callback = link.callback(|route| Msg::RouterCallback(route));
-        let router = RouteAgent::bridge(callback);
 
         Browse {
             props,
             link,
-            storage,
-            router,
+            router: RouteAgent::bridge(callback),
             route: "/".to_string(),
         }
     }

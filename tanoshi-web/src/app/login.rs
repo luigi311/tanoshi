@@ -7,13 +7,11 @@ use yew::{
     html, Bridge, Bridged, Component, ComponentLink, Html, InputData, Properties, ShouldRender,
 };
 
-use yew_router::components::RouterAnchor;
 use yew_router::{agent::RouteRequest, prelude::*};
 
-use web_sys::{Event, HtmlElement};
+use web_sys::Event;
 
 use super::component::model::{Claims, User};
-use crate::app::AppRoute;
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct UserResponse {
@@ -45,7 +43,7 @@ impl Component for Login {
     type Message = Msg;
     type Properties = Props;
 
-    fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
+    fn create(_props: Self::Properties, link: ComponentLink<Self>) -> Self {
         let storage = StorageService::new(Area::Local).unwrap();
         let callback = link.callback(|_| Msg::Noop);
         let router = RouteAgent::bridge(callback);

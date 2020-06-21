@@ -45,7 +45,9 @@ features = [
   'BlobPropertyBag',
   'Url',
   'Cache',
-  'CacheStorage'
+  'CacheStorage',
+  'EventSource',
+  'MessageEvent'
 ]
 
 [dev-dependencies]

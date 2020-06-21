@@ -10,9 +10,7 @@ use rust_embed::RustEmbed;
 
 use std::collections::BTreeMap;
 use std::str::FromStr;
-use std::sync::Arc;
-use tanoshi_lib::extensions::Extension;
-use tokio::sync::RwLock;
+use std::sync::{Arc, RwLock};
 use warp::{http::header::HeaderValue, path::Tail, reply::Response, Filter, Rejection, Reply};
 
 mod auth;
@@ -102,7 +100,7 @@ async fn main() -> Result<()> {
         info!("{}", name.clone());
         info!("load plugin from {:?}", path.clone());
         let config = plugin_config.get(&name);
-        let mut exts = extensions.write().await;
+        let mut exts = extensions.write().unwrap();
         unsafe {
             match exts.load(path, config) {
                 Ok(_) => {}
@@ -122,8 +120,8 @@ async fn main() -> Result<()> {
     let auth = auth::auth::Auth::new(config.database_path.clone());
     let auth_api = filters::auth::authentication(secret.clone(), auth.clone());
 
-    let manga = extension::manga::Manga::new(config.database_path.clone());
-    let manga_api = filters::manga::manga(secret.clone(), extensions, plugin_path.clone(), manga);
+    let manga = extension::manga::Manga::new(config.database_path.clone(), extensions.clone());
+    let manga_api = filters::manga::manga(secret.clone(), plugin_path.clone(), manga);
 
     let fav = favorites::Favorites::new(config.database_path.clone());
     let fav_api = filters::favorites::favorites(secret.clone(), fav);

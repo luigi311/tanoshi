@@ -1,4 +1,4 @@
-use rusqlite::{params, Connection, OpenFlags};
+use rusqlite::{params, Connection};
 
 use tanoshi_lib::manga::{AddFavoritesResponse, FavoriteManga, GetFavoritesResponse};
 

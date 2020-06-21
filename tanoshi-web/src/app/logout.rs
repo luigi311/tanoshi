@@ -1,7 +1,6 @@
 use yew::services::{storage::Area, StorageService};
 use yew::{html, Bridge, Bridged, Component, ComponentLink, Html, Properties, ShouldRender};
 
-use yew_router::components::RouterAnchor;
 use yew_router::{agent::RouteRequest, prelude::*};
 
 #[derive(Clone, PartialEq, Properties)]

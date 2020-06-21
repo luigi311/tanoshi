@@ -1,5 +1,4 @@
 use crate::auth::Claims;
-use chrono::Local;
 use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
 use tanoshi_lib::manga::{Update as UpdateModel, UpdatesResponse};

@@ -19,30 +19,21 @@ pub struct Props {
 }
 
 pub struct Catalogue {
-    link: ComponentLink<Self>,
     route: CatalogueRoute,
 }
 
-pub enum Msg {
-    Noop,
-}
+pub enum Msg {}
 
 impl Component for Catalogue {
     type Message = Msg;
     type Properties = Props;
 
-    fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
-        Catalogue {
-            link,
-            route: props.route,
-        }
+    fn create(props: Self::Properties, _link: ComponentLink<Self>) -> Self {
+        Catalogue { route: props.route }
     }
 
-    fn update(&mut self, msg: Self::Message) -> ShouldRender {
-        match msg {
-            Msg::Noop => {}
-        }
-        true
+    fn update(&mut self, _msg: Self::Message) -> ShouldRender {
+        false
     }
 
     fn change(&mut self, props: Self::Properties) -> ShouldRender {

@@ -1,11 +1,8 @@
-use anyhow;
 use js_sys;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
-use web_sys::{HtmlElement, HtmlImageElement};
-use yew::format::{Json, Nothing};
+use web_sys::{EventSource, HtmlElement, HtmlImageElement, MessageEvent};
 use yew::prelude::*;
-use yew::services::fetch::{FetchService, FetchTask, Request, Response};
 use yew::services::storage::Area;
 use yew::services::StorageService;
 use yew::utils::{document, window};
@@ -29,7 +26,6 @@ pub struct Props {
 }
 
 pub struct Chapter {
-    fetch_task: Option<FetchTask>,
     link: ComponentLink<Self>,
     router: Box<dyn Bridge<RouteAgent>>,
     token: String,
@@ -51,12 +47,15 @@ pub struct Chapter {
     is_history_fetching: bool,
     worker: Box<dyn Bridge<job::Worker>>,
     should_fetch: bool,
+    event_closure: Closure<dyn Fn(MessageEvent)>,
+    event_source: EventSource,
 }
 
 pub enum Msg {
     MangaReady(GetMangaResponse),
     ChapterReady(GetChaptersResponse),
     PagesReady(GetPagesResponse),
+    PageReady(String),
     PageForward,
     PagePrevious,
     ToggleBar,
@@ -116,10 +115,20 @@ impl Component for Chapter {
             job::Response::HistoryPosted => Msg::SetHistoryRequested,
             _ => Msg::Noop,
         });
-        let worker = job::Worker::bridge(worker_callback);
+
+        let tmp_link = link.clone();
+        let event_closure = Closure::wrap(Box::new(move |e: MessageEvent| {
+            tmp_link.send_message(Msg::PageReady(
+                e.data().as_string().unwrap_or("".to_string()),
+            ));
+        }) as Box<dyn Fn(MessageEvent)>);
+
+        let event_source =
+            EventSource::new(format!("/api/chapter/{}/prepare", props.chapter_id).as_str())
+                .unwrap();
+        event_source.set_onmessage(Some(event_closure.as_ref().unchecked_ref()));
 
         Chapter {
-            fetch_task: None,
             link,
             router,
             token,
@@ -139,8 +148,10 @@ impl Component for Chapter {
             container_ref: NodeRef::default(),
             closure,
             is_history_fetching: false,
-            worker,
+            worker: job::Worker::bridge(worker_callback),
             should_fetch: true,
+            event_closure,
+            event_source,
         }
     }
 
@@ -194,7 +205,7 @@ impl Component for Chapter {
                 self.manga_id = data.manga_id;
                 self.pages = data.pages;
                 self.page_refs.clear();
-                for i in 0..self.pages.len() + 1 {
+                for _i in 0..self.pages.len() + 1 {
                     self.page_refs.push(NodeRef::default());
                 }
 
@@ -206,6 +217,13 @@ impl Component for Chapter {
                 }
                 self.get_chapters();
                 return false;
+            }
+            Msg::PageReady(data) => {
+                log::info!("{}", data.clone());
+                if data == "done" || data == "" {
+                    self.event_source.close();
+                    log::info!("close");
+                }
             }
             Msg::PageForward => {
                 if self.settings.page_rendering == PageRendering::LongStrip {
@@ -430,7 +448,7 @@ impl Component for Chapter {
 impl Chapter {
     fn single_page_view(&self) -> Html {
         let mut pages = Vec::new();
-        for i in (0..self.pages.len()) {
+        for i in 0..self.pages.len() {
             pages.push((i, self.pages[i].to_owned()));
         }
         pages.clone().into_iter().map(|(i, page)| html! {
@@ -489,7 +507,7 @@ impl Chapter {
 
     fn long_strip_view(&self) -> Html {
         let mut pages = Vec::new();
-        for i in (0..self.pages.len()) {
+        for i in 0..self.pages.len() {
             pages.push((i, self.pages[i].to_owned()));
         }
         pages.clone().into_iter().map(|(i, page)| html! {
