@@ -239,7 +239,7 @@ pub mod extensions {
         fn get_pages(&self, url: &String) -> Result<Vec<String>>;
         fn get_page(&self, image: Image) -> Result<Vec<u8>> {
             let mut cache_path = dirs::home_dir().expect("should have home dir");
-            cache_path = cache_path.join(".tanoshi/cache").join(image.path);
+            cache_path = cache_path.join(".tanoshi").join("cache").join(image.path);
 
             let bytes = match std::fs::read(cache_path.join(image.file_name.clone()).clone()) {
                 Ok(data) => data,
