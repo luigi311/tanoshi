@@ -1,7 +1,7 @@
 use js_sys;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
-use web_sys::{HtmlElement, HtmlImageElement};
+use web_sys::{EventSource, HtmlElement, HtmlImageElement, MessageEvent};
 use yew::prelude::*;
 use yew::services::storage::Area;
 use yew::services::StorageService;
@@ -47,12 +47,15 @@ pub struct Chapter {
     is_history_fetching: bool,
     worker: Box<dyn Bridge<job::Worker>>,
     should_fetch: bool,
+    event_closure: Closure<dyn Fn(MessageEvent)>,
+    event_source: EventSource,
 }
 
 pub enum Msg {
     MangaReady(GetMangaResponse),
     ChapterReady(GetChaptersResponse),
     PagesReady(GetPagesResponse),
+    PageReady(String),
     PageForward,
     PagePrevious,
     ToggleBar,
@@ -113,6 +116,18 @@ impl Component for Chapter {
             _ => Msg::Noop,
         });
 
+        let tmp_link = link.clone();
+        let event_closure = Closure::wrap(Box::new(move |e: MessageEvent| {
+            tmp_link.send_message(Msg::PageReady(
+                e.data().as_string().unwrap_or("".to_string()),
+            ));
+        }) as Box<dyn Fn(MessageEvent)>);
+
+        let event_source =
+            EventSource::new(format!("/api/chapter/{}/prepare", props.chapter_id).as_str())
+                .unwrap();
+        event_source.set_onmessage(Some(event_closure.as_ref().unchecked_ref()));
+
         Chapter {
             link,
             router,
@@ -135,6 +150,8 @@ impl Component for Chapter {
             is_history_fetching: false,
             worker: job::Worker::bridge(worker_callback),
             should_fetch: true,
+            event_closure,
+            event_source,
         }
     }
 
@@ -200,6 +217,13 @@ impl Component for Chapter {
                 }
                 self.get_chapters();
                 return false;
+            }
+            Msg::PageReady(data) => {
+                log::info!("{}", data.clone());
+                if data == "done" || data == "" {
+                    self.event_source.close();
+                    log::info!("close");
+                }
             }
             Msg::PageForward => {
                 if self.settings.page_rendering == PageRendering::LongStrip {

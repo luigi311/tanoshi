@@ -334,6 +334,6 @@ impl Manga {
             .get_page(image.clone())
             .unwrap();
 
-        Ok(warp::sse::data(format!("/api/image/{}", page_id)))
+        Ok(warp::sse::data(format!("/api/page/{}", page_id)))
     }
 }
