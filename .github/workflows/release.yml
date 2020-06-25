@@ -67,9 +67,9 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Build Frontend
-        run: cd $GITHUB_WORKSPACE\tanoshi-web && yarn install && cargo install wasm-bindgen-cli wasm-pack && yarn build
+        run: cd $Env:GITHUB_WORKSPACE\tanoshi-web && yarn install && cargo install wasm-bindgen-cli wasm-pack && yarn build
       - name: Build Backend
-        run: cd $GITHUB_WORKSPACE\tanoshi && cargo build --release
+        run: cd $Env:GITHUB_WORKSPACE\tanoshi && cargo build
       - name: Create Release
         id: create_release
         uses: actions/create-release@v1
