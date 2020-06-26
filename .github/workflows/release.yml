@@ -23,6 +23,7 @@ jobs:
           prerelease: false
   build-macos:
     runs-on: macos-latest
+    needs: create-release
     steps:
       - uses: actions/checkout@v2
       - name: Build Frontend
@@ -41,6 +42,7 @@ jobs:
           asset_content_type: application/octet-stream
   build-linux:
     runs-on: ubuntu-latest
+    needs: create-release
     steps:
       - uses: actions/checkout@v2
       - name: Build Frontend
@@ -59,6 +61,7 @@ jobs:
           asset_content_type: application/octet-stream      
   build-windows:
     runs-on: windows-latest
+    needs: create-release
     steps:
       - uses: actions/checkout@v2
       - name: Build Frontend
