@@ -546,14 +546,14 @@ impl Chapter {
             num = 2;
         }
 
-        self.current_page += num;
-        self.current_page = match self.pages.get(self.current_page) {
-            Some(_) => self.current_page,
+        let mut current_page = self.current_page + num;
+        current_page = match self.pages.get(current_page) {
+            Some(_) => current_page,
             None => 0,
         };
 
         let route_string: String;
-        if self.current_page == 0 {
+        if current_page == 0 {
             let current_chapter_idx = match self
                 .chapters
                 .iter()
@@ -571,16 +571,17 @@ impl Chapter {
                 None => false,
             };
 
-            self.pages.clear();
-
             if is_next {
+                self.pages.clear();
                 route_string = format!("/chapter/{}/page/1", self.current_chapter_id);
+                self.current_page = current_page;
                 self.previous_chapter_page = self.current_page;
 
                 let route = Route::from(route_string);
                 self.router.send(RouteRequest::ChangeRoute(route));
             }
         } else {
+            self.current_page = current_page;
             route_string = format!(
                 "/chapter/{}/page/{}",
                 self.current_chapter_id,
