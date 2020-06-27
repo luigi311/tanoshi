@@ -206,7 +206,7 @@ impl Source {
                 {
                     match self.is_fetching {
                         true => html!{<Spinner is_active=true is_fullscreen=false />},
-                        false => html!{<button onclick=self.link.callback(|_| Msg::ScrolledDown)>{"Load More"}</button>}
+                        false => html!{<button class="flex rounded-lg border border-grey-light m-2 shadow justify-center" onclick=self.link.callback(|_| Msg::ScrolledDown)>{"Load More"}</button>}
                     }
                 }
                 </div>
@@ -278,7 +278,6 @@ impl Source {
                                     }
                                 }
                             }
-
                             </div>
                         </form>
                     </div>
