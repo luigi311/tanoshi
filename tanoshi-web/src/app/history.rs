@@ -113,6 +113,7 @@ impl Component for History {
             self.page_type = page_type;
             self.history.clear();
             self.updates.clear();
+            self.page = 1;
             self.should_fetch = true;
             true
         } else {
