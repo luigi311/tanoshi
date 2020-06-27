@@ -113,6 +113,7 @@ impl Component for History {
             self.page_type = page_type;
             self.history.clear();
             self.updates.clear();
+            self.page = 1;
             self.should_fetch = true;
             true
         } else {
@@ -188,7 +189,7 @@ impl Component for History {
                 {
                     match self.is_fetching {
                         false => html!{
-                            <div class="flex rounded-lg border border-grey-light m-2 shadow justify-center h-5">
+                            <div class="flex rounded-lg border border-grey-light m-2 shadow justify-center">
                                 <button class="w-full h-full block" onclick=self.link.callback(|_| Msg::ScrolledDown)>{"Load More"}</button>
                             </div>
                         },

@@ -38,6 +38,7 @@ pub enum Msg {
     KeywordChanged(InputData),
     Search(Event),
     SourceLogin,
+    LoginSuccess,
     Submit(Event),
     UsernameChange(InputData),
     PasswordChange(InputData),
@@ -69,7 +70,7 @@ impl Component for Source {
 
         let worker_callback = link.callback(|msg| match msg {
             job::Response::MangasFetched(data) => Msg::MangaReady(data),
-            job::Response::LoginPosted(_data) => Msg::SourceLogin,
+            job::Response::LoginPosted(_data) => Msg::LoginSuccess,
             _ => Msg::Noop,
         });
         let worker = job::Worker::bridge(worker_callback);
@@ -131,6 +132,10 @@ impl Component for Source {
             Msg::SourceLogin => {
                 self.is_login_page = !self.is_login_page;
                 self.is_fetching = false;
+            }
+            Msg::LoginSuccess => {
+                self.is_login_page = false;
+                self.fetch_mangas();
             }
             Msg::Submit(e) => {
                 e.prevent_default();
@@ -206,7 +211,7 @@ impl Source {
                 {
                     match self.is_fetching {
                         true => html!{<Spinner is_active=true is_fullscreen=false />},
-                        false => html!{<button onclick=self.link.callback(|_| Msg::ScrolledDown)>{"Load More"}</button>}
+                        false => html!{<button class="flex rounded-lg border border-grey-light m-2 shadow justify-center" onclick=self.link.callback(|_| Msg::ScrolledDown)>{"Load More"}</button>}
                     }
                 }
                 </div>
@@ -278,7 +283,6 @@ impl Source {
                                     }
                                 }
                             }
-
                             </div>
                         </form>
                     </div>

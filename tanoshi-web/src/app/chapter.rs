@@ -216,7 +216,7 @@ impl Component for Chapter {
                     };
                 }
                 self.get_chapters();
-                return false;
+                self.is_fetching = false;
             }
             Msg::PageReady(data) => {
                 log::info!("{}", data.clone());
@@ -447,11 +447,7 @@ impl Component for Chapter {
 
 impl Chapter {
     fn single_page_view(&self) -> Html {
-        let mut pages = Vec::new();
-        for i in 0..self.pages.len() {
-            pages.push((i, self.pages[i].to_owned()));
-        }
-        pages.clone().into_iter().map(|(i, page)| html! {
+        self.pages.clone().into_iter().enumerate().map(|(i, page)| html! {
             <img id={i}
                 ref=self.page_refs[i].clone()
                 class={format!("w-full h-auto object-contain object-center {}", if self.current_page == i {"block"} else {"hidden"})}
@@ -506,11 +502,7 @@ impl Chapter {
     }
 
     fn long_strip_view(&self) -> Html {
-        let mut pages = Vec::new();
-        for i in 0..self.pages.len() {
-            pages.push((i, self.pages[i].to_owned()));
-        }
-        pages.clone().into_iter().map(|(i, page)| html! {
+        self.pages.clone().into_iter().enumerate().map(|(i, page)| html! {
             <img id={i}
                 ref=self.page_refs[i].clone()
                 class={format!("w-auto min-h-24 object-contain block")}
@@ -554,14 +546,14 @@ impl Chapter {
             num = 2;
         }
 
-        self.current_page += num;
-        self.current_page = match self.pages.get(self.current_page) {
-            Some(_) => self.current_page,
+        let mut current_page = self.current_page + num;
+        current_page = match self.pages.get(current_page) {
+            Some(_) => current_page,
             None => 0,
         };
 
         let route_string: String;
-        if self.current_page == 0 {
+        if current_page == 0 {
             let current_chapter_idx = match self
                 .chapters
                 .iter()
@@ -579,16 +571,17 @@ impl Chapter {
                 None => false,
             };
 
-            self.pages.clear();
-
             if is_next {
+                self.pages.clear();
                 route_string = format!("/chapter/{}/page/1", self.current_chapter_id);
+                self.current_page = current_page;
                 self.previous_chapter_page = self.current_page;
 
                 let route = Route::from(route_string);
                 self.router.send(RouteRequest::ChangeRoute(route));
             }
         } else {
+            self.current_page = current_page;
             route_string = format!(
                 "/chapter/{}/page/{}",
                 self.current_chapter_id,

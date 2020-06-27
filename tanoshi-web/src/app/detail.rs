@@ -111,6 +111,7 @@ impl Component for Detail {
                 self.manga = data.manga;
                 self.get_chapters(false);
                 self.is_fetching = false;
+                return false;
             }
             Msg::ChapterReady(data) => {
                 self.chapters = data.chapters;
