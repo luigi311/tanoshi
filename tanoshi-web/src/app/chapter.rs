@@ -216,7 +216,7 @@ impl Component for Chapter {
                     };
                 }
                 self.get_chapters();
-                return false;
+                self.is_fetching = false;
             }
             Msg::PageReady(data) => {
                 log::info!("{}", data.clone());
@@ -447,11 +447,7 @@ impl Component for Chapter {
 
 impl Chapter {
     fn single_page_view(&self) -> Html {
-        let mut pages = Vec::new();
-        for i in 0..self.pages.len() {
-            pages.push((i, self.pages[i].to_owned()));
-        }
-        pages.clone().into_iter().map(|(i, page)| html! {
+        self.pages.clone().into_iter().enumerate().map(|(i, page)| html! {
             <img id={i}
                 ref=self.page_refs[i].clone()
                 class={format!("w-full h-auto object-contain object-center {}", if self.current_page == i {"block"} else {"hidden"})}
@@ -506,11 +502,7 @@ impl Chapter {
     }
 
     fn long_strip_view(&self) -> Html {
-        let mut pages = Vec::new();
-        for i in 0..self.pages.len() {
-            pages.push((i, self.pages[i].to_owned()));
-        }
-        pages.clone().into_iter().map(|(i, page)| html! {
+        self.pages.clone().into_iter().enumerate().map(|(i, page)| html! {
             <img id={i}
                 ref=self.page_refs[i].clone()
                 class={format!("w-auto min-h-24 object-contain block")}
