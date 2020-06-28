@@ -28,9 +28,9 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Build Frontend
-        run: cd $Env:GITHUB_WORKSPACE\tanoshi-web && yarn install && cargo install wasm-bindgen-cli wasm-pack && yarn build
+        run: cd $Env:GITHUB_WORKSPACE\tanoshi-web -and yarn install -and cargo install wasm-bindgen-cli wasm-pack -and yarn build
       - name: Build Backend
-        run: cd $Env:GITHUB_WORKSPACE\tanoshi && cargo build
+        run: cd $Env:GITHUB_WORKSPACE\tanoshi -and cargo build
       - name: List
         run: ls -l $Env:GITHUB_WORKSPACE
       - name: List Target
