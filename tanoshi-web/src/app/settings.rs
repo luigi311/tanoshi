@@ -40,7 +40,9 @@ pub struct Settings {
     me_role: String,
     me_password: Option<String>,
     me_confirm_password: Option<String>,
+    me_telegram_chat_id: Option<i64>,
     change_password: bool,
+    edit_telegram_chat_id: bool,
     closure: Closure<dyn FnMut(JsValue)>,
 }
 
@@ -62,6 +64,9 @@ pub enum Msg {
     SaveUser(usize),
     SaveUserSuccess(usize),
     ClearCache,
+    EditTelegramChatID,
+    TelegramChatIDChange(InputData),
+    SaveTelegramChatIDSuccess,
     Noop,
 }
 
@@ -99,7 +104,9 @@ impl Component for Settings {
             me_role: "".to_string(),
             me_confirm_password: None,
             me_password: None,
+            me_telegram_chat_id: None,
             change_password: false,
+            edit_telegram_chat_id: false,
             closure,
         }
     }
@@ -125,6 +132,7 @@ impl Component for Settings {
                 if self.is_admin {
                     self.fetch_users();
                 }
+                self.me_telegram_chat_id = claim.telegram_chat_id;
             }
             Msg::UserListReady(users) => {
                 self.users = users
@@ -141,6 +149,7 @@ impl Component for Settings {
                     username: "New user".to_string(),
                     password: None,
                     role: "READER".to_string(),
+                    telegram_chat_id: None,
                 },
                 is_edit: true,
                 is_new: true,
@@ -192,6 +201,19 @@ impl Component for Settings {
                     .unwrap()
                     .delete("tanoshi")
                     .then(&self.closure);
+            }
+            Msg::EditTelegramChatID => {
+                if !self.edit_telegram_chat_id {
+                    self.edit_telegram_chat_id = true;
+                } else {
+                    self.modify_user_telegram_chat_id();
+                }
+            }
+            Msg::TelegramChatIDChange(e) => {
+                self.me_telegram_chat_id = e.value.parse().ok();
+            }
+            Msg::SaveTelegramChatIDSuccess => {
+                self.edit_telegram_chat_id = false;
             }
             Msg::Noop => {
                 return false;
@@ -296,6 +318,31 @@ impl Settings {
         }
     }
 
+    fn modify_user_telegram_chat_id(&mut self) {
+        let req = Request::put("/api/user/telegram")
+            .header("Authorization", self.token.clone())
+            .header("Content-Type", "text/plain")
+            .body(match self.me_telegram_chat_id.clone() {
+                Some(id) => Ok(id.to_string()),
+                None => Err(anyhow::anyhow!("")),
+            })
+            .expect("failed to build request");
+
+        if let Ok(task) = FetchService::new().fetch(
+            req,
+            self.link.callback(move |response: Response<Text>| {
+                if let (meta, Ok(_res)) = response.into_parts() {
+                    if meta.status.is_success() {
+                        return Msg::SaveTelegramChatIDSuccess;
+                    }
+                }
+                Msg::Noop
+            }),
+        ) {
+            self.fetch_task = Some(FetchTask::from(task));
+        }
+    }
+
     fn change_password(&mut self) {
         if self.me_password != self.me_confirm_password {
             return;
@@ -367,19 +414,19 @@ impl Settings {
                 {self.separator("Users")}
                 {
                     html! {
-                        <table class="table-fixed w-full text-left">
-                            <thead class="border-b">
-                                <tr>
-                                    <th class="p-2">{"Username"}</th>
-                                    <th class="p-2">{"Role"}</th>
-                                    <th class="p-2">{"Actions"}</th>
-                                </tr>
-                            </thead>
-                            <tbody>
+                        <div class="table w-full">
+                            <div class="table-header-group">
+                                <div class="table-row">
+                                    <th class="table-cell w-1/3 p-2 border-b text-left">{"Username"}</th>
+                                    <th class="table-cell w-1/3 p-2 border-b text-center">{"Role"}</th>
+                                    <th class="table-cell w-1/3 p-2 border-b text-right">{"Actions"}</th>
+                                </div>
+                            </div>
+                            <div class="table-row-group">
                             {
                             for (0..self.users.len()).map(|i| html!{
-                                <tr class="border-b">
-                                    <td class="p-2">{
+                                <div class="table-row">
+                                    <div class="table-cell p-2 border-b text-left">{
                                         if !self.users[i].is_edit || !self.users[i].is_new {
                                            html!{self.users[i].user.username.clone()}
                                         } else {
@@ -390,8 +437,8 @@ impl Settings {
                                                     oninput=self.link.callback(move |e: InputData| Msg::UsernameChange(i, e.value))/>
                                             }
                                         }
-                                    }</td>
-                                    <td class="p-2">
+                                    }</div>
+                                    <div class="table-cell p-2 border-b text-center">
                                     {
                                         if !self.users[i].is_edit {
                                             html!{self.users[i].user.role.clone()}
@@ -404,10 +451,10 @@ impl Settings {
                                             }
                                         }
                                     }
-                                    </td>
-                                    <td class="p-2">
+                                    </div>
+                                    <div class="table-cell p-2 border-b text-right">
                                         <button
-                                            class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold px-4 rounded"
+                                            class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold p-1 rounded"
                                             onclick={
                                                 if !self.users[i].is_edit {
                                                     self.link.callback(move |_| Msg::EditUser(i))
@@ -415,14 +462,15 @@ impl Settings {
                                                     self.link.callback(move |_| Msg::SaveUser(i))
                                                 }
                                             }>
-                                            {if !self.users[i].is_edit {"Edit"} else {"Save"}}
+                                            {if !self.users[i].is_edit {html!{<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24"><path class="heroicon-ui" d="M6.3 12.3l10-10a1 1 0 0 1 1.4 0l4 4a1 1 0 0 1 0 1.4l-10 10a1 1 0 0 1-.7.3H7a1 1 0 0 1-1-1v-4a1 1 0 0 1 .3-.7zM8 16h2.59l9-9L17 4.41l-9 9V16zm10-2a1 1 0 0 1 2 0v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6c0-1.1.9-2 2-2h6a1 1 0 0 1 0 2H4v14h14v-6z"/></svg>}}
+                                            else {html!{<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24"><path class="heroicon-ui" d="M12 22a10 10 0 1 1 0-20 10 10 0 0 1 0 20zm0-2a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm-2.3-8.7l1.3 1.29 3.3-3.3a1 1 0 0 1 1.4 1.42l-4 4a1 1 0 0 1-1.4 0l-2-2a1 1 0 0 1 1.4-1.42z"/></svg>}}}
                                         </button>
-                                    </td>
-                                </tr>
+                                    </div>
+                                </div>
                             })
                             }
-                            </tbody>
-                        </table>
+                            </div>
+                        </div>
                     }
                 }
                 <button class={"bg-grey-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-r"}
@@ -442,6 +490,38 @@ impl Settings {
                 })}
                 {self.setting_card("Role", html! {
                     <span>{self.me_role.clone()}</span>
+                })}
+                {self.setting_card("Telegram Chat ID", html! {
+                    <div class="flex">
+                        {
+                        if !self.edit_telegram_chat_id {
+                            html!{<span class="my-auto mx-2">{if let Some(id) = self.me_telegram_chat_id.clone() {id.to_string()} else {"".to_string()}}</span>}
+                        } else {
+                            html!{
+                                <input
+                                    class="w-full border-b border-grey-light"
+                                    value={
+                                        match self.me_telegram_chat_id {
+                                            Some(id) => id.to_string(),
+                                            None => "".to_string(),
+                                        }
+                                    }
+                                    oninput=self.link.callback(|e| Msg::TelegramChatIDChange(e))/>
+                            }
+                        }
+                        }
+                        <button
+                            onclick={self.link.callback(|_| Msg::EditTelegramChatID)}
+                            class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold cursor-pointer ml-2 mr-1 p-1 rounded">
+                            {
+                            if !self.edit_telegram_chat_id {
+                                html!{<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24"><path class="heroicon-ui" d="M6.3 12.3l10-10a1 1 0 0 1 1.4 0l4 4a1 1 0 0 1 0 1.4l-10 10a1 1 0 0 1-.7.3H7a1 1 0 0 1-1-1v-4a1 1 0 0 1 .3-.7zM8 16h2.59l9-9L17 4.41l-9 9V16zm10-2a1 1 0 0 1 2 0v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6c0-1.1.9-2 2-2h6a1 1 0 0 1 0 2H4v14h14v-6z"/></svg>}
+                            } else {
+                                html!{<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24"><path class="heroicon-ui" d="M12 22a10 10 0 1 1 0-20 10 10 0 0 1 0 20zm0-2a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm-2.3-8.7l1.3 1.29 3.3-3.3a1 1 0 0 1 1.4 1.42l-4 4a1 1 0 0 1-1.4 0l-2-2a1 1 0 0 1 1.4-1.42z"/></svg>}
+                            }
+                            }
+                        </button>
+                    </div>
                 })}
                 {
                     if self.change_password {
@@ -500,13 +580,13 @@ impl Settings {
                     self.setting_card("Direction", html! {
                         <>
                             <button class={
-                                format!("{} hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-l",
+                                format!("{} hover:bg-gray-400 text-gray-800 font-bold py-1 px-2 rounded-l",
                                 if self.settings.reading_direction == ReadingDirection::RightToLeft { "bg-gray-400" } else {"bg-gray-300"})}
                                 onclick=self.link.callback(|_| Msg::SetReadingDirection(ReadingDirection::RightToLeft))>
                                 {"Right to Left"}
                             </button>
                             <button class={
-                                format!("{} hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-r",
+                                format!("{} hover:bg-gray-400 text-gray-800 font-bold py-1 px-2 rounded-r",
                                 if self.settings.reading_direction == ReadingDirection::LeftToRight { "bg-gray-400" } else {"bg-gray-300"})}
                                 onclick=self.link.callback(|_| Msg::SetReadingDirection(ReadingDirection::LeftToRight))>
                                 {"Left to Right"}
@@ -518,13 +598,13 @@ impl Settings {
                     self.setting_card("Background", html! {
                         <>
                             <button class={
-                                format!("{} hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-l",
+                                format!("{} hover:bg-gray-400 text-gray-800 font-bold py-1 px-2 rounded-l",
                                 if self.settings.background_color == BackgroundColor::White { "bg-gray-400" } else {"bg-gray-300"})}
                                 onclick=self.link.callback(|_| Msg::SetBackgroundColor(BackgroundColor::White))>
                                 {"White"}
                             </button>
                             <button class={
-                                format!("{} hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-r",
+                                format!("{} hover:bg-gray-400 text-gray-800 font-bold py-1 px-2 rounded-r",
                                 if self.settings.background_color == BackgroundColor::Black { "bg-gray-400" } else {"bg-gray-300"})}
                                 onclick=self.link.callback(|_| Msg::SetBackgroundColor(BackgroundColor::Black))>
                                 {"Black"}
@@ -536,19 +616,19 @@ impl Settings {
                     self.setting_card("Mode", html! {
                         <>
                             <button class={
-                                format!("{} hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-l",
+                                format!("{} hover:bg-gray-400 text-gray-800 font-bold py-1 px-2 rounded-l",
                                 if self.settings.page_rendering == PageRendering::SinglePage { "bg-gray-400" } else {"bg-gray-300"})}
                                 onclick=self.link.callback(|_| Msg::SetPageRendering(PageRendering::SinglePage))>
                                 {"Single"}
                             </button>
                             <button class={
-                                format!("{} hover:bg-gray-400 text-gray-800 font-bold py-2 px-4",
+                                format!("{} hover:bg-gray-400 text-gray-800 font-bold py-1 px-2",
                                 if self.settings.page_rendering == PageRendering::DoublePage { "bg-gray-400" } else {"bg-gray-300"})}
                                 onclick=self.link.callback(|_| Msg::SetPageRendering(PageRendering::DoublePage))>
                                 {"Double"}
                             </button>
                             <button class={
-                                 format!("{} hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-r",
+                                 format!("{} hover:bg-gray-400 text-gray-800 font-bold py-1 px-2 rounded-r",
                                  if self.settings.page_rendering == PageRendering::LongStrip { "bg-gray-400" } else {"bg-gray-300"})}
                                  onclick=self.link.callback(|_| Msg::SetPageRendering(PageRendering::LongStrip))>
                                  {"Webtoon"}
@@ -566,7 +646,7 @@ impl Settings {
                 {self.separator("Miscellaneous")}
                 {
                     self.setting_card("Clear Cache", html! {
-                        <button class={"bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-l"}
+                        <button class={"bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-1 px-2 rounded-l"}
                             onclick=self.link.callback(|_| Msg::ClearCache)>
                             {"Clear"}
                         </button>

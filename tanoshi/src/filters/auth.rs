@@ -11,6 +11,7 @@ pub fn authentication(
         .or(register(secret.clone(), auth.clone()))
         .or(user_list(secret.clone(), auth.clone()))
         .or(modify_user_role(secret.clone(), auth.clone()))
+        .or(modify_user_telegram_chat_id(secret.clone(), auth.clone()))
         .or(change_password(secret.clone(), auth.clone()))
         .or(validate(secret))
 }
@@ -62,6 +63,18 @@ pub fn modify_user_role(
         .and_then(auth_handler::modify_user_role)
 }
 
+pub fn modify_user_telegram_chat_id(
+    secret: String,
+    auth: Auth,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path!("api" / "user" / "telegram")
+        .and(warp::put())
+        .and(number_body())
+        .and(with_authorization(secret))
+        .and(with_auth(auth))
+        .and_then(auth_handler::modify_user_telegram_chat_id)
+}
+
 pub fn change_password(
     secret: String,
     auth: Auth,
@@ -98,6 +111,17 @@ fn text_body() -> impl Filter<Extract = (String,), Error = warp::Rejection> + Cl
         .and(warp::body::bytes())
         .map(|bytes: bytes::Bytes| {
             String::from_utf8(bytes.to_vec()).expect("failed to parse password")
+        })
+}
+
+fn number_body() -> impl Filter<Extract = (Option<i64>,), Error = warp::Rejection> + Clone {
+    warp::body::content_length_limit(1024 * 16)
+        .and(warp::body::bytes())
+        .map(|bytes: bytes::Bytes| {
+            String::from_utf8(bytes.to_vec())
+                .expect("failed to parse password")
+                .parse()
+                .ok()
         })
 }
 

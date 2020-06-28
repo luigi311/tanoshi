@@ -25,7 +25,7 @@ impl Auth {
         let db = self.connect_db();
         let hashed = Auth::hash(user.password.unwrap_or("tanoshi123".to_string()).as_bytes());
         match db.execute(
-            r#"INSERT INTO "user"(username, password, role) VALUES ($1, $2, $3)"#,
+            r#"INSERT INTO "user"(username, password, role) VALUES (?1, ?2, ?3)"#,
             params![user.username, hashed, user.role],
         ) {
             Ok(_) => UserResponse {
@@ -45,13 +45,14 @@ impl Auth {
         let db = self.connect_db();
         let account = db
             .query_row(
-                r#"SELECT username, password, role FROM "user" WHERE username = $1"#,
+                r#"SELECT username, password, role, telegram_chat_id FROM "user" WHERE username = ?1"#,
                 params![user.username],
                 |row| {
                     Ok(User {
                         username: row.get(0)?,
                         password: row.get(1)?,
                         role: row.get(2)?,
+                        telegram_chat_id: row.get(3).ok(),
                     })
                 },
             )
@@ -62,6 +63,7 @@ impl Auth {
                 sub: account.username,
                 role: account.role,
                 exp: 10000000000,
+                telegram_chat_id: account.telegram_chat_id,
             };
             let token = match encode(
                 &Header::default(),
@@ -92,6 +94,7 @@ impl Auth {
                 username: row.get(0)?,
                 role: row.get(1)?,
                 password: None,
+                telegram_chat_id: None,
             })
         })
         .unwrap()
@@ -103,7 +106,7 @@ impl Auth {
         let db = self.connect_db();
         let hashed = Auth::hash(password.as_bytes());
         db.execute(
-            r#"UPDATE "user" SET password = $1 WHERE username = $2"#,
+            r#"UPDATE "user" SET password = ?1 WHERE username = ?2"#,
             params![hashed, username],
         )?;
         Ok(())
@@ -112,8 +115,21 @@ impl Auth {
     pub async fn modify_user_role(&self, user: User) -> Result<()> {
         let db = self.connect_db();
         db.execute(
-            r#"UPDATE "user" SET role = $1 WHERE username = $2"#,
+            r#"UPDATE "user" SET role = ?1 WHERE username = ?2"#,
             params![user.role, user.username],
+        )?;
+        Ok(())
+    }
+
+    pub async fn modify_user_telegram_chat_id(
+        &self,
+        username: String,
+        telegram_chat_id: Option<i64>,
+    ) -> Result<()> {
+        let db = self.connect_db();
+        db.execute(
+            r#"UPDATE "user" SET telegram_chat_id = ?1 WHERE username = ?2"#,
+            params![telegram_chat_id, username],
         )?;
         Ok(())
     }

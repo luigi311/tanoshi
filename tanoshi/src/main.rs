@@ -65,6 +65,7 @@ async fn main() -> Result<()> {
             username: "admin".to_string(),
             password: Some("admin".to_string()),
             role: "ADMIN".to_string(),
+            telegram_chat_id: None,
         })
         .await;
     }

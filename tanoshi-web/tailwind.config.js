@@ -18,7 +18,7 @@ module.exports = {
         }
     },
     variants: {
-        backgroundColor: ['responsive', 'hover', 'focus', 'active', 'group-hover'],
+        backgroundColor: ['responsive', 'hover', 'focus', 'active', 'group-hover', 'disabled'],
         tableLayout: ['responsive', 'hover', 'focus'],
     },
     plugins: [],

@@ -56,6 +56,7 @@ impl Component for Login {
                 username: "".to_string(),
                 password: None,
                 role: "".to_string(),
+                telegram_chat_id: None,
             },
         }
     }

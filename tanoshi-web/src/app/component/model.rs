@@ -6,6 +6,7 @@ pub struct User {
     pub username: String,
     pub password: Option<String>,
     pub role: String,
+    pub telegram_chat_id: Option<i64>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, Default)]
@@ -13,6 +14,7 @@ pub struct Claims {
     pub sub: String,
     pub role: String,
     pub exp: i64,
+    pub telegram_chat_id: Option<i64>,
 }
 
 #[derive(Deserialize, Serialize, Clone, PartialEq)]
