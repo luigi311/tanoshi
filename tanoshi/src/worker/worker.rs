@@ -87,17 +87,24 @@ impl Worker {
         }
 
         self.start_interval(interval * 3600, move || {
+            info!("Updating chapters....");
             match Connection::open(database_path.clone()) {
                 Ok(mut conn) => {
                     let mut res: Vec<MangaUserUpdate> = vec![];
                     {
-                        let mut stmt = conn.prepare(
+                        let mut stmt = match conn.prepare(
                             "SELECT s.name, m.id, m.title, s.url || m.path AS url, GROUP_CONCAT(user_id, ',') AS users
                               FROM favorite
                               JOIN manga m on favorite.manga_id = m.id
                               JOIN source s on m.source_id = s.id
                               GROUP BY manga_id;")
-                            .unwrap();
+                        {
+                            Ok(stmt) => stmt,
+                            Err(e) => {
+                                error!("error prepare statement: {}", e);
+                                return
+                            }
+                        };
                         res = stmt
                             .query_map(params![], |row| {
                                 let user_ids: String = row.get(4)?;
@@ -123,10 +130,19 @@ impl Worker {
                         let tx = conn.transaction().unwrap();
                         for m in res {
                             let exts = exts.read().unwrap();
-                            let chapters = exts.get(&m.source).unwrap().get_chapters(&m.url).unwrap();
+                            let chapters = if let Some(ext) = exts.get(&m.source) {
+                                if let Ok(chapters) = ext.get_chapters(&m.url) {
+                                    chapters
+                                } else {
+                                    continue;
+                                }
+                            } else {
+                                continue;
+                            };
+
                             for c in chapters {
                                 for u in m.clone().users {
-                                    tx.execute(
+                                    if let Err(e) = tx.execute(
                                         r#"INSERT INTO chapter(user_id, manga_id, number, title, path, uploaded)
                                             VALUES(
                                             ?1,
@@ -136,19 +152,23 @@ impl Worker {
                                             ?5,
                                             ?6) ON CONFLICT DO NOTHING"#,
                                         params![u, m.manga_id, c.no.clone(), c.title, c.url, c.uploaded],
-                                    ).unwrap();
+                                    ) {
+                                        error!("erorr insert row: {}", e);
+                                    }
                                     let last_id = tx.last_insert_rowid();
                                     if last_id > 0 {
                                         let user_val: &mut HashMap<String, Vec<Chapter>> = chapter_updates.entry(u).or_insert(HashMap::new());
                                         let manga_val: &mut Vec<Chapter> = user_val.entry(m.manga_title.clone()).or_insert(vec![]);
                                         if manga_val.iter().find(|u| u.id == last_id).is_none() {
-                                            manga_val.push(Chapter{id: last_id, number: c.no.clone()});
+                                            manga_val.push(Chapter { id: last_id, number: c.no.clone() });
                                         }
                                     }
                                 }
                             }
                         }
-                        tx.commit().unwrap();
+                        if let Err(e) = tx.commit() {
+                            error!("erorr commit: {}", e);
+                        }
                     }
                     {
                         if let Some(tx) = bot_pub {
@@ -163,7 +183,6 @@ impl Worker {
                                             error!("error send update: {}", e);
                                         }
                                     }
-
                                 }
                             }
                         }
@@ -171,6 +190,7 @@ impl Worker {
                 }
                 Err(e) => error!("error update chapter: {}", e),
             }
+            info!("Updating chapters done");
         });
     }
 }

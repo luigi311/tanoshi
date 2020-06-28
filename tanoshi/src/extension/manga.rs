@@ -89,10 +89,22 @@ impl Manga {
         name: String,
         plugin_path: String,
     ) -> Result<impl warp::Reply, Rejection> {
+        let ext = if cfg!(target_os = "windows") {
+            "dll"
+        } else if cfg!(target_os = "macos") {
+            "dylib"
+        } else if cfg!(target_os = "linux") {
+            "so"
+        } else {
+            return Err(warp::reject());
+        };
+
         let resp = ureq::get(
             format!(
-                "https://raw.githubusercontent.com/faldez/tanoshi-extensions/repo/library/lib{}.so",
-                name.clone()
+                "https://raw.githubusercontent.com/faldez/tanoshi-extensions/repo-{}/library/lib{}.{}",
+                std::env::consts::OS,
+                name.clone(),
+                ext.clone(),
             )
             .as_str(),
         )
@@ -106,7 +118,7 @@ impl Manga {
         }
 
         let path = std::path::PathBuf::from(plugin_path);
-        let path = path.join(format!("lib{}.so", name));
+        let path = path.join(format!("lib{}.{}", name, ext));
         if let Err(e) = std::fs::write(path.clone(), &bytes) {
             return Err(warp::reject::custom(TransactionReject {
                 message: e.to_string(),
