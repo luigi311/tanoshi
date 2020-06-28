@@ -161,7 +161,7 @@ impl Worker {
                                     for (title, chapters) in manga_map {
                                         let mut text = format!("<b>{}</b>\n", title);
                                         for ch in chapters.clone() {
-                                            text += format!("<a href=\"{}/chapter/{}\">Chapter {}</a>\n", base_url.clone(), ch.id, ch.number).as_str();
+                                            text += format!("<a href=\"{}/chapter/{}/page/1\">Chapter {}</a>\n", base_url.clone(), ch.id, ch.number).as_str();
                                         }
                                         if let Err(e) = tx.send((tbot::types::chat::Id(telegram_chat_id), text, TextType::HTML)) {
                                             error!("error send update: {}", e);
