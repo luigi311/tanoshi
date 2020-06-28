@@ -225,7 +225,10 @@ impl Manga {
 
             let chapter = exts.get(&source.name).unwrap().get_chapters(&url).unwrap();
 
-            match self.repo.insert_chapters(manga_id, chapter.clone()) {
+            match self
+                .repo
+                .insert_chapters(claim.sub.clone(), manga_id, chapter.clone())
+            {
                 Ok(_) => {}
                 Err(e) => {
                     return Err(warp::reject::custom(TransactionReject {

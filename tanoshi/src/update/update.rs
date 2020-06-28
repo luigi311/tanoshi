@@ -1,6 +1,8 @@
 use crate::auth::Claims;
+use crate::extension::Extensions;
 use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
+use std::sync::{Arc, RwLock};
 use tanoshi_lib::manga::{Update as UpdateModel, UpdatesResponse};
 use warp::Rejection;
 
@@ -9,7 +11,7 @@ pub struct UpdateParam {
     page: i32,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Update {
     database_path: String,
 }
@@ -43,8 +45,9 @@ impl Update {
                 FROM chapter
                 JOIN manga ON manga.id = chapter.manga_id
                 JOIN source ON source.id = manga.source_id
-                JOIN favorite ON favorite.manga_id = manga.id
+                JOIN favorite ON favorite.manga_id = manga.id      
                 JOIN "user" ON "user".id = favorite.user_id
+                JOIN "update" ON "update".chapter_id = chapter.id AND "update".user_id = "user".id
                 WHERE "user".username = $1 ORDER BY uploaded DESC
                 LIMIT $2 OFFSET $3"#,
             )
