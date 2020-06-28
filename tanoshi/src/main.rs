@@ -14,6 +14,7 @@ use std::sync::{Arc, RwLock};
 use warp::{http::header::HeaderValue, path::Tail, reply::Response, Filter, Rejection, Reply};
 
 mod auth;
+mod bot;
 mod extension;
 mod favorites;
 mod filters;
@@ -28,11 +29,13 @@ struct Asset;
 
 #[derive(serde::Deserialize)]
 struct Config {
+    pub base_url: Option<String>,
     pub port: Option<String>,
     pub database_path: String,
     pub secret: String,
     pub cache_ttl: u64,
     pub update_interval: u64,
+    pub telegram_token: Option<String>,
     pub plugin_path: Option<String>,
     pub plugin_config: Option<BTreeMap<String, serde_yaml::Value>>,
 }
@@ -98,7 +101,6 @@ async fn main() -> Result<()> {
             .unwrap_or_default()
             .to_string()
             .replace("lib", "");
-        info!("{}", name.clone());
         info!("load plugin from {:?}", path.clone());
         let config = plugin_config.get(&name);
         let mut exts = extensions.write().unwrap();
@@ -110,13 +112,24 @@ async fn main() -> Result<()> {
         }
     }
 
+    let bot = match config.telegram_token.clone() {
+        Some(token) => Some(bot::Bot::new(token)),
+        None => None,
+    };
+
     let update_worker = worker::Worker::new();
     update_worker.remove_cache(config.cache_ttl);
     update_worker.check_update(
         config.update_interval,
         config.database_path.clone(),
+        config.base_url.unwrap_or("".to_string()),
         extensions.clone(),
+        bot.clone().map(|b| b.get_pub()),
     );
+
+    if let Some(bot) = bot.clone() {
+        bot.start();
+    }
 
     let static_files = warp::get().and(warp::path::tail()).and_then(serve);
     let index = warp::get().and_then(serve_index);

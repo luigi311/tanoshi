@@ -1,11 +1,15 @@
+use crate::bot::TextType;
 use crate::extension::manga::Manga;
 use crate::extension::Extensions;
+use crate::filters::manga::manga;
 use rusqlite::{params, Connection};
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
-use std::sync::{Arc, RwLock};
+use std::future::Future;
+use std::sync::{mpsc::Sender, Arc, RwLock};
 use std::time::Duration;
 use tanoshi_lib::extensions::Extension;
+use tbot::types::{chat::Id, parameters::Text};
 use tokio::runtime::{self, Runtime};
 use tokio::time::delay_for;
 
@@ -13,8 +17,21 @@ use tokio::time::delay_for;
 pub struct MangaUserUpdate {
     source: String,
     manga_id: i64,
+    manga_title: String,
     url: String,
     users: Vec<i64>,
+}
+
+#[derive(Debug, Clone)]
+pub struct Chapter {
+    id: i64,
+    number: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct MangaChapter {
+    title: String,
+    chapters: Vec<Chapter>,
 }
 
 pub struct Worker {
@@ -38,8 +55,8 @@ impl Worker {
     {
         self.rt.spawn(async move {
             loop {
-                let f = f.clone();
-                f();
+                let f_clone = f.clone();
+                f_clone();
                 delay_for(Duration::from_secs(interval)).await;
             }
         });
@@ -65,7 +82,9 @@ impl Worker {
         &self,
         interval: u64,
         database_path: String,
+        base_url: String,
         exts: Arc<RwLock<Extensions>>,
+        bot_pub: Option<Sender<(Id, String, TextType)>>,
     ) {
         if interval == 0 {
             return;
@@ -77,7 +96,7 @@ impl Worker {
                     let mut res: Vec<MangaUserUpdate> = vec![];
                     {
                         let mut stmt = conn.prepare(
-                            "SELECT s.name, m.id, s.url || m.path AS url, GROUP_CONCAT(user_id, ',') AS users
+                            "SELECT s.name, m.id, m.title, s.url || m.path AS url, GROUP_CONCAT(user_id, ',') AS users
                               FROM favorite
                               JOIN manga m on favorite.manga_id = m.id
                               JOIN source s on m.source_id = s.id
@@ -85,7 +104,7 @@ impl Worker {
                             .unwrap();
                         res = stmt
                             .query_map(params![], |row| {
-                                let user_ids: String = row.get(3)?;
+                                let user_ids: String = row.get(4)?;
                                 let users = user_ids
                                     .split(",")
                                     .map(|u| u.parse::<i64>().unwrap())
@@ -93,7 +112,8 @@ impl Worker {
                                 Ok(MangaUserUpdate {
                                     source: row.get(0)?,
                                     manga_id: row.get(1)?,
-                                    url: row.get(2)?,
+                                    manga_title: row.get(2)?,
+                                    url: row.get(3)?,
                                     users,
                                 })
                             })
@@ -101,9 +121,10 @@ impl Worker {
                             .filter_map(|m| m.ok())
                             .collect();
                     }
+
+                    let mut chapter_updates = HashMap::new();
                     {
                         let tx = conn.transaction().unwrap();
-                        let mut chapter_updates = HashMap::new();
                         for m in res {
                             let exts = exts.read().unwrap();
                             let chapters = exts.get(&m.source).unwrap().get_chapters(&m.url).unwrap();
@@ -118,19 +139,38 @@ impl Worker {
                                             ?4,
                                             ?5,
                                             ?6) ON CONFLICT DO NOTHING"#,
-                                        params![u, m.manga_id, c.no, c.title, c.url, c.uploaded],
+                                        params![u, m.manga_id, c.no.clone(), c.title, c.url, c.uploaded],
                                     ).unwrap();
                                     let last_id = tx.last_insert_rowid();
                                     if last_id > 0 {
-                                        let val: &mut Vec<i64> = chapter_updates.entry(u).or_insert(vec![]).as_mut();
-                                        if !val.contains(&last_id) {
-                                            val.push(last_id);
+                                        let user_val: &mut HashMap<String, Vec<Chapter>> = chapter_updates.entry(u).or_insert(HashMap::new());
+                                        let manga_val: &mut Vec<Chapter> = user_val.entry(m.manga_title.clone()).or_insert(vec![]);
+                                        if manga_val.iter().find(|u| u.id == last_id).is_none() {
+                                            manga_val.push(Chapter{id: last_id, number: c.no.clone()});
                                         }
                                     }
                                 }
                             }
                         }
                         tx.commit().unwrap();
+                    }
+                    {
+                        if let Some(tx) = bot_pub {
+                            for (user_id, manga_map) in chapter_updates {
+                                if let Ok(telegram_chat_id) = conn.query_row(r#"SELECT telegram_chat_id FROM "user" WHERE id = ?1"#, params![user_id], |row| row.get::<_, i64>(0)) {
+                                    for (title, chapters) in manga_map {
+                                        let mut text = format!("<b>{}</b>\n", title);
+                                        for ch in chapters.clone() {
+                                            text += format!("<a href=\"{}/chapter/{}/page/1\">Chapter {}</a>\n", base_url.clone(), ch.id, ch.number).as_str();
+                                        }
+                                        if let Err(e) = tx.send((tbot::types::chat::Id(telegram_chat_id), text, TextType::HTML)) {
+                                            error!("error send update: {}", e);
+                                        }
+                                    }
+
+                                }
+                            }
+                        }
                     }
                 }
                 Err(e) => error!("error update chapter: {}", e),
