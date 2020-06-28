@@ -58,7 +58,7 @@ base_url: http://192.168.1.100:3030
 # Port for tanoshi to server, default to 80
 port: 3030
 # URL to database
-database_url: postgres://username:password@127.0.0.1:5432/tanoshi
+database_path: /path/to/database
 # JWT secret, any random value, changing this will render any active token invalid
 secret: secret
 # Cache time to live, period in days for cache purge
