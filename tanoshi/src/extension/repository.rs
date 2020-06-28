@@ -261,15 +261,19 @@ impl Repository {
         let db = self.connect_db();
         let mut stmt = db.prepare(
             r#"SELECT
-            chapter.id,
-            chapter.manga_id,
-            chapter.number AS no, COALESCE(chapter.title, '') AS title, chapter.path AS url,
-            COALESCE(history.last_page, 0) AS read,
-            chapter.uploaded AS uploaded
+                chapter.id,
+                chapter.manga_id,
+                chapter.number AS no, COALESCE(chapter.title, '') AS title, chapter.path AS url,
+                COALESCE(history.last_page, 0) AS read,
+                chapter.uploaded AS uploaded
             FROM chapter
-            LEFT JOIN history ON chapter.id = history.chapter_id
-            AND history.user_id = (SELECT id FROM "user" WHERE username = ?1)
-            WHERE chapter.manga_id = ?2
+            LEFT JOIN 
+                history ON 
+                    chapter.id = history.chapter_id AND 
+                    history.user_id = (SELECT id FROM "user" WHERE username = ?1)
+            WHERE 
+                chapter.user_id = (SELECT id FROM "user" WHERE username = ?1) AND
+                chapter.manga_id = ?2
             ORDER BY CAST((CASE
                 WHEN chapter.number = '' IS TRUE THEN '0'
                 ELSE chapter.number
@@ -371,6 +375,7 @@ impl Repository {
 
     pub fn insert_chapters(
         &self,
+        username: String,
         manga_id: i32,
         chapters: Vec<Chapter>,
     ) -> Result<(), rusqlite::Error> {
@@ -378,14 +383,15 @@ impl Repository {
         let tx = db.transaction()?;
         for c in chapters {
             tx.execute(
-                "INSERT INTO chapter(manga_id, number, title, path, uploaded)
+                r#"INSERT INTO chapter(user_id, manga_id, number, title, path, uploaded)
                     VALUES(
-                    ?1,
+                    (SELECT id FROM "user" WHERE username = ?1),
                     ?2,
                     ?3,
                     ?4,
-                    ?5) ON CONFLICT DO NOTHING",
-                params![manga_id, c.no, c.title, c.url, c.uploaded],
+                    ?5,
+                    ?6) ON CONFLICT DO NOTHING"#,
+                params![username, manga_id, c.no, c.title, c.url, c.uploaded],
             )?;
         }
         tx.commit()?;

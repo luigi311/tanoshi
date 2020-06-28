@@ -68,6 +68,7 @@ CREATE INDEX IF NOT EXISTS manga_title_idx ON manga (source_id, title);
 CREATE TABLE IF NOT EXISTS chapter
 (
     id       INTEGER PRIMARY KEY,
+    user_id  INTEGER,
     manga_id INTEGER,
     title    TEXT,
     number   TEXT NOT NULL,
@@ -75,7 +76,11 @@ CREATE TABLE IF NOT EXISTS chapter
     uploaded TIMESTAMP,
     created  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE (manga_id, path),
+    UNIQUE (user_id, manga_id, path),
+    FOREIGN KEY (user_id)
+        REFERENCES "user" (id)
+        ON DELETE CASCADE
+        On UPDATE NO ACTION,
     FOREIGN KEY (manga_id)
         REFERENCES manga (id)
         ON DELETE CASCADE
