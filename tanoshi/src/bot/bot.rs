@@ -1,18 +1,15 @@
-use std::sync::mpsc::{channel, Receiver, Sender};
+use std::sync::mpsc::{channel, Sender};
 use tbot::contexts::fields::Message;
-use tbot::{
-    markup::markdown_v2, prelude::*, types::chat::Id, types::parameters::Text, util::entities,
-    Bot as TBot,
-};
+use tbot::{prelude::*, types::chat::Id, types::parameters::Text, Bot as TBot};
 
 pub enum TextType {
-    #[warn(dead_code)]
+    #[allow(dead_code)]
     Plain,
-    #[warn(dead_code)]
+    #[allow(dead_code)]
     Markdown,
-    #[warn(dead_code)]
+    #[allow(dead_code)]
     MarkdownV2,
-    #[warn(dead_code)]
+    #[allow(dead_code)]
     HTML,
 }
 

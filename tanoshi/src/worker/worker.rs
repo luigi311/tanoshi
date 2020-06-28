@@ -1,15 +1,11 @@
 use crate::bot::TextType;
-use crate::extension::manga::Manga;
 use crate::extension::Extensions;
-use crate::filters::manga::manga;
 use rusqlite::{params, Connection};
-use std::collections::hash_map::Entry;
 use std::collections::HashMap;
-use std::future::Future;
 use std::sync::{mpsc::Sender, Arc, RwLock};
 use std::time::Duration;
 use tanoshi_lib::extensions::Extension;
-use tbot::types::{chat::Id, parameters::Text};
+use tbot::types::chat::Id;
 use tokio::runtime::{self, Runtime};
 use tokio::time::delay_for;
 
