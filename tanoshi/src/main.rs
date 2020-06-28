@@ -29,6 +29,7 @@ struct Asset;
 
 #[derive(serde::Deserialize)]
 struct Config {
+    pub base_url: Option<String>,
     pub port: Option<String>,
     pub database_path: String,
     pub secret: String,
@@ -100,7 +101,6 @@ async fn main() -> Result<()> {
             .unwrap_or_default()
             .to_string()
             .replace("lib", "");
-        info!("{}", name.clone());
         info!("load plugin from {:?}", path.clone());
         let config = plugin_config.get(&name);
         let mut exts = extensions.write().unwrap();
@@ -112,21 +112,22 @@ async fn main() -> Result<()> {
         }
     }
 
-    let update_worker = worker::Worker::new();
-    update_worker.remove_cache(config.cache_ttl);
-    update_worker.check_update(
-        config.update_interval,
-        config.database_path.clone(),
-        extensions.clone(),
-        config.telegram_token.clone(),
-    );
-
     let bot = match config.telegram_token.clone() {
         Some(token) => Some(bot::Bot::new(token)),
         None => None,
     };
 
-    if let Some(bot) = bot {
+    let update_worker = worker::Worker::new();
+    update_worker.remove_cache(config.cache_ttl);
+    update_worker.check_update(
+        config.update_interval,
+        config.database_path.clone(),
+        config.base_url.unwrap_or("".to_string()),
+        extensions.clone(),
+        bot.clone().map(|b| b.get_pub()),
+    );
+
+    if let Some(bot) = bot.clone() {
         bot.start();
     }
 
