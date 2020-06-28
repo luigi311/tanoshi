@@ -196,11 +196,18 @@ impl Component for Settings {
             }
             Msg::ClearCache => {
                 let _ = window()
-                    .unwrap()
+                    .expect("should get window")
                     .caches()
-                    .unwrap()
+                    .expect("should get caches")
                     .delete("tanoshi")
-                    .then(&self.closure);
+                    .then(&self.closure)
+                    .catch(&self.closure);
+
+                let _ = window()
+                    .expect("should get window")
+                    .location()
+                    .reload()
+                    .expect("should reload");
             }
             Msg::EditTelegramChatID => {
                 if !self.edit_telegram_chat_id {

@@ -47,7 +47,8 @@ features = [
   'Cache',
   'CacheStorage',
   'EventSource',
-  'MessageEvent'
+  'MessageEvent',
+  'Location'
 ]
 
 [dev-dependencies]
