@@ -35,5 +35,5 @@ jobs:
         run: ls -l $Env:GITHUB_WORKSPACE
       - name: List Target
         run: ls -l $Env:GITHUB_WORKSPACE\target
-      - name: List Release
-        run: ls -l $Env:GITHUB_WORKSPACE\target\release
+      - name: List Debug
+        run: ls -l $Env:GITHUB_WORKSPACE\target\debug
