@@ -32,7 +32,7 @@ impl Manga {
         match param.as_str() {
             "available" => {
                 let resp = ureq::get(
-                    "https://raw.githubusercontent.com/faldez/tanoshi-extensions/repo/index.json",
+                    format!("https://raw.githubusercontent.com/faldez/tanoshi-extensions/repo-{}/index.json", std::env::consts::OS).as_str(),
                 )
                 .call();
                 let sources = resp.into_json_deserialize::<Vec<Source>>().unwrap();
