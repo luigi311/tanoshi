@@ -458,7 +458,7 @@ impl Settings {
                                 <div class="flex flex-col">
                                 <input
                                     class="w-full border-b border-grey-light"
-                                    type="confirm-password"
+                                    type="password"
                                     value=self.me_confirm_password.clone().unwrap_or("".to_string()).to_owned()
                                     oninput=self.link.callback(|e| Msg::ConfirmPasswordChange(e))/>
                                 {
