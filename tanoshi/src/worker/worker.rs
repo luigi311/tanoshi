@@ -163,7 +163,6 @@ impl Worker {
                                         for ch in chapters.clone() {
                                             text += format!("<a href=\"{}/chapter/{}\">Chapter {}</a>\n", base_url.clone(), ch.id, ch.number).as_str();
                                         }
-                                        info!("{}", text.clone());
                                         if let Err(e) = tx.send((tbot::types::chat::Id(telegram_chat_id), text, TextType::HTML)) {
                                             error!("error send update: {}", e);
                                         }
