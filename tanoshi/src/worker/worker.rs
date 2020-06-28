@@ -66,6 +66,7 @@ impl Worker {
         interval: u64,
         database_path: String,
         exts: Arc<RwLock<Extensions>>,
+        telegram_token: Option<String>,
     ) {
         if interval == 0 {
             return;
