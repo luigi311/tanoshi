@@ -12,6 +12,8 @@ Selfhosted Tachiyomi-like web manga reader.
 - Read in single page, double page, or long strip
 - Read from right to left or left to right
 - Web reader is PWA and optimized for standalone mode on mobile
+- Periodically check for updates and send notification via telegram
+- Multi-user with admin and reader role
 
 ### Planned
 My plan is to make this as close as tachiyomi features. Planned features are listed [here](https://github.com/faldez/tanoshi/issues?q=is%3Aopen+is%3Aissue+label%3Aenhancement)
@@ -21,7 +23,7 @@ Rust is the most loved programming language, I thought this is my chance to lear
 
 ## Installation
 ### Prebuilt Binary
-Download and run binary from latest release, aside from plugins all dependencies are statically linked. It should run find on any linux x64 machine.
+Download and run binary from latest release, aside from plugins all dependencies are statically linked.
 
 ### Plugins
 To browse and read manga, tanoshi needs plugins. Plugins can be donwnloaded from [here](https://github.com/fadhlika/tanoshi-extensions) in `repo` branch. 
@@ -30,7 +32,7 @@ You can download individual plugins and store in on your selected `plugins_path`
 Or you can install from web and restart tanoshi afterward.
 
 ### Account
-Tanoshi will create default account with username: admin and password admin. You can change the password or create new account.
+Tanoshi will create default account with username: `admin` and password: `admin`. You can change the password or create new account after login.
 
 ## Usage
 ### CLI
@@ -51,6 +53,8 @@ OPTIONS:
 ### Config
 Tanoshi default to look configuration in `~/.config/tanoshi/config.yml`. Below is example configuration
 ```
+# When receiveing updates via telegram, link to chapter is provided with base url specified below
+base_url: http://192.168.1.100:3030
 # Port for tanoshi to server, default to 80
 port: 3030
 # URL to database
@@ -59,6 +63,10 @@ database_url: postgres://username:password@127.0.0.1:5432/tanoshi
 secret: secret
 # Cache time to live, period in days for cache purge
 cache_ttl: 1
+# Period in hour to check manga updates
+update_interval: 1
+# If you want tanoshi to send you telegram message on update, put telegram bot token here
+telegram_token: store_your_telegram_token_here
 # Where plugin is stored
 plugin_path: ~/.tanoshi/plugins
 #This section is for plugin configuration

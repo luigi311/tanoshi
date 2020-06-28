@@ -31,9 +31,3 @@ jobs:
         run: cd $Env:GITHUB_WORKSPACE\tanoshi-web && yarn install && cargo install wasm-bindgen-cli wasm-pack && yarn build
       - name: Build Backend
         run: cd $Env:GITHUB_WORKSPACE && cargo build
-      - name: List
-        run: ls -l $Env:GITHUB_WORKSPACE
-      - name: List Target
-        run: ls -l $Env:GITHUB_WORKSPACE\target
-      - name: List Debug
-        run: ls -l $Env:GITHUB_WORKSPACE\target\debug
