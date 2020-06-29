@@ -4,7 +4,8 @@ var filesToCache = [
     './',
     './index.html',
     './tanoshi-web.js',
-    './tanoshi-web.wasm'
+    './tanoshi-web.wasm',
+    './animate.css'
 ];
 
 

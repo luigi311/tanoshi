@@ -30,11 +30,11 @@ struct Asset;
 #[derive(serde::Deserialize)]
 struct Config {
     pub base_url: Option<String>,
-    pub port: Option<String>,
+    pub port: Option<u16>,
     pub database_path: String,
     pub secret: String,
-    pub cache_ttl: u64,
-    pub update_interval: u64,
+    pub cache_ttl: Option<u64>,
+    pub update_interval: Option<u64>,
     pub telegram_token: Option<String>,
     pub plugin_path: Option<String>,
     pub plugin_config: Option<BTreeMap<String, serde_yaml::Value>>,
@@ -55,19 +55,29 @@ async fn main() -> Result<()> {
 
     let config: Config = serde_yaml::from_slice(&std::fs::read(opts.config)?)?;
 
-    if !std::path::Path::new(&config.database_path.clone()).exists() {
+    {
         let query = include_str!("../migration/tanoshi.sql");
         let conn = rusqlite::Connection::open(config.database_path.clone())?;
-        conn.execute_batch(query)?;
 
-        let auth = auth::auth::Auth::new(config.database_path.clone());
-        auth.register(auth::User {
-            username: "admin".to_string(),
-            password: Some("admin".to_string()),
-            role: "ADMIN".to_string(),
-            telegram_chat_id: None,
-        })
-        .await;
+        if !std::path::Path::new(&config.database_path.clone()).exists() {
+            conn.execute_batch(query)?;
+
+            let auth = auth::auth::Auth::new(config.database_path.clone());
+            auth.register(auth::User {
+                username: "admin".to_string(),
+                password: Some("admin".to_string()),
+                role: "ADMIN".to_string(),
+                telegram_chat_id: None,
+            })
+            .await;
+        } else {
+            let user_version = conn
+                .pragma_query_value(Some(rusqlite::DatabaseName::Main), "user_version", |row| {
+                    row.get(0)
+                })
+                .unwrap_or(0);
+            info!("Schema version {}", user_version);
+        }
     }
 
     let secret = config.secret;
@@ -119,9 +129,9 @@ async fn main() -> Result<()> {
     };
 
     let update_worker = worker::Worker::new();
-    update_worker.remove_cache(config.cache_ttl);
+    update_worker.remove_cache(config.cache_ttl.unwrap_or(0));
     update_worker.check_update(
-        config.update_interval,
+        config.update_interval.unwrap_or(0),
         config.database_path.clone(),
         config.base_url.unwrap_or("".to_string()),
         extensions.clone(),
@@ -161,10 +171,8 @@ async fn main() -> Result<()> {
 
     let routes = api.or(static_files).with(warp::log("manga"));
 
-    let port = config.port.unwrap_or("80".to_string());
-    warp::serve(routes)
-        .run(std::net::SocketAddrV4::from_str(format!("0.0.0.0:{}", port).as_str()).unwrap())
-        .await;
+    let port = config.port.unwrap_or(80);
+    warp::serve(routes).run(([0, 0, 0, 0], port)).await;
 
     return Ok(());
 }
