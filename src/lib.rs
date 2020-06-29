@@ -97,7 +97,7 @@ pub mod manga {
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct Params {
         pub keyword: Option<String>,
-        pub genres: Option<String>,
+        pub genres: Option<Vec<String>>,
         pub page: Option<String>,
         pub sort_by: Option<SortByParam>,
         pub sort_order: Option<SortOrderParam>,
