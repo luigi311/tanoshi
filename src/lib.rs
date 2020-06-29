@@ -37,7 +37,7 @@ pub mod manga {
         pub id: i32,
         pub title: String,
         pub author: String,
-        //pub genre: Vec<String>,
+        pub genre: Vec<String>,
         pub status: String,
         pub description: String,
         pub path: String,
