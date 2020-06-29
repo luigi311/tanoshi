@@ -18,6 +18,8 @@ Selfhosted Tachiyomi-like web manga reader.
 ### Planned
 My plan is to make this as close as tachiyomi features. Planned features are listed [here](https://github.com/faldez/tanoshi/issues?q=is%3Aopen+is%3Aissue+label%3Aenhancement)
 
+Note that this project is still under heavy development, expect a lot of breaking changes every 0.x release until hitting 1.0. 
+
 ## Why Rust
 Rust is the most loved programming language, I thought this is my chance to learn rust too.
 
