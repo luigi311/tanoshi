@@ -2,7 +2,7 @@ use crate::filters::with_authorization;
 use crate::handlers::history as history_handler;
 use crate::history::{History, HistoryParam};
 
-use tanoshi_lib::manga::HistoryRequest;
+use tanoshi_lib::rest::HistoryRequest;
 use warp::Filter;
 
 pub fn history(

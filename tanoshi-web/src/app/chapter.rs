@@ -14,10 +14,8 @@ use crate::app::{browse::BrowseRoute, job, AppRoute};
 use super::component::model::{BackgroundColor, PageRendering, ReadingDirection, SettingParams};
 use super::component::Spinner;
 
-use tanoshi_lib::manga::{
-    Chapter as ChapterModel, GetChaptersResponse, GetMangaResponse, GetPagesResponse,
-    HistoryRequest, Manga as MangaModel,
-};
+use tanoshi_lib::manga::{Chapter as ChapterModel, Manga as MangaModel};
+use tanoshi_lib::rest::{GetChaptersResponse, GetMangaResponse, GetPagesResponse, HistoryRequest};
 
 #[derive(Clone, Properties)]
 pub struct Props {

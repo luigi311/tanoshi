@@ -1,13 +1,15 @@
+use std::{collections::HashMap, ffi::OsStr, sync::Arc};
+
+//use local::Local;
+use lib::Library;
+use tanoshi_lib::extensions::{Extension, PluginDeclaration};
+use tanoshi_lib::manga::{Chapter, Image, Manga, Params, Source, SourceLogin, SourceLoginResult};
+
+use anyhow::{anyhow, Result};
+
 //pub mod local;
 pub mod manga;
 pub mod repository;
-
-use anyhow::{anyhow, Result};
-//use local::Local;
-use lib::Library;
-use std::{collections::HashMap, ffi::OsStr, sync::Arc};
-use tanoshi_lib::extensions::{Extension, PluginDeclaration};
-use tanoshi_lib::manga::{Chapter, Image, Manga, Params, Source, SourceLogin, SourceLoginResult};
 
 pub struct ExtensionProxy {
     extension: Box<dyn Extension>,
@@ -79,7 +81,10 @@ impl Extensions {
         if decl.rustc_version != tanoshi_lib::RUSTC_VERSION
             || decl.core_version != tanoshi_lib::CORE_VERSION
         {
-            return Err(anyhow!("Version mismatch"));
+            return Err(anyhow!(
+                format!("Version mismatch: extension.rustc_version={}, extension.core_version={}, tanoshi_lib.rustc_version={}, tanoshi_lib::core_version={}", 
+                decl.rustc_version , decl.core_version, tanoshi_lib::RUSTC_VERSION, tanoshi_lib::CORE_VERSION)
+            ));
         }
 
         let mut registrar = PluginRegistrar::new(Arc::clone(&library));

@@ -10,9 +10,9 @@ use yew_router::components::RouterAnchor;
 use yew_router::service::RouteService;
 
 use super::component::Spinner;
-use tanoshi_lib::manga::{
-    History as HistoryModel, HistoryResponse, Update as UpdateModel, UpdatesResponse,
-};
+use tanoshi_lib::manga::{History as HistoryModel, Update as UpdateModel};
+use tanoshi_lib::rest::{HistoryResponse, UpdatesResponse};
+
 use yew::utils::{document, window};
 
 use wasm_bindgen::prelude::*;

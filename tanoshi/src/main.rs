@@ -4,12 +4,11 @@ extern crate pretty_env_logger;
 #[macro_use]
 extern crate log;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use clap::Clap;
 use rust_embed::RustEmbed;
 
 use std::collections::BTreeMap;
-use std::str::FromStr;
 use std::sync::{Arc, RwLock};
 use warp::{http::header::HeaderValue, path::Tail, reply::Response, Filter, Rejection, Reply};
 
@@ -53,11 +52,31 @@ async fn main() -> Result<()> {
 
     let opts: Opts = Opts::parse();
 
-    let config: Config = serde_yaml::from_slice(&std::fs::read(opts.config)?)?;
+    let slice = match std::fs::read(opts.config) {
+        Ok(slice) => slice,
+        Err(e) => {
+            error!("failed load config file: {}", e);
+            return Err(anyhow!("failed load config file"));
+        }
+    };
+
+    let config: Config = match serde_yaml::from_slice(&slice) {
+        Ok(config) => config,
+        Err(e) => {
+            error!("failed parse config file: {}", e);
+            return Err(anyhow!("failed parse config file"));
+        }
+    };
 
     {
         let query = include_str!("../migration/tanoshi.sql");
-        let conn = rusqlite::Connection::open(config.database_path.clone())?;
+        let conn = match rusqlite::Connection::open(config.database_path.clone()) {
+            Ok(conn) => conn,
+            Err(e) => {
+                error!("failed open database file: {}", e);
+                return Err(anyhow!("failed open database file"));
+            }
+        };
 
         if !std::path::Path::new(&config.database_path.clone()).exists() {
             conn.execute_batch(query)?;

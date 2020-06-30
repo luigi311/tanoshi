@@ -6,7 +6,8 @@ use yew::services::{FetchService, StorageService};
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 
 use super::component::{Manga, Spinner};
-use tanoshi_lib::manga::{FavoriteManga, GetFavoritesResponse};
+use tanoshi_lib::manga::FavoriteManga;
+use tanoshi_lib::rest::GetFavoritesResponse;
 
 #[derive(Deserialize, Debug)]
 pub struct MangaModel {

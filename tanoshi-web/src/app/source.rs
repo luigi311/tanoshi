@@ -5,9 +5,8 @@ use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 
 use yew::utils::{document, window};
 
-use tanoshi_lib::manga::{
-    GetMangasResponse, Manga as MangaModel, Params, SortByParam, SortOrderParam, SourceLogin,
-};
+use tanoshi_lib::manga::{Manga as MangaModel, Params, SortByParam, SortOrderParam, SourceLogin};
+use tanoshi_lib::rest::GetMangasResponse;
 
 use crate::app::job;
 
@@ -305,6 +304,7 @@ impl Source {
                 sort_by: Some(SortByParam::Views),
                 sort_order: Some(SortOrderParam::Desc),
                 page: Some(self.page.to_string()),
+                genres: None,
             },
         ));
         self.is_fetching = true;

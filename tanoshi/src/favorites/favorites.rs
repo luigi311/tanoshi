@@ -1,6 +1,7 @@
 use rusqlite::{params, Connection};
 
-use tanoshi_lib::manga::{AddFavoritesResponse, FavoriteManga, GetFavoritesResponse};
+use tanoshi_lib::manga::FavoriteManga;
+use tanoshi_lib::rest::{AddFavoritesResponse, GetFavoritesResponse};
 
 #[derive(Clone)]
 pub struct Favorites {

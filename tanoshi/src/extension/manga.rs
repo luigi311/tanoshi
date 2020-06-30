@@ -2,7 +2,8 @@ use serde_json::json;
 
 use std::sync::{Arc, RwLock};
 use tanoshi_lib::extensions::Extension;
-use tanoshi_lib::manga::{GetPagesResponse, GetParams, Params, Source, SourceLogin};
+use tanoshi_lib::manga::{GetParams, Params, Source, SourceLogin};
+use tanoshi_lib::rest::GetPagesResponse;
 use warp::Rejection;
 
 use std::io::Read;

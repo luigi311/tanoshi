@@ -1,9 +1,9 @@
 use rusqlite::types::Value;
 use rusqlite::vtab::array;
 use rusqlite::{params, Connection, Row};
-use tanoshi_lib::manga::{
-    Chapter, GetChaptersResponse, GetMangaResponse, GetMangasResponse, GetPagesResponse, Image,
-    Manga, Source,
+use tanoshi_lib::manga::{Chapter, Image, Manga, Source};
+use tanoshi_lib::rest::{
+    GetChaptersResponse, GetMangaResponse, GetMangasResponse, GetPagesResponse,
 };
 
 use std::rc::Rc;
@@ -197,12 +197,16 @@ impl Repository {
                     last_read: None,
                     last_page: None,
                     is_favorite: row.get(7)?,
+                    genre: vec![],
                 })
             })?
             .filter_map(|m| m.ok())
             .collect();
 
-        Ok(GetMangasResponse { mangas })
+        Ok(GetMangasResponse {
+            mangas,
+            status: "OK".to_string(),
+        })
     }
 
     pub fn get_manga_detail(
@@ -248,9 +252,13 @@ impl Repository {
                 last_read: row.get(7)?,
                 last_page: row.get(8)?,
                 is_favorite: row.get(9)?,
+                genre: vec![]
             }))?;
 
-        Ok(GetMangaResponse { manga })
+        Ok(GetMangaResponse {
+            manga,
+            status: "OK".to_string(),
+        })
     }
 
     pub fn get_chapters(
@@ -294,7 +302,10 @@ impl Repository {
             .filter_map(|c| c.ok())
             .collect::<Vec<Chapter>>();
         if !chapters.is_empty() {
-            Ok(GetChaptersResponse { chapters })
+            Ok(GetChaptersResponse {
+                chapters,
+                status: "OK".to_string(),
+            })
         } else {
             Err(rusqlite::Error::QueryReturnedNoRows)
         }
@@ -324,7 +335,11 @@ impl Repository {
             .collect();
 
         if !pages.is_empty() {
-            Ok(GetPagesResponse { manga_id, pages })
+            Ok(GetPagesResponse {
+                manga_id,
+                pages,
+                status: "OK".to_string(),
+            })
         } else {
             Err(rusqlite::Error::QueryReturnedNoRows)
         }
