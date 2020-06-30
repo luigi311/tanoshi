@@ -3,3 +3,4 @@ members = [
     "tanoshi",
     "tanoshi-web"
 ]
+default-members = ["tanoshi"]

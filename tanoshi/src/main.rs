@@ -4,16 +4,9 @@ extern crate pretty_env_logger;
 #[macro_use]
 extern crate log;
 
-use anyhow::{anyhow, Result};
-use clap::Clap;
-use rust_embed::RustEmbed;
-
-use std::collections::BTreeMap;
-use std::sync::{Arc, RwLock};
-use warp::{http::header::HeaderValue, path::Tail, reply::Response, Filter, Rejection, Reply};
-
 mod auth;
 mod bot;
+mod config;
 mod extension;
 mod favorites;
 mod filters;
@@ -22,28 +15,24 @@ mod history;
 mod update;
 mod worker;
 
+use anyhow::{anyhow, Result};
+use clap::Clap;
+use rust_embed::RustEmbed;
+
+use std::sync::{Arc, RwLock};
+use warp::{http::header::HeaderValue, path::Tail, reply::Response, Filter, Rejection, Reply};
+
+use config::Config;
+
 #[derive(RustEmbed)]
 #[folder = "../tanoshi-web/dist/"]
 struct Asset;
 
-#[derive(serde::Deserialize)]
-struct Config {
-    pub base_url: Option<String>,
-    pub port: Option<u16>,
-    pub database_path: String,
-    pub secret: String,
-    pub cache_ttl: Option<u64>,
-    pub update_interval: Option<u64>,
-    pub telegram_token: Option<String>,
-    pub plugin_path: Option<String>,
-    pub plugin_config: Option<BTreeMap<String, serde_yaml::Value>>,
-}
-
 #[derive(Clap)]
 struct Opts {
     /// Path to config file
-    #[clap(long, default_value = "~/.config/tanoshi/config.yml")]
-    config: String,
+    #[clap(long)]
+    config: Option<String>,
 }
 
 #[tokio::main]
@@ -52,34 +41,49 @@ async fn main() -> Result<()> {
 
     let opts: Opts = Opts::parse();
 
-    let slice = match std::fs::read(opts.config) {
-        Ok(slice) => slice,
-        Err(e) => {
-            error!("failed load config file: {}", e);
-            return Err(anyhow!("failed load config file"));
+    let slice = match opts.config {
+        Some(path) => {
+            info!("Load config from {}", path.clone());
+            match std::fs::read(path) {
+                Ok(slice) => Some(slice),
+                Err(_e) => None,
+            }
         }
+        None => None,
     };
 
-    let config: Config = match serde_yaml::from_slice(&slice) {
-        Ok(config) => config,
-        Err(e) => {
-            error!("failed parse config file: {}", e);
-            return Err(anyhow!("failed parse config file"));
-        }
+    let config: Config = match slice {
+        Some(s) => match serde_yaml::from_slice(&s) {
+            Ok(config) => config,
+            Err(_e) => Config::default(),
+        },
+        None => Config::default(),
     };
+
+    info!("Tanoshi start with {:?}", config);
 
     {
         let query = include_str!("../migration/tanoshi.sql");
         let conn = match rusqlite::Connection::open(config.database_path.clone()) {
             Ok(conn) => conn,
             Err(e) => {
-                error!("failed open database file: {}", e);
-                return Err(anyhow!("failed open database file"));
+                return Err(anyhow!("failed open database file: {}", e));
             }
         };
 
-        if !std::path::Path::new(&config.database_path.clone()).exists() {
-            conn.execute_batch(query)?;
+        let user_version: i32 = conn
+            .pragma_query_value(Some(rusqlite::DatabaseName::Main), "user_version", |row| {
+                row.get(0)
+            })
+            .unwrap_or(0);
+        info!("Schema version {}", user_version);
+
+        if user_version < 1 {
+            info!("Schema version mismatch, migrating...");
+
+            if let Err(e) = conn.execute_batch(query) {
+                return Err(anyhow!("failed: {}", e));
+            }
 
             let auth = auth::auth::Auth::new(config.database_path.clone());
             auth.register(auth::User {
@@ -89,24 +93,24 @@ async fn main() -> Result<()> {
                 telegram_chat_id: None,
             })
             .await;
-        } else {
-            let user_version = conn
-                .pragma_query_value(Some(rusqlite::DatabaseName::Main), "user_version", |row| {
-                    row.get(0)
-                })
-                .unwrap_or(0);
-            info!("Schema version {}", user_version);
+
+            if let Err(e) =
+                conn.pragma_update(Some(rusqlite::DatabaseName::Main), "user_version", &1)
+            {
+                return Err(anyhow!("error set PRAGMA user_version: {}", e));
+            }
         }
     }
 
     let secret = config.secret;
-    let plugin_config = config.plugin_config.unwrap_or(BTreeMap::new());
-    let plugin_path = config
-        .plugin_path
-        .clone()
-        .unwrap_or("~/.tanoshi/plugins".to_string());
+    let plugin_config = config.plugin_config;
+    let plugin_path = config.plugin_path.clone();
+
+    info!("Plugins directory: {}", &plugin_path);
+
     let extensions = Arc::new(RwLock::new(extension::Extensions::new()));
-    for entry in std::fs::read_dir(plugin_path.clone())?
+
+    for entry in std::fs::read_dir(&plugin_path)?
         .into_iter()
         .filter(move |path| {
             if let Ok(p) = path {
@@ -132,10 +136,9 @@ async fn main() -> Result<()> {
             .to_string()
             .replace("lib", "");
         info!("load plugin from {:?}", path.clone());
-        let config = plugin_config.get(&name);
         let mut exts = extensions.write().unwrap();
         unsafe {
-            match exts.load(path, config) {
+            match exts.load(path, plugin_config.get(&name)) {
                 Ok(_) => {}
                 Err(e) => error!("not a valid extensions {}", e),
             }
@@ -148,9 +151,9 @@ async fn main() -> Result<()> {
     };
 
     let update_worker = worker::Worker::new();
-    update_worker.remove_cache(config.cache_ttl.unwrap_or(0));
+    update_worker.remove_cache(config.cache_ttl);
     update_worker.check_update(
-        config.update_interval.unwrap_or(0),
+        config.update_interval,
         config.database_path.clone(),
         config.base_url.unwrap_or("".to_string()),
         extensions.clone(),
@@ -195,8 +198,7 @@ async fn main() -> Result<()> {
 
     let routes = api.or(static_files).with(warp::log("manga"));
 
-    let port = config.port.unwrap_or(80);
-    warp::serve(routes).run(([0, 0, 0, 0], port)).await;
+    warp::serve(routes).run(([0, 0, 0, 0], config.port)).await;
 
     return Ok(());
 }

@@ -84,10 +84,14 @@ impl Repository {
             WHERE page.id = ?1"#,
             params![page_id],
             |row| {
+                let mut path = row.get::<_, String>(2)?;
+                if cfg!(target_os = "windows") {
+                    path = path.replace("/", "\\");
+                }
                 Ok(Image {
                     source_id: row.get(0)?,
                     source_name: row.get(1)?,
-                    path: row.get(2)?,
+                    path,
                     file_name: row.get(3)?,
                     url: row.get(4)?,
                 })

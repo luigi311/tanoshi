@@ -64,8 +64,8 @@ impl Worker {
         }
 
         self.start_interval(interval * 84600, move || {
-            if let Some(cache_dir) = dirs::home_dir() {
-                let cache_dir = cache_dir.join(".tanoshi/cache");
+            if let Some(cache_dir) = dirs::cache_dir() {
+                let cache_dir = cache_dir.join("tanoshi");
                 match std::fs::remove_dir_all(cache_dir) {
                     Ok(_) => {}
                     Err(e) => error!("error remove cache: {}", e),
