@@ -42,7 +42,7 @@ struct Config {
 #[derive(Clap)]
 struct Opts {
     /// Path to config file
-    #[clap(long, default_value = "~/config/tanoshi/config.yml")]
+    #[clap(long, default_value = "~/.config/tanoshi/config.yml")]
     config: String,
 }
 
