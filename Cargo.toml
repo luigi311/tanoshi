@@ -16,9 +16,6 @@ extensions = ["model"]
 
 [dependencies]
 serde = {version = "1.0", features = ["derive"]}
-serde_json = "1.0"
-serde_urlencoded = "0.6"
-serde_derive = "1.0"
 anyhow = "*"
 chrono = { version = "0.4", features = ["serde"] }
 ureq = "1"
