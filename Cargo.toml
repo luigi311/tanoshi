@@ -20,7 +20,7 @@ extensions = ["model"]
 
 [dependencies]
 serde = {version = "1.0", features = ["derive"]}
-anyhow = "*"
+anyhow = "1"
 chrono = { version = "0.4", features = ["serde"] }
 ureq = "1"
 serde_yaml = "0.8"
