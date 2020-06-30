@@ -1,13 +1,17 @@
+#![crate_name = "tanoshi-lib"]
+
+/// This is used to ensure both application and extension use the same version
 pub static CORE_VERSION: &str = env!("CARGO_PKG_VERSION");
+/// Rust doesn't have stable ABI, this is used to ensure `rustc` version is match
 pub static RUSTC_VERSION: &str = env!("RUSTC_VERSION");
 
+/// This module contains model used in extensions and rest api
 #[cfg(feature = "model")]
 pub mod manga {
     use chrono::Local;
-    use human_sort::compare;
     use serde::{Deserialize, Serialize};
-    use std::cmp::Ordering;
 
+    /// Model to login to source that require login, like mangadex to search
     #[derive(Debug, Deserialize, Serialize, Clone, Default)]
     pub struct SourceLogin {
         pub username: String,
@@ -16,6 +20,7 @@ pub mod manga {
         pub two_factor: Option<String>,
     }
 
+    /// Result of source login
     #[derive(Debug, Deserialize, Serialize, Clone, Default)]
     pub struct SourceLoginResult {
         pub source_id: i32,
@@ -24,6 +29,7 @@ pub mod manga {
         pub value: String,
     }
 
+    /// A type represent source
     #[derive(Debug, Deserialize, Serialize, Clone, Default)]
     pub struct Source {
         pub id: i32,
@@ -32,6 +38,7 @@ pub mod manga {
         pub version: String,
     }
 
+    /// A type represent manga details, normalized across source
     #[derive(Debug, Deserialize, Serialize, Clone, Default)]
     pub struct Manga {
         pub id: i32,
@@ -49,7 +56,8 @@ pub mod manga {
         pub is_favorite: bool,
     }
 
-    #[derive(Debug, Deserialize, Serialize, Clone, Eq, PartialEq, Ord)]
+    /// A type represent chapter, normalized across source
+    #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct Chapter {
         pub id: i32,
         pub manga_id: i32,
@@ -74,66 +82,7 @@ pub mod manga {
         }
     }
 
-    impl PartialOrd for Chapter {
-        fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-            Some(compare(&self.no, &other.no))
-        }
-    }
-
-    #[derive(Debug, Deserialize, Serialize, Clone)]
-    pub enum SortByParam {
-        LastUpdated,
-        Title,
-        Comment,
-        Views,
-    }
-
-    #[derive(Debug, Deserialize, Serialize, Clone)]
-    pub enum SortOrderParam {
-        Asc,
-        Desc,
-    }
-
-    #[derive(Debug, Deserialize, Serialize, Clone)]
-    pub struct Params {
-        pub keyword: Option<String>,
-        pub genres: Option<Vec<String>>,
-        pub page: Option<String>,
-        pub sort_by: Option<SortByParam>,
-        pub sort_order: Option<SortOrderParam>,
-    }
-
-    #[derive(Debug, Deserialize, Serialize, Clone)]
-    pub struct GetParams {
-        pub refresh: Option<bool>,
-    }
-
-    #[derive(Debug, Deserialize, Serialize, Clone)]
-    pub struct GetSourceResponse {
-        pub sources: Vec<Source>,
-        pub status: String,
-    }
-
-    #[derive(Debug, Deserialize, Serialize, Clone)]
-    pub struct GetMangasResponse {
-        pub mangas: Vec<Manga>,
-    }
-
-    #[derive(Debug, Deserialize, Serialize, Clone)]
-    pub struct GetMangaResponse {
-        pub manga: Manga,
-    }
-
-    #[derive(Debug, Deserialize, Serialize, Clone)]
-    pub struct GetChaptersResponse {
-        pub chapters: Vec<Chapter>,
-    }
-
-    #[derive(Debug, Deserialize, Serialize, Clone)]
-    pub struct GetPagesResponse {
-        pub manga_id: i32,
-        pub pages: Vec<String>,
-    }
+    /// A type represent a page
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct Image {
         pub source_id: i32,
@@ -143,19 +92,39 @@ pub mod manga {
         pub url: String,
     }
 
-    #[derive(Debug, Clone, Deserialize, Serialize)]
-    pub struct HistoryRequest {
-        pub chapter_id: i32,
-        pub read: i32,
-        pub at: chrono::NaiveDateTime,
+    /// A type represent sort parameter for query manga from source, normalized across source
+    #[derive(Debug, Deserialize, Serialize, Clone)]
+    pub enum SortByParam {
+        LastUpdated,
+        Title,
+        Comment,
+        Views,
     }
 
-    #[derive(Debug, Clone, Deserialize, Serialize)]
-    pub struct HistoryResponse {
-        pub history: Vec<History>,
-        pub status: String,
+    /// A type represent order parameter for query manga from source, normalized across source
+    #[derive(Debug, Deserialize, Serialize, Clone)]
+    pub enum SortOrderParam {
+        Asc,
+        Desc,
     }
 
+    /// A type represent parameter for query manga from source, normalized across source
+    #[derive(Debug, Deserialize, Serialize, Clone)]
+    pub struct Params {
+        pub keyword: Option<String>,
+        pub genres: Option<Vec<String>>,
+        pub page: Option<String>,
+        pub sort_by: Option<SortByParam>,
+        pub sort_order: Option<SortOrderParam>,
+    }
+
+    /// A type represent parameter for query manga from source, normalized across source
+    #[derive(Debug, Deserialize, Serialize, Clone)]
+    pub struct GetParams {
+        pub refresh: Option<bool>,
+    }
+
+    /// A type represent history
     #[derive(Debug, Clone, Deserialize, Serialize)]
     pub struct History {
         pub manga_id: i32,
@@ -172,6 +141,8 @@ pub mod manga {
         pub show_sep: Option<bool>,
     }
 
+
+    /// A type represent chapter updates
     #[derive(Debug, Clone, Deserialize, Serialize)]
     pub struct Update {
         pub manga_id: i32,
@@ -199,23 +170,7 @@ pub mod manga {
         }
     }
 
-    #[derive(Debug, Clone, Deserialize, Serialize)]
-    pub struct UpdatesResponse {
-        pub updates: Vec<Update>,
-        pub status: String,
-    }
-
-    #[derive(Debug, Serialize, Deserialize, Clone)]
-    pub struct GetFavoritesResponse {
-        pub favorites: Option<Vec<FavoriteManga>>,
-        pub status: String,
-    }
-
-    #[derive(Debug, Serialize, Deserialize, Clone)]
-    pub struct AddFavoritesResponse {
-        pub status: String,
-    }
-
+    /// A type represent favorite manga
     #[derive(Debug, Serialize, Deserialize, Clone, Default)]
     pub struct FavoriteManga {
         pub manga_id: i32,
@@ -225,6 +180,85 @@ pub mod manga {
     }
 }
 
+/// This module contains request and response payload for rest api
+#[cfg(feature = "rest")]
+pub mod rest {
+    use serde::{Deserialize, Serialize};
+    use crate::manga::{Chapter, Manga, Params, Source, SourceLogin, SourceLoginResult, FavoriteManga, Update, History};
+
+    /// Reponse for get sources request
+    #[derive(Debug, Deserialize, Serialize, Clone)]
+    pub struct GetSourceResponse {
+        pub sources: Vec<Source>,
+        pub status: String,
+    }
+
+    /// Response for get list of manga request
+    #[derive(Debug, Deserialize, Serialize, Clone)]
+    pub struct GetMangasResponse {
+        pub mangas: Vec<Manga>,
+        pub status: String,
+    }
+
+    /// Response for get manga detail request
+    #[derive(Debug, Deserialize, Serialize, Clone)]
+    pub struct GetMangaResponse {
+        pub manga: Manga,
+        pub status: String,
+    }
+
+    /// Response for get chapters of a manga
+    #[derive(Debug, Deserialize, Serialize, Clone)]
+    pub struct GetChaptersResponse {
+        pub chapters: Vec<Chapter>,
+        pub status: String,
+    }
+
+    /// Reponse for get pages of a chapter
+    #[derive(Debug, Deserialize, Serialize, Clone)]
+    pub struct GetPagesResponse {
+        pub manga_id: i32,
+        pub pages: Vec<String>,
+        pub status: String,
+    }
+
+    /// Parameter for history request
+    #[derive(Debug, Clone, Deserialize, Serialize)]
+    pub struct HistoryRequest {
+        pub chapter_id: i32,
+        pub read: i32,
+        pub at: chrono::NaiveDateTime,
+    }
+
+    /// Response for history request
+    #[derive(Debug, Clone, Deserialize, Serialize)]
+    pub struct HistoryResponse {
+        pub history: Vec<History>,
+        pub status: String,
+    }
+
+    /// Response for chapter updates request
+    #[derive(Debug, Clone, Deserialize, Serialize)]
+    pub struct UpdatesResponse {
+        pub updates: Vec<Update>,
+        pub status: String,
+    }
+
+    /// Response for get favorites request
+    #[derive(Debug, Serialize, Deserialize, Clone)]
+    pub struct GetFavoritesResponse {
+        pub favorites: Option<Vec<FavoriteManga>>,
+        pub status: String,
+    }
+
+    /// Response for add new favorite request
+    #[derive(Debug, Serialize, Deserialize, Clone)]
+    pub struct AddFavoritesResponse {
+        pub status: String,
+    }
+}
+
+/// This module contains `Extension` trait, and function for interacting with `Extension`
 #[cfg(feature = "extensions")]
 pub mod extensions {
     use crate::manga::{Chapter, Image, Manga, Params, Source, SourceLogin, SourceLoginResult};
@@ -232,12 +266,29 @@ pub mod extensions {
     use serde_yaml;
     use std::io::Read;
 
+    /// `Extension` trait is an implementation for building extensions
     pub trait Extension: Send + Sync {
+        /// Returns the information of the source
         fn info(&self) -> Source;
+
+        /// Returns list of manga from the source
+        ///
+        /// # Arguments
+        ///
+        /// * `url` - An url to specified page in source that can be parsed into a list of mangas
+        /// * `param` - Parameter to filter manga from source
         fn get_mangas(&self, url: &String, param: Params, auth: String) -> Result<Vec<Manga>>;
+
+        /// Returns detail of manga
         fn get_manga_info(&self, url: &String) -> Result<Manga>;
+
+        /// Returns list of chapters of a manga
         fn get_chapters(&self, url: &String) -> Result<Vec<Chapter>>;
+
+        /// Returns list of pages from a chapter of a manga
         fn get_pages(&self, url: &String) -> Result<Vec<String>>;
+
+        /// Returns an image by download to disk first then serve to web
         fn get_page(&self, image: Image) -> Result<Vec<u8>> {
             let mut cache_path = dirs::home_dir().expect("should have home dir");
             cache_path = cache_path.join(".tanoshi").join("cache").join(image.path);
@@ -265,21 +316,25 @@ pub mod extensions {
             Ok(bytes)
         }
 
+        /// Login to source
         fn login(&self, _: SourceLogin) -> Result<SourceLoginResult> {
             Err(anyhow!("not implemented"))
         }
     }
 
+    /// A type represents an extension
     pub struct PluginDeclaration {
         pub rustc_version: &'static str,
         pub core_version: &'static str,
         pub register: unsafe extern "C" fn(&mut dyn PluginRegistrar, Option<&serde_yaml::Value>),
     }
 
+    /// A trait for register an extension
     pub trait PluginRegistrar {
         fn register_function(&mut self, name: &str, extension: Box<dyn Extension>);
     }
 
+    /// macro for export an extension
     #[macro_export]
     macro_rules! export_plugin {
         ($register:expr) => {

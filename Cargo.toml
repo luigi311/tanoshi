@@ -1,13 +1,17 @@
 [package]
 name = "tanoshi-lib"
-version = "0.1.0"
+version = "0.7.0"
 authors = ["Muhammad Fadhlika <fadhlika@gmail.com>"]
 edition = "2018"
+description = "Tanoshi library"
+repository= "https://github.com/faldez/tanoshi-lib"
+license = "MIT"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [features]
-default = ["model", "extensions"]
+default = ["model", "rest", "extensions"]
 model = []
+rest = ["model"]
 extensions = ["model"]
 
 [dependencies]
@@ -17,7 +21,6 @@ serde_urlencoded = "0.6"
 serde_derive = "1.0"
 anyhow = "*"
 chrono = { version = "0.4", features = ["serde"] }
-human-sort = {version = "0.2"}
 ureq = "1"
 serde_yaml = "0.8"
 dirs = "2.0.2"
