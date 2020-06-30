@@ -1,7 +1,8 @@
 use crate::auth::Claims;
 use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
-use tanoshi_lib::manga::{Update as UpdateModel, UpdatesResponse};
+use tanoshi_lib::manga::Update as UpdateModel;
+use tanoshi_lib::rest::UpdatesResponse;
 use warp::Rejection;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]

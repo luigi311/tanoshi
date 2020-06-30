@@ -1,7 +1,7 @@
 use crate::auth::Claims;
 use crate::history::{History, HistoryParam};
 use std::convert::Infallible;
-use tanoshi_lib::manga::HistoryRequest;
+use tanoshi_lib::rest::HistoryRequest;
 
 pub async fn get_history(
     claim: Claims,

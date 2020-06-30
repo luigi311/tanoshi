@@ -12,7 +12,8 @@ use yew::utils::window;
 use super::browse::BrowseRoute;
 use super::catalogue::CatalogueRoute;
 
-use tanoshi_lib::manga::{GetSourceResponse, Source as SourceModel};
+use tanoshi_lib::manga::Source as SourceModel;
+use tanoshi_lib::rest::GetSourceResponse;
 
 pub enum Tab {
     Installed,

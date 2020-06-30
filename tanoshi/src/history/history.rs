@@ -2,7 +2,8 @@ use crate::auth::Claims;
 use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
 use std::convert::Infallible;
-use tanoshi_lib::manga::{History as HistoryModel, HistoryRequest, HistoryResponse};
+use tanoshi_lib::manga::History as HistoryModel;
+use tanoshi_lib::rest::{HistoryRequest, HistoryResponse};
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct HistoryParam {

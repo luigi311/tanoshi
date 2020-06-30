@@ -7,9 +7,8 @@ use yew_router::components::RouterAnchor;
 use super::component::Spinner;
 use crate::app::{job, AppRoute};
 
-use tanoshi_lib::manga::{
-    Chapter as ChapterModel, GetChaptersResponse, GetMangaResponse, Manga as MangaModel,
-};
+use tanoshi_lib::manga::{Chapter as ChapterModel, Manga as MangaModel};
+use tanoshi_lib::rest::{GetChaptersResponse, GetMangaResponse};
 
 use serde::{Deserialize, Serialize};
 

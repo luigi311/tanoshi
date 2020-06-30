@@ -12,9 +12,9 @@ use std::collections::HashMap;
 
 use anyhow::Result;
 
-use tanoshi_lib::manga::{
+use tanoshi_lib::manga::{Params, SourceLogin, SourceLoginResult};
+use tanoshi_lib::rest::{
     GetChaptersResponse, GetMangaResponse, GetMangasResponse, GetPagesResponse, HistoryRequest,
-    Params, SourceLogin, SourceLoginResult,
 };
 
 #[derive(Deserialize, Serialize)]
