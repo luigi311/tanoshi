@@ -181,11 +181,16 @@ async fn main() -> Result<()> {
     let update = update::Update::new(config.database_path.clone());
     let updates_api = filters::updates::updates(secret.clone(), update.clone());
 
+    let version_check = warp::path!("version")
+        .and(warp::get())
+        .map(|| Ok(warp::reply::html(env!("CARGO_PKG_VERSION"))));
+
     let api = manga_api
         .or(auth_api)
         .or(fav_api)
         .or(history_api)
         .or(updates_api)
+        .or(version_check)
         .recover(filters::handle_rejection);
 
     let routes = api.or(static_files).with(warp::log("manga"));
