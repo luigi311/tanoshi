@@ -1,4 +1,4 @@
-#![crate_name = "tanoshi-lib"]
+#![crate_name = "tanoshi_lib"]
 
 /// This is used to ensure both application and extension use the same version
 pub static CORE_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -184,7 +184,7 @@ pub mod manga {
 #[cfg(feature = "rest")]
 pub mod rest {
     use serde::{Deserialize, Serialize};
-    use crate::manga::{Chapter, Manga, Params, Source, SourceLogin, SourceLoginResult, FavoriteManga, Update, History};
+    use crate::manga::{Chapter, Manga, Source, FavoriteManga, Update, History};
 
     /// Reponse for get sources request
     #[derive(Debug, Deserialize, Serialize, Clone)]
