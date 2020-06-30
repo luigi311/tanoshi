@@ -3,7 +3,7 @@ use rand::{thread_rng, Rng};
 use std::collections::BTreeMap;
 use std::iter;
 
-#[derive(serde::Deserialize, Debug)]
+#[derive(serde::Deserialize, serde::Serialize, Debug)]
 pub struct Config {
     pub base_url: Option<String>,
     #[serde(default = "default_port")]
@@ -52,7 +52,7 @@ fn default_update_interval() -> u64 {
 }
 
 fn default_database_path() -> String {
-    let path = dirs::data_local_dir().unwrap().join("tanoshi");
+    let path = dirs::home_dir().unwrap().join(".tanoshi");
     if !path.exists() {
         let _ = std::fs::create_dir_all(&path);
     }
@@ -69,10 +69,7 @@ fn default_secret() -> String {
 }
 
 fn default_plugin_path() -> String {
-    let path = dirs::data_local_dir()
-        .unwrap()
-        .join("tanoshi")
-        .join("plugins");
+    let path = dirs::home_dir().unwrap().join(".tanoshi").join("plugins");
     if !path.exists() {
         let _ = std::fs::create_dir_all(&path);
     }

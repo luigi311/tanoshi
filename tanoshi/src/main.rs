@@ -49,18 +49,33 @@ async fn main() -> Result<()> {
                 Err(_e) => None,
             }
         }
-        None => None,
+        None => {
+            let path = dirs::home_dir()
+                .unwrap()
+                .join(".tanoshi")
+                .join("config.yml");
+            match std::fs::read(path.clone()) {
+                Ok(slice) => Some(slice),
+                Err(_e) => None,
+            }
+        }
     };
 
     let config: Config = match slice {
         Some(s) => match serde_yaml::from_slice(&s) {
             Ok(config) => config,
-            Err(_e) => Config::default(),
+            Err(e) => return Err(anyhow!("error parsing config: {}", e)),
         },
-        None => Config::default(),
+        None => {
+            let cfg = Config::default();
+            let path = dirs::home_dir().unwrap().join(".tanoshi");
+            let _ = std::fs::create_dir_all(path.clone());
+            let path = path.join("config.yml");
+            let _ = std::fs::write(&path, serde_yaml::to_string(&cfg).unwrap());
+            info!("Write default config at {:?}", path);
+            cfg
+        }
     };
-
-    info!("Tanoshi start with {:?}", config);
 
     {
         let query = include_str!("../migration/tanoshi.sql");
