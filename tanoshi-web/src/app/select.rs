@@ -206,7 +206,7 @@ impl Select {
             .body(Nothing)
             .expect("failed to build request");
 
-        if let Ok(task) = FetchService::new().fetch(
+        if let Ok(task) = FetchService::fetch(
             req,
             self.link.callback(
                 |response: Response<Json<Result<GetSourceResponse, anyhow::Error>>>| {
@@ -229,7 +229,7 @@ impl Select {
             .body(Nothing)
             .expect("failed to build request");
 
-        if let Ok(task) = FetchService::new().fetch(
+        if let Ok(task) = FetchService::fetch(
             req,
             self.link.callback(|response: Response<Text>| {
                 if let (meta, Ok(_)) = response.into_parts() {

@@ -7,15 +7,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fe438c63458706e03479442743baae6c88256498e6431708f6dfc520a26515d3"
 
 [[package]]
-name = "addr2line"
-version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a49806b9dadc843c61e7c97e72490ad7f7220ae249012fbda9ad0609457c0543"
-dependencies = [
- "gimli",
-]
-
-[[package]]
 name = "adler32"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -120,19 +111,6 @@ name = "autocfg"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f8aac770f1885fd7e387acedd76065302551364496e46b3dd00860b2f8359b9d"
-
-[[package]]
-name = "backtrace"
-version = "0.3.48"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0df2f85c8a2abbe3b7d7e748052fdd9b76a0458fdeb16ad4223f5eca78c7c130"
-dependencies = [
- "addr2line",
- "cfg-if",
- "libc",
- "object",
- "rustc-demangle",
-]
 
 [[package]]
 name = "base-x"
@@ -443,12 +421,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4358a9e11b9a09cf52383b451b49a169e8d797b68aa02301ff586d70d9661ea3"
 
 [[package]]
-name = "enclose"
-version = "1.1.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1056f553da426e9c025a662efa48b52e62e0a3a7648aa2d15aeaaf7f0d329357"
-
-[[package]]
 name = "env_logger"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -459,28 +431,6 @@ dependencies = [
  "log 0.4.8",
  "regex",
  "termcolor",
-]
-
-[[package]]
-name = "failure"
-version = "0.1.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d32e9bd16cc02eae7db7ef620b392808b89f6a5e16bb3497d159c6b92a0f4f86"
-dependencies = [
- "backtrace",
- "failure_derive",
-]
-
-[[package]]
-name = "failure_derive"
-version = "0.1.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aa4da3c766cd7a0db8242e326e9e4e081edd567072893ed320008189715366a4"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
- "synstructure",
 ]
 
 [[package]]
@@ -670,12 +620,6 @@ dependencies = [
  "libc",
  "wasi",
 ]
-
-[[package]]
-name = "gimli"
-version = "0.21.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bcc8e0c9bce37868955864dbecd2b1ab2bdf967e6f28066d65aaac620444b65c"
 
 [[package]]
 name = "gloo"
@@ -1285,12 +1229,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "object"
-version = "0.19.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9cbca9424c482ee628fa549d9c812e2cd22f1180b9222c9200fdfa6eb31aecb2"
-
-[[package]]
 name = "once_cell"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1754,9 +1692,9 @@ dependencies = [
 
 [[package]]
 name = "ring"
-version = "0.16.14"
+version = "0.16.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "06b3fefa4f12272808f809a0af618501fdaba41a58963c5fb72238ab0be09603"
+checksum = "952cd6b98c85bbc30efa1ba5783b8abf12fec8b3287ffa52605b9432313e34e4"
 dependencies = [
  "cc",
  "libc",
@@ -1842,12 +1780,6 @@ checksum = "97655158074ccb2d2cfb1ccb4c956ef0f4054e43a2c1e71146d4991e6961e105"
 dependencies = [
  "walkdir",
 ]
-
-[[package]]
-name = "rustc-demangle"
-version = "0.1.16"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4c691c0e608126e00913e33f0ccf3727d5fc84573623b8d65b2df340b5201783"
 
 [[package]]
 name = "rustc_version"
@@ -2179,18 +2111,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "synstructure"
-version = "0.12.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b834f2d66f734cb897113e34aaff2f1ab4719ca946f9a7358dba8f8064148701"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
- "unicode-xid",
-]
-
-[[package]]
 name = "tanoshi"
 version = "0.7.0"
 dependencies = [
@@ -2202,7 +2122,7 @@ dependencies = [
  "futures",
  "jsonwebtoken",
  "libloading",
- "log 0.3.9",
+ "log 0.4.8",
  "mime_guess 2.0.3",
  "pretty_env_logger",
  "rand 0.7.3",
@@ -2243,13 +2163,11 @@ dependencies = [
  "anyhow",
  "chrono",
  "console_error_panic_hook",
- "enclose",
- "failure",
  "http",
  "js-sys",
- "jsonwebtoken",
  "log 0.4.8",
  "quote",
+ "ring",
  "serde",
  "serde_json",
  "serde_urlencoded",
@@ -2951,9 +2869,9 @@ dependencies = [
 
 [[package]]
 name = "yew"
-version = "0.16.2"
+version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fc1e1b60b090bf29758c6c42da2d2d6d54aa97dc73e3ccd1cd99d664b4c754cf"
+checksum = "169c1645dd76856029d1e97f4ae8ef9f8171a63d592c1ada50d25f9f4c25dc0d"
 dependencies = [
  "anyhow",
  "anymap",
@@ -2982,9 +2900,9 @@ dependencies = [
 
 [[package]]
 name = "yew-macro"
-version = "0.16.1"
+version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f1d2fe46d7922ecd99af4e5b4eddcab58c70ec741e31de6e1b910d5873a3095f"
+checksum = "61a9a452e63b6222b28b426dafbc6b207192e0127cdb93324cc7407b8c7e1768"
 dependencies = [
  "boolinator",
  "lazy_static",
@@ -2996,9 +2914,9 @@ dependencies = [
 
 [[package]]
 name = "yew-router"
-version = "0.13.0"
+version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c2d29986e07f8aab66507dd659f826062fb5ca434387cc44d4574a116ac52712"
+checksum = "20f46279cd28a50e0e9271352ce6d7be7f10e6ba449c76544985e64222f5e999"
 dependencies = [
  "cfg-if",
  "cfg-match",
@@ -3017,9 +2935,9 @@ dependencies = [
 
 [[package]]
 name = "yew-router-macro"
-version = "0.13.0"
+version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2a8b72c6e6b40c5180e5b0fff9f5a9e67937f662c595cad87301fc480e50e347"
+checksum = "768693f16c930d8a8742c2e5f62f258d5a6f0392e8c9265a45c550fac4cbe5a7"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3029,9 +2947,9 @@ dependencies = [
 
 [[package]]
 name = "yew-router-route-parser"
-version = "0.13.0"
+version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9662dbe5f703fa5458cba3a7a000faf232dc124214f9c33e06d05d50805fd9ca"
+checksum = "49bf2f66f0e61d65d1637523fa1faedd5aa291cf9cb8d8fb200678472279b672"
 dependencies = [
  "nom",
 ]

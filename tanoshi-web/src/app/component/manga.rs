@@ -31,7 +31,6 @@ pub struct Props {
 pub struct Manga {
     fetch_task: Option<FetchTask>,
     link: ComponentLink<Self>,
-    timeout: TimeoutService,
     job: Option<Box<dyn Task>>,
     id: i32,
     router: Box<dyn Bridge<RouteAgent>>,
@@ -73,7 +72,6 @@ impl Component for Manga {
         Manga {
             fetch_task: None,
             link,
-            timeout: TimeoutService::new(),
             job: None,
             router,
             id: props.id,
@@ -176,7 +174,7 @@ impl Manga {
             .body(Nothing)
             .expect("failed to build request");
 
-        if let Ok(task) = FetchService::new().fetch(
+        if let Ok(task) = FetchService::fetch(
             req,
             self.link.callback(
                 |response: Response<Json<Result<AddFavoritesResponse, anyhow::Error>>>| {
@@ -199,7 +197,7 @@ impl Manga {
             .body(Nothing)
             .expect("failed to build request");
 
-        if let Ok(task) = FetchService::new().fetch(
+        if let Ok(task) = FetchService::fetch(
             req,
             self.link.callback(
                 |response: Response<Json<Result<AddFavoritesResponse, anyhow::Error>>>| {
@@ -216,7 +214,7 @@ impl Manga {
         }
     }
     fn start_timer(&mut self) {
-        let handle = self.timeout.spawn(
+        let handle = TimeoutService::spawn(
             Duration::from_secs(1),
             self.link.callback(|_| Msg::MouseDownTimeout),
         );

@@ -275,7 +275,7 @@ impl History {
             .body(Nothing)
             .expect("failed to build request");
 
-        if let Ok(task) = FetchService::new().fetch(
+        if let Ok(task) = FetchService::fetch(
             req,
             self.link.callback(
                 |response: Response<Json<Result<HistoryResponse, anyhow::Error>>>| {
@@ -299,7 +299,7 @@ impl History {
             .body(Nothing)
             .expect("failed to build request");
 
-        if let Ok(task) = FetchService::new().fetch(
+        if let Ok(task) = FetchService::fetch(
             req,
             self.link.callback(
                 |response: Response<Json<Result<UpdatesResponse, anyhow::Error>>>| {

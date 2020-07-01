@@ -264,7 +264,7 @@ impl Settings {
             .body(Nothing)
             .expect("failed to build request");
 
-        if let Ok(task) = FetchService::new().fetch(
+        if let Ok(task) = FetchService::fetch(
             req,
             self.link
                 .callback(|response: Response<Json<Result<Claims, anyhow::Error>>>| {
@@ -286,7 +286,7 @@ impl Settings {
             .body(Nothing)
             .expect("failed to build request");
 
-        if let Ok(task) = FetchService::new().fetch(
+        if let Ok(task) = FetchService::fetch(
             req,
             self.link.callback(
                 |response: Response<Json<Result<UserListResponse, anyhow::Error>>>| {
@@ -310,7 +310,7 @@ impl Settings {
             .body(Json(&self.users[i].user))
             .expect("failed to build request");
 
-        if let Ok(task) = FetchService::new().fetch(
+        if let Ok(task) = FetchService::fetch(
             req,
             self.link.callback(move |response: Response<Text>| {
                 if let (meta, Ok(_res)) = response.into_parts() {
@@ -335,7 +335,7 @@ impl Settings {
             })
             .expect("failed to build request");
 
-        if let Ok(task) = FetchService::new().fetch(
+        if let Ok(task) = FetchService::fetch(
             req,
             self.link.callback(move |response: Response<Text>| {
                 if let (meta, Ok(_res)) = response.into_parts() {
@@ -361,7 +361,7 @@ impl Settings {
             .body(Ok(self.me_password.clone().unwrap()))
             .expect("failed to build request");
 
-        if let Ok(task) = FetchService::new().fetch(
+        if let Ok(task) = FetchService::fetch(
             req,
             self.link.callback(move |response: Response<Text>| {
                 if let (meta, Ok(_res)) = response.into_parts() {
@@ -383,7 +383,7 @@ impl Settings {
             .body(Json(&self.users[i].user))
             .expect("failed to build request");
 
-        if let Ok(task) = FetchService::new().fetch(
+        if let Ok(task) = FetchService::fetch(
             req,
             self.link.callback(move |response: Response<Text>| {
                 if let (meta, Ok(_res)) = response.into_parts() {

@@ -35,10 +35,10 @@ pub enum Msg {
     MangaReady(GetMangasResponse),
     ScrolledDown,
     KeywordChanged(InputData),
-    Search(Event),
+    Search(FocusEvent),
     SourceLogin,
     LoginSuccess,
-    Submit(Event),
+    Submit(FocusEvent),
     UsernameChange(InputData),
     PasswordChange(InputData),
     RememberMeChange(InputData),
@@ -276,7 +276,7 @@ impl Source {
                                     false => html!{
                                         <button
                                         class="w-full px-4 py-2 font-bold text-white bg-blue-500 rounded-full hover:bg-blue-700 focus:outline-none focus:shadow-outline"
-                                        type="button">
+                                        type="submit">
                                         {"Sign In"}
                                     </button>
                                     }

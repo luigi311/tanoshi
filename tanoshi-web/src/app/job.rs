@@ -61,7 +61,7 @@ pub enum Msg {
 }
 
 impl Agent for Worker {
-    type Reach = Context;
+    type Reach = Context<Self>;
     type Message = Msg;
     type Input = Request;
     type Output = Response;
@@ -131,7 +131,7 @@ impl Agent for Worker {
                     .body(Json(&request))
                     .expect("failed to build request");
 
-                if let Ok(task) = FetchService::new().fetch(
+                if let Ok(task) = FetchService::fetch(
                     req,
                     self.link.callback(move |response: HttpResponse<Text>| {
                         if let (meta, Ok(_)) = response.into_parts() {
@@ -159,7 +159,7 @@ impl Agent for Worker {
                     .body(Nothing)
                     .expect("failed to build request");
 
-                if let Ok(task) = FetchService::new().fetch(
+                if let Ok(task) = FetchService::fetch(
                     req,
                     self.link.callback(
                         move |response: HttpResponse<Json<Result<GetMangasResponse>>>| {
@@ -181,7 +181,7 @@ impl Agent for Worker {
                     .body(Nothing)
                     .expect("failed to build request");
 
-                if let Ok(task) = FetchService::new().fetch(
+                if let Ok(task) = FetchService::fetch(
                     req,
                     self.link.callback(
                         move |response: HttpResponse<Json<Result<GetMangaResponse>>>| {
@@ -206,7 +206,7 @@ impl Agent for Worker {
                 .body(Nothing)
                 .expect("failed to build request");
 
-                if let Ok(task) = FetchService::new().fetch(
+                if let Ok(task) = FetchService::fetch(
                     req,
                     self.link.callback(
                         move |response: HttpResponse<Json<Result<GetChaptersResponse>>>| {
@@ -227,7 +227,7 @@ impl Agent for Worker {
                     .body(Nothing)
                     .expect("failed to build request");
 
-                if let Ok(task) = FetchService::new().fetch(
+                if let Ok(task) = FetchService::fetch(
                     req,
                     self.link.callback(
                         move |response: HttpResponse<Json<Result<GetPagesResponse>>>| {
@@ -248,7 +248,7 @@ impl Agent for Worker {
                     .body(Nothing)
                     .expect("failed to build request");
 
-                if let Ok(task) = FetchService::new().fetch_binary(
+                if let Ok(task) = FetchService::fetch_binary(
                     req,
                     self.link.callback(move |response: HttpResponse<Binary>| {
                         if let (meta, Ok(data)) = response.into_parts() {
@@ -269,7 +269,7 @@ impl Agent for Worker {
                     .body(Json(&login))
                     .expect("failed to build request");
 
-                if let Ok(task) = FetchService::new().fetch(
+                if let Ok(task) = FetchService::fetch(
                     req,
                     self.link.callback(
                         move |response: HttpResponse<Json<Result<SourceLoginResult>>>| {
@@ -291,7 +291,7 @@ impl Agent for Worker {
                     .body(Nothing)
                     .expect("failed to build request");
 
-                if let Ok(task) = FetchService::new().fetch(
+                if let Ok(task) = FetchService::fetch(
                     req,
                     self.link.callback(move |response: HttpResponse<Text>| {
                         let (meta, _res) = response.into_parts();

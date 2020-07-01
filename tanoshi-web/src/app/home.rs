@@ -135,7 +135,7 @@ impl Home {
                 .body(Nothing)
                 .expect("failed to build request");
 
-            if let Ok(task) = FetchService::new().fetch(
+            if let Ok(task) = FetchService::fetch(
                 req,
                 self.link
                     .callback(|_response: Response<Text>| Msg::MangaUpdated),
@@ -155,7 +155,7 @@ impl Home {
             .body(Nothing)
             .expect("failed to build request");
 
-        if let Ok(task) = FetchService::new().fetch(
+        if let Ok(task) = FetchService::fetch(
             req,
             self.link.callback(
                 |response: Response<Json<Result<GetFavoritesResponse, anyhow::Error>>>| {

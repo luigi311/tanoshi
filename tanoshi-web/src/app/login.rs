@@ -9,7 +9,7 @@ use yew::{
 
 use yew_router::{agent::RouteRequest, prelude::*};
 
-use web_sys::Event;
+use web_sys::FocusEvent;
 
 use super::component::model::{Claims, User};
 
@@ -34,7 +34,7 @@ pub struct Login {
 pub enum Msg {
     UsernameChange(InputData),
     PasswordChange(InputData),
-    Submit(Event),
+    Submit(FocusEvent),
     LoggedIn(UserResponse),
     Noop,
 }
@@ -129,7 +129,7 @@ impl Component for Login {
                             <div class="mb-6 text-center">
                                 <button
                                     class="w-full px-4 py-2 font-bold text-white bg-blue-500 rounded-full hover:bg-blue-700 focus:outline-none focus:shadow-outline"
-                                    type="button"
+                                    type="submit"
                                 >
                                     {"Sign In"}
                                 </button>
@@ -150,7 +150,7 @@ impl Login {
             .body(Json(&self.user))
             .expect("failed to build request");
 
-        if let Ok(task) = FetchService::new().fetch(
+        if let Ok(task) = FetchService::fetch(
             req,
             self.link.callback(
                 |response: Response<Json<Result<UserResponse, anyhow::Error>>>| {

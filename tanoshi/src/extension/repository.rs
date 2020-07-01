@@ -148,6 +148,12 @@ impl Repository {
         username: String,
         manga_ids: Vec<i32>,
     ) -> Result<GetMangasResponse, rusqlite::Error> {
+        if manga_ids.is_empty() {
+            return Ok(GetMangasResponse {
+                mangas: vec![],
+                status: "Empty".to_string(),
+            });
+        }
         let db = self.connect_db();
         array::load_module(&db)?;
         let mut order = manga_ids

@@ -228,7 +228,7 @@ impl Detail {
             .body(Nothing)
             .expect("failed to build request");
 
-        if let Ok(task) = FetchService::new().fetch(
+        if let Ok(task) = FetchService::fetch(
             req,
             self.link.callback(
                 |response: Response<Json<Result<AddFavoritesResponse, anyhow::Error>>>| {
@@ -251,7 +251,7 @@ impl Detail {
             .body(Nothing)
             .expect("failed to build request");
 
-        if let Ok(task) = FetchService::new().fetch(
+        if let Ok(task) = FetchService::fetch(
             req,
             self.link.callback(
                 |response: Response<Json<Result<AddFavoritesResponse, anyhow::Error>>>| {
