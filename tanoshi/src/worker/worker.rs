@@ -63,12 +63,26 @@ impl Worker {
             return;
         }
 
+        if let Some(cache_dir) = dirs::home_dir() {
+            let cache_dir = cache_dir.join(".tanoshi").join("cache");
+            let _ = std::fs::create_dir_all(cache_dir);
+        }
+
         self.start_interval(interval * 84600, move || {
             if let Some(cache_dir) = dirs::home_dir() {
                 let cache_dir = cache_dir.join(".tanoshi").join("cache");
-                match std::fs::remove_dir_all(cache_dir) {
-                    Ok(_) => {}
-                    Err(e) => error!("error remove cache: {}", e),
+                for entry in std::fs::read_dir(&cache_dir).unwrap() {
+                    let entry = entry.unwrap();
+                    let path = entry.path();
+                    if path.is_dir() {
+                        if let Err(e) = std::fs::remove_dir_all(&path) {
+                            error!("error remove cache: {}", e);
+                        }
+                    } else {
+                        if let Err(e) = std::fs::remove_file(path) {
+                            error!("error remove cache: {}", e);
+                        }
+                    }
                 }
             }
         });
@@ -160,7 +174,7 @@ impl Worker {
                                         let user_val: &mut HashMap<String, Vec<Chapter>> = chapter_updates.entry(u).or_insert(HashMap::new());
                                         let manga_val: &mut Vec<Chapter> = user_val.entry(m.manga_title.clone()).or_insert(vec![]);
                                         if manga_val.iter().find(|u| u.id == last_id).is_none() {
-                                            manga_val.push(Chapter { id: last_id, number: c.no.clone() });
+                                            manga_val.push(Chapter { id: last_id, number: c.no.clone().unwrap() });
                                         }
                                     }
                                 }
