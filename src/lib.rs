@@ -43,10 +43,14 @@ pub mod manga {
     pub struct Manga {
         pub id: i32,
         pub title: String,
-        pub author: String,
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        pub author: Vec<String>,
+        #[serde(skip_serializing_if = "Vec::is_empty")]
         pub genre: Vec<String>,
-        pub status: String,
-        pub description: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub status: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub description: Option<String>,
         pub path: String,
         pub thumbnail_url: String,
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -61,10 +65,15 @@ pub mod manga {
     pub struct Chapter {
         pub id: i32,
         pub manga_id: i32,
-        pub no: String,
-        pub title: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub vol: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub no: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub title: Option<String>,
         pub url: String,
-        pub read: i32,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub read: Option<i32>,
         pub uploaded: chrono::NaiveDateTime,
     }
 
@@ -73,10 +82,11 @@ pub mod manga {
             Chapter {
                 id: 0,
                 manga_id: 0,
-                no: "".to_string(),
-                title: "".to_string(),
+                vol: None,
+                no: None,
+                title: None,
                 url: "".to_string(),
-                read: 0,
+                read: None,
                 uploaded: chrono::NaiveDateTime::from_timestamp(0, 0),
             }
         }
