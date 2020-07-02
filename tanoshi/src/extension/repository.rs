@@ -465,10 +465,15 @@ impl Repository {
 
     pub fn update_manga_info(&self, manga_id: i32, manga: Manga) -> Result<(), rusqlite::Error> {
         let mut db = self.connect_db();
+        let a = if manga.author.is_empty() {
+            None
+        } else {
+            Some(manga.author.join(","))
+        };
         db.execute(
-            "UPDATE manga SET author = ?1, status = ?2, description = ?3 WHERE manga.id = ?4",
+            "UPDATE manga SET author = COALESCE(?1, author), status = COALESCE(?2, status), description = COALESCE(?3, description) WHERE manga.id = ?4",
             params![
-                manga.author.join(","),
+                a,
                 manga.status,
                 manga.description,
                 manga_id
