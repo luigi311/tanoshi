@@ -234,7 +234,14 @@ impl Manga {
                 }
             };
 
-            let chapter = exts.get(&source.name).unwrap().get_chapters(&url).unwrap();
+            let chapter = match exts.get(&source.name).unwrap().get_chapters(&url) {
+                Ok(ch) => ch,
+                Err(e) => {
+                    return Err(warp::reject::custom(TransactionReject {
+                        message: e.to_string(),
+                    }))
+                }
+            };
 
             match self
                 .repo

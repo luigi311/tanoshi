@@ -431,15 +431,16 @@ impl Repository {
         let tx = db.transaction()?;
         for c in chapters {
             tx.execute(
-                r#"INSERT INTO chapter(user_id, manga_id, number, title, path, uploaded)
+                r#"INSERT INTO chapter(user_id, manga_id, volume, number, title, path, uploaded)
                     VALUES(
                     (SELECT id FROM "user" WHERE username = ?1),
                     ?2,
                     ?3,
                     ?4,
                     ?5,
-                    ?6) ON CONFLICT DO NOTHING"#,
-                params![username, manga_id, c.no, c.title, c.url, c.uploaded],
+                    ?6,
+                    ?7) ON CONFLICT DO NOTHING"#,
+                params![username, manga_id, c.vol, c.no, c.title, c.url, c.uploaded],
             )?;
         }
         tx.commit()?;
@@ -464,7 +465,7 @@ impl Repository {
     }
 
     pub fn update_manga_info(&self, manga_id: i32, manga: Manga) -> Result<(), rusqlite::Error> {
-        let mut db = self.connect_db();
+        let db = self.connect_db();
         let a = if manga.author.is_empty() {
             None
         } else {
