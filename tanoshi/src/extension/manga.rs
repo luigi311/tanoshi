@@ -138,6 +138,14 @@ impl Manga {
     ) -> Result<impl warp::Reply, Rejection> {
         let exts = self.exts.read().unwrap();
         if let Ok(source) = self.repo.get_source(source_id) {
+            if param.refresh.unwrap_or(false) {
+                let cache_path = dirs::home_dir()
+                    .unwrap()
+                    .join(".tanoshi")
+                    .join("cache")
+                    .join(base64::encode(&source.url));
+                let _ = std::fs::remove_file(&cache_path);
+            }
             let mangas = exts
                 .get(&source.name)
                 .unwrap()
@@ -238,7 +246,7 @@ impl Manga {
                 .unwrap()
                 .join(".tanoshi")
                 .join("cache")
-                .join(format!("cache:{}", &url));
+                .join(base64::encode(format!("cache:{}", &url)));
             let _ = std::fs::remove_file(cache_path);
             let chapter = match exts.get(&source.name).unwrap().get_chapters(&url) {
                 Ok(ch) => ch,

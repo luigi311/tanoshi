@@ -312,6 +312,10 @@ impl Source {
                 sort_order: Some(SortOrderParam::Desc),
                 page: Some(self.page.to_string()),
                 genres: None,
+                refresh: match self.page {
+                    1 => Some(true),
+                    _ => None,
+                },
             },
         ));
         self.is_fetching = true;

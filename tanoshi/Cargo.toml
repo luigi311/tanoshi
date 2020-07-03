@@ -33,3 +33,4 @@ bytes = "0.5"
 dirs = "2.0.2"
 rusqlite = {version = "0.23", features=["bundled", "chrono", "serde_json", "url", "array", "modern_sqlite"]}
 tbot = "0.6"
+base64 = "0.12"

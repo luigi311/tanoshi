@@ -2133,6 +2133,7 @@ name = "tanoshi"
 version = "0.7.0"
 dependencies = [
  "anyhow",
+ "base64 0.12.3",
  "bytes",
  "chrono",
  "clap",
@@ -2161,9 +2162,9 @@ dependencies = [
 
 [[package]]
 name = "tanoshi-lib"
-version = "0.8.1"
+version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dd360f3dd916444c7024fd4ecfe6c4888937db144b569cf1e65bfc97fd1d3ed7"
+checksum = "5374ef6673a0df9e8e6aca8272843513f71452152f1385099bd150efba1fd85a"
 dependencies = [
  "anyhow",
  "chrono",
