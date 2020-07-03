@@ -126,6 +126,7 @@ pub mod manga {
         pub page: Option<String>,
         pub sort_by: Option<SortByParam>,
         pub sort_order: Option<SortOrderParam>,
+        pub refresh: Option<bool>,
     }
 
     /// A type represent parameter for query manga from source, normalized across source
