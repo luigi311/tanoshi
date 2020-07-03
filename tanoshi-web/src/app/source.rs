@@ -12,6 +12,7 @@ use crate::app::job;
 
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
+use yew::services::ConsoleService;
 
 #[derive(Clone, Properties)]
 pub struct Props {
@@ -32,7 +33,7 @@ pub struct Source {
 }
 
 pub enum Msg {
-    MangaReady(GetMangasResponse),
+    MangasReady(GetMangasResponse),
     ScrolledDown,
     KeywordChanged(InputData),
     Search(FocusEvent),
@@ -68,7 +69,10 @@ impl Component for Source {
         }) as Box<dyn Fn()>);
 
         let worker_callback = link.callback(|msg| match msg {
-            job::Response::MangasFetched(data) => Msg::MangaReady(data),
+            job::Response::MangasFetched(data) => {
+                ConsoleService::info("update");
+                Msg::MangasReady(data)
+            }
             job::Response::LoginPosted(_data) => Msg::LoginSuccess,
             _ => Msg::Noop,
         });
@@ -103,10 +107,12 @@ impl Component for Source {
     }
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
+        ConsoleService::info("update");
         match msg {
-            Msg::MangaReady(data) => {
+            Msg::MangasReady(data) => {
                 self.is_fetching = false;
-                let mut mangas = data.mangas;
+
+                let mut mangas = data.mangas.clone();
                 if self.page == 1 {
                     self.mangas = mangas;
                 } else {
@@ -306,6 +312,10 @@ impl Source {
                 sort_order: Some(SortOrderParam::Desc),
                 page: Some(self.page.to_string()),
                 genres: None,
+                refresh: match self.page {
+                    1 => Some(true),
+                    _ => None,
+                },
             },
         ));
         self.is_fetching = true;

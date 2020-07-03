@@ -78,7 +78,10 @@ async fn main() -> Result<()> {
     };
 
     {
-        let query = include_str!("../migration/tanoshi.sql");
+        let queries = vec![
+            include_str!("../migration/1.sql"),
+            include_str!("../migration/2.sql"),
+        ];
         let conn = match rusqlite::Connection::open(config.database_path.clone()) {
             Ok(conn) => conn,
             Err(e) => {
@@ -93,25 +96,33 @@ async fn main() -> Result<()> {
             .unwrap_or(0);
         info!("Schema version {}", user_version);
 
-        if user_version < 1 {
-            info!("Schema version mismatch, migrating...");
-
-            if let Err(e) = conn.execute_batch(query) {
-                return Err(anyhow!("failed: {}", e));
+        if queries.len() > user_version as usize {
+            info!("Schema version mismatch");
+            for (i, query) in queries.iter().enumerate() {
+                if i + 1 > user_version as usize {
+                    info!("Migrating {}", i + 1);
+                    if let Err(e) = conn.execute_batch(query) {
+                        return Err(anyhow!("failed: {}", e));
+                    }
+                }
             }
 
-            let auth = auth::auth::Auth::new(config.database_path.clone());
-            auth.register(auth::User {
-                username: "admin".to_string(),
-                password: Some("admin".to_string()),
-                role: "ADMIN".to_string(),
-                telegram_chat_id: None,
-            })
-            .await;
+            if user_version == 0 {
+                let auth = auth::auth::Auth::new(config.database_path.clone());
+                auth.register(auth::User {
+                    username: "admin".to_string(),
+                    password: Some("admin".to_string()),
+                    role: "ADMIN".to_string(),
+                    telegram_chat_id: None,
+                })
+                .await;
+            }
 
-            if let Err(e) =
-                conn.pragma_update(Some(rusqlite::DatabaseName::Main), "user_version", &1)
-            {
+            if let Err(e) = conn.pragma_update(
+                Some(rusqlite::DatabaseName::Main),
+                "user_version",
+                &(queries.len() as i32),
+            ) {
                 return Err(anyhow!("error set PRAGMA user_version: {}", e));
             }
         }

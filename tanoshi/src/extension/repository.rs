@@ -196,10 +196,15 @@ impl Repository {
         let manga_ids: Vec<Value> = manga_ids.into_iter().map(Value::from).collect();
         let mangas = stmt
             .query_map(params![username, Rc::new(manga_ids)], |row| {
+                let author = row
+                    .get::<_, String>(2)?
+                    .split(",")
+                    .map(|a| a.to_string())
+                    .collect();
                 Ok(Manga {
                     id: row.get(0)?,
                     title: row.get(1)?,
-                    author: row.get(2)?,
+                    author,
                     status: row.get(3)?,
                     description: row.get(4)?,
                     path: row.get(5)?,
@@ -251,19 +256,26 @@ impl Repository {
                 ) h ON h.manga_id = manga.id
             WHERE manga.id = ?2"#,
             params![username, manga_id],
-            |row| Ok(Manga {
-                id: row.get(0)?,
-                title: row.get(1)?,
-                author: row.get(2)?,
-                status: row.get(3)?,
-                description: row.get(4)?,
-                path: row.get(5)?,
-                thumbnail_url: row.get(6)?,
-                last_read: row.get(7)?,
-                last_page: row.get(8)?,
-                is_favorite: row.get(9)?,
-                genre: vec![]
-            }))?;
+            |row| {
+                let author = row
+                    .get::<_, String>(2)?
+                    .split(",")
+                    .map(|a| a.to_string())
+                    .collect();
+                Ok(Manga {
+                    id: row.get(0)?,
+                    title: row.get(1)?,
+                    author,
+                    status: row.get(3)?,
+                    description: row.get(4)?,
+                    path: row.get(5)?,
+                    thumbnail_url: row.get(6)?,
+                    last_read: row.get(7)?,
+                    last_page: row.get(8)?,
+                    is_favorite: row.get(9)?,
+                    genre: vec![],
+                })
+            })?;
 
         Ok(GetMangaResponse {
             manga,
@@ -281,7 +293,10 @@ impl Repository {
             r#"SELECT
                 chapter.id,
                 chapter.manga_id,
-                chapter.number AS no, COALESCE(chapter.title, '') AS title, chapter.path AS url,
+                chapter.volume,
+                chapter.number AS no, 
+                COALESCE(chapter.title, '') AS title, 
+                chapter.path AS url,
                 COALESCE(history.last_page, 0) AS read,
                 chapter.uploaded AS uploaded
             FROM chapter
@@ -302,11 +317,12 @@ impl Repository {
                 Ok(Chapter {
                     id: row.get(0)?,
                     manga_id: row.get(1)?,
-                    no: row.get(2)?,
-                    title: row.get(3)?,
-                    url: row.get(4)?,
-                    read: row.get(5)?,
-                    uploaded: row.get(6)?,
+                    vol: row.get(2)?,
+                    no: row.get(3)?,
+                    title: row.get(4)?,
+                    url: row.get(5)?,
+                    read: row.get(6)?,
+                    uploaded: row.get(7)?,
                 })
             })?
             .filter_map(|c| c.ok())
@@ -383,10 +399,17 @@ impl Repository {
                 Ok(id) => id,
                 Err(_) => {
                     tx.execute(
-                        "INSERT INTO manga(source_id, title, path, thumbnail_url)
-                            VALUES (?1, ?2, ?3, ?4)
-                            ON CONFLICT(source_id, path) DO UPDATE SET thumbnail_url=EXCLUDED.thumbnail_url",
-                        params![source_id,m.title,m.path,m.thumbnail_url])?;
+                        "INSERT INTO manga(source_id, title, author, status, path, thumbnail_url)
+                            VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+                        params![
+                            source_id,
+                            m.title,
+                            m.author.join(","),
+                            m.status,
+                            m.path,
+                            m.thumbnail_url
+                        ],
+                    )?;
                     tx.last_insert_rowid()
                 }
             };
@@ -408,15 +431,16 @@ impl Repository {
         let tx = db.transaction()?;
         for c in chapters {
             tx.execute(
-                r#"INSERT INTO chapter(user_id, manga_id, number, title, path, uploaded)
+                r#"INSERT INTO chapter(user_id, manga_id, volume, number, title, path, uploaded)
                     VALUES(
                     (SELECT id FROM "user" WHERE username = ?1),
                     ?2,
                     ?3,
                     ?4,
                     ?5,
-                    ?6) ON CONFLICT DO NOTHING"#,
-                params![username, manga_id, c.no, c.title, c.url, c.uploaded],
+                    ?6,
+                    ?7) ON CONFLICT DO NOTHING"#,
+                params![username, manga_id, c.vol, c.no, c.title, c.url, c.uploaded],
             )?;
         }
         tx.commit()?;
@@ -442,9 +466,19 @@ impl Repository {
 
     pub fn update_manga_info(&self, manga_id: i32, manga: Manga) -> Result<(), rusqlite::Error> {
         let db = self.connect_db();
+        let a = if manga.author.is_empty() {
+            None
+        } else {
+            Some(manga.author.join(","))
+        };
         db.execute(
-            "UPDATE manga SET author = $1, status = $2, description = $3 WHERE manga.id = $4",
-            params![manga.author, manga.status, manga.description, manga_id],
+            "UPDATE manga SET author = COALESCE(?1, author), status = COALESCE(?2, status), description = COALESCE(?3, description) WHERE manga.id = ?4",
+            params![
+                a,
+                manga.status,
+                manga.description,
+                manga_id
+            ],
         )?;
         Ok(())
     }
