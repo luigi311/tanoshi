@@ -184,21 +184,41 @@ impl Component for Detail {
                 <div class="flex flex-col m-2">
                     <p class="md:text-xl sm:text-base font-bold">{self.manga.title.to_owned()}</p>
                     <p class="md:text-xl sm:text-sm font-semibold">{self.manga.author.to_owned()}</p>
-                    <p class="md:text-xl sm:text-sm font-semibold">{self.manga.status.to_owned()}</p>
+                    <p class="md:text-xl sm:text-sm font-semibold">{self.manga.status.as_ref().unwrap_or(&"N/A".to_string()).to_owned()}</p>
                     //<p class="md:text-xl sm:text-sm font-medium break-normal">{self.manga.genre.join(", ").to_owned()}</p>
-                    <p class="break-normal md:text-base sm:text-xs">{self.manga.description.to_owned()}</p>
+                    <p class="break-normal md:text-base sm:text-xs">{self.manga.description.as_ref().unwrap_or(&"N/A".to_string()).to_owned()}</p>
                 </div>
             </div>
             <div class="w-6/7 mx-2 grid grid-cols-1 lg:grid-cols-2">
                 {
                     for self.chapters.iter().map(|(chapter)| html!{
                         <div class={
-                            format!("rounded-lg border border-grey-light m-2 {}", if chapter.read > 0 {"bg-gray-400"} else {""})
+                            format!("rounded-lg border border-grey-light m-2 {}", if chapter.read.unwrap_or(0) > 0 {"bg-gray-400"} else {""})
                         }>
                             <RouterAnchor<AppRoute>
                             classes="px-2 py-2 text-left block hover:shadow"
-                            route=AppRoute::Chapter(chapter.id, (chapter.read + 1) as usize)>
-                                {format!("Ch. {} {}", chapter.no.to_owned(), chapter.title.to_owned())}
+                            route=AppRoute::Chapter(chapter.id, (chapter.read.unwrap_or(0) + 1) as usize)>
+                                {
+                                    format!("{}{}{}",
+                                    if let Some(v) = &chapter.vol {
+                                        format!("Vol. {}", v)
+                                    } else {
+                                        "".to_string()
+                                    },
+                                    if let Some(c) = &chapter.no {
+                                        format!("Ch. {}", c)
+                                    } else {
+                                        "".to_string()
+                                    },
+                                    {
+                                    let t = chapter.title.as_ref().unwrap();
+                                    if !t.is_empty() {
+                                        format!("-{}", t)
+                                    } else {
+                                        "".to_string()
+                                    }
+                                    })
+                                }
                             </RouterAnchor<AppRoute>>
                         </div>
                     })

@@ -342,7 +342,7 @@ impl Component for Chapter {
                </RouterAnchor<AppRoute>>
                <div class="flex flex-col mx-2 mb-2">
                 <span class="text-white">{self.manga.title.to_owned()}</span>
-                <span class="text-white text-sm">{format!("Chapter {}", self.chapter.no.to_owned())}</span>
+                <span class="text-white text-sm">{if let Some(v) = &self.chapter.vol {format!("Volume {}", v)} else if let Some(c) = &self.chapter.no {format!("Chapter {}", c)} else {"".to_string()}}</span>
                </div>
             </div>
             <div class="h-screen m-0 outline-none" id="manga-reader" tabindex="0" onkeydown=self.link.callback(|e: KeyboardEvent|
