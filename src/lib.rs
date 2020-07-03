@@ -45,7 +45,7 @@ pub mod manga {
         pub title: String,
         #[serde(default, skip_serializing_if = "Vec::is_empty")]
         pub author: Vec<String>,
-        #[serde(skip_serializing_if = "Vec::is_empty")]
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
         pub genre: Vec<String>,
         #[serde(skip_serializing_if = "Option::is_none")]
         pub status: Option<String>,
@@ -151,7 +151,6 @@ pub mod manga {
         pub show_sep: Option<bool>,
     }
 
-
     /// A type represent chapter updates
     #[derive(Debug, Clone, Deserialize, Serialize)]
     pub struct Update {
@@ -193,8 +192,8 @@ pub mod manga {
 /// This module contains request and response payload for rest api
 #[cfg(feature = "rest")]
 pub mod rest {
+    use crate::manga::{Chapter, FavoriteManga, History, Manga, Source, Update};
     use serde::{Deserialize, Serialize};
-    use crate::manga::{Chapter, Manga, Source, FavoriteManga, Update, History};
 
     /// Reponse for get sources request
     #[derive(Debug, Deserialize, Serialize, Clone)]
