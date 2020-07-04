@@ -49,7 +49,7 @@ impl Manga {
                 let sources = exts
                     .extensions()
                     .iter()
-                    .map(|(key, ext)| ext.info())
+                    .map(|(_key, ext)| ext.info())
                     .collect::<Vec<Source>>();
 
                 match self.repo.insert_sources(sources) {

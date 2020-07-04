@@ -193,11 +193,13 @@ impl Component for Detail {
                 {
                     for self.chapters.iter().map(|(chapter)| html!{
                         <div class={
-                            format!("inline-flex flex-wrap justify-between border border-grey-light {}", if chapter.read.unwrap_or(0) > 0 {"bg-gray-400"} else {""})
+                            format!("border border-grey-light {}", if chapter.read.unwrap_or(0) > 0 {"bg-gray-400"} else {""})
                         }>
                             <RouterAnchor<AppRoute>
                             classes="px-2 py-2 text-left block hover:shadow"
                             route=AppRoute::Chapter(chapter.id, (chapter.read.unwrap_or(0) + 1) as usize)>
+                                <div class="inline-flex flex-wrap justify-between w-full">
+                                <span class="px-2 py-2">
                                 {
                                     format!("{}{}{}",
                                     if let Some(v) = &chapter.vol {
@@ -219,8 +221,10 @@ impl Component for Detail {
                                     }
                                     })
                                 }
+                                </span>
+                                <span class="flex-shrink-0 text-sm text-gray-800 px-2 py-2">{chapter.uploaded.date()}</span>
+                                </div>
                             </RouterAnchor<AppRoute>>
-                            <span class="flex-shrink-0 text-sm text-gray-800 px-2 py-2">{chapter.uploaded.date()}</span>
                         </div>
                     })
                 }
