@@ -189,11 +189,11 @@ impl Component for Detail {
                     <p class="break-normal md:text-base sm:text-xs">{self.manga.description.as_ref().unwrap_or(&"N/A".to_string()).to_owned()}</p>
                 </div>
             </div>
-            <div class="w-6/7 mx-2 grid grid-cols-1 lg:grid-cols-2">
+            <div class="w-6/7 mx-2 flex flex-col rounded-lg">
                 {
                     for self.chapters.iter().map(|(chapter)| html!{
                         <div class={
-                            format!("rounded-lg border border-grey-light m-2 {}", if chapter.read.unwrap_or(0) > 0 {"bg-gray-400"} else {""})
+                            format!("inline-flex flex-wrap justify-between border border-grey-light {}", if chapter.read.unwrap_or(0) > 0 {"bg-gray-400"} else {""})
                         }>
                             <RouterAnchor<AppRoute>
                             classes="px-2 py-2 text-left block hover:shadow"
@@ -201,25 +201,26 @@ impl Component for Detail {
                                 {
                                     format!("{}{}{}",
                                     if let Some(v) = &chapter.vol {
-                                        format!("Vol. {}", v)
+                                        format!("Vol. {} ", v)
                                     } else {
                                         "".to_string()
                                     },
                                     if let Some(c) = &chapter.no {
-                                        format!("Ch. {}", c)
+                                        format!("Ch. {} ", c)
                                     } else {
                                         "".to_string()
                                     },
                                     {
                                     let t = chapter.title.as_ref().unwrap();
                                     if !t.is_empty() {
-                                        format!("-{}", t)
+                                        format!("{}", t)
                                     } else {
                                         "".to_string()
                                     }
                                     })
                                 }
                             </RouterAnchor<AppRoute>>
+                            <span class="flex-shrink-0 text-sm text-gray-800 px-2 py-2">{chapter.uploaded.date()}</span>
                         </div>
                     })
                 }
