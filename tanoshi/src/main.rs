@@ -3,6 +3,8 @@ extern crate libloading as lib;
 extern crate pretty_env_logger;
 #[macro_use]
 extern crate log;
+#[macro_use]
+extern crate lazy_static;
 
 mod auth;
 mod bot;
@@ -23,6 +25,14 @@ use std::sync::{Arc, RwLock};
 use warp::{http::header::HeaderValue, path::Tail, reply::Response, Filter, Rejection, Reply};
 
 use config::Config;
+
+lazy_static! {
+    static ref QUERIES: Vec<&'static str> = vec![
+        include_str!("../migration/1.sql"),
+        include_str!("../migration/2.sql"),
+        include_str!("../migration/3.sql"),
+    ];
+}
 
 #[derive(RustEmbed)]
 #[folder = "../tanoshi-web/dist/"]
@@ -78,10 +88,6 @@ async fn main() -> Result<()> {
     };
 
     {
-        let queries = vec![
-            include_str!("../migration/1.sql"),
-            include_str!("../migration/2.sql"),
-        ];
         let conn = match rusqlite::Connection::open(config.database_path.clone()) {
             Ok(conn) => conn,
             Err(e) => {
@@ -96,9 +102,9 @@ async fn main() -> Result<()> {
             .unwrap_or(0);
         info!("Schema version {}", user_version);
 
-        if queries.len() > user_version as usize {
+        if QUERIES.len() > user_version as usize {
             info!("Schema version mismatch");
-            for (i, query) in queries.iter().enumerate() {
+            for (i, query) in QUERIES.iter().enumerate() {
                 if i + 1 > user_version as usize {
                     info!("Migrating {}", i + 1);
                     if let Err(e) = conn.execute_batch(query) {
@@ -121,7 +127,7 @@ async fn main() -> Result<()> {
             if let Err(e) = conn.pragma_update(
                 Some(rusqlite::DatabaseName::Main),
                 "user_version",
-                &(queries.len() as i32),
+                &(QUERIES.len() as i32),
             ) {
                 return Err(anyhow!("error set PRAGMA user_version: {}", e));
             }

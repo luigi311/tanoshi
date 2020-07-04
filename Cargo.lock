@@ -2140,8 +2140,9 @@ dependencies = [
  "dirs",
  "futures",
  "jsonwebtoken",
+ "lazy_static",
  "libloading",
- "log 0.3.9",
+ "log 0.4.8",
  "mime_guess 2.0.3",
  "pretty_env_logger",
  "rand 0.7.3",
@@ -2149,9 +2150,7 @@ dependencies = [
  "rust-argon2 0.8.2",
  "rust-embed",
  "serde",
- "serde_derive",
  "serde_json",
- "serde_urlencoded",
  "serde_yaml",
  "tanoshi-lib",
  "tbot",
@@ -2162,9 +2161,9 @@ dependencies = [
 
 [[package]]
 name = "tanoshi-lib"
-version = "0.8.2"
+version = "0.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5374ef6673a0df9e8e6aca8272843513f71452152f1385099bd150efba1fd85a"
+checksum = "22f6b29512408f4f52296a22b3e4332a813463b8daf177ed5c66d49a9512e57b"
 dependencies = [
  "anyhow",
  "chrono",
@@ -2172,6 +2171,7 @@ dependencies = [
  "rustc_version",
  "serde",
  "serde_yaml",
+ "time 0.2.16",
  "ureq",
 ]
 
