@@ -183,7 +183,7 @@ impl Component for Detail {
                 </div>
                 <div class="flex flex-col m-2">
                     <p class="md:text-xl sm:text-base font-bold">{self.manga.title.to_owned()}</p>
-                    <p class="md:text-xl sm:text-sm font-semibold">{self.manga.author.to_owned()}</p>
+                    <p class="md:text-xl sm:text-sm font-semibold">{self.manga.author.join(", ").to_owned()}</p>
                     <p class="md:text-xl sm:text-sm font-semibold">{self.manga.status.as_ref().unwrap_or(&"N/A".to_string()).to_owned()}</p>
                     //<p class="md:text-xl sm:text-sm font-medium break-normal">{self.manga.genre.join(", ").to_owned()}</p>
                     <p class="break-normal md:text-base sm:text-xs">{self.manga.description.as_ref().unwrap_or(&"N/A".to_string()).to_owned()}</p>
