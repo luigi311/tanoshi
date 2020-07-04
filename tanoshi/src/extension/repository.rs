@@ -309,12 +309,12 @@ impl Repository {
                 chapter.manga_id = ?2
             ORDER BY
                 CAST((CASE
-                    WHEN chapter.volume = '' IS TRUE THEN '0'
-                    ELSE chapter.volume
-                    END) AS DECIMAL) DESC,
-                CAST((CASE
                     WHEN chapter.number = '' IS TRUE THEN '0'
                     ELSE chapter.number
+                    END) AS DECIMAL) DESC,
+                CAST((CASE
+                    WHEN chapter.volume = '' IS TRUE THEN '0'
+                    ELSE chapter.volume
                     END) AS DECIMAL) DESC"#,
         )?;
         let chapters = stmt
