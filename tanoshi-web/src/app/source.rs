@@ -12,7 +12,6 @@ use crate::app::job;
 
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
-use yew::services::ConsoleService;
 
 #[derive(Clone, Properties)]
 pub struct Props {
@@ -69,10 +68,7 @@ impl Component for Source {
         }) as Box<dyn Fn()>);
 
         let worker_callback = link.callback(|msg| match msg {
-            job::Response::MangasFetched(data) => {
-                ConsoleService::info("update");
-                Msg::MangasReady(data)
-            }
+            job::Response::MangasFetched(data) => Msg::MangasReady(data),
             job::Response::LoginPosted(_data) => Msg::LoginSuccess,
             _ => Msg::Noop,
         });
@@ -107,7 +103,6 @@ impl Component for Source {
     }
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
-        ConsoleService::info("update");
         match msg {
             Msg::MangasReady(data) => {
                 self.is_fetching = false;

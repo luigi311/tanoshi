@@ -157,15 +157,16 @@ impl Worker {
                             for c in chapters {
                                 for u in m.clone().users {
                                     if let Err(e) = tx.execute(
-                                        r#"INSERT INTO chapter(user_id, manga_id, number, title, path, uploaded)
+                                        r#"INSERT INTO chapter(user_id, manga_id, volume, number, title, path, uploaded)
                                             VALUES(
                                             ?1,
                                             ?2,
                                             ?3,
                                             ?4,
                                             ?5,
-                                            ?6) ON CONFLICT DO NOTHING"#,
-                                        params![u, m.manga_id, c.no.clone(), c.title, c.url, c.uploaded],
+                                            ?6,
+                                            ?7) ON CONFLICT DO NOTHING"#,
+                                        params![u, m.manga_id, c.vol.clone(), c.no.clone(), c.title, c.url, c.uploaded],
                                     ) {
                                         error!("erorr insert row: {}", e);
                                     }

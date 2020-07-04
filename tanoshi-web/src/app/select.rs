@@ -155,13 +155,14 @@ impl Component for Select {
 impl Select {
     fn installed_view(&self) -> Html {
         html! {
-            <div class="flex flex-col rounded-lg border border-grey-light mx-2 shadow">
+            <div class="flex flex-col rounded-lg border border-grey-light mx-2 shadow" style="margin-top: calc(env(safe-area-inset-top) + .5rem)">
             {
                 for self.installed_sources.iter().map(|source| html!{
                     <RouterAnchor<BrowseRoute>
-                        classes="flex inline-flex border-b border-gray-light p-2 content-center hover:bg-gray-200"
+                        classes="flex inline-flex justify-between border-b border-gray-light p-2 content-center hover:bg-gray-200"
                         route=BrowseRoute::Catalogue(CatalogueRoute::Source(source.id))>
                         <span class="text-lg font-semibold">{source.name.to_owned()}</span>
+                        <span class="text-md mx-2">{source.version.to_owned()}</span>
                     </RouterAnchor<BrowseRoute>>
                 })
             }
@@ -171,17 +172,20 @@ impl Select {
 
     fn available_view(&self) -> Html {
         html! {
-            <div class="flex flex-col rounded-lg border border-grey-light mx-2 shadow">
+            <div class="flex flex-col rounded-lg border border-grey-light mx-2 shadow" style="margin-top: calc(env(safe-area-inset-top) + .5rem)">
             {
                 for (0..self.available_sources.len()).map(|i| html!{
                     <div
                         class="flex inline-flex justify-between border-b border-gray-light p-2 content-center hover:bg-gray-200">
                         <span class="text-lg font-semibold">{self.available_sources[i].name.clone()}</span>
+                        <div>
+                        <span class="text-md mx-2">{self.available_sources[i].version.clone()}</span>
                         <button class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold px-4 rounded"
                             disabled={self.is_installed(self.available_sources[i].name.clone())}
                             onclick={self.link.callback(move |_| Msg::InstallExtension(i))}>
                             {if !self.is_installed(self.available_sources[i].name.clone()) {"Install"} else {"Installed"}}
                         </button>
+                        </div>
                     </div>
                 })
             }
