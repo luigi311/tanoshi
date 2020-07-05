@@ -1,5 +1,11 @@
-pub mod manga_list;
+mod manga_list;
 pub use manga_list::MangaList;
+
+mod page_list;
+pub use page_list::PageList;
+
+mod page;
+pub use page::Page;
 
 mod manga;
 pub use self::manga::Manga;
