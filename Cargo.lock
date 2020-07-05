@@ -2130,7 +2130,7 @@ dependencies = [
 
 [[package]]
 name = "tanoshi"
-version = "0.8.4"
+version = "0.8.5"
 dependencies = [
  "anyhow",
  "base64 0.12.3",
@@ -2142,7 +2142,7 @@ dependencies = [
  "jsonwebtoken",
  "lazy_static",
  "libloading",
- "log 0.4.8",
+ "log 0.3.9",
  "mime_guess 2.0.3",
  "pretty_env_logger",
  "rand 0.7.3",
@@ -2177,7 +2177,7 @@ dependencies = [
 
 [[package]]
 name = "tanoshi-web"
-version = "0.8.4"
+version = "0.8.5"
 dependencies = [
  "anyhow",
  "chrono",
