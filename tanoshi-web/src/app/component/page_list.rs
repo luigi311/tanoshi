@@ -28,6 +28,7 @@ pub struct Props {
     pub weak_link: WeakComponentLink<PageList>,
     pub page_rendering: PageRendering,
     pub reading_direction: ReadingDirection,
+    pub current_page: usize,
 }
 pub struct PageList {
     props: Props,
@@ -76,13 +77,7 @@ impl Component for PageList {
     fn view(&self) -> Html {
         html! {
             <div class={self.class.clone()}>
-                {
-                    match self.props.page_rendering {
-                        PageRendering::DoublePage => self.view_page(),
-                        PageRendering::SinglePage => self.view_page(),
-                        PageRendering::LongStrip => self.view_page(),
-                    }
-                }
+                {self.view_page()}
             </div>
         }
     }
@@ -91,7 +86,22 @@ impl Component for PageList {
 impl PageList {
     fn view_page(&self) -> Html {
         html! {{
-            for self.props.children.iter().map(|m| m)
+            for self.props.children.iter().map(|mut m|{
+                if let Variants::PageItem(ref mut props) = m.props {
+                    match self.props.page_rendering {
+                        PageRendering::SinglePage => {
+                            props.hidden = props.id != self.props.current_page;
+                        }
+                        PageRendering::DoublePage => {
+                            props.hidden = (props.id != self.props.current_page) && (props.id != self.props.current_page + 1);
+                        }
+                        PageRendering::LongStrip => {
+                            props.hidden = false;
+                        }
+                    }
+                }
+                m
+            })
         }}
     }
 }

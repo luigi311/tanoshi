@@ -222,7 +222,11 @@ impl Component for Chapter {
                 self.set_history();
             }
             Msg::PageSliderChange(page) => {
-                self.move_to_page(page);
+                if self.settings.page_rendering == PageRendering::DoublePage && page % 2 != 0 {
+                    self.move_to_page(page.checked_sub(1).unwrap_or(0))
+                } else {
+                    self.move_to_page(page);
+                }
                 self.set_history();
             }
             Msg::ToggleBar => {
@@ -344,6 +348,7 @@ impl Component for Chapter {
                     page_rendering={&self.settings.page_rendering}
                     reading_direction={&self.settings.reading_direction}
                     weak_link=list_link
+                    current_page=self.current_page
                 >
                     {
                         for self.pages
@@ -357,7 +362,9 @@ impl Component for Chapter {
                                         key={i}
                                         page_ref=self.page_refs[i].clone()
                                         hidden={self.current_page != i}
-                                        src={if i >= 0 && i < self.current_page + 3 {page} else {"".to_string()}}
+                                        page_rendering={&self.settings.page_rendering}
+                                        reading_direction={&self.settings.reading_direction}
+                                        src={if i >= self.current_page.checked_sub(2).unwrap_or(0) && i < self.current_page + 2 {page} else {"".to_string()}}
                                     />
                                 }
                             })
@@ -401,84 +408,6 @@ impl Component for Chapter {
 }
 
 impl Chapter {
-    fn single_page_view(&self) -> Html {
-        self.pages
-            .clone()
-            .into_iter()
-            .enumerate()
-            .map(|(i, page)| {
-                html_nested! {
-                    <Page id={i}
-                        page_ref=self.page_refs[i].clone()
-                        hidden={self.current_page == i}
-                        src={if i >= 0 && i < self.current_page + 3 {page} else {"".to_string()}}
-                    />
-                }
-            })
-            .collect()
-    }
-    fn double_page_view(&self) -> Html {
-        let mut pages = Vec::new();
-        for i in 0..self.pages.len() {
-            if i % 2 == 0 {
-                pages.push((
-                    i,
-                    match self.pages.get(i) {
-                        Some(page) => page.clone(),
-                        None => "".to_string(),
-                    },
-                    i + 1,
-                    match self.pages.get(i + 1) {
-                        Some(page) => page.clone(),
-                        None => "".to_string(),
-                    },
-                ));
-            }
-        }
-
-        pages.into_iter().map(|(left_idx, left_page, right_idx, right_page)| html! {
-        <>
-            <img id={left_idx}
-                ref=self.page_refs[left_idx].clone()
-                class={
-                    format!("w-1/2 h-auto object-contain {} {}",
-                        if self.settings.reading_direction == ReadingDirection::RightToLeft {"object-left"} else {"object-right"},
-                        if self.current_page == left_idx {"block"} else {"hidden"})
-                }
-                src={if left_idx >= 0 && left_idx < self.current_page + 3 {left_page} else {"".to_string()}}
-                style={"background: transparent url('/assets/loading.gif') no-repeat scroll center center"}
-            />
-            <img id={right_idx}
-                ref=self.page_refs[right_idx].clone()
-                class={
-                    format!("w-1/2 h-auto object-contain {} {}",
-                        if self.settings.reading_direction == ReadingDirection::RightToLeft {"object-right"} else {"object-left"},
-                        if self.current_page + 1 == right_idx {"block"} else {"hidden"})
-                }
-                src={if right_idx >= 0 && right_idx < self.current_page + 3 {right_page} else {"".to_string()}}
-                style={"background: transparent url('/assets/loading.gif') no-repeat scroll center center"}
-            />
-        </>
-        }).collect()
-    }
-
-    fn long_strip_view(&self) -> Html {
-        self.pages
-            .clone()
-            .into_iter()
-            .enumerate()
-            .map(|(i, page)| {
-                html_nested! {
-                    <Page id={i}
-                        page_ref=self.page_refs[i].clone()
-                        src={if i >= 0 && i < self.current_page + 3 {page} else {"".to_string()}}
-                        onmouseup={self.link.callback(|_| Msg::ToggleBar)}
-                    />
-                }
-            })
-            .collect()
-    }
-
     fn get_manga(&mut self) {
         self.worker.send(job::Request::FetchManga(self.manga_id));
     }
