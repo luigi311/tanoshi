@@ -175,7 +175,7 @@ impl Worker {
                                         let user_val: &mut HashMap<String, Vec<Chapter>> = chapter_updates.entry(u).or_insert(HashMap::new());
                                         let manga_val: &mut Vec<Chapter> = user_val.entry(m.manga_title.clone()).or_insert(vec![]);
                                         if manga_val.iter().find(|u| u.id == last_id).is_none() {
-                                            manga_val.push(Chapter { id: last_id, number: c.no.clone().unwrap() });
+                                            manga_val.push(Chapter { id: last_id, number: c.no.clone().unwrap_or(c.vol.clone().unwrap_or("0".to_string())) });
                                         }
                                     }
                                 }

@@ -36,8 +36,8 @@ impl History {
             .prepare(
                 r#"SELECT 
         manga.title AS title, 
-        manga.thumbnail_url as thumbnail_url, 
-        chapter.number AS chapter, 
+        manga.thumbnail_url as thumbnail_url,
+        COALESCE(chapter.number, chapter.volume) AS chapter, 
         chapter.id AS chapter_id,
         history.last_page AS read, 
         history.at AS at,
