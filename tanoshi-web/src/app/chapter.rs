@@ -147,7 +147,20 @@ impl Component for Chapter {
         false
     }
 
-    fn rendered(&mut self, _first_render: bool) {
+    fn rendered(&mut self, first_render: bool) {
+        if first_render {
+            if self.settings.page_rendering == PageRendering::DoublePage
+                && self.current_page % 2 != 0
+            {
+                let route_string = format!(
+                    "/chapter/{}/page/{}",
+                    self.current_chapter_id, self.current_page
+                );
+
+                let route = Route::from(route_string);
+                self.router.send(RouteRequest::ChangeRoute(route));
+            }
+        }
         if self.should_fetch {
             self.should_fetch = false;
             self.get_pages();
