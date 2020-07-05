@@ -1,4 +1,5 @@
 use super::model::{PageRendering, ReadingDirection};
+use web_sys::MouseEvent;
 use yew::html::{Children, NodeRef};
 use yew::prelude::*;
 
@@ -8,11 +9,9 @@ pub struct Props {
     #[prop_or_default]
     pub src: String,
     #[prop_or_default]
-    pub onmouseup: Callback<()>,
+    pub onmouseup: Callback<(MouseEvent)>,
     #[prop_or_default]
     pub hidden: bool,
-    #[prop_or_default]
-    pub children: Children,
     pub page_ref: NodeRef,
     pub page_rendering: PageRendering,
     pub reading_direction: ReadingDirection,
@@ -44,9 +43,6 @@ impl Component for Page {
     }
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
-        match msg {
-            Msg::MouseUp => self.props.onmouseup.emit(()),
-        }
         false
     }
 
@@ -56,7 +52,7 @@ impl Component for Page {
                 ref=self.props.page_ref.clone(),
                 class={self.classess()}
                 src={&self.props.src}
-                onmouseup={self.link.callback(|_| Msg::MouseUp)}
+                onmouseup={&self.props.onmouseup}
                 style={"background: transparent url('/assets/loading.gif') no-repeat scroll center center"}
             />
         }
@@ -94,6 +90,7 @@ impl Page {
             PageRendering::LongStrip => {
                 classes.push("w-auto");
                 classes.push("min-h-24");
+                classes.push("cursor-pointer");
             }
         }
 

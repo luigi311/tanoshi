@@ -308,6 +308,11 @@ impl Component for Chapter {
 
     fn view(&self) -> Html {
         let list_link = &WeakComponentLink::<PageList>::default();
+        let on_mouse_up = if self.settings.page_rendering == PageRendering::LongStrip {
+            self.link.callback(|_| Msg::ToggleBar)
+        } else {
+            self.link.callback(|_| Msg::Noop)
+        };
         return html! {
         <div>
             <div
@@ -364,6 +369,7 @@ impl Component for Chapter {
                                         hidden={self.current_page != i}
                                         page_rendering={&self.settings.page_rendering}
                                         reading_direction={&self.settings.reading_direction}
+                                        onmouseup={&on_mouse_up}
                                         src={if i >= self.current_page.checked_sub(2).unwrap_or(0) && i < self.current_page + 2 {page} else {"".to_string()}}
                                     />
                                 }
