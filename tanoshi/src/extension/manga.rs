@@ -179,7 +179,9 @@ impl Manga {
         claim: Claims,
     ) -> Result<impl warp::Reply, Rejection> {
         let exts = self.exts.read().unwrap();
-        if let Ok(url) = self.repo.get_manga_url(manga_id) {
+        if let Ok(manga) = self.repo.get_manga_detail(manga_id, claim.sub.clone()) {
+            return Ok(warp::reply::json(&manga));
+        } else if let Ok(url) = self.repo.get_manga_url(manga_id) {
             let source = match self.repo.get_source_from_manga_id(manga_id) {
                 Ok(source) => source,
                 Err(e) => {
