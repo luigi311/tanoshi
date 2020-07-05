@@ -1,3 +1,4 @@
+use super::Touched;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::__rt::core::time::Duration;
 use yew::format::{Json, Nothing};
@@ -5,7 +6,9 @@ use yew::prelude::*;
 use yew::services::fetch::{FetchTask, Request, Response};
 use yew::services::storage::Area;
 use yew::services::{FetchService, StorageService, Task, TimeoutService};
-use yew::{html, Bridge, Bridged, Component, ComponentLink, Html, Properties, ShouldRender};
+use yew::{
+    html, Bridge, Bridged, Children, Component, ComponentLink, Html, Properties, ShouldRender,
+};
 use yew_router::agent::{RouteAgent, RouteRequest};
 use yew_router::prelude::*;
 
@@ -26,6 +29,8 @@ pub struct Props {
     pub title: String,
     pub thumbnail: String,
     pub is_favorite: bool,
+    #[prop_or_default]
+    pub children: Children,
 }
 
 pub struct Manga {

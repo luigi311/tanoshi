@@ -2142,7 +2142,7 @@ dependencies = [
  "jsonwebtoken",
  "lazy_static",
  "libloading",
- "log 0.3.9",
+ "log 0.4.8",
  "mime_guess 2.0.3",
  "pretty_env_logger",
  "rand 0.7.3",
@@ -2894,9 +2894,9 @@ dependencies = [
 
 [[package]]
 name = "yew"
-version = "0.17.1"
+version = "0.17.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cb5a2c242a4abb2311f0359ca6338575ca1879a3f658b468269217ada8cfa44c"
+checksum = "f0d82d3fb2ab53913967b0a50a5a693ab75e1465cb091a24519a9441246c2627"
 dependencies = [
  "anyhow",
  "anymap",

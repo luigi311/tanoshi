@@ -1,4 +1,4 @@
-use super::component::{Manga, Spinner};
+use super::component::{Manga, MangaList, Spinner, WeakComponentLink};
 use web_sys::HtmlElement;
 use yew::prelude::*;
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
@@ -196,18 +196,21 @@ impl Component for Source {
 
 impl Source {
     fn view_mangas(&self) -> Html {
+        let list_link = &WeakComponentLink::<MangaList>::default();
         html! {
             <>
-                <div class="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 pt-12" id="catalogue" style="margin-top: calc(env(safe-area-inset-top) + .5rem)">
-                    { for self.mangas.iter().map(|manga| html!{
+                <MangaList weak_link=list_link>
+                    { for self.mangas.iter().map(|manga| {
+                        html_nested!{
                         <Manga
-                        id=manga.id
-                        title=manga.title.to_owned()
-                        thumbnail=manga.thumbnail_url.to_owned()
-                        is_favorite=manga.is_favorite />
-                    })
+                            key=manga.id
+                            id=manga.id
+                            title=&manga.title
+                            thumbnail=&manga.thumbnail_url
+                            is_favorite=&manga.is_favorite />
+                    }})
                     }
-                </div>
+                </MangaList>
                 <div class="grid grid-cols-1" id="catalogue">
                 {
                     match self.is_fetching {
