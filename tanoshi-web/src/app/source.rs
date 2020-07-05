@@ -199,7 +199,7 @@ impl Source {
         let list_link = &WeakComponentLink::<MangaList>::default();
         html! {
             <>
-                <MangaList weak_link=list_link>
+                <MangaList weak_link=list_link style="margin-top: calc(env(safe-area-inset-top) + .5rem)">
                     { for self.mangas.iter().map(|manga| {
                         html_nested!{
                         <Manga

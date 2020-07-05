@@ -12,7 +12,7 @@ use yew_router::{agent::RouteRequest, prelude::*};
 use crate::app::{browse::BrowseRoute, job, AppRoute};
 
 use super::component::model::{BackgroundColor, PageRendering, ReadingDirection, SettingParams};
-use super::component::Spinner;
+use super::component::{Page, PageList, Spinner, WeakComponentLink};
 
 use tanoshi_lib::manga::{Chapter as ChapterModel, Manga as MangaModel};
 use tanoshi_lib::rest::{GetChaptersResponse, GetMangaResponse, GetPagesResponse, HistoryRequest};
@@ -303,6 +303,7 @@ impl Component for Chapter {
     }
 
     fn view(&self) -> Html {
+        let list_link = &WeakComponentLink::<PageList>::default();
         return html! {
         <div>
             <div
@@ -339,47 +340,29 @@ impl Component for Chapter {
                         html!{}
                     }
                 }
-                <div ref=self.container_ref.clone()
-                 id="pages"
-                 class={
-                    format!("flex justify-center overflow-auto {} {}",
-                    if self.settings.page_rendering == PageRendering::LongStrip {"flex-col"} else {"h-screen"},
-                    if self.settings.reading_direction == ReadingDirection::RightToLeft {"flex-row-reverse"} else {""})
-                }>
+                <PageList ref=self.container_ref.clone()
+                    page_rendering={&self.settings.page_rendering}
+                    reading_direction={&self.settings.reading_direction}
+                    weak_link=list_link
+                >
                     {
-                        if self.settings.page_rendering == PageRendering::LongStrip {
-                            html!{
-                            <div
-                                class="border-dashed border-b border-gray-500 flex justify-center items-center h-24 cursor-pointer"
-                                onmouseup=self.link.callback(|_| Msg::PagePrevious)>
-                                <span class="text-gray-500">{"Previous Chapter"}</span>
-                            </div>
-                            }
-                        } else {
-                            html!{}
-                        }
+                        for self.pages
+                            .clone()
+                            .into_iter()
+                            .enumerate()
+                            .map(|(i, page)| {
+                                html_nested! {
+                                    <Page
+                                        id={i}
+                                        key={i}
+                                        page_ref=self.page_refs[i].clone()
+                                        hidden={self.current_page != i}
+                                        src={if i >= 0 && i < self.current_page + 3 {page} else {"".to_string()}}
+                                    />
+                                }
+                            })
                     }
-                    {
-                        match self.settings.page_rendering {
-                            PageRendering::DoublePage => self.double_page_view(),
-                            PageRendering::SinglePage => self.single_page_view(),
-                            PageRendering::LongStrip => self.long_strip_view(),
-                        }
-                    }
-                     {
-                        if self.settings.page_rendering == PageRendering::LongStrip {
-                            html!{
-                            <div
-                                class="border-dashed border-t border-gray-500 flex justify-center items-center h-24 cursor-pointer"
-                                onmouseup=self.link.callback(|_| Msg::PageForward)>
-                                <span class="text-gray-500">{"Next Chapter"}</span>
-                            </div>
-                            }
-                        } else {
-                            html!{}
-                        }
-                    }
-                </div>
+                </PageList>
                 <Spinner is_active=self.is_fetching is_fullscreen=true/>
             </div>
             <div ref=self.refs[1].clone()
@@ -419,14 +402,20 @@ impl Component for Chapter {
 
 impl Chapter {
     fn single_page_view(&self) -> Html {
-        self.pages.clone().into_iter().enumerate().map(|(i, page)| html! {
-            <img id={i}
-                ref=self.page_refs[i].clone()
-                class={format!("w-full h-auto object-contain object-center {}", if self.current_page == i {"block"} else {"hidden"})}
-                src={if i >= 0 && i < self.current_page + 3 {page} else {"".to_string()}}
-                style={"background: transparent url('/assets/loading.gif') no-repeat scroll center center"}
-            />
-        }).collect()
+        self.pages
+            .clone()
+            .into_iter()
+            .enumerate()
+            .map(|(i, page)| {
+                html_nested! {
+                    <Page id={i}
+                        page_ref=self.page_refs[i].clone()
+                        hidden={self.current_page == i}
+                        src={if i >= 0 && i < self.current_page + 3 {page} else {"".to_string()}}
+                    />
+                }
+            })
+            .collect()
     }
     fn double_page_view(&self) -> Html {
         let mut pages = Vec::new();
@@ -474,15 +463,20 @@ impl Chapter {
     }
 
     fn long_strip_view(&self) -> Html {
-        self.pages.clone().into_iter().enumerate().map(|(i, page)| html! {
-            <img id={i}
-                ref=self.page_refs[i].clone()
-                class={format!("w-auto min-h-24 object-contain block")}
-                src={if i >= 0 && i < self.current_page + 3 {page} else {"".to_string()}}
-                onmouseup={self.link.callback(|_| Msg::ToggleBar)}
-                style={"background: transparent url('/assets/loading.gif') no-repeat scroll center center"}
-            />
-        }).collect()
+        self.pages
+            .clone()
+            .into_iter()
+            .enumerate()
+            .map(|(i, page)| {
+                html_nested! {
+                    <Page id={i}
+                        page_ref=self.page_refs[i].clone()
+                        src={if i >= 0 && i < self.current_page + 3 {page} else {"".to_string()}}
+                        onmouseup={self.link.callback(|_| Msg::ToggleBar)}
+                    />
+                }
+            })
+            .collect()
     }
 
     fn get_manga(&mut self) {

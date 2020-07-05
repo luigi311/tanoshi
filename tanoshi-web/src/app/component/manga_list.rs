@@ -25,6 +25,8 @@ pub struct MangaVariant {
 pub struct Props {
     pub children: ChildrenRenderer<MangaVariant>,
     pub weak_link: WeakComponentLink<MangaList>,
+    #[prop_or_default]
+    pub style: String,
 }
 pub struct MangaList {
     props: Props,
@@ -52,7 +54,7 @@ impl Component for MangaList {
     }
     fn view(&self) -> Html {
         html! {
-            <div class="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 pt-12" id="catalogue" style="margin-top: calc(env(safe-area-inset-top) + .5rem)">
+            <div class="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 pt-12" id="catalogue" style={&self.props.style}>
                 {self.view_manga()}
             </div>
         }
