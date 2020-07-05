@@ -395,7 +395,7 @@ impl Component for Chapter {
                                         page_rendering={&self.settings.page_rendering}
                                         reading_direction={&self.settings.reading_direction}
                                         onmouseup={&on_mouse_up}
-                                        src={if i >= self.current_page.checked_sub(2).unwrap_or(0) && i < self.current_page + 2 {page} else {"".to_string()}}
+                                        src={if i >= 0 && i < self.current_page + 2 {page} else {"".to_string()}}
                                     />
                                 }
                             })
