@@ -1,11 +1,12 @@
 use serde::Deserialize;
 use yew::format::{Json, Nothing, Text};
+use yew::prelude::*;
 use yew::services::fetch::{FetchTask, Request, Response};
 use yew::services::storage::Area;
 use yew::services::{FetchService, StorageService};
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 
-use super::component::{Manga, Spinner};
+use super::component::{Manga, MangaList, Spinner, WeakComponentLink};
 use tanoshi_lib::manga::FavoriteManga;
 use tanoshi_lib::rest::GetFavoritesResponse;
 
@@ -95,6 +96,7 @@ impl Component for Home {
     }
 
     fn view(&self) -> Html {
+        let list_link = &WeakComponentLink::<MangaList>::default();
         html! {
            <div class="container mx-auto pb-20 sm:pb-25" style="padding-top: calc(env(safe-area-inset-top) + .5rem)">
                 <div class="w-full px-2 pb-2 flex justify-between block fixed inset-x-0 top-0 z-50 bg-tachiyomi-blue shadow" style="padding-top: calc(env(safe-area-inset-top) + .5rem)">
@@ -111,17 +113,18 @@ impl Component for Home {
                     </button>
                 </div>
                 <Spinner is_active=self.is_fetching is_fullscreen=true />
-                <div class="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 mt-12">
-                {
-                for self.mangas.iter().map(|manga| html!{
-                <Manga
-                    id=manga.manga_id
-                    title=manga.title.to_owned()
-                    thumbnail=manga.thumbnail_url.to_owned()
-                    is_favorite={false} />
-                })
-                }
-                </div>
+                <MangaList weak_link=list_link>
+                    { for self.mangas.iter().map(|manga| {
+                        html_nested!{
+                        <Manga
+                            key=manga.manga_id
+                            id=manga.manga_id
+                            title=&manga.title
+                            thumbnail=&manga.thumbnail_url
+                            is_favorite=false />
+                    }})
+                    }
+                </MangaList>
             </div>
         }
     }
