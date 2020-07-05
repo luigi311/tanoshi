@@ -58,7 +58,7 @@ impl Bot {
                     let chat_id = context.clone().chat().id.0;
                     context.send_message(
                         Text::plain(
-                            format!("This chat id is {}. Input this chat id in setting to get notification on chapter updates", chat_id)
+                            format!("This chat id is {}. Input this chat id in setting to get notification on chapter updates and relogin", chat_id)
                                 .as_str()
                         ))
                         .call()
@@ -66,7 +66,9 @@ impl Bot {
                         .unwrap();
                 });
 
-            bot.polling().start().await.unwrap();
+            if let Err(_) = bot.polling().start().await {
+                error!("error start telegram bot polling")
+            }
         });
     }
 
