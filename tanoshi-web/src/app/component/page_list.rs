@@ -3,6 +3,8 @@ use yew::html::{ChildrenRenderer, Component, ComponentLink};
 use yew::prelude::*;
 use yew::virtual_dom::{VChild, VComp, VNode};
 
+use web_sys::MouseEvent;
+
 use super::model::{PageRendering, ReadingDirection};
 use super::{Touched, WeakComponentLink};
 
@@ -26,6 +28,8 @@ pub struct PageVariant {
 pub struct Props {
     pub children: ChildrenRenderer<PageVariant>,
     pub weak_link: WeakComponentLink<PageList>,
+    pub onnextchapter: Callback<(MouseEvent)>,
+    pub onprevchapter: Callback<(MouseEvent)>,
     pub page_rendering: PageRendering,
     pub reading_direction: ReadingDirection,
     pub current_page: usize,
@@ -77,7 +81,33 @@ impl Component for PageList {
     fn view(&self) -> Html {
         html! {
             <div class={self.class.clone()}>
+                {
+                    if self.props.page_rendering == PageRendering::LongStrip {
+                        html!{
+                        <div
+                            class="border-dashed border-b border-gray-500 flex justify-center items-center h-24 cursor-pointer"
+                            onmouseup={&self.props.onprevchapter}>
+                            <span class="text-gray-500">{"Previous Chapter"}</span>
+                        </div>
+                        }
+                    } else {
+                        html!{}
+                    }
+                }
                 {self.view_page()}
+                {
+                    if self.props.page_rendering == PageRendering::LongStrip {
+                        html!{
+                        <div
+                            class="border-dashed border-t border-gray-500 flex justify-center items-center h-24 cursor-pointer"
+                            onmouseup={&self.props.onnextchapter}>
+                            <span class="text-gray-500">{"Next Chapter"}</span>
+                        </div>
+                        }
+                    } else {
+                        html!{}
+                    }
+                }
             </div>
         }
     }

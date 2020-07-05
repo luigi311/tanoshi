@@ -313,6 +313,16 @@ impl Component for Chapter {
         } else {
             self.link.callback(|_| Msg::Noop)
         };
+        let onnextchapter = if self.settings.page_rendering == PageRendering::LongStrip {
+            self.link.callback(|_| Msg::PageForward)
+        } else {
+            self.link.callback(|_| Msg::Noop)
+        };
+        let onprevchapter = if self.settings.page_rendering == PageRendering::LongStrip {
+            self.link.callback(|_| Msg::PagePrevious)
+        } else {
+            self.link.callback(|_| Msg::Noop)
+        };
         return html! {
         <div>
             <div
@@ -354,6 +364,8 @@ impl Component for Chapter {
                     reading_direction={&self.settings.reading_direction}
                     weak_link=list_link
                     current_page=self.current_page
+                    onnextchapter=onnextchapter
+                    onprevchapter=onprevchapter
                 >
                     {
                         for self.pages
