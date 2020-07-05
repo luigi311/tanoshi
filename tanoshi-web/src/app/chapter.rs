@@ -165,7 +165,6 @@ impl Component for Chapter {
         match msg {
             Msg::MangaReady(data) => {
                 self.manga = data.manga.clone();
-                self.is_fetching = false;
             }
             Msg::ChapterReady(data) => {
                 self.is_fetching = false;
@@ -180,7 +179,6 @@ impl Component for Chapter {
                 };
                 self.chapter = data.chapters[idx].clone();
                 self.get_manga();
-                self.is_fetching = false;
             }
             Msg::PagesReady(data) => {
                 self.manga_id = data.manga_id;
@@ -489,13 +487,11 @@ impl Chapter {
 
     fn get_manga(&mut self) {
         self.worker.send(job::Request::FetchManga(self.manga_id));
-        self.is_fetching = true;
     }
 
     fn get_chapters(&mut self) {
         self.worker
             .send(job::Request::FetchChapters(self.manga_id, false));
-        self.is_fetching = true;
     }
 
     fn get_pages(&mut self) {
