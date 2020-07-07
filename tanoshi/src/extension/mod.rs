@@ -81,10 +81,9 @@ impl Extensions {
         if decl.rustc_version != tanoshi_lib::RUSTC_VERSION
             || decl.core_version != tanoshi_lib::CORE_VERSION
         {
-            return Err(anyhow!(
-                format!("Version mismatch: extension.rustc_version={}, extension.core_version={}, tanoshi_lib.rustc_version={}, tanoshi_lib::core_version={}", 
+            return Err(anyhow!("Version mismatch: extension.rustc_version={}, extension.core_version={}, tanoshi_lib.rustc_version={}, tanoshi_lib::core_version={}", 
                 decl.rustc_version , decl.core_version, tanoshi_lib::RUSTC_VERSION, tanoshi_lib::CORE_VERSION)
-            ));
+            );
         }
 
         let mut registrar = PluginRegistrar::new(Arc::clone(&library));
