@@ -31,6 +31,7 @@ lazy_static! {
         include_str!("../migration/1.sql"),
         include_str!("../migration/2.sql"),
         include_str!("../migration/3.sql"),
+        include_str!("../migration/4.sql"),
     ];
 }
 

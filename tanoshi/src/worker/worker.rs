@@ -165,7 +165,7 @@ impl Worker {
                                             ?4,
                                             ?5,
                                             ?6,
-                                            ?7) ON CONFLICT DO NOTHING"#,
+                                            ?7)"#,
                                         params![u, m.manga_id, c.vol.clone(), c.no.clone(), c.title, c.url, c.uploaded],
                                     ) {
                                         error!("erorr insert row: {}", e);
