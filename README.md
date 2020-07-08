@@ -18,7 +18,7 @@ Selfhosted Tachiyomi-like web manga reader.
 ### Planned
 My plan is to make this as close as tachiyomi features. Planned features are listed [here](https://github.com/faldez/tanoshi/issues?q=is%3Aopen+is%3Aissue+label%3Aenhancement)
 
-Note that this project is still under heavy development, expect a lot of breaking changes every 0.x release until hitting 1.0. 
+Note that this project is still under heavy development, expect breaking changes on any release until hitting 1.0. 
 
 ## Why Rust
 Rust is the most loved programming language, I thought this is my chance to learn rust too.
@@ -28,7 +28,7 @@ Rust is the most loved programming language, I thought this is my chance to lear
 Download and run binary from latest release, aside from plugins all dependencies are statically linked.
 
 ### Plugins
-To browse and read manga, tanoshi needs plugins. Plugins can be donwnloaded from [here](https://github.com/fadhlika/tanoshi-extensions) in `repo` branch. 
+To browse and read manga, tanoshi needs plugins. Plugins can be donwnloaded from [here](https://github.com/fadhlika/tanoshi-extensions) in `repo-<your operating system>` branch. 
 You can download individual plugins and store in on your selected `plugins_path` in `config.yml`, or clone `repo` branch and copy all of plugins to `plugins_path`.
 
 Or you can install from web and restart tanoshi afterward.
@@ -76,7 +76,7 @@ plugin_config:
   # Plugin name
   local:
     # Absolute path to manga files
-    path: ~/mangas
+    path: /home/user/mangas
 ```
 
 ## Demo Video
