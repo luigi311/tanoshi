@@ -487,4 +487,10 @@ impl Repository {
         )?;
         Ok(())
     }
+
+    pub fn delete_pages(&self, chapter_id: i32) -> Result<()> {
+        let db = self.connect_db();
+        db.execute("DELETE FROM page WHERE chapter_id = ?", params![chapter_id])?;
+        Ok(())
+    }
 }

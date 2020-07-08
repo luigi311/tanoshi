@@ -241,12 +241,6 @@ impl Manga {
                 }
             };
 
-            let cache_path = dirs::home_dir()
-                .unwrap()
-                .join(".tanoshi")
-                .join("cache")
-                .join(base64::encode(format!("chapter:{}", &url)));
-            let _ = std::fs::remove_file(cache_path);
             let chapter = match exts.get(&source.name).unwrap().get_chapters(&url) {
                 Ok(ch) => ch,
                 Err(e) => {
@@ -283,9 +277,16 @@ impl Manga {
     pub async fn get_pages(
         &self,
         chapter_id: i32,
-        _param: GetParams,
+        param: GetParams,
     ) -> anyhow::Result<GetPagesResponse> {
         let exts = self.exts.read().unwrap();
+
+        if param.refresh.unwrap_or(false) {
+            if let Err(e) = self.repo.delete_pages(chapter_id) {
+                error!("error delete page: {}", e);
+            }
+        }
+
         if let Ok(pages) = self.repo.get_pages(chapter_id) {
             return Ok(pages);
         };
@@ -295,6 +296,13 @@ impl Manga {
                 Ok(source) => source,
                 Err(e) => return Err(anyhow::anyhow!("{}", e.to_string())),
             };
+
+            let cache_path = dirs::home_dir()
+                .unwrap()
+                .join(".tanoshi")
+                .join("cache")
+                .join(base64::encode(&url));
+            let _ = std::fs::remove_file(cache_path);
 
             let pages = exts.get(&source.name).unwrap().get_pages(&url).unwrap();
 

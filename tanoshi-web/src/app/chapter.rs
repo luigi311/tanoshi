@@ -58,6 +58,7 @@ pub enum Msg {
     RouterCallback,
     SetHistoryRequested,
     ScrollEvent(f64),
+    Refresh,
     Noop,
 }
 
@@ -163,7 +164,7 @@ impl Component for Chapter {
         }
         if self.should_fetch {
             self.should_fetch = false;
-            self.get_pages();
+            self.get_pages(false);
         }
         document()
             .get_element_by_id("manga-reader")
@@ -284,7 +285,7 @@ impl Component for Chapter {
                 }
             }
             Msg::RouterCallback => {
-                self.get_pages();
+                self.get_pages(false);
             }
             Msg::SetHistoryRequested => {
                 self.is_history_fetching = false;
@@ -311,6 +312,9 @@ impl Component for Chapter {
                         }
                     }
                 }
+            }
+            Msg::Refresh => {
+                self.get_pages(true);
             }
             Msg::Noop => {
                 return false;
@@ -340,7 +344,7 @@ impl Component for Chapter {
         <div>
             <div
             ref=self.refs[0].clone()
-            class="flex items-center animated slideInDown faster block fixed inset-x-0 top-0 z-50 bg-gray-900 z-50 content-end flex opacity-75"
+            class="flex justify-between items-center animated slideInDown faster block fixed inset-x-0 top-0 z-50 bg-gray-900 z-50 content-end opacity-75"
             style="padding-top: calc(env(safe-area-inset-top) + .5rem)">
                 <RouterAnchor<AppRoute> classes="z-50 mx-2 mb-2 text-white" route=AppRoute::Browse(BrowseRoute::Detail(self.manga_id))>
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" class="fill-current inline-block mb-1">
@@ -348,9 +352,16 @@ impl Component for Chapter {
                     </svg>
                </RouterAnchor<AppRoute>>
                <div class="flex flex-col mx-2 mb-2">
-                <span class="text-white">{self.manga.title.to_owned()}</span>
-                <span class="text-white text-sm">{if let Some(v) = &self.chapter.vol {format!("Volume {}", v)} else if let Some(c) = &self.chapter.no {format!("Chapter {}", c)} else {"".to_string()}}</span>
+                <span class="text-white text-center">{self.manga.title.to_owned()}</span>
+                <span class="text-white text-center text-sm">{if let Some(v) = &self.chapter.vol {format!("Volume {}", v)} else if let Some(c) = &self.chapter.no {format!("Chapter {}", c)} else {"".to_string()}}</span>
                </div>
+               <button
+                onclick=self.link.callback(|_| Msg::Refresh)
+                class="z-50 mx-2 mb-2 text-white ">
+                    <svg class="fill-current inline-block mb-1 my-auto self-center" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" >
+                        <path class="heroicon-ui" d="M6 18.7V21a1 1 0 0 1-2 0v-5a1 1 0 0 1 1-1h5a1 1 0 1 1 0 2H7.1A7 7 0 0 0 19 12a1 1 0 1 1 2 0 9 9 0 0 1-15 6.7zM18 5.3V3a1 1 0 0 1 2 0v5a1 1 0 0 1-1 1h-5a1 1 0 0 1 0-2h2.9A7 7 0 0 0 5 12a1 1 0 1 1-2 0 9 9 0 0 1 15-6.7z"/>
+                    </svg>
+                </button>
             </div>
             <div class="h-screen m-0 outline-none" id="manga-reader" tabindex="0" onkeydown=self.link.callback(|e: KeyboardEvent|
                 match e.key().as_str() {
@@ -448,9 +459,9 @@ impl Chapter {
             .send(job::Request::FetchChapters(self.manga_id, false));
     }
 
-    fn get_pages(&mut self) {
+    fn get_pages(&mut self, refresh: bool) {
         self.worker
-            .send(job::Request::FetchPages(self.current_chapter_id));
+            .send(job::Request::FetchPages(self.current_chapter_id, refresh));
         self.is_fetching = true;
     }
 

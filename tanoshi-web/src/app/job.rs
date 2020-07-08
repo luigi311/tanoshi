@@ -23,7 +23,7 @@ pub enum Request {
     FetchMangas(i32, Params),
     FetchManga(i32),
     FetchChapters(i32, bool),
-    FetchPages(i32),
+    FetchPages(i32, bool),
     FetchPage(String),
     PostLogin(i32, SourceLogin),
     ValidateToken,
@@ -222,8 +222,8 @@ impl Agent for Worker {
                     self.fetch_task.insert(id.clone(), FetchTask::from(task));
                 }
             }
-            Request::FetchPages(chapter_id) => {
-                let req = HttpRequest::get(format!("/api/chapter/{}", chapter_id))
+            Request::FetchPages(chapter_id, refresh) => {
+                let req = HttpRequest::get(format!("/api/chapter/{}?refresh={}", chapter_id, refresh))
                     .body(Nothing)
                     .expect("failed to build request");
 
