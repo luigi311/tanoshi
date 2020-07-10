@@ -271,7 +271,7 @@ pub mod rest {
 /// This module contains `Extension` trait, and function for interacting with `Extension`
 #[cfg(feature = "extensions")]
 pub mod extensions {
-    use super::{tanoshi_cache_dir, tanoshi_dir};
+    pub use super::{tanoshi_cache_dir, tanoshi_dir, tanoshi_plugin_dir};
     use crate::manga::{Chapter, Image, Manga, Params, Source, SourceLogin, SourceLoginResult};
     use anyhow::{anyhow, Result};
     use serde_yaml;
