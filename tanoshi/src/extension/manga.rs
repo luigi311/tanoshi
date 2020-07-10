@@ -240,7 +240,12 @@ impl Manga {
                     }))
                 }
             };
-
+            let cache_path = dirs::home_dir()
+                .unwrap()
+                .join(".tanoshi")
+                .join("cache")
+                .join(base64::encode(format!("chapter:{}", &url)));
+            let _ = std::fs::remove_file(cache_path);
             let chapter = match exts.get(&source.name).unwrap().get_chapters(&url) {
                 Ok(ch) => ch,
                 Err(e) => {
