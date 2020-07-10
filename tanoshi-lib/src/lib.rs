@@ -271,7 +271,7 @@ pub mod rest {
 /// This module contains `Extension` trait, and function for interacting with `Extension`
 #[cfg(feature = "extensions")]
 pub mod extensions {
-    use super::cache_path;
+    use super::{tanoshi_cache_dir, tanoshi_dir};
     use crate::manga::{Chapter, Image, Manga, Params, Source, SourceLogin, SourceLoginResult};
     use anyhow::{anyhow, Result};
     use serde_yaml;
@@ -307,9 +307,9 @@ pub mod extensions {
 
         /// Returns an image by download to disk first then serve to web
         fn get_page(&self, image: Image, refresh: bool) -> Result<Vec<u8>> {
-            let path = cache_path!(image.path);
+            let cache_path = tanoshi_cache_dir!(image.path);
 
-            let image_path = path.join(image.file_name.clone());
+            let image_path = cache_path.join(&image.file_name);
             if refresh {
                 let _ = std::fs::remove_file(&image_path);
             }
@@ -323,10 +323,8 @@ pub mod extensions {
                     if reader.read_to_end(&mut bytes).is_err() {
                         return Err(anyhow!("error write image"));
                     }
-                    if std::fs::create_dir_all(&path.clone()).is_ok() {
-                        if std::fs::write(&path.join(image.file_name.clone()), bytes.clone())
-                            .is_err()
-                        {
+                    if std::fs::create_dir_all(&cache_path).is_ok() {
+                        if std::fs::write(&image_path, &bytes).is_err() {
                             return Err(anyhow!("error write image"));
                         }
                     }
@@ -344,13 +342,44 @@ pub mod extensions {
     }
 
     #[macro_export]
-    macro_rules! cache_path {
-        ($file:expr) => {
-            dirs::home_dir()
-                .expect("should have home dir")
-                .join(".tanoshi")
-                .join("cache")
-                .join($file);
+    macro_rules! tanoshi_dir {
+        ($($path:expr),*) => {
+            {
+                let mut dir = dirs::home_dir().expect("should have home dir").join(".tanoshi");
+                $(
+                    dir = dir.join($path);
+                )*
+
+                dir
+            }
+        };
+    }
+
+    #[macro_export]
+    macro_rules! tanoshi_cache_dir {
+        ($($path:expr),*) => {
+            {
+                let mut dir = tanoshi_dir!("cache");
+                $(
+                    dir = dir.join($path);
+                )*
+
+                dir
+            }
+        };
+    }
+
+    #[macro_export]
+    macro_rules! tanoshi_plugin_dir {
+        ($($path:expr),*) => {
+            {
+                let mut dir = tanoshi_dir!("plugins");
+                $(
+                    dir = dir.join($path);
+                )*
+
+                dir
+            }
         };
     }
 
