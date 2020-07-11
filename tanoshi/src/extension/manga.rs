@@ -135,18 +135,11 @@ impl Manga {
     ) -> Result<impl warp::Reply, Rejection> {
         let exts = self.exts.read().unwrap();
         if let Ok(source) = self.repo.get_source(source_id) {
-            if param.refresh.unwrap_or(false) {
-                let cache_path = dirs::home_dir()
-                    .unwrap()
-                    .join(".tanoshi")
-                    .join("cache")
-                    .join(base64::encode(&source.url));
-                let _ = std::fs::remove_file(&cache_path);
-            }
+            let refresh = param.refresh.unwrap_or(false);
             let mangas = exts
                 .get(&source.name)
                 .unwrap()
-                .get_mangas(&source.url, param, source_auth)
+                .get_mangas(&source.url, param, refresh, source_auth)
                 .unwrap();
             debug!("mangas {:?}", mangas.clone());
 
@@ -193,7 +186,7 @@ impl Manga {
             let manga = exts
                 .get(&source.name)
                 .unwrap()
-                .get_manga_info(&url)
+                .get_manga_info(&url, true)
                 .unwrap();
 
             match self.repo.update_manga_info(manga_id, manga) {
@@ -224,7 +217,8 @@ impl Manga {
         param: GetParams,
     ) -> Result<impl warp::Reply, Rejection> {
         let exts = self.exts.read().unwrap();
-        if !param.refresh.unwrap_or(false) {
+        let refresh = param.refresh.unwrap_or(false);
+        if !refresh {
             match self.repo.get_chapters(manga_id, claim.sub.clone()) {
                 Ok(chapter) => return Ok(warp::reply::json(&chapter)),
                 Err(_e) => {}
@@ -240,13 +234,8 @@ impl Manga {
                     }))
                 }
             };
-            let cache_path = dirs::home_dir()
-                .unwrap()
-                .join(".tanoshi")
-                .join("cache")
-                .join(base64::encode(format!("chapter:{}", &url)));
-            let _ = std::fs::remove_file(cache_path);
-            let chapter = match exts.get(&source.name).unwrap().get_chapters(&url) {
+
+            let chapter = match exts.get(&source.name).unwrap().get_chapters(&url, refresh) {
                 Ok(ch) => ch,
                 Err(e) => {
                     return Err(warp::reject::custom(TransactionReject {
@@ -286,7 +275,8 @@ impl Manga {
     ) -> anyhow::Result<GetPagesResponse> {
         let exts = self.exts.read().unwrap();
 
-        if param.refresh.unwrap_or(false) {
+        let refresh = param.refresh.unwrap_or(false);
+        if refresh {
             if let Err(e) = self.repo.delete_pages(chapter_id) {
                 error!("error delete page: {}", e);
             }
@@ -302,14 +292,11 @@ impl Manga {
                 Err(e) => return Err(anyhow::anyhow!("{}", e.to_string())),
             };
 
-            let cache_path = dirs::home_dir()
+            let pages = exts
+                .get(&source.name)
                 .unwrap()
-                .join(".tanoshi")
-                .join("cache")
-                .join(base64::encode(&url));
-            let _ = std::fs::remove_file(cache_path);
-
-            let pages = exts.get(&source.name).unwrap().get_pages(&url).unwrap();
+                .get_pages(&url, refresh)
+                .unwrap();
 
             match self.repo.insert_pages(chapter_id, pages.clone()) {
                 Ok(_) => {}
@@ -338,7 +325,7 @@ impl Manga {
         let bytes = exts
             .get(&image.source_name)
             .unwrap()
-            .get_page(image.clone())
+            .get_page(image.clone(), true)
             .unwrap();
 
         let path = std::path::PathBuf::from(image.path).join(image.file_name);
@@ -378,7 +365,7 @@ impl Manga {
         let _ = exts
             .get(&image.source_name)
             .unwrap()
-            .get_page(image.clone())
+            .get_page(image.clone(), true)
             .unwrap();
 
         Ok(warp::sse::data(format!("/api/page/{}", page_id)))

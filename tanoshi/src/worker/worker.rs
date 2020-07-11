@@ -145,7 +145,7 @@ impl Worker {
                         for m in res {
                             let exts = exts.read().unwrap();
                             let chapters = if let Some(ext) = exts.get(&m.source) {
-                                if let Ok(chapters) = ext.get_chapters(&m.url) {
+                                if let Ok(chapters) = ext.get_chapters(&m.url, true) {
                                     chapters
                                 } else {
                                     continue;
