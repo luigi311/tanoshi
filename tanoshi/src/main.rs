@@ -40,7 +40,7 @@ lazy_static! {
 struct Asset;
 
 #[derive(Clap)]
-#[clap(version = "0.8.6")]
+#[clap(version = "0.8.7")]
 struct Opts {
     /// Path to config file
     #[clap(long)]
