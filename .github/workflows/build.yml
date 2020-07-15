@@ -3,6 +3,9 @@ name: Build
 on:
   push:
     branches: [master]
+    paths-ignore:
+      - "README.md"
+      - "screenshots/**"
   pull_request:
     branches: [master]
 
