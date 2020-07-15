@@ -1,6 +1,6 @@
 [package]
 name = "tanoshi-web"
-version = "0.8.6"
+version = "0.8.7"
 authors = ["Muhammad Fadhlika <fadhlika@gmail.com>"]
 edition = "2018"
 description = "Tanoshi Web"

@@ -55,28 +55,14 @@ OPTIONS:
 ### Config
 Tanoshi default to look configuration in `~/.tanoshi/config.yml` on macos and linux, `C:\Users\<username>\.tanoshi\config.yml` on windows. Below is example configuration
 ```
-# When receiveing updates via telegram, link to chapter is provided with base url specified below
-base_url: http://192.168.1.100:3030
 # Port for tanoshi to server, default to 80
 port: 3030
 # Absolute path to database
 database_path: /path/to/database
 # JWT secret, any random value, changing this will render any active token invalid
 secret: secret
-# Cache time to live, period in days for cache purge
-cache_ttl: 1
-# Period in hour to check manga updates
-update_interval: 1
-# If you want tanoshi to send you telegram message on update, put telegram bot token here
-telegram_token: store_your_telegram_token_here
 # Absolute path to where plugin is stored
 plugin_path: /home/user/.tanoshi/plugins
-# This section is for plugin configuration
-plugin_config:
-  # Plugin name
-  local:
-    # Absolute path to manga files
-    path: /home/user/mangas
 ```
 
 ## Demo Video
