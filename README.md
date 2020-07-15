@@ -3,6 +3,14 @@
 # <img src="tanoshi-web/static/apple-touch-icon.png" alt="" width="30" height=30/> Tanoshi
 Selfhosted Tachiyomi-like web manga reader.
 
+## Demo Video
+### Mobile
+![mobile](screenshots/mobile.gif)
+
+### Desktop
+![desktop](screenshots/desktop.gif)
+
+
 ## Features
 ### Currently working
 - Browse, search, and read manga from local, mangadex and [more](https://github.com/fadhlika/tanoshi-extensions)
@@ -65,9 +73,37 @@ secret: secret
 plugin_path: /home/user/.tanoshi/plugins
 ```
 
-## Demo Video
-### Mobile
-![mobile](screenshots/mobile.gif)
+# Build
+Tanoshi backend use [rust-embed](https://github.com/pyros2097/rust-embed) to embed static files to the binary. Because of this, `tanoshi-web` need to be built first so `tanoshi` will be able to build successfully.
 
-### Desktop
-![desktop](screenshots/desktop.gif)
+## Steps
+#### Frontend
+1. Install Rust
+2. Change directory into `tanoshi-web`
+```
+cd tanoshi-web 
+```
+3. Install all npm dependencies
+```
+yarn install
+```
+4. Install `wasm-bindgen-cli` and `wasm-pack`
+```
+cargo install wasm-bindgen-cli wasm-pack
+```
+5. Build
+```
+yarn build
+```
+
+### Backend
+1. Change directory into `tanoshi` or root repository
+```
+cd tanoshi
+```
+2. Build
+```
+cargo build
+```
+
+PS. On linux you may need to install libssl-dev on ubuntu/debian or openssl-dev on fedora/centos
