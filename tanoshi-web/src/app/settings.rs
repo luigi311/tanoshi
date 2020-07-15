@@ -498,38 +498,6 @@ impl Settings {
                 {self.setting_card("Role", html! {
                     <span>{self.me_role.clone()}</span>
                 })}
-                {self.setting_card("Telegram Chat ID", html! {
-                    <div class="flex">
-                        {
-                        if !self.edit_telegram_chat_id {
-                            html!{<span class="my-auto mx-2">{if let Some(id) = self.me_telegram_chat_id.clone() {id.to_string()} else {"".to_string()}}</span>}
-                        } else {
-                            html!{
-                                <input
-                                    class="w-full border-b border-grey-light"
-                                    value={
-                                        match self.me_telegram_chat_id {
-                                            Some(id) => id.to_string(),
-                                            None => "".to_string(),
-                                        }
-                                    }
-                                    oninput=self.link.callback(|e| Msg::TelegramChatIDChange(e))/>
-                            }
-                        }
-                        }
-                        <button
-                            onclick={self.link.callback(|_| Msg::EditTelegramChatID)}
-                            class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold cursor-pointer ml-2 mr-1 p-1 rounded">
-                            {
-                            if !self.edit_telegram_chat_id {
-                                html!{<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24"><path class="heroicon-ui" d="M6.3 12.3l10-10a1 1 0 0 1 1.4 0l4 4a1 1 0 0 1 0 1.4l-10 10a1 1 0 0 1-.7.3H7a1 1 0 0 1-1-1v-4a1 1 0 0 1 .3-.7zM8 16h2.59l9-9L17 4.41l-9 9V16zm10-2a1 1 0 0 1 2 0v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6c0-1.1.9-2 2-2h6a1 1 0 0 1 0 2H4v14h14v-6z"/></svg>}
-                            } else {
-                                html!{<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24"><path class="heroicon-ui" d="M12 22a10 10 0 1 1 0-20 10 10 0 0 1 0 20zm0-2a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm-2.3-8.7l1.3 1.29 3.3-3.3a1 1 0 0 1 1.4 1.42l-4 4a1 1 0 0 1-1.4 0l-2-2a1 1 0 0 1 1.4-1.42z"/></svg>}
-                            }
-                            }
-                        </button>
-                    </div>
-                })}
                 {
                     if self.change_password {
                         html!{
