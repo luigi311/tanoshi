@@ -7,7 +7,6 @@ extern crate log;
 extern crate lazy_static;
 
 mod auth;
-mod bot;
 mod config;
 mod extension;
 mod favorites;
@@ -15,7 +14,6 @@ mod filters;
 mod handlers;
 mod history;
 mod update;
-mod worker;
 
 use anyhow::{anyhow, Result};
 use clap::Clap;
@@ -177,25 +175,6 @@ async fn main() -> Result<()> {
                 Err(e) => error!("not a valid extensions {}", e),
             }
         }
-    }
-
-    let bot = match config.telegram_token.clone() {
-        Some(token) => Some(bot::Bot::new(token)),
-        None => None,
-    };
-
-    let update_worker = worker::Worker::new();
-    update_worker.remove_cache(config.cache_ttl);
-    update_worker.check_update(
-        config.update_interval,
-        config.database_path.clone(),
-        config.base_url.unwrap_or("".to_string()),
-        extensions.clone(),
-        bot.clone().map(|b| b.get_pub()),
-    );
-
-    if let Some(bot) = bot.clone() {
-        bot.start();
     }
 
     let static_files = warp::get().and(warp::path::tail()).and_then(serve);
