@@ -39,7 +39,7 @@ impl Repository {
                     id: row.get(0)?,
                     source: row.get(1)?,
                     title: row.get(2)?,
-                    author: author,
+                    author,
                     genre: vec![],
                     status: row.get(4)?,
                     description: row.get(5)?,

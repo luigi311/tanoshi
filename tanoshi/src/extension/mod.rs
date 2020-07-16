@@ -48,14 +48,12 @@ impl Extension for ExtensionProxy {
 
 pub struct Extensions {
     extensions: HashMap<String, ExtensionProxy>,
-    libraries: Vec<Arc<Library>>,
 }
 
 impl Extensions {
     pub fn new() -> Extensions {
         Extensions {
             extensions: HashMap::new(),
-            libraries: vec![],
         }
     }
 
@@ -90,7 +88,6 @@ impl Extensions {
         (decl.register)(&mut registrar, config);
 
         self.extensions.extend(registrar.extensions);
-        self.libraries.push(library);
 
         Ok(())
     }
