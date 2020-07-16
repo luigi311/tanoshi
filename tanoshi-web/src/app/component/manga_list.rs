@@ -3,7 +3,7 @@ use yew::html::{ChildrenRenderer, Component, ComponentLink};
 use yew::prelude::*;
 use yew::virtual_dom::{VChild, VComp, VNode};
 
-use super::{Touched, WeakComponentLink};
+use super::{WeakComponentLink};
 
 #[derive(Clone, PartialEq)]
 pub enum Variants {

@@ -1,4 +1,3 @@
-use super::Touched;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::__rt::core::time::Duration;
 use yew::format::{Json, Nothing};

@@ -1,7 +1,8 @@
-use super::model::{PageRendering, ReadingDirection};
 use web_sys::MouseEvent;
-use yew::html::{Children, NodeRef};
+use yew::html::NodeRef;
 use yew::prelude::*;
+
+use super::model::{PageRendering, ReadingDirection};
 
 #[derive(Clone, PartialEq, Properties)]
 pub struct Props {
@@ -9,21 +10,21 @@ pub struct Props {
     #[prop_or_default]
     pub src: String,
     #[prop_or_default]
-    pub onmouseup: Callback<(MouseEvent)>,
+    pub onmouseup: Callback<MouseEvent>,
     #[prop_or_default]
     pub hidden: bool,
     pub page_ref: NodeRef,
     pub page_rendering: PageRendering,
     pub reading_direction: ReadingDirection,
 }
+
 pub struct Page {
     props: Props,
+    #[allow(dead_code)]
     link: ComponentLink<Self>,
 }
 
-pub enum Msg {
-    MouseUp,
-}
+pub enum Msg {}
 
 impl Component for Page {
     type Message = Msg;
@@ -33,6 +34,10 @@ impl Component for Page {
         Page { props, link }
     }
 
+    fn update(&mut self, _msg: Self::Message) -> ShouldRender {
+        false
+    }
+
     fn change(&mut self, props: Self::Properties) -> ShouldRender {
         if self.props != props {
             self.props = props;
@@ -40,10 +45,6 @@ impl Component for Page {
         } else {
             false
         }
-    }
-
-    fn update(&mut self, msg: Self::Message) -> ShouldRender {
-        false
     }
 
     fn view(&self) -> Html {
