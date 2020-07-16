@@ -25,9 +25,7 @@ use warp::{http::header::HeaderValue, path::Tail, reply::Response, Filter, Rejec
 use config::Config;
 
 lazy_static! {
-    static ref QUERIES: Vec<&'static str> = vec![
-        include_str!("../migration/1.sql"),
-    ];
+    static ref QUERIES: Vec<&'static str> = vec![include_str!("../migration/1.sql"),];
 }
 
 #[derive(RustEmbed)]
@@ -166,7 +164,7 @@ async fn main() -> Result<()> {
         info!("load plugin from {:?}", path.clone());
         let mut exts = extensions.write().unwrap();
         unsafe {
-            match exts.load(path, plugin_config.get(&name)) {
+            match exts.load(path.to_str().unwrap().to_string(), plugin_config.get(&name)) {
                 Ok(_) => {}
                 Err(e) => error!("not a valid extensions {}", e),
             }
