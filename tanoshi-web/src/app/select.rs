@@ -1,10 +1,10 @@
 use http::{Request, Response};
 use web_sys::HtmlElement;
-use yew::{Component, ComponentLink, html, Html, Properties, ShouldRender};
 use yew::format::{Json, Nothing, Text};
 use yew::prelude::*;
 use yew::services::fetch::{FetchService, FetchTask};
 use yew::utils::window;
+use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 use yew_router::components::RouterAnchor;
 
 use tanoshi_lib::manga::Source as SourceModel;
@@ -37,7 +37,7 @@ pub enum Msg {
     ChangeToAvailableTab,
     ChangeToInstalledTab,
     InstallExtension(usize),
-    ExtensionInstalled,
+    ExtensionInstalled(String),
     Noop,
 }
 
@@ -111,8 +111,8 @@ impl Component for Select {
             Msg::InstallExtension(index) => {
                 self.install_source(self.available_sources[index].name.clone());
             }
-            Msg::ExtensionInstalled => {
-                log::info!("extension installed");
+            Msg::ExtensionInstalled(name) => {
+                log::info!("extension installed {}", &name);
                 self.is_fetching = false;
             }
             Msg::Noop => {}
@@ -209,16 +209,28 @@ impl Select {
     }
 
     fn is_update_available(&self, name: String) -> bool {
-        if let Some(installed_version) = self.installed_sources
+        if let Some(installed_version) = self
+            .installed_sources
             .clone()
             .iter()
-            .find(|s| s.name == name) {
-            if let Some(available_version) = self.available_sources
+            .find(|s| s.name == name)
+        {
+            if let Some(available_version) = self
+                .available_sources
                 .clone()
                 .iter()
-                .find(|s| s.name == name) {
-                let installed_version = installed_version.version.split(".").map(|v| v.parse::<i32>().unwrap()).collect::<Vec<i32>>();
-                let available_version = available_version.version.split(".").map(|v| v.parse::<i32>().unwrap()).collect::<Vec<i32>>();
+                .find(|s| s.name == name)
+            {
+                let installed_version = installed_version
+                    .version
+                    .split(".")
+                    .map(|v| v.parse::<i32>().unwrap())
+                    .collect::<Vec<i32>>();
+                let available_version = available_version
+                    .version
+                    .split(".")
+                    .map(|v| v.parse::<i32>().unwrap())
+                    .collect::<Vec<i32>>();
                 if installed_version[0] < available_version[0] {
                     return true;
                 } else if installed_version[0] == available_version[0] {
@@ -266,16 +278,16 @@ impl Select {
     }
 
     fn install_source(&mut self, name: String) {
-        let req = Request::post(format!("/api/source/install/{}", name))
+        let req = Request::post(format!("/api/source/install/{}", &name))
             .body(Nothing)
             .expect("failed to build request");
 
         if let Ok(task) = FetchService::fetch(
             req,
-            self.link.callback(|response: Response<Text>| {
+            self.link.callback(move |response: Response<Text>| {
                 if let (meta, Ok(_)) = response.into_parts() {
                     if meta.status.is_success() {
-                        return Msg::ExtensionInstalled;
+                        return Msg::ExtensionInstalled(name.clone());
                     }
                 }
                 Msg::Noop

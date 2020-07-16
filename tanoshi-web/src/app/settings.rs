@@ -42,7 +42,6 @@ pub struct Settings {
     me_confirm_password: Option<String>,
     me_telegram_chat_id: Option<i64>,
     change_password: bool,
-    edit_telegram_chat_id: bool,
     closure: Closure<dyn FnMut(JsValue)>,
 }
 
@@ -64,9 +63,6 @@ pub enum Msg {
     SaveUser(usize),
     SaveUserSuccess(usize),
     ClearCache,
-    EditTelegramChatID,
-    TelegramChatIDChange(InputData),
-    SaveTelegramChatIDSuccess,
     Noop,
 }
 
@@ -106,7 +102,6 @@ impl Component for Settings {
             me_password: None,
             me_telegram_chat_id: None,
             change_password: false,
-            edit_telegram_chat_id: false,
             closure,
         }
     }
@@ -209,19 +204,6 @@ impl Component for Settings {
                     .reload()
                     .expect("should reload");
             }
-            Msg::EditTelegramChatID => {
-                if !self.edit_telegram_chat_id {
-                    self.edit_telegram_chat_id = true;
-                } else {
-                    self.modify_user_telegram_chat_id();
-                }
-            }
-            Msg::TelegramChatIDChange(e) => {
-                self.me_telegram_chat_id = e.value.parse().ok();
-            }
-            Msg::SaveTelegramChatIDSuccess => {
-                self.edit_telegram_chat_id = false;
-            }
             Msg::Noop => {
                 return false;
             }
@@ -316,31 +298,6 @@ impl Settings {
                 if let (meta, Ok(_res)) = response.into_parts() {
                     if meta.status.is_success() {
                         return Msg::SaveUserSuccess(i);
-                    }
-                }
-                Msg::Noop
-            }),
-        ) {
-            self.fetch_task = Some(FetchTask::from(task));
-        }
-    }
-
-    fn modify_user_telegram_chat_id(&mut self) {
-        let req = Request::put("/api/user/telegram")
-            .header("Authorization", self.token.clone())
-            .header("Content-Type", "text/plain")
-            .body(match self.me_telegram_chat_id.clone() {
-                Some(id) => Ok(id.to_string()),
-                None => Err(anyhow::anyhow!("")),
-            })
-            .expect("failed to build request");
-
-        if let Ok(task) = FetchService::fetch(
-            req,
-            self.link.callback(move |response: Response<Text>| {
-                if let (meta, Ok(_res)) = response.into_parts() {
-                    if meta.status.is_success() {
-                        return Msg::SaveTelegramChatIDSuccess;
                     }
                 }
                 Msg::Noop
