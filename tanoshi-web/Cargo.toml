@@ -8,26 +8,26 @@ repository = "https://github.com/faldez/tanoshi"
 license = "MIT"
 
 [lib]
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "rlib"]
 
 [features]
 default = ["console_error_panic_hook"]
 
 [dependencies]
 wasm-bindgen = "0.2"
-console_error_panic_hook = { version = "*", optional = true }
-wee_alloc = { version = "*"}
+console_error_panic_hook = { version = "0.1", optional = true }
+wee_alloc = { version = "0.4"}
 yew = {version="0.17"}
 yew-router = {version="0.14"}
-serde = "*"
+serde = "1"
 serde_json ="1"
 serde_urlencoded = "0.6"
-http = "*"
+http = "0.2"
 log = "0.4"
 wasm-logger = "0.2"
 anyhow = "1"
 quote = "1"
-js-sys = "*"
+js-sys = "0.3 "
 chrono = { version = "0.4", features = ["serde"] }
 tanoshi-lib = {path = "../tanoshi-lib", features = ["rest"]}
 
@@ -55,9 +55,4 @@ features = [
 
 [dev-dependencies]
 wasm-bindgen-test = "*"
-
-[profile.release]
-# Tell `rustc` to optimize for small code size.
-opt-level = "s"
-lto = true
 

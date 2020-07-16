@@ -1,4 +1,4 @@
-name: Build
+name: check
 
 on:
   push:
@@ -17,7 +17,7 @@ jobs:
       - name: Build Frontend
         run: cd $GITHUB_WORKSPACE/tanoshi-web && yarn install && cargo install wasm-bindgen-cli wasm-pack && yarn build
       - name: Build Backend
-        run: cd $GITHUB_WORKSPACE && cargo build
+        run: cd $GITHUB_WORKSPACE && cargo check -p tanoshi
   build-macos:
     runs-on: macos-latest
     steps:
@@ -25,7 +25,7 @@ jobs:
       - name: Build Frontend
         run: cd $GITHUB_WORKSPACE/tanoshi-web && yarn install && cargo install wasm-bindgen-cli wasm-pack && yarn build
       - name: Build Backend
-        run: cd $GITHUB_WORKSPACE && cargo build
+        run: cd $GITHUB_WORKSPACE && cargo check -p tanoshi
   build-windows:
     runs-on: windows-latest
     steps:
@@ -33,4 +33,4 @@ jobs:
       - name: Build Frontend
         run: cd $Env:GITHUB_WORKSPACE\tanoshi-web && yarn install && cargo install wasm-bindgen-cli wasm-pack && yarn build
       - name: Build Backend
-        run: cd $Env:GITHUB_WORKSPACE && cargo build
+        run: cd $Env:GITHUB_WORKSPACE && cargo check -p tanoshi
