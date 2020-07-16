@@ -4,51 +4,16 @@ CREATE TABLE IF NOT EXISTS "user"
     username TEXT NOT NULL UNIQUE,
     password TEXT NOT NULL,
     role VARCHAR(8) DEFAULT 'READER',
-    telegram_chat_id INTEGER,
     created  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS username_idx ON "user" (username);
 
-CREATE TABLE IF NOT EXISTS source
-(
-    id      INTEGER PRIMARY KEY,
-    name    TEXT NOT NULL UNIQUE,
-    url     TEXT NOT NULL,
-    version VARCHAR(8) DEFAULT '1.0',
-    created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE (name, url) ON CONFLICT REPLACE
-);
-
-CREATE INDEX IF NOT EXISTS source_name_idx ON source (name);
-
-CREATE TABLE IF NOT EXISTS user_source
-(
-    id        INTEGER PRIMARY KEY,
-    user_id   INTEGER,
-    source_id INTEGER,
-    configuration JSON,
-    created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE (user_id, source_id),
-    FOREIGN KEY (user_id)
-        REFERENCES "user" (id)
-        ON DELETE CASCADE
-        On UPDATE NO ACTION,
-    FOREIGN KEY (source_id)
-        REFERENCES source (id)
-        ON DELETE CASCADE
-        On UPDATE NO ACTION
-);
-
-CREATE INDEX IF NOT EXISTS user_source_ids ON user_source (user_id, source_id);
-
 CREATE TABLE IF NOT EXISTS manga
 (
     id            INTEGER PRIMARY KEY,
-    source_id     INTEGER,
+    source        TEXT NOT NULL,
     title         TEXT NOT NULL,
     author        TEXT,
     status        TEXT,
@@ -57,22 +22,20 @@ CREATE TABLE IF NOT EXISTS manga
     thumbnail_url TEXT NOT NULL,
     created       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE (source_id, path),
-    FOREIGN KEY (source_id)
-        REFERENCES source (id)
-        ON DELETE CASCADE
-        ON UPDATE NO ACTION
+    UNIQUE (source, path)
 );
 
-CREATE INDEX IF NOT EXISTS manga_title_idx ON manga (source_id, title);
+CREATE INDEX IF NOT EXISTS manga_source_title_idx ON manga (source, title);
 
 CREATE TABLE IF NOT EXISTS chapter
 (
     id       INTEGER PRIMARY KEY,
     user_id  INTEGER,
-    manga_id INTEGER,
+    source   TEXT NOT NULL,
+    manga_id INTEGER NOT NULL,
     title    TEXT,
-    number   TEXT NOT NULL,
+    volume   TEXT,
+    number   TEXT,
     path     TEXT NOT NULL,
     uploaded TIMESTAMP,
     created  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -88,12 +51,13 @@ CREATE TABLE IF NOT EXISTS chapter
         On UPDATE NO ACTION
 );
 
-CREATE INDEX IF NOT EXISTS chapter_idx ON chapter (manga_id, number);
+CREATE INDEX IF NOT EXISTS chapter_idx ON chapter (manga_id, volume, number);
 
 CREATE TABLE IF NOT EXISTS page
 (
     id         INTEGER PRIMARY KEY,
-    chapter_id INTEGER,
+    source     TEXT NOT NULL,
+    chapter_id INTEGER NOT NULL,
     rank       INTEGER NOT NULL,
     url        TEXT    NOT NULL,
     created    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

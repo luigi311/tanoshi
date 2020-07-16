@@ -2161,26 +2161,12 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml",
- "tanoshi-lib 0.10.0",
+ "tanoshi-lib",
  "tbot",
  "tokio",
  "ureq",
+ "url",
  "warp",
-]
-
-[[package]]
-name = "tanoshi-lib"
-version = "0.9.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "db663cc9faeef78687fc05445e3f701c1011cc4806589caa407e1f6faf7927ee"
-dependencies = [
- "anyhow",
- "chrono",
- "dirs 3.0.1",
- "rustc_version",
- "serde",
- "serde_yaml",
- "ureq",
 ]
 
 [[package]]
@@ -2211,7 +2197,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_urlencoded",
- "tanoshi-lib 0.9.1",
+ "tanoshi-lib",
  "wasm-bindgen",
  "wasm-bindgen-test",
  "wasm-logger",

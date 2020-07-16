@@ -43,7 +43,6 @@ impl Update {
                 manga.id
                 FROM chapter
                 JOIN manga ON manga.id = chapter.manga_id
-                JOIN source ON source.id = manga.source_id
                 JOIN favorite ON favorite.manga_id = manga.id      
                 JOIN "user" ON "user".id = favorite.user_id AND "user".id = chapter.user_id
                 WHERE "user".username = ?1 ORDER BY uploaded DESC

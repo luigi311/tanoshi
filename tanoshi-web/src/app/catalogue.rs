@@ -7,8 +7,8 @@ use super::source::Source;
 
 #[derive(Switch, PartialEq, Debug, Clone)]
 pub enum CatalogueRoute {
-    #[to = "/{source_id}"]
-    Source(i32),
+    #[to = "/{source_name}"]
+    Source(String),
     #[to = "/!"]
     Select,
 }
@@ -47,8 +47,8 @@ impl Component for Catalogue {
     fn view(&self) -> Html {
         html! {
             match &self.route {
-                CatalogueRoute::Source(source_id) => {
-                    html! {<Source source_id=source_id />}
+                CatalogueRoute::Source(source_name) => {
+                    html! {<Source source_name=source_name />}
                 },
                 CatalogueRoute::Select => {
                     html! {<Select />}

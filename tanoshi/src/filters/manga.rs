@@ -17,7 +17,6 @@ pub fn manga(secret: String, plugin_path: String, manga: Manga) -> BoxedFilter<(
         .or(get_chapters(secret.clone(), manga.clone()))
         .or(get_pages(manga.clone()))
         .or(proxy_image(manga.clone()))
-        .or(image_sse(manga.clone()))
         .or(source_login(manga.clone()))
         .or(install_source(plugin_path, manga.clone()))
         .boxed()
@@ -41,7 +40,7 @@ pub fn install_source(plugin_path: String, manga: Manga) -> BoxedFilter<(impl Re
 }
 
 pub fn list_mangas(secret: String, manga: Manga) -> BoxedFilter<(impl Reply,)> {
-    warp::path!("api" / "source" / i32)
+    warp::path!("api" / "source" / String)
         .and(warp::get())
         .and(with_authorization(secret))
         .and(with_source_authorization())
@@ -79,14 +78,6 @@ pub fn get_pages(manga: Manga) -> BoxedFilter<(impl Reply,)> {
         .boxed()
 }
 
-pub fn image_sse(manga: Manga) -> BoxedFilter<(impl Reply,)> {
-    warp::path!("api" / "chapter" / i32 / "prepare")
-        .and(warp::get())
-        .and(with_manga(manga))
-        .and_then(manga::image_sse)
-        .boxed()
-}
-
 pub fn proxy_image(manga: Manga) -> BoxedFilter<(impl Reply,)> {
     warp::path!("api" / "page" / i32)
         .and(warp::get())
@@ -96,7 +87,7 @@ pub fn proxy_image(manga: Manga) -> BoxedFilter<(impl Reply,)> {
 }
 
 pub fn source_login(manga: Manga) -> BoxedFilter<(impl Reply,)> {
-    warp::path!("api" / "login" / i32)
+    warp::path!("api" / "login" / String)
         .and(warp::post())
         .and(json_body())
         .and(with_manga(manga))
