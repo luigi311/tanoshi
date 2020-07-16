@@ -72,7 +72,9 @@ impl Manga {
         } else if cfg!(target_os = "linux") {
             "so"
         } else {
-            return Err(warp::reject());
+            return Err(warp::reject::custom(TransactionReject {
+                message: "os not supported".to_string(),
+            }));
         };
 
         let resp = ureq::get(
@@ -94,11 +96,24 @@ impl Manga {
         }
 
         let path = std::path::PathBuf::from(plugin_path);
-        let path = path.join(format!("lib{}.{}", name, ext));
+        let path = path.join(format!("lib{}.{}", &name, ext));
         if let Err(e) = std::fs::write(path.clone(), &bytes) {
             return Err(warp::reject::custom(TransactionReject {
                 message: e.to_string(),
             }));
+        }
+
+        {
+            let mut ext = self.exts.write().unwrap();
+            if let None = ext.get(&name) {
+                unsafe {
+                    if let Err(e) = ext.load(path.clone(), None) {
+                        return Err(warp::reject::custom(TransactionReject {
+                            message: e.to_string(),
+                        }));
+                    }
+                }
+            }
         }
 
         Ok(warp::reply())

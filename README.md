@@ -3,7 +3,6 @@
 # <img src="tanoshi-web/static/apple-touch-icon.png" alt="" width="30" height=30/> Tanoshi
 Selfhosted Tachiyomi-like web manga reader.
 
-## Demo Video
 ### Mobile
 ![mobile](screenshots/mobile.gif)
 
