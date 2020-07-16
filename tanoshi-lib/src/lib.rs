@@ -325,7 +325,7 @@ pub mod extensions {
         pub rustc_version: &'static str,
         pub core_version: &'static str,
         pub name: &'static str,
-        pub register: unsafe extern "C" fn(&mut dyn PluginRegistrar, Option<&serde_yaml::Value>),
+        pub register: unsafe fn(&mut dyn PluginRegistrar, Option<&serde_yaml::Value>),
     }
 
     /// A trait for register an extension
