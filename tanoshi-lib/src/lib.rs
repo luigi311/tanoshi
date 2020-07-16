@@ -23,7 +23,6 @@ pub mod manga {
     /// Result of source login
     #[derive(Debug, Deserialize, Serialize, Clone, Default)]
     pub struct SourceLoginResult {
-        pub source_id: i32,
         pub source_name: String,
         pub auth_type: String,
         pub value: String,
@@ -32,7 +31,6 @@ pub mod manga {
     /// A type represent source
     #[derive(Debug, Deserialize, Serialize, Clone, Default)]
     pub struct Source {
-        pub id: i32,
         pub name: String,
         pub url: String,
         pub version: String,
@@ -42,6 +40,7 @@ pub mod manga {
     #[derive(Debug, Deserialize, Serialize, Clone, Default)]
     pub struct Manga {
         pub id: i32,
+        pub source: String,
         pub title: String,
         #[serde(default, skip_serializing_if = "Vec::is_empty")]
         pub author: Vec<String>,
@@ -64,6 +63,7 @@ pub mod manga {
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct Chapter {
         pub id: i32,
+        pub source: String,
         pub manga_id: i32,
         #[serde(skip_serializing_if = "Option::is_none")]
         pub vol: Option<String>,
@@ -71,7 +71,7 @@ pub mod manga {
         pub no: Option<String>,
         #[serde(skip_serializing_if = "Option::is_none")]
         pub title: Option<String>,
-        pub url: String,
+        pub path: String,
         #[serde(skip_serializing_if = "Option::is_none")]
         pub read: Option<i32>,
         pub uploaded: chrono::NaiveDateTime,
@@ -81,11 +81,12 @@ pub mod manga {
         fn default() -> Self {
             Chapter {
                 id: 0,
+                source: "".to_string(),
                 manga_id: 0,
                 vol: None,
                 no: None,
                 title: None,
-                url: "".to_string(),
+                path: "".to_string(),
                 read: None,
                 uploaded: chrono::NaiveDateTime::from_timestamp(0, 0),
             }
@@ -287,16 +288,16 @@ pub mod extensions {
         ///
         /// * `url` - An url to specified page in source that can be parsed into a list of mangas
         /// * `param` - Parameter to filter manga from source
-        fn get_mangas(&self, url: &String, param: Params, auth: String) -> Result<Vec<Manga>>;
+        fn get_mangas(&self, param: Params, auth: String) -> Result<Vec<Manga>>;
 
         /// Returns detail of manga
-        fn get_manga_info(&self, url: &String) -> Result<Manga>;
+        fn get_manga_info(&self, path: &String) -> Result<Manga>;
 
         /// Returns list of chapters of a manga
-        fn get_chapters(&self, url: &String) -> Result<Vec<Chapter>>;
+        fn get_chapters(&self, path: &String) -> Result<Vec<Chapter>>;
 
         /// Returns list of pages from a chapter of a manga
-        fn get_pages(&self, url: &String) -> Result<Vec<String>>;
+        fn get_pages(&self, path: &String) -> Result<Vec<String>>;
 
         /// Returns an image by download to disk first then serve to web
         fn get_page(&self, url: &String) -> Result<Vec<u8>> {
@@ -323,6 +324,7 @@ pub mod extensions {
     pub struct PluginDeclaration {
         pub rustc_version: &'static str,
         pub core_version: &'static str,
+        pub name: &'static str,
         pub register: unsafe extern "C" fn(&mut dyn PluginRegistrar, Option<&serde_yaml::Value>),
     }
 
@@ -334,13 +336,14 @@ pub mod extensions {
     /// macro for export an extension
     #[macro_export]
     macro_rules! export_plugin {
-        ($register:expr) => {
+        ($name:expr, $register:expr) => {
             #[doc(hidden)]
             #[no_mangle]
             pub static plugin_declaration: $crate::extensions::PluginDeclaration =
                 $crate::extensions::PluginDeclaration {
                     rustc_version: $crate::RUSTC_VERSION,
                     core_version: $crate::CORE_VERSION,
+                    name: $name,
                     register: $register,
                 };
         };

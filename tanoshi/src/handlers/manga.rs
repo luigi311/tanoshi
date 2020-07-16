@@ -4,8 +4,6 @@ use warp::Rejection;
 use crate::auth::Claims;
 use crate::extension::manga::Manga;
 
-use futures::StreamExt;
-
 use crate::handlers::TransactionReject;
 
 pub async fn list_sources(param: String, manga: Manga) -> Result<impl warp::Reply, Rejection> {
@@ -21,14 +19,14 @@ pub async fn install_source(
 }
 
 pub async fn list_mangas(
-    source_id: i32,
+    source: String,
     claim: Claims,
     source_auth: String,
     param: Params,
     manga: Manga,
 ) -> Result<impl warp::Reply, Rejection> {
     manga
-        .list_mangas(source_id, claim, source_auth, param)
+        .list_mangas(source, claim, source_auth, param)
         .await
 }
 
@@ -67,33 +65,9 @@ pub async fn proxy_image(page_id: i32, manga: Manga) -> Result<impl warp::Reply,
 }
 
 pub async fn source_login(
-    source_id: i32,
+    source: String,
     login_info: SourceLogin,
     manga: Manga,
 ) -> Result<impl warp::Reply, Rejection> {
-    manga.source_login(source_id, login_info).await
-}
-
-pub async fn image_sse(chapter_id: i32, manga: Manga) -> Result<impl warp::Reply, Rejection> {
-    let pages = manga
-        .get_pages(chapter_id, GetParams { refresh: None })
-        .await
-        .unwrap();
-    let mut page_ids = pages
-        .pages
-        .into_iter()
-        .map(|url| {
-            url.clone()
-                .split("/")
-                .last()
-                .unwrap()
-                .parse::<i32>()
-                .unwrap()
-        })
-        .collect::<Vec<i32>>();
-    page_ids.push(-1);
-    // create server event source
-    let event_stream = tokio::stream::iter(page_ids).map(move |id| manga.get_image(id));
-    // reply using server-sent events
-    Ok(warp::sse::reply(event_stream))
+    manga.source_login(source, login_info).await
 }

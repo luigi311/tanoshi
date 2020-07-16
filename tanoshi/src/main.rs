@@ -27,9 +27,6 @@ use config::Config;
 lazy_static! {
     static ref QUERIES: Vec<&'static str> = vec![
         include_str!("../migration/1.sql"),
-        include_str!("../migration/2.sql"),
-        include_str!("../migration/3.sql"),
-        include_str!("../migration/4.sql"),
     ];
 }
 
@@ -119,7 +116,6 @@ async fn main() -> Result<()> {
                     username: "admin".to_string(),
                     password: Some("admin".to_string()),
                     role: "ADMIN".to_string(),
-                    telegram_chat_id: None,
                 })
                 .await;
             }

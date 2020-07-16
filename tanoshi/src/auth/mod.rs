@@ -8,7 +8,6 @@ pub struct User {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub password: Option<String>,
     pub role: String,
-    pub telegram_chat_id: Option<i64>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -25,5 +24,4 @@ pub struct Claims {
     pub sub: String,
     pub role: String,
     pub exp: usize,
-    telegram_chat_id: Option<i64>,
 }

@@ -21,20 +21,20 @@ impl Extension for ExtensionProxy {
         self.extension.info()
     }
 
-    fn get_mangas(&self, url: &String, param: Params, auth: String) -> Result<Vec<Manga>> {
-        self.extension.get_mangas(url, param, auth)
+    fn get_mangas(&self, param: Params, auth: String) -> Result<Vec<Manga>> {
+        self.extension.get_mangas(param, auth)
     }
 
-    fn get_manga_info(&self, url: &String) -> Result<Manga> {
-        self.extension.get_manga_info(url)
+    fn get_manga_info(&self, path: &String) -> Result<Manga> {
+        self.extension.get_manga_info(path)
     }
 
-    fn get_chapters(&self, url: &String) -> Result<Vec<Chapter>> {
-        self.extension.get_chapters(url)
+    fn get_chapters(&self, path: &String) -> Result<Vec<Chapter>> {
+        self.extension.get_chapters(path)
     }
 
-    fn get_pages(&self, url: &String) -> Result<Vec<String>> {
-        self.extension.get_pages(url)
+    fn get_pages(&self, path: &String) -> Result<Vec<String>> {
+        self.extension.get_pages(path)
     }
 
     fn get_page(&self, url: &String) -> Result<Vec<u8>> {

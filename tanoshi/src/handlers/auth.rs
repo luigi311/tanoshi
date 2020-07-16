@@ -51,26 +51,6 @@ pub async fn modify_user_role(
     }
 }
 
-pub async fn modify_user_telegram_chat_id(
-    telegram_chat_id: Option<i64>,
-    claims: Claims,
-    auth: Auth,
-) -> Result<impl warp::Reply, Infallible> {
-    match auth
-        .modify_user_telegram_chat_id(claims.sub, telegram_chat_id)
-        .await
-    {
-        Ok(_) => Ok(warp::reply::with_status(
-            warp::reply(),
-            warp::http::status::StatusCode::OK,
-        )),
-        Err(_) => Ok(warp::reply::with_status(
-            warp::reply(),
-            warp::http::status::StatusCode::INTERNAL_SERVER_ERROR,
-        )),
-    }
-}
-
 pub async fn change_password(
     password: String,
     claims: Claims,

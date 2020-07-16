@@ -160,7 +160,7 @@ impl Select {
                 for self.installed_sources.iter().map(|source| html!{
                     <RouterAnchor<BrowseRoute>
                         classes="flex inline-flex justify-between border-b border-gray-light p-2 content-center hover:bg-gray-200"
-                        route=BrowseRoute::Catalogue(CatalogueRoute::Source(source.id))>
+                        route=BrowseRoute::Catalogue(CatalogueRoute::Source(source.name.clone()))>
                         <span class="text-lg font-semibold">{source.name.to_owned()}</span>
                         <span class="text-md mx-2">{source.version.to_owned()}</span>
                     </RouterAnchor<BrowseRoute>>

@@ -15,12 +15,12 @@ use wasm_bindgen::JsCast;
 
 #[derive(Clone, Properties)]
 pub struct Props {
-    pub source_id: Option<i32>,
+    pub source_name: String,
 }
 
 pub struct Source {
     link: ComponentLink<Self>,
-    source_id: i32,
+    source_name: String,
     page: i32,
     mangas: Vec<MangaModel>,
     is_fetching: bool,
@@ -76,7 +76,7 @@ impl Component for Source {
 
         Source {
             link,
-            source_id: props.source_id.unwrap(),
+            source_name: props.source_name,
             page: 1,
             mangas: vec![],
             is_fetching: true,
@@ -89,8 +89,8 @@ impl Component for Source {
     }
 
     fn change(&mut self, props: Self::Properties) -> ShouldRender {
-        if self.source_id != props.clone().source_id.unwrap() {
-            self.source_id = props.source_id.unwrap();
+        if self.source_name != props.clone().source_name {
+            self.source_name = props.source_name;
             return true;
         }
         return false;
@@ -296,14 +296,16 @@ impl Source {
     }
 
     fn login(&mut self) {
-        self.worker
-            .send(job::Request::PostLogin(self.source_id, self.login.clone()));
+        self.worker.send(job::Request::PostLogin(
+            self.source_name.clone(),
+            self.login.clone(),
+        ));
         self.is_fetching = true;
     }
 
     fn fetch_mangas(&mut self) {
         self.worker.send(job::Request::FetchMangas(
-            self.source_id,
+            self.source_name.clone(),
             Params {
                 keyword: Some(self.keyword.to_owned()),
                 sort_by: Some(SortByParam::Views),

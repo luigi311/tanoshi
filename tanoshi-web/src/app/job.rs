@@ -20,12 +20,12 @@ use tanoshi_lib::rest::{
 #[derive(Deserialize, Serialize)]
 pub enum Request {
     PostHistory(String, HistoryRequest),
-    FetchMangas(i32, Params),
+    FetchMangas(String, Params),
     FetchManga(i32),
     FetchChapters(i32, bool),
     FetchPages(i32, bool),
     FetchPage(String),
-    PostLogin(i32, SourceLogin),
+    PostLogin(String, SourceLogin),
     ValidateToken,
 }
 
@@ -109,7 +109,7 @@ impl Agent for Worker {
             Msg::LoginReady(id, data) => {
                 self.fetch_task.remove(&id.clone());
                 self.storage.store(
-                    format!("source-token-{}", &data.clone().source_id).as_str(),
+                    format!("source-token-{}", &data.clone().source_name).as_str(),
                     Ok(data.clone().value),
                 );
                 self.link.respond(id, Response::LoginPosted(data));
@@ -145,15 +145,15 @@ impl Agent for Worker {
                     self.fetch_task.insert(id.clone(), FetchTask::from(task));
                 }
             }
-            Request::FetchMangas(source_id, params) => {
+            Request::FetchMangas(source_name, params) => {
                 let params = serde_urlencoded::to_string(params).unwrap();
 
                 let source_auth = self
                     .storage
-                    .restore::<Result<String>>(format!("source-token-{}", source_id).as_str())
+                    .restore::<Result<String>>(format!("source-token-{}", source_name).as_str())
                     .unwrap_or("".to_string());
 
-                let req = HttpRequest::get(format!("/api/source/{}?{}", source_id, params))
+                let req = HttpRequest::get(format!("/api/source/{}?{}", source_name, params))
                     .header("Authorization", self.token.clone())
                     .header("SourceAuthorization", source_auth.as_str())
                     .body(Nothing)
@@ -223,9 +223,10 @@ impl Agent for Worker {
                 }
             }
             Request::FetchPages(chapter_id, refresh) => {
-                let req = HttpRequest::get(format!("/api/chapter/{}?refresh={}", chapter_id, refresh))
-                    .body(Nothing)
-                    .expect("failed to build request");
+                let req =
+                    HttpRequest::get(format!("/api/chapter/{}?refresh={}", chapter_id, refresh))
+                        .body(Nothing)
+                        .expect("failed to build request");
 
                 if let Ok(task) = FetchService::fetch(
                     req,
@@ -262,8 +263,8 @@ impl Agent for Worker {
                     self.fetch_task.insert(id.clone(), FetchTask::from(task));
                 }
             }
-            Request::PostLogin(source_id, login) => {
-                let req = HttpRequest::post(format!("/api/login/{}", source_id))
+            Request::PostLogin(source_name, login) => {
+                let req = HttpRequest::post(format!("/api/login/{}", source_name))
                     .header("Authorization", self.token.to_string())
                     .header("Content-Type", "application/json")
                     .body(Json(&login))
