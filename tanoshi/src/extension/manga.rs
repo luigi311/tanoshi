@@ -9,7 +9,7 @@ use tanoshi_lib::manga::{GetParams, Params, Source, SourceLogin};
 use tanoshi_lib::rest::GetPagesResponse;
 
 use crate::auth::Claims;
-use crate::extension::{repository::Repository, Extensions};
+use crate::extension::{Extensions, repository::Repository};
 use crate::handlers::TransactionReject;
 
 #[derive(Clone)]
@@ -77,12 +77,27 @@ impl Manga {
             }));
         };
 
+        let path = std::path::PathBuf::from(plugin_path).join(format!("lib{}.{}", &name, ext));
+
+        {
+            let mut exts = self.exts.write().unwrap();
+            if exts.remove(&name).is_ok() {
+                let _ = std::fs::remove_file(&path);
+            }
+        }
+
+        let name = if cfg!(target_os = "windows") {
+            name.clone()
+        } else {
+            format!("lib{}", &name)
+        };
+
         let resp = ureq::get(
             format!(
-                "https://raw.githubusercontent.com/faldez/tanoshi-extensions/repo-{}/library/lib{}.{}",
+                "https://raw.githubusercontent.com/faldez/tanoshi-extensions/repo-{}/library/{}.{}",
                 std::env::consts::OS,
-                name.clone(),
-                ext.clone(),
+                &name,
+                &ext,
             )
                 .as_str(),
         )
@@ -95,8 +110,7 @@ impl Manga {
             }));
         }
 
-        let path = std::path::PathBuf::from(plugin_path);
-        let path = path.join(format!("lib{}.{}", &name, ext));
+
         if let Err(e) = std::fs::write(path.clone(), &bytes) {
             return Err(warp::reject::custom(TransactionReject {
                 message: e.to_string(),
@@ -300,8 +314,8 @@ impl Manga {
         let bytes = exts.get(&source).unwrap().get_page(&image_url).unwrap();
 
         let mime = match url::Url::parse(&image_url) {
-            Ok(url) =>  mime_guess::from_path(url.path()).first_or_octet_stream(),
-            Err(_) =>  mime_guess::from_path(&image_url).first_or_octet_stream()
+            Ok(url) => mime_guess::from_path(url.path()).first_or_octet_stream(),
+            Err(_) => mime_guess::from_path(&image_url).first_or_octet_stream()
         };
         let resp = warp::http::Response::builder()
             .header("Content-Type", mime.as_ref())

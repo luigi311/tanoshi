@@ -91,6 +91,14 @@ impl Extensions {
 
         Ok(())
     }
+
+    pub fn remove(&mut self, name: &String) -> Result<()> {
+        if self.extensions.remove(name).is_some() {
+            Ok(())
+        } else {
+            Err(anyhow!("There is no extension {}", &name))
+        }
+    }
 }
 
 pub struct PluginRegistrar {
