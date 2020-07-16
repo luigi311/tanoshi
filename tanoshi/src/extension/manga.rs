@@ -299,8 +299,10 @@ impl Manga {
         let exts = self.exts.read().unwrap();
         let bytes = exts.get(&source).unwrap().get_page(&image_url).unwrap();
 
-        let path = url::Url::parse(&image_url).unwrap();
-        let mime = mime_guess::from_path(path.path()).first_or_octet_stream();
+        let mime = match url::Url::parse(&image_url) {
+            Ok(url) =>  mime_guess::from_path(url.path()).first_or_octet_stream(),
+            Err(_) =>  mime_guess::from_path(&image_url).first_or_octet_stream()
+        };
         let resp = warp::http::Response::builder()
             .header("Content-Type", mime.as_ref())
             .header("Content-Length", bytes.len())
