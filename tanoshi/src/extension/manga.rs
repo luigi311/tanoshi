@@ -62,7 +62,7 @@ impl Manga {
 
     pub async fn install_source(
         &self,
-        name: String,
+        source_name: String,
         plugin_path: String,
     ) -> Result<impl warp::Reply, Rejection> {
         let ext = if cfg!(target_os = "windows") {
@@ -77,16 +77,32 @@ impl Manga {
             }));
         };
 
+        let name = if cfg!(target_os = "windows") {
+            source_name.clone()
+        } else {
+            format!("lib{}", &source_name)
+        };
+
+        let file_name = format!("{}.{}", &name, &ext);
+        let path = std::path::PathBuf::from(&plugin_path).join(&file_name);
+
+        {
+            let mut exts = self.exts.write().unwrap();
+            if exts.remove(&source_name).is_ok() {
+                if std::fs::remove_file(&path).is_ok() {}
+            }
+        }
+
         let resp = ureq::get(
             format!(
-                "https://raw.githubusercontent.com/faldez/tanoshi-extensions/repo-{}/library/lib{}.{}",
+                "https://raw.githubusercontent.com/faldez/tanoshi-extensions/repo-{}/library/{}.{}",
                 std::env::consts::OS,
-                name.clone(),
-                ext.clone(),
+                &name,
+                &ext,
             )
-                .as_str(),
+            .as_str(),
         )
-            .call();
+        .call();
         let mut reader = resp.into_reader();
         let mut bytes = vec![];
         if let Err(e) = reader.read_to_end(&mut bytes) {
@@ -95,9 +111,7 @@ impl Manga {
             }));
         }
 
-        let path = std::path::PathBuf::from(plugin_path);
-        let path = path.join(format!("lib{}.{}", &name, ext));
-        if let Err(e) = std::fs::write(path.clone(), &bytes) {
+        if let Err(e) = std::fs::write(&path, &bytes) {
             return Err(warp::reject::custom(TransactionReject {
                 message: e.to_string(),
             }));
@@ -105,9 +119,9 @@ impl Manga {
 
         {
             let mut ext = self.exts.write().unwrap();
-            if let None = ext.get(&name) {
+            if ext.get(&source_name).is_none() {
                 unsafe {
-                    if let Err(e) = ext.load(path.clone(), None) {
+                    if let Err(e) = ext.load(path.to_str().unwrap().to_string(), None) {
                         return Err(warp::reject::custom(TransactionReject {
                             message: e.to_string(),
                         }));
@@ -300,8 +314,8 @@ impl Manga {
         let bytes = exts.get(&source).unwrap().get_page(&image_url).unwrap();
 
         let mime = match url::Url::parse(&image_url) {
-            Ok(url) =>  mime_guess::from_path(url.path()).first_or_octet_stream(),
-            Err(_) =>  mime_guess::from_path(&image_url).first_or_octet_stream()
+            Ok(url) => mime_guess::from_path(url.path()).first_or_octet_stream(),
+            Err(_) => mime_guess::from_path(&image_url).first_or_octet_stream(),
         };
         let resp = warp::http::Response::builder()
             .header("Content-Type", mime.as_ref())

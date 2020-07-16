@@ -1,7 +1,6 @@
-use std::{collections::HashMap, ffi::OsStr, sync::Arc};
-
-//use local::Local;
 use lib::Library;
+use std::path::PathBuf;
+use std::{collections::HashMap, sync::Arc};
 use tanoshi_lib::extensions::{Extension, PluginDeclaration};
 use tanoshi_lib::manga::{Chapter, Manga, Params, Source, SourceLogin, SourceLoginResult};
 
@@ -13,7 +12,8 @@ pub mod repository;
 
 pub struct ExtensionProxy {
     extension: Box<dyn Extension>,
-    _lib: Arc<Library>,
+    #[allow(dead_code)]
+    lib: Arc<Library>,
 }
 
 impl Extension for ExtensionProxy {
@@ -65,12 +65,25 @@ impl Extensions {
         self.extensions.get(name)
     }
 
-    pub unsafe fn load<P: AsRef<OsStr>>(
+    pub unsafe fn load(
         &mut self,
-        library_path: P,
+        library_path: String,
         config: Option<&serde_yaml::Value>,
     ) -> Result<()> {
-        let library = Arc::new(Library::new(library_path)?);
+        let library_path = PathBuf::from(library_path);
+        if cfg!(target_os = "macos") {
+            if let Err(e) = std::process::Command::new("install_name_tool")
+                .current_dir(library_path.parent().unwrap())
+                .arg("-id")
+                .arg("''")
+                .arg(library_path.file_name().unwrap())
+                .output()
+            {
+                error!("failed to run install_name_tool: {}", e);
+            }
+        }
+
+        let library = Arc::new(Library::new(&library_path)?);
 
         let decl = library
             .get::<*mut PluginDeclaration>(b"plugin_declaration\0")?
@@ -90,6 +103,14 @@ impl Extensions {
         self.extensions.extend(registrar.extensions);
 
         Ok(())
+    }
+
+    pub fn remove(&mut self, name: &String) -> Result<()> {
+        if self.extensions.remove(name).is_some() {
+            Ok(())
+        } else {
+            Err(anyhow!("There is no extension {}", &name))
+        }
     }
 }
 
@@ -111,7 +132,7 @@ impl tanoshi_lib::extensions::PluginRegistrar for PluginRegistrar {
     fn register_function(&mut self, name: &str, extension: Box<dyn Extension>) {
         let proxy = ExtensionProxy {
             extension,
-            _lib: Arc::clone(&self.lib),
+            lib: Arc::clone(&self.lib),
         };
 
         self.extensions.insert(name.to_string(), proxy);

@@ -1,12 +1,12 @@
-use crate::app::component::page::{Page, Props as PageProps};
+use web_sys::MouseEvent;
 use yew::html::{ChildrenRenderer, Component, ComponentLink};
 use yew::prelude::*;
 use yew::virtual_dom::{VChild, VComp, VNode};
 
-use web_sys::MouseEvent;
+use crate::app::component::page::{Page, Props as PageProps};
 
+use super::{WeakComponentLink};
 use super::model::{PageRendering, ReadingDirection};
-use super::{Touched, WeakComponentLink};
 
 #[derive(Clone, PartialEq)]
 pub enum Variants {
@@ -28,12 +28,13 @@ pub struct PageVariant {
 pub struct Props {
     pub children: ChildrenRenderer<PageVariant>,
     pub weak_link: WeakComponentLink<PageList>,
-    pub onnextchapter: Callback<(MouseEvent)>,
-    pub onprevchapter: Callback<(MouseEvent)>,
+    pub onnextchapter: Callback<MouseEvent>,
+    pub onprevchapter: Callback<MouseEvent>,
     pub page_rendering: PageRendering,
     pub reading_direction: ReadingDirection,
     pub current_page: usize,
 }
+
 pub struct PageList {
     props: Props,
     class: Vec<&'static str>,
@@ -137,9 +138,9 @@ impl PageList {
 }
 
 impl<CHILD> From<VChild<CHILD>> for PageVariant
-where
-    CHILD: Component,
-    CHILD::Properties: Into<Variants>,
+    where
+        CHILD: Component,
+        CHILD::Properties: Into<Variants>,
 {
     fn from(vchild: VChild<CHILD>) -> Self {
         PageVariant {

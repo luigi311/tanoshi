@@ -1,19 +1,18 @@
+use http::{Request, Response};
 use web_sys::HtmlElement;
+use yew::{Component, ComponentLink, html, Html, Properties, ShouldRender};
 use yew::format::{Json, Nothing, Text};
 use yew::prelude::*;
 use yew::services::fetch::{FetchService, FetchTask};
-use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
-use yew_router::components::RouterAnchor;
-
-use super::component::Spinner;
-use http::{Request, Response};
 use yew::utils::window;
-
-use super::browse::BrowseRoute;
-use super::catalogue::CatalogueRoute;
+use yew_router::components::RouterAnchor;
 
 use tanoshi_lib::manga::Source as SourceModel;
 use tanoshi_lib::rest::GetSourceResponse;
+
+use super::browse::BrowseRoute;
+use super::catalogue::CatalogueRoute;
+use super::component::Spinner;
 
 pub enum Tab {
     Installed,
@@ -181,9 +180,17 @@ impl Select {
                         <div>
                         <span class="text-md mx-2">{self.available_sources[i].version.clone()}</span>
                         <button class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold px-4 rounded"
-                            disabled={self.is_installed(self.available_sources[i].name.clone())}
+                            disabled={self.is_installed(self.available_sources[i].name.clone()) && !self.is_update_available(self.available_sources[i].name.clone())}
                             onclick={self.link.callback(move |_| Msg::InstallExtension(i))}>
-                            {if !self.is_installed(self.available_sources[i].name.clone()) {"Install"} else {"Installed"}}
+                            {
+                                if self.is_update_available(self.available_sources[i].name.clone()) {
+                                    "Update"
+                                } else if !self.is_installed(self.available_sources[i].name.clone()) {
+                                    "Install"
+                                } else {
+                                    "Installed"
+                                }
+                            }
                         </button>
                         </div>
                     </div>
@@ -199,6 +206,36 @@ impl Select {
             .iter()
             .find(|s| s.name == name)
             .is_some()
+    }
+
+    fn is_update_available(&self, name: String) -> bool {
+        if let Some(installed_version) = self.installed_sources
+            .clone()
+            .iter()
+            .find(|s| s.name == name) {
+            if let Some(available_version) = self.available_sources
+                .clone()
+                .iter()
+                .find(|s| s.name == name) {
+                let installed_version = installed_version.version.split(".").map(|v| v.parse::<i32>().unwrap()).collect::<Vec<i32>>();
+                let available_version = available_version.version.split(".").map(|v| v.parse::<i32>().unwrap()).collect::<Vec<i32>>();
+                if installed_version[0] < available_version[0] {
+                    return true;
+                } else if installed_version[0] == available_version[0] {
+                    if installed_version[1] < available_version[1] {
+                        return true;
+                    }
+                } else if installed_version[0] == available_version[0] {
+                    if installed_version[1] == available_version[1] {
+                        if installed_version[2] < available_version[2] {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+
+        false
     }
 
     fn fetch_sources(&mut self) {

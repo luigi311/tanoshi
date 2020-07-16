@@ -50,8 +50,3 @@ impl<COMP: Component> PartialEq for WeakComponentLink<COMP> {
         Rc::ptr_eq(&self.0, &other.0)
     }
 }
-
-pub enum Touched {
-    Touch(usize),
-    Hold(usize),
-}
