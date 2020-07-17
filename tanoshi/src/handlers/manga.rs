@@ -6,8 +6,8 @@ use crate::extension::manga::Manga;
 
 use crate::handlers::TransactionReject;
 
-pub async fn list_sources(param: String, manga: Manga) -> Result<impl warp::Reply, Rejection> {
-    manga.list_sources(param).await
+pub async fn list_sources(manga: Manga) -> Result<impl warp::Reply, Rejection> {
+    manga.list_sources().await
 }
 
 pub async fn install_source(
@@ -25,9 +25,7 @@ pub async fn list_mangas(
     param: Params,
     manga: Manga,
 ) -> Result<impl warp::Reply, Rejection> {
-    manga
-        .list_mangas(source, claim, source_auth, param)
-        .await
+    manga.list_mangas(source, claim, source_auth, param).await
 }
 
 pub async fn get_manga_info(

@@ -5,7 +5,7 @@ use serde_json::json;
 use warp::Rejection;
 
 use tanoshi_lib::extensions::Extension;
-use tanoshi_lib::manga::{GetParams, Params, Source, SourceLogin};
+use tanoshi_lib::manga::{GetParams, Params, Source, SourceIndex, SourceLogin};
 use tanoshi_lib::rest::GetPagesResponse;
 
 use crate::auth::Claims;
@@ -26,38 +26,58 @@ impl Manga {
         }
     }
 
-    pub async fn list_sources(&self, param: String) -> Result<impl warp::Reply, Rejection> {
-        match param.as_str() {
-            "available" => {
-                let resp = ureq::get(
-                    format!("https://raw.githubusercontent.com/faldez/tanoshi-extensions/repo-{}/index.json", std::env::consts::OS).as_str(),
-                )
-                    .call();
-                let sources = resp.into_json_deserialize::<Vec<Source>>().unwrap();
-                Ok(warp::reply::json(&json!(
-                    {
-                        "sources": sources,
-                        "status": "success"
-                    }
-                )))
-            }
-            "installed" => {
-                let exts = self.exts.read().unwrap();
-                let sources = exts
-                    .extensions()
-                    .iter()
-                    .map(|(_key, ext)| ext.info())
-                    .collect::<Vec<Source>>();
+    pub async fn list_sources(&self) -> Result<impl warp::Reply, Rejection> {
+        let resp = ureq::get(
+            format!(
+                "https://raw.githubusercontent.com/faldez/tanoshi-extensions/repo-{}/index.json",
+                std::env::consts::OS
+            )
+            .as_str(),
+        )
+        .call();
+        let mut available_sources = resp.into_json_deserialize::<Vec<SourceIndex>>().unwrap();
+        let exts = self.exts.read().unwrap();
 
-                Ok(warp::reply::json(&json!(
-                    {
-                        "sources": sources,
-                        "status": "success"
+        let sources = available_sources
+            .iter_mut()
+            .map(|s| {
+                if let Some(ext) = exts.get(&s.name) {
+                    s.installed = true;
+                    let installed_version = ext
+                        .info()
+                        .version
+                        .split(".")
+                        .map(|v| v.parse::<i32>().unwrap())
+                        .collect::<Vec<i32>>();
+                    let available_version = s
+                        .version
+                        .split(".")
+                        .map(|v| v.parse::<i32>().unwrap())
+                        .collect::<Vec<i32>>();
+                    if installed_version[0] < available_version[0] {
+                        s.update = true;
+                    } else if installed_version[0] == available_version[0] {
+                        if installed_version[1] < available_version[1] {
+                            s.update = true;
+                        }
+                    } else if installed_version[0] == available_version[0] {
+                        if installed_version[1] == available_version[1] {
+                            if installed_version[2] < available_version[2] {
+                                s.update = true;
+                            }
+                        }
                     }
-                )))
+                }
+                s.clone()
+            })
+            .collect::<Vec<SourceIndex>>();
+
+        Ok(warp::reply::json(&json!(
+            {
+                "sources": sources,
+                "status": "success"
             }
-            _ => Err(warp::reject()),
-        }
+        )))
     }
 
     pub async fn install_source(
@@ -65,72 +85,82 @@ impl Manga {
         source_name: String,
         plugin_path: String,
     ) -> Result<impl warp::Reply, Rejection> {
-        let ext = if cfg!(target_os = "windows") {
-            "dll"
-        } else if cfg!(target_os = "macos") {
-            "dylib"
-        } else if cfg!(target_os = "linux") {
-            "so"
-        } else {
-            return Err(warp::reject::custom(TransactionReject {
-                message: "os not supported".to_string(),
-            }));
-        };
-
-        let name = if cfg!(target_os = "windows") {
-            source_name.clone()
-        } else {
-            format!("lib{}", &source_name)
-        };
-
-        let file_name = format!("{}.{}", &name, &ext);
-        let path = std::path::PathBuf::from(&plugin_path).join(&file_name);
-
-        {
-            let mut exts = self.exts.write().unwrap();
-            if exts.remove(&source_name).is_ok() {
-                if std::fs::remove_file(&path).is_ok() {}
-            }
-        }
-
         let resp = ureq::get(
             format!(
-                "https://raw.githubusercontent.com/faldez/tanoshi-extensions/repo-{}/library/{}.{}",
-                std::env::consts::OS,
-                &name,
-                &ext,
+                "https://raw.githubusercontent.com/faldez/tanoshi-extensions/repo-{}/index.json",
+                std::env::consts::OS
             )
             .as_str(),
         )
         .call();
-        let mut reader = resp.into_reader();
-        let mut bytes = vec![];
-        if let Err(e) = reader.read_to_end(&mut bytes) {
-            return Err(warp::reject::custom(TransactionReject {
-                message: e.to_string(),
-            }));
-        }
+        let available_sources = resp.into_json_deserialize::<Vec<SourceIndex>>().unwrap();
+        if let Some(source) = available_sources.iter().find(|s| s.name == source_name) {
+            let ext = if cfg!(target_os = "windows") {
+                "dll"
+            } else if cfg!(target_os = "macos") {
+                "dylib"
+            } else if cfg!(target_os = "linux") {
+                "so"
+            } else {
+                return Err(warp::reject::custom(TransactionReject {
+                    message: "os not supported".to_string(),
+                }));
+            };
 
-        if let Err(e) = std::fs::write(&path, &bytes) {
-            return Err(warp::reject::custom(TransactionReject {
-                message: e.to_string(),
-            }));
-        }
+            let file_name = format!("{}.{}", &source_name, &ext);
 
-        {
-            let mut ext = self.exts.write().unwrap();
-            if ext.get(&source_name).is_none() {
-                unsafe {
-                    if let Err(e) = ext.load(path.to_str().unwrap().to_string(), None) {
-                        return Err(warp::reject::custom(TransactionReject {
-                            message: e.to_string(),
-                        }));
+            let path = std::path::PathBuf::from(&plugin_path).join(&file_name);
+
+            {
+                let mut exts = self.exts.write().unwrap();
+                if exts.remove(&source_name).is_ok() {
+                    if std::fs::remove_file(&path).is_ok() {}
+                }
+            }
+
+            let resp = ureq::get(
+                format!(
+                    "https://raw.githubusercontent.com/faldez/tanoshi-extensions/repo-{}/{}",
+                    std::env::consts::OS,
+                    &source.path,
+                )
+                .as_str(),
+            )
+            .call();
+
+            let mut reader = resp.into_reader();
+            let mut bytes = vec![];
+            if let Err(e) = reader.read_to_end(&mut bytes) {
+                return Err(warp::reject::custom(TransactionReject {
+                    message: e.to_string(),
+                }));
+            }
+
+            if let Err(e) = std::fs::write(&path, &bytes) {
+                return Err(warp::reject::custom(TransactionReject {
+                    message: e.to_string(),
+                }));
+            }
+
+            {
+                let mut ext = self.exts.write().unwrap();
+                if ext.get(&source_name).is_none() {
+                    unsafe {
+                        if let Err(e) = ext.load(path.to_str().unwrap().to_string(), None) {
+                            return Err(warp::reject::custom(TransactionReject {
+                                message: e.to_string(),
+                            }));
+                        }
                     }
                 }
             }
-        }
 
-        Ok(warp::reply())
+            Ok(warp::reply())
+        } else {
+            Err(warp::reject::custom(TransactionReject {
+                message: "extension not found".to_string(),
+            }))
+        }
     }
 
     pub async fn list_mangas(
