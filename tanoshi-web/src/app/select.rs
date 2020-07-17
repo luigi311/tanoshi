@@ -7,8 +7,8 @@ use yew::utils::window;
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 use yew_router::components::RouterAnchor;
 
-use tanoshi_lib::manga::Source as SourceModel;
-use tanoshi_lib::rest::GetSourceResponse;
+use tanoshi_lib::manga::SourceIndex;
+use tanoshi_lib::rest::GetSourceIndexResponse;
 
 use super::browse::BrowseRoute;
 use super::catalogue::CatalogueRoute;
@@ -25,19 +25,18 @@ pub struct Props {}
 pub struct Select {
     fetch_task: Option<FetchTask>,
     link: ComponentLink<Self>,
-    available_sources: Vec<SourceModel>,
-    installed_sources: Vec<SourceModel>,
+    sources: Vec<SourceIndex>,
     is_fetching: bool,
     active_tab: Tab,
     button_refs: Vec<NodeRef>,
 }
 
 pub enum Msg {
-    SourceReady(GetSourceResponse),
+    SourceReady(GetSourceIndexResponse),
     ChangeToAvailableTab,
     ChangeToInstalledTab,
     InstallExtension(usize),
-    ExtensionInstalled(String),
+    ExtensionInstalled,
     Noop,
 }
 
@@ -49,8 +48,7 @@ impl Component for Select {
         Select {
             fetch_task: None,
             link,
-            available_sources: vec![],
-            installed_sources: vec![],
+            sources: vec![],
             is_fetching: false,
             active_tab: Tab::Installed,
             button_refs: vec![NodeRef::default(), NodeRef::default()],
@@ -70,10 +68,7 @@ impl Component for Select {
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
             Msg::SourceReady(data) => {
-                match self.active_tab {
-                    Tab::Installed => self.installed_sources = data.sources,
-                    Tab::Available => self.available_sources = data.sources,
-                };
+                self.sources = data.sources;
                 self.is_fetching = false;
             }
             Msg::ChangeToInstalledTab => {
@@ -109,11 +104,10 @@ impl Component for Select {
                 }
             }
             Msg::InstallExtension(index) => {
-                self.install_source(self.available_sources[index].name.clone());
+                self.install_source(self.sources[index].name.clone());
             }
-            Msg::ExtensionInstalled(name) => {
-                log::info!("extension installed {}", &name);
-                self.is_fetching = false;
+            Msg::ExtensionInstalled => {
+                self.fetch_sources();
             }
             Msg::Noop => {}
         }
@@ -153,15 +147,20 @@ impl Component for Select {
 
 impl Select {
     fn installed_view(&self) -> Html {
+        let sources = self
+            .sources
+            .iter()
+            .filter_map(|s| if s.installed { Some(s.clone()) } else { None })
+            .collect::<Vec<SourceIndex>>();
         html! {
             <div class="flex flex-col rounded-lg border border-grey-light mx-2 shadow" style="margin-top: calc(env(safe-area-inset-top) + .5rem)">
             {
-                for self.installed_sources.iter().map(|source| html!{
+                for sources.iter().map(|source| html!{
                     <RouterAnchor<BrowseRoute>
                         classes="flex inline-flex justify-between border-b border-gray-light p-2 content-center hover:bg-gray-200"
                         route=BrowseRoute::Catalogue(CatalogueRoute::Source(source.name.clone()))>
                         <span class="text-lg font-semibold">{source.name.to_owned()}</span>
-                        <span class="text-md mx-2">{source.version.to_owned()}</span>
+                        <span class="text-md mx-2">{source.installed_version.to_owned()}</span>
                     </RouterAnchor<BrowseRoute>>
                 })
             }
@@ -173,22 +172,24 @@ impl Select {
         html! {
             <div class="flex flex-col rounded-lg border border-grey-light mx-2 shadow" style="margin-top: calc(env(safe-area-inset-top) + .5rem)">
             {
-                for (0..self.available_sources.len()).map(|i| html!{
+                for (0..self.sources.len()).map(|i| html!{
                     <div
                         class="flex inline-flex justify-between border-b border-gray-light p-2 content-center hover:bg-gray-200">
-                        <span class="text-lg font-semibold">{self.available_sources[i].name.clone()}</span>
+                        <span class="text-lg font-semibold">{self.sources[i].name.clone()}</span>
                         <div>
-                        <span class="text-md mx-2">{self.available_sources[i].version.clone()}</span>
+                        <span class="text-md mx-2">{self.sources[i].version.clone()}</span>
                         <button class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold px-4 rounded"
-                            disabled={self.is_installed(self.available_sources[i].name.clone()) && !self.is_update_available(self.available_sources[i].name.clone())}
+                            disabled={!self.sources[i].update && self.sources[i].installed}
                             onclick={self.link.callback(move |_| Msg::InstallExtension(i))}>
                             {
-                                if self.is_update_available(self.available_sources[i].name.clone()) {
+                                if self.sources[i].update {
                                     "Update"
-                                } else if !self.is_installed(self.available_sources[i].name.clone()) {
+                                } else if !self.sources[i].update && !self.sources[i].installed{
                                     "Install"
-                                } else {
+                                } else if !self.sources[i].update && self.sources[i].installed {
                                     "Installed"
+                                } else {
+                                    ""
                                 }
                             }
                         </button>
@@ -200,69 +201,15 @@ impl Select {
         }
     }
 
-    fn is_installed(&self, name: String) -> bool {
-        self.installed_sources
-            .clone()
-            .iter()
-            .find(|s| s.name == name)
-            .is_some()
-    }
-
-    fn is_update_available(&self, name: String) -> bool {
-        if let Some(installed_version) = self
-            .installed_sources
-            .clone()
-            .iter()
-            .find(|s| s.name == name)
-        {
-            if let Some(available_version) = self
-                .available_sources
-                .clone()
-                .iter()
-                .find(|s| s.name == name)
-            {
-                let installed_version = installed_version
-                    .version
-                    .split(".")
-                    .map(|v| v.parse::<i32>().unwrap())
-                    .collect::<Vec<i32>>();
-                let available_version = available_version
-                    .version
-                    .split(".")
-                    .map(|v| v.parse::<i32>().unwrap())
-                    .collect::<Vec<i32>>();
-                if installed_version[0] < available_version[0] {
-                    return true;
-                } else if installed_version[0] == available_version[0] {
-                    if installed_version[1] < available_version[1] {
-                        return true;
-                    }
-                } else if installed_version[0] == available_version[0] {
-                    if installed_version[1] == available_version[1] {
-                        if installed_version[2] < available_version[2] {
-                            return true;
-                        }
-                    }
-                }
-            }
-        }
-
-        false
-    }
-
     fn fetch_sources(&mut self) {
-        let url = match self.active_tab {
-            Tab::Installed => "/api/source/installed",
-            Tab::Available => "/api/source/available",
-        };
-        let req = Request::get(url)
+        let req = Request::get("/api/source")
             .body(Nothing)
             .expect("failed to build request");
 
         if let Ok(task) = FetchService::fetch(
             req,
             self.link.callback(
-                |response: Response<Json<Result<GetSourceResponse, anyhow::Error>>>| {
+                |response: Response<Json<Result<GetSourceIndexResponse, anyhow::Error>>>| {
                     if let (meta, Json(Ok(data))) = response.into_parts() {
                         if meta.status.is_success() {
                             return Msg::SourceReady(data);
@@ -284,10 +231,10 @@ impl Select {
 
         if let Ok(task) = FetchService::fetch(
             req,
-            self.link.callback(move |response: Response<Text>| {
+            self.link.callback(|response: Response<Text>| {
                 if let (meta, Ok(_)) = response.into_parts() {
                     if meta.status.is_success() {
-                        return Msg::ExtensionInstalled(name.clone());
+                        return Msg::ExtensionInstalled;
                     }
                 }
                 Msg::Noop

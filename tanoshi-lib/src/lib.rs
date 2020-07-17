@@ -11,6 +11,21 @@ pub mod manga {
     use chrono::Local;
     use serde::{Deserialize, Serialize};
 
+    #[derive(Debug, Deserialize, Serialize, Clone)]
+    pub struct SourceIndex {
+        pub name: String,
+        pub path: String,
+        pub rustc_version: String,
+        pub core_version: String,
+        #[serde(default)]
+        pub installed_version: String,
+        pub version: String,
+        #[serde(default)]
+        pub installed: bool,
+        #[serde(default)]
+        pub update: bool,
+    }
+
     /// Model to login to source that require login, like mangadex to search
     #[derive(Debug, Deserialize, Serialize, Clone, Default)]
     pub struct SourceLogin {
@@ -194,8 +209,14 @@ pub mod manga {
 /// This module contains request and response payload for rest api
 #[cfg(feature = "rest")]
 pub mod rest {
-    use crate::manga::{Chapter, FavoriteManga, History, Manga, Source, Update};
+    use crate::manga::{Chapter, FavoriteManga, History, Manga, Source, SourceIndex, Update};
     use serde::{Deserialize, Serialize};
+
+    #[derive(Debug, Deserialize, Serialize, Clone)]
+    pub struct GetSourceIndexResponse {
+        pub sources: Vec<SourceIndex>,
+        pub status: String,
+    }
 
     /// Reponse for get sources request
     #[derive(Debug, Deserialize, Serialize, Clone)]

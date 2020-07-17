@@ -23,7 +23,7 @@ pub fn manga(secret: String, plugin_path: String, manga: Manga) -> BoxedFilter<(
 }
 
 pub fn list_sources(manga: Manga) -> BoxedFilter<(impl Reply,)> {
-    warp::path!("api" / "source" / String)
+    warp::path!("api" / "source")
         .and(warp::get())
         .and(with_manga(manga))
         .and_then(manga::list_sources)
