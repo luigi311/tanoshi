@@ -37,6 +37,6 @@ jobs:
       - name: Install wasm-pack
         run: cargo install wasm-bindgen-cli wasm-pack
       - name: Build Frontend
-        run: cd $GITHUB_WORKSPACE/tanoshi-web && yarn install && yarn build
+        run: cd $Env:GITHUB_WORKSPACE/tanoshi-web && yarn install && yarn build
       - name: Build Backend
         run: cd $Env:GITHUB_WORKSPACE && cargo check -p tanoshi
