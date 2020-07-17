@@ -57,10 +57,6 @@ impl Extensions {
         }
     }
 
-    pub fn extensions(&self) -> &HashMap<String, ExtensionProxy> {
-        &self.extensions
-    }
-
     pub fn get(&self, name: &String) -> Option<&ExtensionProxy> {
         self.extensions.get(name)
     }

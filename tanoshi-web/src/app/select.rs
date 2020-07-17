@@ -160,7 +160,7 @@ impl Select {
                         classes="flex inline-flex justify-between border-b border-gray-light p-2 content-center hover:bg-gray-200"
                         route=BrowseRoute::Catalogue(CatalogueRoute::Source(source.name.clone()))>
                         <span class="text-lg font-semibold">{source.name.to_owned()}</span>
-                        <span class="text-md mx-2">{source.version.to_owned()}</span>
+                        <span class="text-md mx-2">{source.installed_version.to_owned()}</span>
                     </RouterAnchor<BrowseRoute>>
                 })
             }

@@ -5,7 +5,7 @@ use serde_json::json;
 use warp::Rejection;
 
 use tanoshi_lib::extensions::Extension;
-use tanoshi_lib::manga::{GetParams, Params, Source, SourceIndex, SourceLogin};
+use tanoshi_lib::manga::{GetParams, Params, SourceIndex, SourceLogin};
 use tanoshi_lib::rest::GetPagesResponse;
 
 use crate::auth::Claims;
@@ -43,6 +43,7 @@ impl Manga {
             .map(|s| {
                 if let Some(ext) = exts.get(&s.name) {
                     s.installed = true;
+                    s.installed_version = ext.info().version.clone();
                     let installed_version = ext
                         .info()
                         .version

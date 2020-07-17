@@ -17,6 +17,8 @@ pub mod manga {
         pub path: String,
         pub rustc_version: String,
         pub core_version: String,
+        #[serde(default)]
+        pub installed_version: String,
         pub version: String,
         #[serde(default)]
         pub installed: bool,
