@@ -68,6 +68,11 @@ impl Manga {
                             }
                         }
                     }
+                    if s.core_version != tanoshi_lib::CORE_VERSION
+                        || s.rustc_version != tanoshi_lib::RUSTC_VERSION
+                    {
+                        s.update = false;
+                    }
                 }
                 s.clone()
             })
