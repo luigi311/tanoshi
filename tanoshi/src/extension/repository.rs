@@ -194,7 +194,7 @@ impl Repository {
             params![username, manga_id],
             |row| {
                 let author = row
-                    .get::<_, String>(2)?
+                    .get::<_, String>(3)?
                     .split(",")
                     .map(|a| a.to_string())
                     .collect();
