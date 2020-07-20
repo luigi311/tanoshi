@@ -210,7 +210,7 @@ impl History {
         let secs: i64 = (timestamp / 1000.0).floor() as i64;
         let nanoes: u32 = (timestamp as u32 % 1000) * 1_000_000;
         let today = chrono::NaiveDateTime::from_timestamp(secs, nanoes);
-        today.signed_duration_since(at).num_days()
+        today.date().signed_duration_since(at.date()).num_days()
     }
 
     fn show_separator(&self, show_sep: Option<bool>, days: Option<i64>) -> Html {
