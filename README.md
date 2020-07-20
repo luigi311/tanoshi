@@ -19,7 +19,6 @@ Selfhosted Tachiyomi-like web manga reader.
 - Read in single page, double page, or long strip
 - Read from right to left or left to right
 - Web reader is PWA and optimized for standalone mode on mobile
-- Periodically check for updates and send notification via telegram
 - Multi-user with admin and reader role
 
 ### Planned
