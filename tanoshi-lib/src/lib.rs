@@ -254,6 +254,14 @@ pub mod rest {
         pub status: String,
     }
 
+    #[derive(Debug, Deserialize, Serialize, Clone)]
+    pub struct ReadResponse {
+        pub manga: Manga,
+        pub chapters: Vec<Chapter>,
+        pub chapter: Chapter,
+        pub pages: Vec<String>,
+    }
+
     /// Parameter for history request
     #[derive(Debug, Clone, Deserialize, Serialize)]
     pub struct HistoryRequest {

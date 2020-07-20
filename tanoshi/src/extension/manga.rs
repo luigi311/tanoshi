@@ -1,12 +1,14 @@
+use anyhow::{anyhow, Result};
+use serde_json::json;
 use std::io::Read;
 use std::sync::{Arc, RwLock};
-
-use serde_json::json;
 use warp::Rejection;
 
 use tanoshi_lib::extensions::Extension;
 use tanoshi_lib::manga::{GetParams, Params, SourceIndex, SourceLogin};
-use tanoshi_lib::rest::GetPagesResponse;
+use tanoshi_lib::rest::{
+    GetChaptersResponse, GetMangaResponse, GetMangasResponse, GetPagesResponse, ReadResponse,
+};
 
 use crate::auth::Claims;
 use crate::extension::{repository::Repository, Extensions};
@@ -175,7 +177,7 @@ impl Manga {
         claim: Claims,
         source_auth: String,
         param: Params,
-    ) -> Result<impl warp::Reply, Rejection> {
+    ) -> Result<GetMangasResponse> {
         let exts = self.exts.read().unwrap();
         let mangas = exts
             .get(&source)
@@ -185,65 +187,46 @@ impl Manga {
         debug!("mangas {:?}", mangas.clone());
 
         let manga_ids = match self.repo.insert_mangas(&source, mangas.clone()) {
-            Ok(ids) => {
-                debug!("manga ids {:?}", ids);
-                ids
-            }
+            Ok(ids) => ids,
             Err(e) => {
-                return Err(warp::reject::custom(TransactionReject {
-                    message: e.to_string(),
-                }));
+                return Err(anyhow!("{}", e));
             }
         };
+
         match self.repo.get_mangas(claim.sub, manga_ids) {
-            Ok(mangas) => return Ok(warp::reply::json(&mangas)),
-            Err(e) => {
-                return Err(warp::reject::custom(TransactionReject {
-                    message: e.to_string(),
-                }));
-            }
+            Ok(mangas) => return Ok(mangas),
+            Err(e) => Err(anyhow!("{}", e)),
         }
     }
 
-    pub async fn get_manga_info(
-        &self,
-        manga_id: i32,
-        claim: Claims,
-    ) -> Result<impl warp::Reply, Rejection> {
+    pub async fn get_manga_info(&self, manga_id: i32, claim: Claims) -> Result<GetMangaResponse> {
         let exts = self.exts.read().unwrap();
-        if let Ok(manga) = self.repo.get_manga_detail(manga_id, claim.sub.clone()) {
-            if manga.manga.status.is_some()
-                && !manga.manga.author.is_empty()
-                && manga.manga.description.is_some()
-            {
-                return Ok(warp::reply::json(&manga));
-            }
+        let manga = match self.repo.get_manga_detail(manga_id, claim.sub.clone()) {
+            Ok(manga) => manga,
+            Err(e) => return Err(anyhow!("{}", e)),
+        };
 
-            let manga = exts
-                .get(&manga.manga.source)
-                .unwrap()
-                .get_manga_info(&manga.manga.path)
-                .unwrap();
-
-            match self.repo.update_manga_info(manga_id, manga) {
-                Ok(_) => {}
-                Err(e) => {
-                    return Err(warp::reject::custom(TransactionReject {
-                        message: e.to_string(),
-                    }));
-                }
-            }
-
-            match self.repo.get_manga_detail(manga_id, claim.sub) {
-                Ok(res) => return Ok(warp::reply::json(&res)),
-                Err(e) => {
-                    return Err(warp::reject::custom(TransactionReject {
-                        message: e.to_string(),
-                    }));
-                }
-            }
+        if manga.manga.status.is_some()
+            && !manga.manga.author.is_empty()
+            && manga.manga.description.is_some()
+        {
+            return Ok(manga);
         }
-        Err(warp::reject())
+
+        let manga = exts
+            .get(&manga.manga.source)
+            .unwrap()
+            .get_manga_info(&manga.manga.path)
+            .unwrap();
+
+        if let Err(e) = self.repo.update_manga_info(manga_id, manga) {
+            return Err(anyhow!("{}", e));
+        }
+
+        match self.repo.get_manga_detail(manga_id, claim.sub) {
+            Ok(res) => Ok(res),
+            Err(e) => Err(anyhow!("{}", e)),
+        }
     }
 
     pub async fn get_chapters(
@@ -251,48 +234,38 @@ impl Manga {
         manga_id: i32,
         claim: Claims,
         param: GetParams,
-    ) -> Result<impl warp::Reply, Rejection> {
+    ) -> Result<GetChaptersResponse> {
         let exts = self.exts.read().unwrap();
         let refresh = param.refresh.unwrap_or(false);
         if !refresh {
-            match self.repo.get_chapters(manga_id, claim.sub.clone()) {
-                Ok(chapter) => return Ok(warp::reply::json(&chapter)),
-                Err(_e) => {}
-            };
-        }
-
-        if let Ok(manga) = self.repo.get_manga(manga_id) {
-            let chapter = match exts.get(&manga.source).unwrap().get_chapters(&manga.path) {
-                Ok(ch) => ch,
-                Err(e) => {
-                    return Err(warp::reject::custom(TransactionReject {
-                        message: e.to_string(),
-                    }));
-                }
-            };
-
-            match self
-                .repo
-                .insert_chapters(claim.sub.clone(), manga_id, chapter.clone())
-            {
-                Ok(_) => {}
-                Err(e) => {
-                    return Err(warp::reject::custom(TransactionReject {
-                        message: e.to_string(),
-                    }));
-                }
+            if let Ok(chapter) = self.repo.get_chapters(manga_id, claim.sub.clone()) {
+                return Ok(chapter);
             }
-
-            match self.repo.get_chapters(manga_id, claim.sub) {
-                Ok(chapter) => return Ok(warp::reply::json(&chapter)),
-                Err(e) => {
-                    return Err(warp::reject::custom(TransactionReject {
-                        message: e.to_string(),
-                    }));
-                }
-            };
         }
-        Err(warp::reject())
+
+        let manga = match self.repo.get_manga(manga_id) {
+            Ok(manga) => manga,
+            Err(e) => return Err(anyhow!("error get manga: {}", e)),
+        };
+
+        let chapter = match exts.get(&manga.source).unwrap().get_chapters(&manga.path) {
+            Ok(ch) => ch,
+            Err(e) => {
+                return Err(anyhow!("error get manga: {}", e));
+            }
+        };
+
+        if let Err(e) = self
+            .repo
+            .insert_chapters(claim.sub.clone(), manga_id, chapter.clone())
+        {
+            return Err(anyhow!("{}", e));
+        }
+
+        match self.repo.get_chapters(manga_id, claim.sub) {
+            Ok(chapter) => Ok(chapter),
+            Err(e) => Err(anyhow!("{}", e)),
+        }
     }
 
     pub async fn get_pages(
@@ -373,5 +346,33 @@ impl Manga {
         }
 
         Err(warp::reject())
+    }
+
+    pub async fn read(
+        &self,
+        chapter_id: i32,
+        claim: Claims,
+        param: GetParams,
+    ) -> Result<ReadResponse> {
+        let pages = self.get_pages(chapter_id, param.clone()).await.unwrap();
+        let chapters = self
+            .get_chapters(pages.manga_id, claim.clone(), param)
+            .await
+            .unwrap();
+        let manga = self.get_manga_info(pages.manga_id, claim).await.unwrap();
+
+        let chapter = chapters
+            .chapters
+            .iter()
+            .find(|c| c.id == chapter_id)
+            .unwrap()
+            .to_owned();
+
+        Ok(ReadResponse {
+            manga: manga.manga,
+            chapters: chapters.chapters,
+            chapter,
+            pages: pages.pages,
+        })
     }
 }

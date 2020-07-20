@@ -15,6 +15,7 @@ use anyhow::Result;
 use tanoshi_lib::manga::{Params, SourceLogin, SourceLoginResult};
 use tanoshi_lib::rest::{
     GetChaptersResponse, GetMangaResponse, GetMangasResponse, GetPagesResponse, HistoryRequest,
+    ReadResponse,
 };
 
 #[derive(Deserialize, Serialize)]
@@ -26,6 +27,7 @@ pub enum Request {
     FetchPages(i32, bool),
     FetchPage(String),
     PostLogin(String, SourceLogin),
+    FetchRead(i32, bool),
     ValidateToken,
 }
 
@@ -38,6 +40,7 @@ pub enum Response {
     PagesFetched(GetPagesResponse),
     PageFetched(Vec<u8>),
     LoginPosted(SourceLoginResult),
+    ReadFetched(ReadResponse),
     TokenInvalidorExpired,
 }
 
@@ -56,6 +59,7 @@ pub enum Msg {
     PagesReady(HandlerId, GetPagesResponse),
     PageReady(HandlerId, Vec<u8>),
     LoginReady(HandlerId, SourceLoginResult),
+    ReadReady(HandlerId, ReadResponse),
     ValidateTokenReady(HandlerId),
     Noop,
 }
@@ -113,6 +117,10 @@ impl Agent for Worker {
                     Ok(data.clone().value),
                 );
                 self.link.respond(id, Response::LoginPosted(data));
+            }
+            Msg::ReadReady(id, data) => {
+                self.fetch_task.remove(&id.clone());
+                self.link.respond(id, Response::ReadFetched(data));
             }
             Msg::ValidateTokenReady(id) => {
                 self.fetch_task.remove(&id.clone());
@@ -277,6 +285,28 @@ impl Agent for Worker {
                             if let (meta, Json(Ok(data))) = response.into_parts() {
                                 if meta.status.is_success() {
                                     return Msg::LoginReady(id, data);
+                                }
+                            }
+                            Msg::Noop
+                        },
+                    ),
+                ) {
+                    self.fetch_task.insert(id.clone(), FetchTask::from(task));
+                }
+            }
+            Request::FetchRead(chapter_id, refresh) => {
+                let req = HttpRequest::get(format!("/api/read/{}?refresh={}", chapter_id, refresh))
+                    .header("Authorization", self.token.to_string())
+                    .body(Nothing)
+                    .expect("failed to build request");
+
+                if let Ok(task) = FetchService::fetch(
+                    req,
+                    self.link.callback(
+                        move |response: HttpResponse<Json<Result<ReadResponse>>>| {
+                            if let (meta, Json(Ok(data))) = response.into_parts() {
+                                if meta.status.is_success() {
+                                    return Msg::ReadReady(id, data);
                                 }
                             }
                             Msg::Noop
