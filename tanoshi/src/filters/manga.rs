@@ -16,6 +16,7 @@ pub fn manga(secret: String, plugin_path: String, manga: Manga) -> BoxedFilter<(
         .or(get_manga_info(secret.clone(), manga.clone()))
         .or(get_chapters(secret.clone(), manga.clone()))
         .or(get_pages(manga.clone()))
+        .or(read(secret.clone(), manga.clone()))
         .or(proxy_image(manga.clone()))
         .or(source_login(manga.clone()))
         .or(install_source(plugin_path, manga.clone()))
@@ -92,6 +93,16 @@ pub fn source_login(manga: Manga) -> BoxedFilter<(impl Reply,)> {
         .and(json_body())
         .and(with_manga(manga))
         .and_then(manga::source_login)
+        .boxed()
+}
+
+pub fn read(secret: String, manga: Manga) -> BoxedFilter<(impl Reply,)> {
+    warp::path!("api" / "read" / i32)
+        .and(warp::get())
+        .and(with_authorization(secret))
+        .and(warp::query::<GetParams>())
+        .and(with_manga(manga))
+        .and_then(manga::read)
         .boxed()
 }
 

@@ -15,7 +15,7 @@ use super::component::model::{BackgroundColor, PageRendering, ReadingDirection, 
 use super::component::{Page, PageList, Spinner, WeakComponentLink};
 
 use tanoshi_lib::manga::{Chapter as ChapterModel, Manga as MangaModel};
-use tanoshi_lib::rest::{GetChaptersResponse, GetMangaResponse, GetPagesResponse, HistoryRequest};
+use tanoshi_lib::rest::{HistoryRequest, ReadResponse};
 
 #[derive(Clone, Properties)]
 pub struct Props {
@@ -27,7 +27,6 @@ pub struct Chapter {
     link: ComponentLink<Self>,
     router: Box<dyn Bridge<RouteAgent>>,
     token: String,
-    manga_id: i32,
     manga: MangaModel,
     chapter: ChapterModel,
     current_chapter_id: i32,
@@ -48,9 +47,7 @@ pub struct Chapter {
 }
 
 pub enum Msg {
-    MangaReady(GetMangaResponse),
-    ChapterReady(GetChaptersResponse),
-    PagesReady(GetPagesResponse),
+    ReadReady(ReadResponse),
     PageForward,
     PagePrevious,
     ToggleBar,
@@ -105,9 +102,7 @@ impl Component for Chapter {
         }) as Box<dyn Fn()>);
 
         let worker_callback = link.callback(|msg| match msg {
-            job::Response::MangaFetched(data) => Msg::MangaReady(data),
-            job::Response::ChaptersFetched(data) => Msg::ChapterReady(data),
-            job::Response::PagesFetched(data) => Msg::PagesReady(data),
+            job::Response::ReadFetched(data) => Msg::ReadReady(data),
             job::Response::HistoryPosted => Msg::SetHistoryRequested,
             _ => Msg::Noop,
         });
@@ -116,7 +111,6 @@ impl Component for Chapter {
             link,
             router,
             token,
-            manga_id: 0,
             manga: MangaModel::default(),
             current_chapter_id: props.chapter_id,
             chapter: ChapterModel::default(),
@@ -164,7 +158,7 @@ impl Component for Chapter {
         }
         if self.should_fetch {
             self.should_fetch = false;
-            self.get_pages(false);
+            self.read(false);
         }
         document()
             .get_element_by_id("manga-reader")
@@ -177,25 +171,10 @@ impl Component for Chapter {
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
-            Msg::MangaReady(data) => {
-                self.manga = data.manga.clone();
-            }
-            Msg::ChapterReady(data) => {
-                self.is_fetching = false;
-                self.chapters = data.chapters.clone();
-                let idx = match self
-                    .chapters
-                    .iter()
-                    .position(|chapter| chapter.id == self.current_chapter_id)
-                {
-                    Some(index) => index,
-                    None => 0,
-                };
-                self.chapter = data.chapters[idx].clone();
-                self.get_manga();
-            }
-            Msg::PagesReady(data) => {
-                self.manga_id = data.manga_id;
+            Msg::ReadReady(data) => {
+                self.manga = data.manga;
+                self.chapters = data.chapters;
+                self.chapter = data.chapter;
                 self.pages = data.pages;
                 self.page_refs.clear();
                 for _i in 0..self.pages.len() + 1 {
@@ -208,7 +187,6 @@ impl Component for Chapter {
                         None => window().set_onscroll(Some(self.closure.as_ref().unchecked_ref())),
                     };
                 }
-                self.get_chapters();
                 self.is_fetching = false;
             }
             Msg::PageForward => {
@@ -285,7 +263,7 @@ impl Component for Chapter {
                 }
             }
             Msg::RouterCallback => {
-                self.get_pages(false);
+                self.read(false);
             }
             Msg::SetHistoryRequested => {
                 self.is_history_fetching = false;
@@ -314,7 +292,7 @@ impl Component for Chapter {
                 }
             }
             Msg::Refresh => {
-                self.get_pages(true);
+                self.read(true);
             }
             Msg::Noop => {
                 return false;
@@ -346,7 +324,7 @@ impl Component for Chapter {
             ref=self.refs[0].clone()
             class="flex justify-between items-center animated slideInDown faster block fixed inset-x-0 top-0 z-50 bg-gray-900 z-50 content-end opacity-75"
             style="padding-top: calc(env(safe-area-inset-top) + .5rem)">
-                <RouterAnchor<AppRoute> classes="z-50 mx-2 mb-2 text-white" route=AppRoute::Browse(BrowseRoute::Detail(self.manga_id))>
+                <RouterAnchor<AppRoute> classes="z-50 mx-2 mb-2 text-white" route=AppRoute::Browse(BrowseRoute::Detail(self.manga.id))>
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" class="fill-current inline-block mb-1">
                         <path class="heroicon-ui" d="M5.41 11H21a1 1 0 0 1 0 2H5.41l5.3 5.3a1 1 0 0 1-1.42 1.4l-7-7a1 1 0 0 1 0-1.4l7-7a1 1 0 0 1 1.42 1.4L5.4 11z"/>
                     </svg>
@@ -450,18 +428,9 @@ impl Component for Chapter {
 }
 
 impl Chapter {
-    fn get_manga(&mut self) {
-        self.worker.send(job::Request::FetchManga(self.manga_id));
-    }
-
-    fn get_chapters(&mut self) {
+    fn read(&mut self, refresh: bool) {
         self.worker
-            .send(job::Request::FetchChapters(self.manga_id, false));
-    }
-
-    fn get_pages(&mut self, refresh: bool) {
-        self.worker
-            .send(job::Request::FetchPages(self.current_chapter_id, refresh));
+            .send(job::Request::FetchRead(self.current_chapter_id, refresh));
         self.is_fetching = true;
     }
 

@@ -25,7 +25,12 @@ pub async fn list_mangas(
     param: Params,
     manga: Manga,
 ) -> Result<impl warp::Reply, Rejection> {
-    manga.list_mangas(source, claim, source_auth, param).await
+    match manga.list_mangas(source, claim, source_auth, param).await {
+        Ok(res) => Ok(warp::reply::json(&res)),
+        Err(e) => Err(warp::reject::custom(TransactionReject {
+            message: e.to_string(),
+        })),
+    }
 }
 
 pub async fn get_manga_info(
@@ -33,7 +38,12 @@ pub async fn get_manga_info(
     claim: Claims,
     manga: Manga,
 ) -> Result<impl warp::Reply, Rejection> {
-    manga.get_manga_info(manga_id, claim).await
+    match manga.get_manga_info(manga_id, claim).await {
+        Ok(res) => Ok(warp::reply::json(&res)),
+        Err(e) => Err(warp::reject::custom(TransactionReject {
+            message: e.to_string(),
+        })),
+    }
 }
 
 pub async fn get_chapters(
@@ -42,7 +52,12 @@ pub async fn get_chapters(
     param: GetParams,
     manga: Manga,
 ) -> Result<impl warp::Reply, Rejection> {
-    manga.get_chapters(manga_id, claim, param).await
+    match manga.get_chapters(manga_id, claim, param).await {
+        Ok(res) => Ok(warp::reply::json(&res)),
+        Err(e) => Err(warp::reject::custom(TransactionReject {
+            message: e.to_string(),
+        })),
+    }
 }
 
 pub async fn get_pages(
@@ -68,4 +83,18 @@ pub async fn source_login(
     manga: Manga,
 ) -> Result<impl warp::Reply, Rejection> {
     manga.source_login(source, login_info).await
+}
+
+pub async fn read(
+    chapter_id: i32,
+    claim: Claims,
+    param: GetParams,
+    manga: Manga,
+) -> Result<impl warp::Reply, Rejection> {
+    match manga.read(chapter_id, claim, param).await {
+        Ok(res) => Ok(warp::reply::json(&res)),
+        Err(e) => Err(warp::reject::custom(TransactionReject {
+            message: e.to_string(),
+        })),
+    }
 }
