@@ -12,7 +12,7 @@ use yew_router::{agent::RouteRequest, prelude::*};
 use crate::app::{browse::BrowseRoute, job, AppRoute};
 
 use super::component::model::{BackgroundColor, PageRendering, ReadingDirection, SettingParams};
-use super::component::{Page, PageList, Spinner, WeakComponentLink};
+use super::component::{Page, PageList, WeakComponentLink};
 
 use tanoshi_lib::manga::{Chapter as ChapterModel, Manga as MangaModel};
 use tanoshi_lib::rest::{HistoryRequest, ReadResponse};
@@ -41,9 +41,9 @@ pub struct Chapter {
     page_refs: Vec<NodeRef>,
     container_ref: NodeRef,
     closure: Closure<dyn Fn()>,
-    is_history_fetching: bool,
     worker: Box<dyn Bridge<job::Worker>>,
     should_fetch: bool,
+    scrolled: bool,
 }
 
 pub enum Msg {
@@ -125,9 +125,9 @@ impl Component for Chapter {
             page_refs: vec![],
             container_ref: NodeRef::default(),
             closure,
-            is_history_fetching: false,
             worker: job::Worker::bridge(worker_callback),
             should_fetch: true,
+            scrolled: false,
         }
     }
 
@@ -159,7 +159,11 @@ impl Component for Chapter {
         if self.should_fetch {
             self.should_fetch = false;
             self.read(false);
+        } else if self.settings.page_rendering == PageRendering::LongStrip && !self.scrolled {
+            self.move_to_page(self.current_page);
+            self.scrolled = true;
         }
+
         document()
             .get_element_by_id("manga-reader")
             .expect("should have manga reader")
@@ -266,7 +270,6 @@ impl Component for Chapter {
                 self.read(false);
             }
             Msg::SetHistoryRequested => {
-                self.is_history_fetching = false;
                 return false;
             }
             Msg::ScrollEvent(scroll) => {
@@ -380,17 +383,15 @@ impl Component for Chapter {
                                         id={i}
                                         key={i}
                                         page_ref=self.page_refs[i].clone()
-                                        hidden={self.current_page != i}
                                         page_rendering={&self.settings.page_rendering}
                                         reading_direction={&self.settings.reading_direction}
                                         onmouseup={&on_mouse_up}
-                                        src={if i >= 0 && i < self.current_page + 2 {page} else {"".to_string()}}
+                                        src={self.page_or_empty(i, &page)}
                                     />
                                 }
                             })
                     }
                 </PageList>
-                <Spinner is_active=self.is_fetching is_fullscreen=true/>
             </div>
             <div ref=self.refs[1].clone()
             class="animated slideInUp faster block fixed inset-x-0 bottom-0 z-50 bg-gray-900 opacity-75 shadow safe-bottom">
@@ -432,6 +433,20 @@ impl Chapter {
         self.worker
             .send(job::Request::FetchRead(self.current_chapter_id, refresh));
         self.is_fetching = true;
+    }
+
+    fn page_or_empty(&self, i: usize, page: &String) -> String {
+        let (before, after) = match self.settings.page_rendering {
+            PageRendering::DoublePage => (2, 4),
+            _ => (1, 2),
+        };
+
+        if i >= self.current_page.checked_sub(before).unwrap_or(0) && i < self.current_page + after
+        {
+            page.to_string()
+        } else {
+            "".to_string()
+        }
     }
 
     fn move_to_page(&mut self, page: usize) {
