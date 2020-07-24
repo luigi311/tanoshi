@@ -12,7 +12,7 @@ use yew_router::{agent::RouteRequest, prelude::*};
 use crate::app::{browse::BrowseRoute, job, AppRoute};
 
 use super::component::model::{BackgroundColor, PageRendering, ReadingDirection, SettingParams};
-use super::component::{Page, PageList, WeakComponentLink};
+use super::component::{Page, PageList, Spinner, WeakComponentLink};
 
 use tanoshi_lib::manga::{Chapter as ChapterModel, Manga as MangaModel};
 use tanoshi_lib::rest::{HistoryRequest, ReadResponse};
@@ -323,94 +323,95 @@ impl Component for Chapter {
             self.link.callback(|_| Msg::Noop)
         };
         return html! {
-        <div>
-            <div
-            ref=self.refs[0].clone()
-            class="flex justify-between items-center animated slideInDown faster block fixed inset-x-0 top-0 z-50 bg-gray-900 z-50 content-end opacity-75"
-            style="padding-top: calc(env(safe-area-inset-top) + .5rem)">
-                <RouterAnchor<AppRoute> classes="z-50 mx-2 mb-2 text-white" route=AppRoute::Browse(BrowseRoute::Detail(self.manga.id))>
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" class="fill-current inline-block mb-1">
-                        <path class="heroicon-ui" d="M5.41 11H21a1 1 0 0 1 0 2H5.41l5.3 5.3a1 1 0 0 1-1.42 1.4l-7-7a1 1 0 0 1 0-1.4l7-7a1 1 0 0 1 1.42 1.4L5.4 11z"/>
-                    </svg>
-               </RouterAnchor<AppRoute>>
-               <div class="flex flex-col mx-2 mb-2">
-                <span class="text-white text-center">{self.manga.title.to_owned()}</span>
-                <span class="text-white text-center text-sm">{if let Some(v) = &self.chapter.vol {format!("Volume {}", v)} else if let Some(c) = &self.chapter.no {format!("Chapter {}", c)} else {"".to_string()}}</span>
-               </div>
-               <button
-                onclick=self.link.callback(|_| Msg::Refresh)
-                class="z-50 mx-2 mb-2 text-white ">
-                    <svg class="fill-current inline-block mb-1 my-auto self-center" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" >
-                        <path class="heroicon-ui" d="M6 18.7V21a1 1 0 0 1-2 0v-5a1 1 0 0 1 1-1h5a1 1 0 1 1 0 2H7.1A7 7 0 0 0 19 12a1 1 0 1 1 2 0 9 9 0 0 1-15 6.7zM18 5.3V3a1 1 0 0 1 2 0v5a1 1 0 0 1-1 1h-5a1 1 0 0 1 0-2h2.9A7 7 0 0 0 5 12a1 1 0 1 1-2 0 9 9 0 0 1 15-6.7z"/>
-                    </svg>
-                </button>
-            </div>
-            <div class="h-screen m-0 outline-none" id="manga-reader" tabindex="0" onkeydown=self.link.callback(|e: KeyboardEvent|
-                match e.key().as_str() {
-                    "ArrowRight" => Msg::PageForward,
-                    "ArrowLeft"  => Msg::PagePrevious,
-                    _ => Msg::Noop,
-                }
-            )>
-                {
-                    if self.settings.page_rendering != PageRendering::LongStrip {
-                        html!{
-                            <>
-                                <button class="manga-navigate-left outline-none fixed" onmouseup=self.link.callback(|_| Msg::PagePrevious)/>
-                                <button class="manga-navigate-center outline-none fixed" onmouseup=self.link.callback(|_| Msg::ToggleBar)/>
-                                <button class="manga-navigate-right outline-none fixed" onmouseup=self.link.callback(|_| Msg::PageForward)/>
-                            </>
+                <div>
+                    <div
+                    ref=self.refs[0].clone()
+                    class="flex justify-between items-center animated slideInDown faster block fixed inset-x-0 top-0 z-50 bg-gray-900 z-50 content-end opacity-75"
+                    style="padding-top: calc(env(safe-area-inset-top) + .5rem)">
+                        <RouterAnchor<AppRoute> classes="z-50 mx-2 mb-2 text-white" route=AppRoute::Browse(BrowseRoute::Detail(self.manga.id))>
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" class="fill-current inline-block mb-1">
+                                <path class="heroicon-ui" d="M5.41 11H21a1 1 0 0 1 0 2H5.41l5.3 5.3a1 1 0 0 1-1.42 1.4l-7-7a1 1 0 0 1 0-1.4l7-7a1 1 0 0 1 1.42 1.4L5.4 11z"/>
+                            </svg>
+                       </RouterAnchor<AppRoute>>
+                       <div class="flex flex-col mx-2 mb-2">
+                        <span class="text-white text-center">{self.manga.title.to_owned()}</span>
+                        <span class="text-white text-center text-sm">{if let Some(v) = &self.chapter.vol {format!("Volume {}", v)} else if let Some(c) = &self.chapter.no {format!("Chapter {}", c)} else {"".to_string()}}</span>
+                       </div>
+                       <button
+                        onclick=self.link.callback(|_| Msg::Refresh)
+                        class="z-50 mx-2 mb-2 text-white ">
+                            <svg class="fill-current inline-block mb-1 my-auto self-center" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" >
+                                <path class="heroicon-ui" d="M6 18.7V21a1 1 0 0 1-2 0v-5a1 1 0 0 1 1-1h5a1 1 0 1 1 0 2H7.1A7 7 0 0 0 19 12a1 1 0 1 1 2 0 9 9 0 0 1-15 6.7zM18 5.3V3a1 1 0 0 1 2 0v5a1 1 0 0 1-1 1h-5a1 1 0 0 1 0-2h2.9A7 7 0 0 0 5 12a1 1 0 1 1-2 0 9 9 0 0 1 15-6.7z"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="h-screen m-0 outline-none" id="manga-reader" tabindex="0" onkeydown=self.link.callback(|e: KeyboardEvent|
+                        match e.key().as_str() {
+                            "ArrowRight" => Msg::PageForward,
+                            "ArrowLeft"  => Msg::PagePrevious,
+                            _ => Msg::Noop,
                         }
-                    } else {
-                        html!{}
-                    }
-                }
-                <PageList ref=self.container_ref.clone()
-                    page_rendering={&self.settings.page_rendering}
-                    reading_direction={&self.settings.reading_direction}
-                    weak_link=list_link
-                    current_page=self.current_page
-                    onnextchapter=onnextchapter
-                    onprevchapter=onprevchapter
-                >
-                    {
-                        for self.pages
-                            .clone()
-                            .into_iter()
-                            .enumerate()
-                            .map(|(i, page)| {
-                                html_nested! {
-                                    <Page
-                                        id={i}
-                                        key={i}
-                                        page_ref=self.page_refs[i].clone()
-                                        page_rendering={&self.settings.page_rendering}
-                                        reading_direction={&self.settings.reading_direction}
-                                        onmouseup={&on_mouse_up}
-                                        src={self.page_or_empty(i, &page)}
-                                    />
+                    )>
+                        {
+                            if self.settings.page_rendering != PageRendering::LongStrip {
+                                html!{
+                                    <>
+                                        <button class="manga-navigate-left outline-none fixed" onmouseup=self.link.callback(|_| Msg::PagePrevious)/>
+                                        <button class="manga-navigate-center outline-none fixed" onmouseup=self.link.callback(|_| Msg::ToggleBar)/>
+                                        <button class="manga-navigate-right outline-none fixed" onmouseup=self.link.callback(|_| Msg::PageForward)/>
+                                    </>
                                 }
-                            })
-                    }
-                </PageList>
-            </div>
-            <div ref=self.refs[1].clone()
-            class="animated slideInUp faster block fixed inset-x-0 bottom-0 z-50 bg-gray-900 opacity-75 shadow safe-bottom">
-                <div class="flex px-4 py-5 justify-center">
-                    <span class="mx-4 text-white">{format!("{}", self.current_page + 1)}</span>
-                    <input
-                        disabled={self.settings.page_rendering == PageRendering::LongStrip}
-                        type="range"
-                        min="0"
-                        max=self.pages.len().checked_sub(1).unwrap_or(0)
-                        step="1"
-                        value={self.current_page}
-                        oninput=self.link.callback(|e: InputData| Msg::PageSliderChange(e.value.parse::<usize>().unwrap()))/>
-                    <span class="mx-4 text-white">{format!("{}", self.pages.len())}</span>
+                            } else {
+                                html!{}
+                            }
+                        }
+                        <PageList ref=self.container_ref.clone()
+                            page_rendering={&self.settings.page_rendering}
+                            reading_direction={&self.settings.reading_direction}
+                            weak_link=list_link
+                            current_page=self.current_page
+                            onnextchapter=onnextchapter
+                            onprevchapter=onprevchapter
+                        >
+                            {
+                                for self.pages
+                                    .clone()
+                                    .into_iter()
+                                    .enumerate()
+                                    .map(|(i, page)| {
+                                        html_nested! {
+                                            <Page
+                                                id={i}
+                                                key={i}
+                                                page_ref=self.page_refs[i].clone()
+                                                page_rendering={&self.settings.page_rendering}
+                                                reading_direction={&self.settings.reading_direction}
+                                                onmouseup={&on_mouse_up}
+                                                src={self.page_or_empty(i, &page)}
+                                            />
+                                        }
+                                    })
+                            }
+                        </PageList>
+                    </div>
+        <Spinner is_active=self.is_fetching is_fullscreen=true/>
+                    <div ref=self.refs[1].clone()
+                    class="animated slideInUp faster block fixed inset-x-0 bottom-0 z-50 bg-gray-900 opacity-75 shadow safe-bottom">
+                        <div class="flex px-4 py-5 justify-center">
+                            <span class="mx-4 text-white">{format!("{}", self.current_page + 1)}</span>
+                            <input
+                                disabled={self.settings.page_rendering == PageRendering::LongStrip}
+                                type="range"
+                                min="0"
+                                max=self.pages.len().checked_sub(1).unwrap_or(0)
+                                step="1"
+                                value={self.current_page}
+                                oninput=self.link.callback(|e: InputData| Msg::PageSliderChange(e.value.parse::<usize>().unwrap()))/>
+                            <span class="mx-4 text-white">{format!("{}", self.pages.len())}</span>
+                        </div>
+                    </div>
                 </div>
-            </div>
-        </div>
-        };
+                };
     }
 
     fn destroy(&mut self) {
