@@ -229,6 +229,9 @@ impl Component for Chapter {
                 if self.is_bar_visible {
                     if let Some(bar) = self.refs[0].cast::<HtmlElement>() {
                         bar.class_list()
+                            .remove_1("slideInDown")
+                            .expect("failed remove class");
+                        bar.class_list()
                             .add_1("slideOutUp")
                             .expect("failed add class");
                         self.is_bar_visible = false;
@@ -402,9 +405,7 @@ impl Component for Chapter {
                         max=self.pages.len().checked_sub(1).unwrap_or(0)
                         step="1"
                         value={self.current_page}
-                        oninput=self.link.callback(|e: InputData|
-                            Msg::PageSliderChange(e.value.parse::<usize>().unwrap())
-                        )/>
+                        oninput=self.link.callback(|e: InputData| Msg::PageSliderChange(e.value.parse::<usize>().unwrap()))/>
                     <span class="mx-4 text-white">{format!("{}", self.pages.len())}</span>
                 </div>
             </div>
