@@ -41,9 +41,9 @@ pub struct Chapter {
     page_refs: Vec<NodeRef>,
     container_ref: NodeRef,
     closure: Closure<dyn Fn()>,
-    is_history_fetching: bool,
     worker: Box<dyn Bridge<job::Worker>>,
     should_fetch: bool,
+    scrolled: bool,
 }
 
 pub enum Msg {
@@ -125,9 +125,9 @@ impl Component for Chapter {
             page_refs: vec![],
             container_ref: NodeRef::default(),
             closure,
-            is_history_fetching: false,
             worker: job::Worker::bridge(worker_callback),
             should_fetch: true,
+            scrolled: false,
         }
     }
 
@@ -137,9 +137,10 @@ impl Component for Chapter {
         {
             self.current_chapter_id = props.chapter_id;
             self.current_page = props.page.checked_sub(1).unwrap_or(0);
-            return true;
+            true
+        } else {
+            false
         }
-        false
     }
 
     fn rendered(&mut self, first_render: bool) {
@@ -159,7 +160,11 @@ impl Component for Chapter {
         if self.should_fetch {
             self.should_fetch = false;
             self.read(false);
+        } else if self.settings.page_rendering == PageRendering::LongStrip && !self.scrolled {
+            self.move_to_page(self.current_page);
+            self.scrolled = true;
         }
+
         document()
             .get_element_by_id("manga-reader")
             .expect("should have manga reader")
@@ -176,10 +181,7 @@ impl Component for Chapter {
                 self.chapters = data.chapters;
                 self.chapter = data.chapter;
                 self.pages = data.pages;
-                self.page_refs.clear();
-                for _i in 0..self.pages.len() + 1 {
-                    self.page_refs.push(NodeRef::default());
-                }
+                self.page_refs = self.pages.iter().map(|_| NodeRef::default()).collect();
 
                 if self.settings.page_rendering == PageRendering::LongStrip {
                     match window().onscroll() {
@@ -214,11 +216,13 @@ impl Component for Chapter {
                 self.set_history();
             }
             Msg::PageSliderChange(page) => {
-                if self.settings.page_rendering == PageRendering::DoublePage && page % 2 != 0 {
-                    self.move_to_page(page.checked_sub(1).unwrap_or(0))
-                } else {
-                    self.move_to_page(page);
-                }
+                let page =
+                    if self.settings.page_rendering == PageRendering::DoublePage && page % 2 != 0 {
+                        page.checked_sub(1).unwrap_or(0)
+                    } else {
+                        page
+                    };
+                self.move_to_page(page);
                 self.set_history();
             }
             Msg::ToggleBar => {
@@ -266,7 +270,6 @@ impl Component for Chapter {
                 self.read(false);
             }
             Msg::SetHistoryRequested => {
-                self.is_history_fetching = false;
                 return false;
             }
             Msg::ScrollEvent(scroll) => {
@@ -293,6 +296,7 @@ impl Component for Chapter {
             }
             Msg::Refresh => {
                 self.read(true);
+                self.scrolled = false;
             }
             Msg::Noop => {
                 return false;
@@ -319,95 +323,95 @@ impl Component for Chapter {
             self.link.callback(|_| Msg::Noop)
         };
         return html! {
-        <div>
-            <div
-            ref=self.refs[0].clone()
-            class="flex justify-between items-center animated slideInDown faster block fixed inset-x-0 top-0 z-50 bg-gray-900 z-50 content-end opacity-75"
-            style="padding-top: calc(env(safe-area-inset-top) + .5rem)">
-                <RouterAnchor<AppRoute> classes="z-50 mx-2 mb-2 text-white" route=AppRoute::Browse(BrowseRoute::Detail(self.manga.id))>
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" class="fill-current inline-block mb-1">
-                        <path class="heroicon-ui" d="M5.41 11H21a1 1 0 0 1 0 2H5.41l5.3 5.3a1 1 0 0 1-1.42 1.4l-7-7a1 1 0 0 1 0-1.4l7-7a1 1 0 0 1 1.42 1.4L5.4 11z"/>
-                    </svg>
-               </RouterAnchor<AppRoute>>
-               <div class="flex flex-col mx-2 mb-2">
-                <span class="text-white text-center">{self.manga.title.to_owned()}</span>
-                <span class="text-white text-center text-sm">{if let Some(v) = &self.chapter.vol {format!("Volume {}", v)} else if let Some(c) = &self.chapter.no {format!("Chapter {}", c)} else {"".to_string()}}</span>
-               </div>
-               <button
-                onclick=self.link.callback(|_| Msg::Refresh)
-                class="z-50 mx-2 mb-2 text-white ">
-                    <svg class="fill-current inline-block mb-1 my-auto self-center" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" >
-                        <path class="heroicon-ui" d="M6 18.7V21a1 1 0 0 1-2 0v-5a1 1 0 0 1 1-1h5a1 1 0 1 1 0 2H7.1A7 7 0 0 0 19 12a1 1 0 1 1 2 0 9 9 0 0 1-15 6.7zM18 5.3V3a1 1 0 0 1 2 0v5a1 1 0 0 1-1 1h-5a1 1 0 0 1 0-2h2.9A7 7 0 0 0 5 12a1 1 0 1 1-2 0 9 9 0 0 1 15-6.7z"/>
-                    </svg>
-                </button>
-            </div>
-            <div class="h-screen m-0 outline-none" id="manga-reader" tabindex="0" onkeydown=self.link.callback(|e: KeyboardEvent|
-                match e.key().as_str() {
-                    "ArrowRight" => Msg::PageForward,
-                    "ArrowLeft"  => Msg::PagePrevious,
-                    _ => Msg::Noop,
-                }
-            )>
-                {
-                    if self.settings.page_rendering != PageRendering::LongStrip {
-                        html!{
-                            <>
-                                <button class="manga-navigate-left outline-none fixed" onmouseup=self.link.callback(|_| Msg::PagePrevious)/>
-                                <button class="manga-navigate-center outline-none fixed" onmouseup=self.link.callback(|_| Msg::ToggleBar)/>
-                                <button class="manga-navigate-right outline-none fixed" onmouseup=self.link.callback(|_| Msg::PageForward)/>
-                            </>
+                <div>
+                    <div
+                    ref=self.refs[0].clone()
+                    class="flex justify-between items-center animated slideInDown faster block fixed inset-x-0 top-0 z-50 bg-gray-900 z-50 content-end opacity-75"
+                    style="padding-top: calc(env(safe-area-inset-top) + .5rem)">
+                        <RouterAnchor<AppRoute> classes="z-50 mx-2 mb-2 text-white" route=AppRoute::Browse(BrowseRoute::Detail(self.manga.id))>
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" class="fill-current inline-block mb-1">
+                                <path class="heroicon-ui" d="M5.41 11H21a1 1 0 0 1 0 2H5.41l5.3 5.3a1 1 0 0 1-1.42 1.4l-7-7a1 1 0 0 1 0-1.4l7-7a1 1 0 0 1 1.42 1.4L5.4 11z"/>
+                            </svg>
+                       </RouterAnchor<AppRoute>>
+                       <div class="flex flex-col mx-2 mb-2">
+                        <span class="text-white text-center">{self.manga.title.to_owned()}</span>
+                        <span class="text-white text-center text-sm">{if let Some(v) = &self.chapter.vol {format!("Volume {}", v)} else if let Some(c) = &self.chapter.no {format!("Chapter {}", c)} else {"".to_string()}}</span>
+                       </div>
+                       <button
+                        onclick=self.link.callback(|_| Msg::Refresh)
+                        class="z-50 mx-2 mb-2 text-white ">
+                            <svg class="fill-current inline-block mb-1 my-auto self-center" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" >
+                                <path class="heroicon-ui" d="M6 18.7V21a1 1 0 0 1-2 0v-5a1 1 0 0 1 1-1h5a1 1 0 1 1 0 2H7.1A7 7 0 0 0 19 12a1 1 0 1 1 2 0 9 9 0 0 1-15 6.7zM18 5.3V3a1 1 0 0 1 2 0v5a1 1 0 0 1-1 1h-5a1 1 0 0 1 0-2h2.9A7 7 0 0 0 5 12a1 1 0 1 1-2 0 9 9 0 0 1 15-6.7z"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="h-screen m-0 outline-none" id="manga-reader" tabindex="0" onkeydown=self.link.callback(|e: KeyboardEvent|
+                        match e.key().as_str() {
+                            "ArrowRight" => Msg::PageForward,
+                            "ArrowLeft"  => Msg::PagePrevious,
+                            _ => Msg::Noop,
                         }
-                    } else {
-                        html!{}
-                    }
-                }
-                <PageList ref=self.container_ref.clone()
-                    page_rendering={&self.settings.page_rendering}
-                    reading_direction={&self.settings.reading_direction}
-                    weak_link=list_link
-                    current_page=self.current_page
-                    onnextchapter=onnextchapter
-                    onprevchapter=onprevchapter
-                >
-                    {
-                        for self.pages
-                            .clone()
-                            .into_iter()
-                            .enumerate()
-                            .map(|(i, page)| {
-                                html_nested! {
-                                    <Page
-                                        id={i}
-                                        key={i}
-                                        page_ref=self.page_refs[i].clone()
-                                        hidden={self.current_page != i}
-                                        page_rendering={&self.settings.page_rendering}
-                                        reading_direction={&self.settings.reading_direction}
-                                        onmouseup={&on_mouse_up}
-                                        src={if i >= 0 && i < self.current_page + 2 {page} else {"".to_string()}}
-                                    />
+                    )>
+                        {
+                            if self.settings.page_rendering != PageRendering::LongStrip {
+                                html!{
+                                    <>
+                                        <button class="manga-navigate-left outline-none fixed" onmouseup=self.link.callback(|_| Msg::PagePrevious)/>
+                                        <button class="manga-navigate-center outline-none fixed" onmouseup=self.link.callback(|_| Msg::ToggleBar)/>
+                                        <button class="manga-navigate-right outline-none fixed" onmouseup=self.link.callback(|_| Msg::PageForward)/>
+                                    </>
                                 }
-                            })
-                    }
-                </PageList>
-                <Spinner is_active=self.is_fetching is_fullscreen=true/>
-            </div>
-            <div ref=self.refs[1].clone()
-            class="animated slideInUp faster block fixed inset-x-0 bottom-0 z-50 bg-gray-900 opacity-75 shadow safe-bottom">
-                <div class="flex px-4 py-5 justify-center">
-                    <span class="mx-4 text-white">{format!("{}", self.current_page + 1)}</span>
-                    <input
-                        type="range"
-                        min="0"
-                        max=self.pages.len().checked_sub(1).unwrap_or(0)
-                        step="1"
-                        value={self.current_page}
-                        oninput=self.link.callback(|e: InputData| Msg::PageSliderChange(e.value.parse::<usize>().unwrap()))/>
-                    <span class="mx-4 text-white">{format!("{}", self.pages.len())}</span>
+                            } else {
+                                html!{}
+                            }
+                        }
+                        <PageList ref=self.container_ref.clone()
+                            page_rendering={&self.settings.page_rendering}
+                            reading_direction={&self.settings.reading_direction}
+                            weak_link=list_link
+                            current_page=self.current_page
+                            onnextchapter=onnextchapter
+                            onprevchapter=onprevchapter
+                        >
+                            {
+                                for self.pages
+                                    .clone()
+                                    .into_iter()
+                                    .enumerate()
+                                    .map(|(i, page)| {
+                                        html_nested! {
+                                            <Page
+                                                id={i}
+                                                key={i}
+                                                page_ref=self.page_refs[i].clone()
+                                                page_rendering={&self.settings.page_rendering}
+                                                reading_direction={&self.settings.reading_direction}
+                                                onmouseup={&on_mouse_up}
+                                                src={self.page_or_empty(i, &page)}
+                                            />
+                                        }
+                                    })
+                            }
+                        </PageList>
+                    </div>
+        <Spinner is_active=self.is_fetching is_fullscreen=true/>
+                    <div ref=self.refs[1].clone()
+                    class="animated slideInUp faster block fixed inset-x-0 bottom-0 z-50 bg-gray-900 opacity-75 shadow safe-bottom">
+                        <div class="flex px-4 py-5 justify-center">
+                            <span class="mx-4 text-white">{format!("{}", self.current_page + 1)}</span>
+                            <input
+                                disabled={self.settings.page_rendering == PageRendering::LongStrip}
+                                type="range"
+                                min="0"
+                                max=self.pages.len().checked_sub(1).unwrap_or(0)
+                                step="1"
+                                value={self.current_page}
+                                oninput=self.link.callback(|e: InputData| Msg::PageSliderChange(e.value.parse::<usize>().unwrap()))/>
+                            <span class="mx-4 text-white">{format!("{}", self.pages.len())}</span>
+                        </div>
+                    </div>
                 </div>
-            </div>
-        </div>
-        };
+                };
     }
 
     fn destroy(&mut self) {
@@ -434,13 +438,26 @@ impl Chapter {
         self.is_fetching = true;
     }
 
+    fn page_or_empty(&self, i: usize, page: &String) -> String {
+        let (before, after) = match self.settings.page_rendering {
+            PageRendering::DoublePage => (2, 4),
+            _ => (1, 2),
+        };
+
+        if i >= self.current_page.checked_sub(before).unwrap_or(0) && i < self.current_page + after
+        {
+            page.to_string()
+        } else {
+            "".to_string()
+        }
+    }
+
     fn move_to_page(&mut self, page: usize) {
         self.current_page = page;
         if self.settings.page_rendering == PageRendering::LongStrip {
             if let Some(el) = self.page_refs[page].cast::<HtmlImageElement>() {
                 el.scroll_into_view();
             }
-        } else {
         }
     }
 
@@ -482,18 +499,10 @@ impl Chapter {
                 self.previous_chapter_page = self.current_page;
 
                 let route = Route::from(route_string);
-                self.router.send(RouteRequest::ChangeRoute(route));
+                self.router.send(RouteRequest::ReplaceRoute(route));
             }
         } else {
             self.current_page = current_page;
-            route_string = format!(
-                "/chapter/{}/page/{}",
-                self.current_chapter_id,
-                self.current_page + 1
-            );
-            let route = Route::from(route_string);
-            self.router
-                .send(RouteRequest::ReplaceRouteNoBroadcast(route));
         }
     }
 
@@ -534,17 +543,8 @@ impl Chapter {
                     self.current_page + 1
                 );
                 let route = Route::from(route_string);
-                self.router.send(RouteRequest::ChangeRoute(route));
+                self.router.send(RouteRequest::ReplaceRoute(route));
             }
-        } else {
-            let route_string = format!(
-                "/chapter/{}/page/{}",
-                self.current_chapter_id,
-                self.current_page + 1
-            );
-            let route = Route::from(route_string);
-            self.router
-                .send(RouteRequest::ReplaceRouteNoBroadcast(route));
         }
     }
 
