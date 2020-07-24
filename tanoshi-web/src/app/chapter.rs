@@ -137,9 +137,10 @@ impl Component for Chapter {
         {
             self.current_chapter_id = props.chapter_id;
             self.current_page = props.page.checked_sub(1).unwrap_or(0);
-            return true;
+            true
+        } else {
+            false
         }
-        false
     }
 
     fn rendered(&mut self, first_render: bool) {
@@ -281,7 +282,7 @@ impl Component for Chapter {
                                 self.set_history();
                             }
                         } else {
-                            if self.current_page != page {
+                            if page > 0 && self.current_page != page {
                                 self.current_page = page;
                                 self.set_history();
                             }
@@ -395,12 +396,15 @@ impl Component for Chapter {
                 <div class="flex px-4 py-5 justify-center">
                     <span class="mx-4 text-white">{format!("{}", self.current_page + 1)}</span>
                     <input
+                        disabled={self.settings.page_rendering == PageRendering::LongStrip}
                         type="range"
                         min="0"
                         max=self.pages.len().checked_sub(1).unwrap_or(0)
                         step="1"
                         value={self.current_page}
-                        oninput=self.link.callback(|e: InputData| Msg::PageSliderChange(e.value.parse::<usize>().unwrap()))/>
+                        oninput=self.link.callback(|e: InputData|
+                            Msg::PageSliderChange(e.value.parse::<usize>().unwrap())
+                        )/>
                     <span class="mx-4 text-white">{format!("{}", self.pages.len())}</span>
                 </div>
             </div>
@@ -452,7 +456,6 @@ impl Chapter {
             if let Some(el) = self.page_refs[page].cast::<HtmlImageElement>() {
                 el.scroll_into_view();
             }
-        } else {
         }
     }
 
