@@ -285,7 +285,7 @@ impl Component for Chapter {
                                 self.set_history();
                             }
                         } else {
-                            if page > 0 && self.current_page != page {
+                            if self.current_page != page {
                                 self.current_page = page;
                                 self.set_history();
                             }
