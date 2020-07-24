@@ -180,10 +180,7 @@ impl Component for Chapter {
                 self.chapters = data.chapters;
                 self.chapter = data.chapter;
                 self.pages = data.pages;
-                self.page_refs.clear();
-                for _i in 0..self.pages.len() + 1 {
-                    self.page_refs.push(NodeRef::default());
-                }
+                self.page_refs = self.pages.iter().map(|_| NodeRef::default()).collect();
 
                 if self.settings.page_rendering == PageRendering::LongStrip {
                     match window().onscroll() {
@@ -218,19 +215,18 @@ impl Component for Chapter {
                 self.set_history();
             }
             Msg::PageSliderChange(page) => {
-                if self.settings.page_rendering == PageRendering::DoublePage && page % 2 != 0 {
-                    self.move_to_page(page.checked_sub(1).unwrap_or(0))
-                } else {
-                    self.move_to_page(page);
-                }
+                let page =
+                    if self.settings.page_rendering == PageRendering::DoublePage && page % 2 != 0 {
+                        page.checked_sub(1).unwrap_or(0)
+                    } else {
+                        page
+                    };
+                self.move_to_page(page);
                 self.set_history();
             }
             Msg::ToggleBar => {
                 if self.is_bar_visible {
                     if let Some(bar) = self.refs[0].cast::<HtmlElement>() {
-                        bar.class_list()
-                            .remove_1("slideInDown")
-                            .expect("failed remove class");
                         bar.class_list()
                             .add_1("slideOutUp")
                             .expect("failed add class");
@@ -296,6 +292,7 @@ impl Component for Chapter {
             }
             Msg::Refresh => {
                 self.read(true);
+                self.scrolled = false;
             }
             Msg::Noop => {
                 return false;
@@ -497,18 +494,10 @@ impl Chapter {
                 self.previous_chapter_page = self.current_page;
 
                 let route = Route::from(route_string);
-                self.router.send(RouteRequest::ChangeRoute(route));
+                self.router.send(RouteRequest::ReplaceRoute(route));
             }
         } else {
             self.current_page = current_page;
-            route_string = format!(
-                "/chapter/{}/page/{}",
-                self.current_chapter_id,
-                self.current_page + 1
-            );
-            let route = Route::from(route_string);
-            self.router
-                .send(RouteRequest::ReplaceRouteNoBroadcast(route));
         }
     }
 
@@ -549,17 +538,8 @@ impl Chapter {
                     self.current_page + 1
                 );
                 let route = Route::from(route_string);
-                self.router.send(RouteRequest::ChangeRoute(route));
+                self.router.send(RouteRequest::ReplaceRoute(route));
             }
-        } else {
-            let route_string = format!(
-                "/chapter/{}/page/{}",
-                self.current_chapter_id,
-                self.current_page + 1
-            );
-            let route = Route::from(route_string);
-            self.router
-                .send(RouteRequest::ReplaceRouteNoBroadcast(route));
         }
     }
 
