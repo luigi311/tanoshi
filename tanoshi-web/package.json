@@ -1,6 +1,6 @@
 {
   "name": "tanoshi-web",
-  "version": "0.11.0",
+  "version": "0.11.1",
   "private": false,
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
