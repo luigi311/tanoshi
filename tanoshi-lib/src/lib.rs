@@ -119,7 +119,7 @@ pub mod manga {
     }
 
     /// A type represent sort parameter for query manga from source, normalized across source
-    #[derive(Debug, Deserialize, Serialize, Clone)]
+    #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
     pub enum SortByParam {
         LastUpdated,
         Title,
@@ -128,7 +128,7 @@ pub mod manga {
     }
 
     /// A type represent order parameter for query manga from source, normalized across source
-    #[derive(Debug, Deserialize, Serialize, Clone)]
+    #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
     pub enum SortOrderParam {
         Asc,
         Desc,
