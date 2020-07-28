@@ -39,8 +39,8 @@ impl Component for Page {
         match msg {
             Msg::ImageLoad => {
                 let img = self.props.page_ref.cast::<HtmlElement>().unwrap();
-                img.class_list().remove_2("h-screen", "sm:h-page");
-                img.class_list().add_1("h-auto");
+                let _ = img.class_list().remove_2("h-screen", "sm:h-page");
+                let _ = img.class_list().add_1("h-auto");
                 true
             }
         }
