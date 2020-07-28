@@ -18,6 +18,9 @@ pub use self::spinner::Spinner;
 
 pub mod model;
 
+mod filter;
+pub use filter::Filter;
+
 use std::cell::RefCell;
 use std::ops::Deref;
 use std::rc::Rc;

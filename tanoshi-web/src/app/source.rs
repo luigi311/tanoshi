@@ -1,4 +1,4 @@
-use super::component::{Manga, MangaList, Spinner, WeakComponentLink};
+use super::component::{Filter, Manga, MangaList, Spinner, WeakComponentLink};
 use web_sys::HtmlElement;
 use yew::prelude::*;
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
@@ -29,6 +29,7 @@ pub struct Source {
     worker: Box<dyn Bridge<job::Worker>>,
     is_login_page: bool,
     login: SourceLogin,
+    show_filter: bool,
 }
 
 pub enum Msg {
@@ -43,6 +44,7 @@ pub enum Msg {
     PasswordChange(InputData),
     RememberMeChange(InputData),
     TwoFactorChange(InputData),
+    Filter,
     Noop,
 }
 
@@ -85,6 +87,7 @@ impl Component for Source {
             worker,
             is_login_page: false,
             login: SourceLogin::default(),
+            show_filter: false,
         }
     }
 
@@ -153,6 +156,9 @@ impl Component for Source {
             Msg::TwoFactorChange(e) => {
                 self.login.two_factor = Some(e.value);
             }
+            Msg::Filter => {
+                self.show_filter = !self.show_filter;
+            }
             Msg::Noop => {}
         }
         true
@@ -167,9 +173,9 @@ impl Component for Source {
         return html! {
             <div class="container mx-auto pb-20">
                 <div class="w-full px-2 pb-2 flex justify-between block fixed inset-x-0 top-0 z-50 bg-tachiyomi-blue shadow" style="padding-top: calc(env(safe-area-inset-top) + .5rem)">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" class="mx-2 self-center flex-none">
-                        <path class="heroicon-ui" d="M4.06 13a8 8 0 0 0 5.18 6.51A18.5 18.5 0 0 1 8.02 13H4.06zm0-2h3.96a18.5 18.5 0 0 1 1.22-6.51A8 8 0 0 0 4.06 11zm15.88 0a8 8 0 0 0-5.18-6.51A18.5 18.5 0 0 1 15.98 11h3.96zm0 2h-3.96a18.5 18.5 0 0 1-1.22 6.51A8 8 0 0 0 19.94 13zm-9.92 0c.16 3.95 1.23 7 1.98 7s1.82-3.05 1.98-7h-3.96zm0-2h3.96c-.16-3.95-1.23-7-1.98-7s-1.82 3.05-1.98 7zM12 22a10 10 0 1 1 0-20 10 10 0 0 1 0 20z"/>
-                    </svg>
+                    <button onclick=self.link.callback(|_| Msg::Filter) class="hover:bg-tachiyomi-blue-darker focus:bg-tachiyomi-blue-darker rounded flex-none">
+                        <svg fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" class="mx-2 self-center flex-none"><path d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path></svg>
+                    </button>
                     <form class="mx-2 flex-grow" onsubmit=self.link.callback(|e| Msg::Search(e))>
                         <input type="search"
                             class="w-full px-3 py-2 focus:outline-none text-sm leading-tight text-white bg-tachiyomi-blue-darker shadow-inner rounded appearance-none"
@@ -185,6 +191,7 @@ impl Component for Source {
                     </button>
                 </div>
                 {if !self.is_login_page{self.view_mangas()} else {self.view_login_page()}}
+                <Filter show={self.show_filter}/>
             </div>
         };
     }
