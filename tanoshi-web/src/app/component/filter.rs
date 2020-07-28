@@ -116,6 +116,7 @@ impl Filter {
     fn classes(&self) -> Vec<&str> {
         let mut classes = vec![
             "animated",
+            "faster",
             "fixed",
             "h-1/2",
             "z-25",
