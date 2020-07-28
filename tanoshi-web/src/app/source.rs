@@ -30,6 +30,8 @@ pub struct Source {
     is_login_page: bool,
     login: SourceLogin,
     show_filter: bool,
+    sort_by: SortByParam,
+    sort_order: SortOrderParam,
 }
 
 pub enum Msg {
@@ -45,6 +47,8 @@ pub enum Msg {
     RememberMeChange(InputData),
     TwoFactorChange(InputData),
     Filter,
+    SortByChange(SortByParam),
+    SortOrderChange(SortOrderParam),
     Noop,
 }
 
@@ -88,6 +92,8 @@ impl Component for Source {
             is_login_page: false,
             login: SourceLogin::default(),
             show_filter: false,
+            sort_by: SortByParam::Views,
+            sort_order: SortOrderParam::Desc,
         }
     }
 
@@ -157,9 +163,24 @@ impl Component for Source {
                 self.login.two_factor = Some(e.value);
             }
             Msg::Filter => {
-                self.show_filter = !self.show_filter;
+                if self.show_filter {
+                    self.page = 1;
+                    self.mangas.clear();
+                    self.fetch_mangas();
+                    self.show_filter = false;
+                } else {
+                    self.show_filter = true;
+                }
             }
-            Msg::Noop => {}
+            Msg::SortByChange(sort_by) => {
+                self.sort_by = sort_by;
+            }
+            Msg::SortOrderChange(sort_order) => {
+                self.sort_order = sort_order;
+            }
+            Msg::Noop => {
+                return false;
+            }
         }
         true
     }
@@ -191,7 +212,7 @@ impl Component for Source {
                     </button>
                 </div>
                 {if !self.is_login_page{self.view_mangas()} else {self.view_login_page()}}
-                <Filter show={self.show_filter}/>
+                <Filter show={self.show_filter} on_sort_by_change={self.link.callback(|data| Msg::SortByChange(data))} on_sort_order_change={self.link.callback(|data| Msg::SortOrderChange(data))}/>
             </div>
         };
     }
@@ -315,8 +336,8 @@ impl Source {
             self.source_name.clone(),
             Params {
                 keyword: Some(self.keyword.to_owned()),
-                sort_by: Some(SortByParam::Views),
-                sort_order: Some(SortOrderParam::Desc),
+                sort_by: Some(self.sort_by.clone()),
+                sort_order: Some(self.sort_order.clone()),
                 page: Some(self.page.to_string()),
                 genres: None,
                 refresh: match self.page {
