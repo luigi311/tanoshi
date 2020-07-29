@@ -4,10 +4,10 @@ use yew::prelude::*;
 #[derive(Clone, PartialEq, Properties)]
 pub struct Props {
     pub show: bool,
-    #[prop_or_default]
-    pub on_sort_by_change: Callback<SortByParam>,
-    #[prop_or_default]
-    pub on_sort_order_change: Callback<SortOrderParam>,
+    pub onsortbychange: Callback<SortByParam>,
+    pub onsortorderchange: Callback<SortOrderParam>,
+    pub onclose: Callback<()>,
+    pub oncancel: Callback<()>,
 }
 
 pub struct Filter {
@@ -20,6 +20,8 @@ pub struct Filter {
 
 pub enum Msg {
     SortClick(SortByParam),
+    Done,
+    Cancel,
 }
 
 impl Component for Filter {
@@ -53,13 +55,17 @@ impl Component for Filter {
                         SortOrderParam::Asc => self.sort_order = SortOrderParam::Desc,
                         SortOrderParam::Desc => self.sort_order = SortOrderParam::Asc,
                     }
-                    self.props
-                        .on_sort_order_change
-                        .emit(self.sort_order.clone());
+                    self.props.onsortorderchange.emit(self.sort_order.clone());
                 } else {
                     self.sort_by = sort_by;
-                    self.props.on_sort_by_change.emit(self.sort_by.clone());
+                    self.props.onsortbychange.emit(self.sort_by.clone());
                 }
+            }
+            Msg::Done => {
+                self.props.onclose.emit(());
+            }
+            Msg::Cancel => {
+                self.props.oncancel.emit(());
             }
         }
         true
@@ -68,7 +74,11 @@ impl Component for Filter {
     fn view(&self) -> Html {
         html! {
             <div ref={self.node_ref.clone()} class={self.classes()}>
-                <div class="w-full max-w-full flex flex-col mx-auto">
+                <div class="absolute w-full shadow p-2 flex justify-between">
+                    <button class="flex rounded text-tachiyomi-blue py-1 px-2 justify-center" onclick=self.link.callback(|_| Msg::Cancel)>{"Cancel"}</button>
+                    <button class="flex rounded bg-tachiyomi-blue text-white py-1 px-2 shadow justify-center" onclick=self.link.callback(|_| Msg::Done)>{"Search"}</button>
+                </div>
+                <div class="w-full max-w-full flex flex-col mx-auto mt-12">
                     <div class="w-full shadow p-2">{"Sort By"}</div>
                     <button class="inline-flex justify-center p-2" onclick=self.link.callback(|_| Msg::SortClick(SortByParam::LastUpdated))>
                         {

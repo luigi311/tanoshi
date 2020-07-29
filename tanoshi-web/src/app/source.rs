@@ -47,6 +47,8 @@ pub enum Msg {
     RememberMeChange(InputData),
     TwoFactorChange(InputData),
     Filter,
+    FilterClosed,
+    FilterCancel,
     SortByChange(SortByParam),
     SortOrderChange(SortOrderParam),
     Noop,
@@ -163,14 +165,24 @@ impl Component for Source {
                 self.login.two_factor = Some(e.value);
             }
             Msg::Filter => {
+                if !self.show_filter {
+                    self.show_filter = true;
+                } else {
+                    return false;
+                }
+            }
+            Msg::FilterClosed => {
                 if self.show_filter {
                     self.page = 1;
                     self.mangas.clear();
                     self.fetch_mangas();
                     self.show_filter = false;
                 } else {
-                    self.show_filter = true;
+                    return false;
                 }
+            }
+            Msg::FilterCancel => {
+                self.show_filter = false;
             }
             Msg::SortByChange(sort_by) => {
                 self.sort_by = sort_by;
@@ -212,7 +224,13 @@ impl Component for Source {
                     </button>
                 </div>
                 {if !self.is_login_page{self.view_mangas()} else {self.view_login_page()}}
-                <Filter show={self.show_filter} on_sort_by_change={self.link.callback(|data| Msg::SortByChange(data))} on_sort_order_change={self.link.callback(|data| Msg::SortOrderChange(data))}/>
+                <Filter
+                    show={self.show_filter}
+                    onsortbychange={self.link.callback(|data| Msg::SortByChange(data))}
+                    onsortorderchange={self.link.callback(|data| Msg::SortOrderChange(data))}
+                    onclose={self.link.callback(|_| Msg::FilterClosed)}
+                    oncancel={self.link.callback(|_| Msg::FilterCancel)}
+                />
             </div>
         };
     }
