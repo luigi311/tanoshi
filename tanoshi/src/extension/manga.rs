@@ -59,16 +59,15 @@ impl Manga {
                         .collect::<Vec<i32>>();
                     if installed_version[0] < available_version[0] {
                         s.update = true;
-                    } else if installed_version[0] == available_version[0] {
-                        if installed_version[1] < available_version[1] {
-                            s.update = true;
-                        }
-                    } else if installed_version[0] == available_version[0] {
-                        if installed_version[1] == available_version[1] {
-                            if installed_version[2] < available_version[2] {
-                                s.update = true;
-                            }
-                        }
+                    } else if installed_version[0] == available_version[0]
+                        && installed_version[1] < available_version[1]
+                    {
+                        s.update = true;
+                    } else if installed_version[0] == available_version[0]
+                        && installed_version[1] == available_version[1]
+                        && installed_version[2] < available_version[2]
+                    {
+                        s.update = true;
                     }
                     if s.core_version != tanoshi_lib::CORE_VERSION
                         || s.rustc_version != tanoshi_lib::RUSTC_VERSION
