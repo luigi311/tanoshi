@@ -1,7 +1,7 @@
 ![Build](https://github.com/faldez/tanoshi/workflows/Build/badge.svg)
 
 # <img src="tanoshi-web/static/apple-touch-icon.png" alt="" width="30" height=30/> Tanoshi
-Selfhosted Tachiyomi-like web manga reader.
+Selfhosted web manga reader with extension model.
 
 ### Mobile
 ![mobile](screenshots/mobile.gif)
@@ -40,7 +40,7 @@ You can download individual plugins and store in on your selected `plugins_path`
 Or you can install from web and restart tanoshi afterward.
 
 ### Account
-Tanoshi will create default account with username: `admin` and password: `admin`. You can change the password or create new account after login.
+Tanoshi will create default account with username: `admin` and password: `admin`. You can change the password or create new account after login. Default password for new account is `tanoshi123` which you can change after login to the account.
 
 ## Usage
 ### CLI
@@ -59,7 +59,7 @@ OPTIONS:
 ```
 
 ### Config
-Tanoshi default to look configuration in `~/.tanoshi/config.yml` on macos and linux, `C:\Users\<username>\.tanoshi\config.yml` on windows. Below is example configuration
+Tanoshi default to look configuration in `$HOME/.tanoshi/config.yml` on macos and linux, `C:\Users\<username>\.tanoshi\config.yml` on windows. Below is example configuration
 ```
 # Port for tanoshi to server, default to 80
 port: 3030
