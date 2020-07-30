@@ -7,7 +7,7 @@ use yew::services::{FetchService, StorageService};
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 
 use super::component::{Manga, MangaList, Spinner, WeakComponentLink, Filter};
-use tanoshi_lib::manga::{Manga as MangaModel, SortByParam, SortOrderParam};
+use tanoshi_lib::manga::{Manga as MangaModel, SortByParam, SortOrderParam, Params};
 use tanoshi_lib::rest::{GetFavoritesResponse, GetMangasResponse};
 
 #[derive(Clone, Properties)]
@@ -192,7 +192,15 @@ impl Home {
     }
 
     fn fetch_favorites(&mut self) {
-        let req = Request::get("/api/favorites")
+        let params = serde_urlencoded::to_string(Params {
+            keyword: None,
+            sort_by: Some(self.sort_by.clone()),
+            sort_order: Some(self.sort_order.clone()),
+            page: None,
+            genres: None,
+            refresh: None,
+        }).unwrap();
+        let req = Request::get(format!("/api/favorites?{}", params))
             .header("Authorization", self.token.to_string())
             .body(Nothing)
             .expect("failed to build request");

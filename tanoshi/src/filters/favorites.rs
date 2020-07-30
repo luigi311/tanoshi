@@ -3,6 +3,7 @@ use crate::filters::with_authorization;
 use crate::handlers::favorites as favorite_handler;
 
 use warp::Filter;
+use tanoshi_lib::manga::Params;
 
 pub fn favorites(
     secret: String,
@@ -20,6 +21,7 @@ fn get_favorites(
     warp::path!("api" / "favorites")
         .and(warp::get())
         .and(with_authorization(secret))
+        .and(warp::query::<Params>())
         .and(with_favorites(fav))
         .and_then(favorite_handler::get_favorites)
 }

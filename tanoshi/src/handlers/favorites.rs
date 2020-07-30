@@ -2,9 +2,10 @@ use crate::auth::Claims;
 use crate::favorites::favorites::Favorites;
 
 use std::convert::Infallible;
+use tanoshi_lib::manga::Params;
 
-pub async fn get_favorites(claim: Claims, fav: Favorites) -> Result<impl warp::Reply, Infallible> {
-    let res = fav.get_favorites(claim.sub).await;
+pub async fn get_favorites(claim: Claims, params: Params,fav: Favorites) -> Result<impl warp::Reply, Infallible> {
+    let res = fav.get_favorites(params, claim.sub).await;
     Ok(warp::reply::json(&res))
 }
 

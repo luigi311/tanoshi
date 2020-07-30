@@ -1,6 +1,6 @@
 use rusqlite::{params, Connection};
 
-use tanoshi_lib::manga::Manga;
+use tanoshi_lib::manga::{Manga, Params, SortByParam, SortOrderParam};
 use tanoshi_lib::rest::{AddFavoritesResponse, GetMangasResponse};
 
 #[derive(Clone)]
@@ -17,11 +17,21 @@ impl Favorites {
         Connection::open(self.database_path.clone()).unwrap()
     }
 
-    pub async fn get_favorites(&self, username: String) -> GetMangasResponse {
+    pub async fn get_favorites(&self, params: Params, username: String) -> GetMangasResponse {
         let db = self.connect_db();
+
+        let sort_by = match params.sort_by.unwrap_or_default() {
+            SortByParam::LastUpdated=> "last_updated",
+            _=> "title"
+        };
+
+        let sort_order = match params.sort_order.unwrap_or_default() {
+            SortOrderParam::Asc => "ASC",
+            SortOrderParam::Desc => "DESC"
+        };
+
         let mut stmt = db
-            .prepare(
-                r#"SELECT
+            .prepare(format!(r#"SELECT
         manga.id AS id,
         manga.source AS source,
         manga.title AS title,
@@ -45,9 +55,9 @@ impl Favorites {
                  true
          END is_favorite
          FROM manga
-         INNER JOIN favorite f on manga.id = f.manga_id AND f.user_id = (SELECT id FROM "user" WHERE username = ?1)"#,
-            )
-            .unwrap();
+         INNER JOIN favorite f on manga.id = f.manga_id AND f.user_id = (SELECT id FROM "user" WHERE username = ?1)
+         JOIN (SELECT manga_id, MAX(uploaded) as last_updated FROM chapter GROUP BY manga_id) c on manga.id = c.manga_id
+         ORDER BY {} {}"#, sort_by, sort_order).as_str()).unwrap();
         let mangas = stmt
             .query_map(params![username], |row| {
                 let author = row
