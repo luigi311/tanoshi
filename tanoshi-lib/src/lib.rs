@@ -127,11 +127,23 @@ pub mod manga {
         Views,
     }
 
+    impl Default for SortByParam {
+        fn default() -> Self {
+            SortByParam::Title
+        }
+    }
+
     /// A type represent order parameter for query manga from source, normalized across source
     #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
     pub enum SortOrderParam {
         Asc,
         Desc,
+    }
+
+    impl Default for SortOrderParam {
+        fn default() -> Self {
+            SortOrderParam::Asc
+        }
     }
 
     /// A type represent parameter for query manga from source, normalized across source

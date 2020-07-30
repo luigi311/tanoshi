@@ -230,6 +230,8 @@ impl Component for Source {
                     onsortorderchange={self.link.callback(|data| Msg::SortOrderChange(data))}
                     onclose={self.link.callback(|_| Msg::FilterClosed)}
                     oncancel={self.link.callback(|_| Msg::FilterCancel)}
+                    sort_by={&self.sort_by}
+                    sort_order={&self.sort_order}
                 />
             </div>
         };

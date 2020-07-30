@@ -6,8 +6,8 @@ use yew::services::storage::Area;
 use yew::services::{FetchService, StorageService};
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 
-use super::component::{Manga, MangaList, Spinner, WeakComponentLink};
-use tanoshi_lib::manga::Manga as MangaModel;
+use super::component::{Manga, MangaList, Spinner, WeakComponentLink, Filter};
+use tanoshi_lib::manga::{Manga as MangaModel, SortByParam, SortOrderParam};
 use tanoshi_lib::rest::{GetFavoritesResponse, GetMangasResponse};
 
 #[derive(Clone, Properties)]
@@ -21,12 +21,20 @@ pub struct Home {
     is_fetching: bool,
     should_fetch: bool,
     update_queue: Vec<i32>,
+    show_filter: bool,
+    sort_by: SortByParam,
+    sort_order: SortOrderParam,
 }
 
 pub enum Msg {
     FavoritesReady(GetMangasResponse),
     SyncUpdates,
     MangaUpdated,
+    Filter,
+    FilterClosed,
+    FilterCancel,
+    SortByChange(SortByParam),
+    SortOrderChange(SortOrderParam),
     Noop,
 }
 
@@ -52,6 +60,9 @@ impl Component for Home {
             is_fetching: false,
             should_fetch: true,
             update_queue: vec![],
+            show_filter: false,
+            sort_by: SortByParam::Title,
+            sort_order: SortOrderParam::Asc,
         }
     }
 
@@ -59,6 +70,7 @@ impl Component for Home {
         match msg {
             Msg::FavoritesReady(data) => {
                 self.mangas = data.mangas;
+
                 self.is_fetching = false;
                 self.fetch_task = None;
             }
@@ -70,6 +82,30 @@ impl Component for Home {
             }
             Msg::MangaUpdated => {
                 self.fetch_manga_chapter();
+            }Msg::Filter => {
+                if !self.show_filter {
+                    self.show_filter = true;
+                } else {
+                    return false;
+                }
+            }
+            Msg::FilterClosed => {
+                if self.show_filter {
+                    self.mangas.clear();
+                    self.fetch_favorites();
+                    self.show_filter = false;
+                } else {
+                    return false;
+                }
+            }
+            Msg::FilterCancel => {
+                self.show_filter = false;
+            }
+            Msg::SortByChange(sort_by) => {
+                self.sort_by = sort_by;
+            }
+            Msg::SortOrderChange(sort_order) => {
+                self.sort_order = sort_order;
             }
             Msg::Noop => {
                 return false;
@@ -87,9 +123,9 @@ impl Component for Home {
         html! {
            <div class="container mx-auto pb-20 sm:pb-25" style="padding-top: calc(env(safe-area-inset-top) + .5rem)">
                 <div class="w-full px-2 pb-2 flex justify-between block fixed inset-x-0 top-0 z-50 bg-tachiyomi-blue shadow" style="padding-top: calc(env(safe-area-inset-top) + .5rem)">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" class="mx-2 self-center flex-none">
-                        <path class="heroicon-ui" d="M4.06 13a8 8 0 0 0 5.18 6.51A18.5 18.5 0 0 1 8.02 13H4.06zm0-2h3.96a18.5 18.5 0 0 1 1.22-6.51A8 8 0 0 0 4.06 11zm15.88 0a8 8 0 0 0-5.18-6.51A18.5 18.5 0 0 1 15.98 11h3.96zm0 2h-3.96a18.5 18.5 0 0 1-1.22 6.51A8 8 0 0 0 19.94 13zm-9.92 0c.16 3.95 1.23 7 1.98 7s1.82-3.05 1.98-7h-3.96zm0-2h3.96c-.16-3.95-1.23-7-1.98-7s-1.82 3.05-1.98 7zM12 22a10 10 0 1 1 0-20 10 10 0 0 1 0 20z"/>
-                    </svg>
+                    <button onclick=self.link.callback(|_| Msg::Filter) class="hover:bg-tachiyomi-blue-darker focus:bg-tachiyomi-blue-darker rounded flex-none">
+                        <svg fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" class="mx-2 self-center flex-none"><path d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path></svg>
+                    </button>
                     <span class="mx-2 my-1 flex-grow text-center text-white">{"Favorites"}</span>
                     <button
                         onclick=self.link.callback(|_| Msg::SyncUpdates)
@@ -112,6 +148,15 @@ impl Component for Home {
                     }})
                     }
                 </MangaList>
+                <Filter
+                    show={self.show_filter}
+                    onsortbychange={self.link.callback(|data| Msg::SortByChange(data))}
+                    onsortorderchange={self.link.callback(|data| Msg::SortOrderChange(data))}
+                    onclose={self.link.callback(|_| Msg::FilterClosed)}
+                    oncancel={self.link.callback(|_| Msg::FilterCancel)}
+                    sort_by={&self.sort_by}
+                    sort_order={&self.sort_order}
+                />
             </div>
         }
     }
