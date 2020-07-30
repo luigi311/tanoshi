@@ -1,4 +1,3 @@
-use serde::Deserialize;
 use yew::format::{Json, Nothing, Text};
 use yew::prelude::*;
 use yew::services::fetch::{FetchTask, Request, Response};
@@ -8,7 +7,7 @@ use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 
 use super::component::{Manga, MangaList, Spinner, WeakComponentLink, Filter};
 use tanoshi_lib::manga::{Manga as MangaModel, SortByParam, SortOrderParam, Params};
-use tanoshi_lib::rest::{GetFavoritesResponse, GetMangasResponse};
+use tanoshi_lib::rest::GetMangasResponse;
 
 #[derive(Clone, Properties)]
 pub struct Props {}
