@@ -1,4 +1,3 @@
-use serde::Deserialize;
 use yew::format::{Json, Nothing, Text};
 use yew::prelude::*;
 use yew::services::fetch::{FetchTask, Request, Response};
@@ -6,15 +5,9 @@ use yew::services::storage::Area;
 use yew::services::{FetchService, StorageService};
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 
-use super::component::{Manga, MangaList, Spinner, WeakComponentLink};
-use tanoshi_lib::manga::FavoriteManga;
-use tanoshi_lib::rest::GetFavoritesResponse;
-
-#[derive(Deserialize, Debug)]
-pub struct MangaModel {
-    pub title: String,
-    pub thumbnail_url: String,
-}
+use super::component::{Manga, MangaList, Spinner, WeakComponentLink, Filter};
+use tanoshi_lib::manga::{Manga as MangaModel, SortByParam, SortOrderParam, Params};
+use tanoshi_lib::rest::GetMangasResponse;
 
 #[derive(Clone, Properties)]
 pub struct Props {}
@@ -22,17 +15,25 @@ pub struct Props {}
 pub struct Home {
     fetch_task: Option<FetchTask>,
     link: ComponentLink<Self>,
-    mangas: Vec<FavoriteManga>,
+    mangas: Vec<MangaModel>,
     token: String,
     is_fetching: bool,
     should_fetch: bool,
     update_queue: Vec<i32>,
+    show_filter: bool,
+    sort_by: SortByParam,
+    sort_order: SortOrderParam,
 }
 
 pub enum Msg {
-    FavoritesReady(GetFavoritesResponse),
+    FavoritesReady(GetMangasResponse),
     SyncUpdates,
     MangaUpdated,
+    Filter,
+    FilterClosed,
+    FilterCancel,
+    SortByChange(SortByParam),
+    SortOrderChange(SortOrderParam),
     Noop,
 }
 
@@ -58,35 +59,52 @@ impl Component for Home {
             is_fetching: false,
             should_fetch: true,
             update_queue: vec![],
-        }
-    }
-
-    fn change(&mut self, _: Self::Properties) -> ShouldRender {
-        false
-    }
-
-    fn rendered(&mut self, _first_render: bool) {
-        if self.should_fetch {
-            self.fetch_favorites();
-            self.should_fetch = false;
+            show_filter: false,
+            sort_by: SortByParam::Title,
+            sort_order: SortOrderParam::Asc,
         }
     }
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
             Msg::FavoritesReady(data) => {
-                self.mangas = data.favorites.unwrap();
+                self.mangas = data.mangas;
+
                 self.is_fetching = false;
                 self.fetch_task = None;
             }
             Msg::SyncUpdates => {
                 if self.update_queue.is_empty() {
-                    self.update_queue = self.mangas.iter().map(|m| m.manga_id).collect();
+                    self.update_queue = self.mangas.iter().map(|m| m.id).collect();
                     self.fetch_manga_chapter();
                 }
             }
             Msg::MangaUpdated => {
                 self.fetch_manga_chapter();
+            }Msg::Filter => {
+                if !self.show_filter {
+                    self.show_filter = true;
+                } else {
+                    return false;
+                }
+            }
+            Msg::FilterClosed => {
+                if self.show_filter {
+                    self.mangas.clear();
+                    self.fetch_favorites();
+                    self.show_filter = false;
+                } else {
+                    return false;
+                }
+            }
+            Msg::FilterCancel => {
+                self.show_filter = false;
+            }
+            Msg::SortByChange(sort_by) => {
+                self.sort_by = sort_by;
+            }
+            Msg::SortOrderChange(sort_order) => {
+                self.sort_order = sort_order;
             }
             Msg::Noop => {
                 return false;
@@ -95,14 +113,18 @@ impl Component for Home {
         true
     }
 
+    fn change(&mut self, _: Self::Properties) -> ShouldRender {
+        false
+    }
+
     fn view(&self) -> Html {
         let list_link = &WeakComponentLink::<MangaList>::default();
         html! {
            <div class="container mx-auto pb-20 sm:pb-25" style="padding-top: calc(env(safe-area-inset-top) + .5rem)">
                 <div class="w-full px-2 pb-2 flex justify-between block fixed inset-x-0 top-0 z-50 bg-tachiyomi-blue shadow" style="padding-top: calc(env(safe-area-inset-top) + .5rem)">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" class="mx-2 self-center flex-none">
-                        <path class="heroicon-ui" d="M4.06 13a8 8 0 0 0 5.18 6.51A18.5 18.5 0 0 1 8.02 13H4.06zm0-2h3.96a18.5 18.5 0 0 1 1.22-6.51A8 8 0 0 0 4.06 11zm15.88 0a8 8 0 0 0-5.18-6.51A18.5 18.5 0 0 1 15.98 11h3.96zm0 2h-3.96a18.5 18.5 0 0 1-1.22 6.51A8 8 0 0 0 19.94 13zm-9.92 0c.16 3.95 1.23 7 1.98 7s1.82-3.05 1.98-7h-3.96zm0-2h3.96c-.16-3.95-1.23-7-1.98-7s-1.82 3.05-1.98 7zM12 22a10 10 0 1 1 0-20 10 10 0 0 1 0 20z"/>
-                    </svg>
+                    <button onclick=self.link.callback(|_| Msg::Filter) class="hover:bg-tachiyomi-blue-darker focus:bg-tachiyomi-blue-darker rounded flex-none">
+                        <svg fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" class="mx-2 self-center flex-none"><path d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path></svg>
+                    </button>
                     <span class="mx-2 my-1 flex-grow text-center text-white">{"Favorites"}</span>
                     <button
                         onclick=self.link.callback(|_| Msg::SyncUpdates)
@@ -117,15 +139,31 @@ impl Component for Home {
                     { for self.mangas.iter().map(|manga| {
                         html_nested!{
                         <Manga
-                            key=manga.manga_id
-                            id=manga.manga_id
+                            key=manga.id
+                            id=manga.id
                             title=&manga.title
                             thumbnail=&manga.thumbnail_url
                             is_favorite=false />
                     }})
                     }
                 </MangaList>
+                <Filter
+                    show={self.show_filter}
+                    onsortbychange={self.link.callback(|data| Msg::SortByChange(data))}
+                    onsortorderchange={self.link.callback(|data| Msg::SortOrderChange(data))}
+                    onclose={self.link.callback(|_| Msg::FilterClosed)}
+                    oncancel={self.link.callback(|_| Msg::FilterCancel)}
+                    sort_by={&self.sort_by}
+                    sort_order={&self.sort_order}
+                />
             </div>
+        }
+    }
+
+    fn rendered(&mut self, _first_render: bool) {
+        if self.should_fetch {
+            self.fetch_favorites();
+            self.should_fetch = false;
         }
     }
 }
@@ -153,7 +191,15 @@ impl Home {
     }
 
     fn fetch_favorites(&mut self) {
-        let req = Request::get("/api/favorites")
+        let params = serde_urlencoded::to_string(Params {
+            keyword: None,
+            sort_by: Some(self.sort_by.clone()),
+            sort_order: Some(self.sort_order.clone()),
+            page: None,
+            genres: None,
+            refresh: None,
+        }).unwrap();
+        let req = Request::get(format!("/api/favorites?{}", params))
             .header("Authorization", self.token.to_string())
             .body(Nothing)
             .expect("failed to build request");
@@ -161,7 +207,7 @@ impl Home {
         if let Ok(task) = FetchService::fetch(
             req,
             self.link.callback(
-                |response: Response<Json<Result<GetFavoritesResponse, anyhow::Error>>>| {
+                |response: Response<Json<Result<GetMangasResponse, anyhow::Error>>>| {
                     if let (meta, Json(Ok(data))) = response.into_parts() {
                         if meta.status.is_success() {
                             return Msg::FavoritesReady(data);

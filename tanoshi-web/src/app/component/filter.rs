@@ -8,14 +8,16 @@ pub struct Props {
     pub onsortorderchange: Callback<SortOrderParam>,
     pub onclose: Callback<()>,
     pub oncancel: Callback<()>,
+    #[prop_or_default]
+    pub sort_by: SortByParam,
+    #[prop_or_default]
+    pub sort_order: SortOrderParam,
 }
 
 pub struct Filter {
     link: ComponentLink<Self>,
     props: Props,
     node_ref: NodeRef,
-    sort_by: SortByParam,
-    sort_order: SortOrderParam,
 }
 
 pub enum Msg {
@@ -33,8 +35,6 @@ impl Component for Filter {
             link,
             props,
             node_ref: NodeRef::default(),
-            sort_by: SortByParam::Views,
-            sort_order: SortOrderParam::Desc,
         }
     }
 
@@ -50,15 +50,15 @@ impl Component for Filter {
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
             Msg::SortClick(sort_by) => {
-                if self.sort_by == sort_by {
-                    match self.sort_order {
-                        SortOrderParam::Asc => self.sort_order = SortOrderParam::Desc,
-                        SortOrderParam::Desc => self.sort_order = SortOrderParam::Asc,
+                if self.props.sort_by == sort_by {
+                    match self.props.sort_order {
+                        SortOrderParam::Asc => self.props.sort_order = SortOrderParam::Desc,
+                        SortOrderParam::Desc => self.props.sort_order = SortOrderParam::Asc,
                     }
-                    self.props.onsortorderchange.emit(self.sort_order.clone());
+                    self.props.onsortorderchange.emit(self.props.sort_order.clone());
                 } else {
-                    self.sort_by = sort_by;
-                    self.props.onsortbychange.emit(self.sort_by.clone());
+                    self.props.sort_by = sort_by;
+                    self.props.onsortbychange.emit(self.props.sort_by.clone());
                 }
             }
             Msg::Done => {
@@ -82,7 +82,7 @@ impl Component for Filter {
                     <div class="w-full shadow p-2">{"Sort By"}</div>
                     <button class="inline-flex justify-center p-2" onclick=self.link.callback(|_| Msg::SortClick(SortByParam::LastUpdated))>
                         {
-                            match self.sort_by {
+                            match self.props.sort_by {
                                 SortByParam::LastUpdated  => self.asc_or_desc(),
                                 _ => self.empty_svg(),
                             }
@@ -91,7 +91,7 @@ impl Component for Filter {
                     </button>
                     <button class="inline-flex justify-center p-2" onclick=self.link.callback(|_| Msg::SortClick(SortByParam::Title))>
                         {
-                            match self.sort_by {
+                            match self.props.sort_by {
                                 SortByParam::Title  => self.asc_or_desc(),
                                 _ => self.empty_svg(),
                             }
@@ -100,7 +100,7 @@ impl Component for Filter {
                     </button>
                     <button class="inline-flex justify-center p-2" onclick=self.link.callback(|_| Msg::SortClick(SortByParam::Comment))>
                         {
-                            match self.sort_by {
+                            match self.props.sort_by {
                                 SortByParam::Comment  => self.asc_or_desc(),
                                 _ => self.empty_svg(),
                             }
@@ -109,7 +109,7 @@ impl Component for Filter {
                     </button>
                     <button class="inline-flex justify-center p-2" onclick=self.link.callback(|_| Msg::SortClick(SortByParam::Views))>
                         {
-                            match self.sort_by {
+                            match self.props.sort_by {
                                 SortByParam::Views  => self.asc_or_desc(),
                                 _ => self.empty_svg(),
                             }
@@ -153,7 +153,7 @@ impl Filter {
     }
 
     fn asc_or_desc(&self) -> Html {
-        match self.sort_order {
+        match self.props.sort_order {
             SortOrderParam::Asc => html! {
                 <svg fill="currentColor" viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" class="mx-2 self-center flex-none"><path fill-rule="evenodd" d="M3.293 9.707a1 1 0 010-1.414l6-6a1 1 0 011.414 0l6 6a1 1 0 01-1.414 1.414L11 5.414V17a1 1 0 11-2 0V5.414L4.707 9.707a1 1 0 01-1.414 0z" clip-rule="evenodd"></path></svg>
             },

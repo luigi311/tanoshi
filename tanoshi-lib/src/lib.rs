@@ -127,11 +127,23 @@ pub mod manga {
         Views,
     }
 
+    impl Default for SortByParam {
+        fn default() -> Self {
+            SortByParam::Title
+        }
+    }
+
     /// A type represent order parameter for query manga from source, normalized across source
     #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
     pub enum SortOrderParam {
         Asc,
         Desc,
+    }
+
+    impl Default for SortOrderParam {
+        fn default() -> Self {
+            SortOrderParam::Asc
+        }
     }
 
     /// A type represent parameter for query manga from source, normalized across source
@@ -195,21 +207,12 @@ pub mod manga {
             }
         }
     }
-
-    /// A type represent favorite manga
-    #[derive(Debug, Serialize, Deserialize, Clone, Default)]
-    pub struct FavoriteManga {
-        pub manga_id: i32,
-        pub title: String,
-        pub path: String,
-        pub thumbnail_url: String,
-    }
 }
 
 /// This module contains request and response payload for rest api
 #[cfg(feature = "rest")]
 pub mod rest {
-    use crate::manga::{Chapter, FavoriteManga, History, Manga, Source, SourceIndex, Update};
+    use crate::manga::{Chapter, History, Manga, Source, SourceIndex, Update};
     use serde::{Deserialize, Serialize};
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -281,13 +284,6 @@ pub mod rest {
     #[derive(Debug, Clone, Deserialize, Serialize)]
     pub struct UpdatesResponse {
         pub updates: Vec<Update>,
-        pub status: String,
-    }
-
-    /// Response for get favorites request
-    #[derive(Debug, Serialize, Deserialize, Clone)]
-    pub struct GetFavoritesResponse {
-        pub favorites: Option<Vec<FavoriteManga>>,
         pub status: String,
     }
 
