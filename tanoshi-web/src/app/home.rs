@@ -7,14 +7,8 @@ use yew::services::{FetchService, StorageService};
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 
 use super::component::{Manga, MangaList, Spinner, WeakComponentLink};
-use tanoshi_lib::manga::FavoriteManga;
-use tanoshi_lib::rest::GetFavoritesResponse;
-
-#[derive(Deserialize, Debug)]
-pub struct MangaModel {
-    pub title: String,
-    pub thumbnail_url: String,
-}
+use tanoshi_lib::manga::Manga as MangaModel;
+use tanoshi_lib::rest::{GetFavoritesResponse, GetMangasResponse};
 
 #[derive(Clone, Properties)]
 pub struct Props {}
@@ -22,7 +16,7 @@ pub struct Props {}
 pub struct Home {
     fetch_task: Option<FetchTask>,
     link: ComponentLink<Self>,
-    mangas: Vec<FavoriteManga>,
+    mangas: Vec<MangaModel>,
     token: String,
     is_fetching: bool,
     should_fetch: bool,
@@ -30,7 +24,7 @@ pub struct Home {
 }
 
 pub enum Msg {
-    FavoritesReady(GetFavoritesResponse),
+    FavoritesReady(GetMangasResponse),
     SyncUpdates,
     MangaUpdated,
     Noop,
@@ -61,27 +55,16 @@ impl Component for Home {
         }
     }
 
-    fn change(&mut self, _: Self::Properties) -> ShouldRender {
-        false
-    }
-
-    fn rendered(&mut self, _first_render: bool) {
-        if self.should_fetch {
-            self.fetch_favorites();
-            self.should_fetch = false;
-        }
-    }
-
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
             Msg::FavoritesReady(data) => {
-                self.mangas = data.favorites.unwrap();
+                self.mangas = data.mangas;
                 self.is_fetching = false;
                 self.fetch_task = None;
             }
             Msg::SyncUpdates => {
                 if self.update_queue.is_empty() {
-                    self.update_queue = self.mangas.iter().map(|m| m.manga_id).collect();
+                    self.update_queue = self.mangas.iter().map(|m| m.id).collect();
                     self.fetch_manga_chapter();
                 }
             }
@@ -93,6 +76,10 @@ impl Component for Home {
             }
         };
         true
+    }
+
+    fn change(&mut self, _: Self::Properties) -> ShouldRender {
+        false
     }
 
     fn view(&self) -> Html {
@@ -117,8 +104,8 @@ impl Component for Home {
                     { for self.mangas.iter().map(|manga| {
                         html_nested!{
                         <Manga
-                            key=manga.manga_id
-                            id=manga.manga_id
+                            key=manga.id
+                            id=manga.id
                             title=&manga.title
                             thumbnail=&manga.thumbnail_url
                             is_favorite=false />
@@ -126,6 +113,13 @@ impl Component for Home {
                     }
                 </MangaList>
             </div>
+        }
+    }
+
+    fn rendered(&mut self, _first_render: bool) {
+        if self.should_fetch {
+            self.fetch_favorites();
+            self.should_fetch = false;
         }
     }
 }
@@ -161,7 +155,7 @@ impl Home {
         if let Ok(task) = FetchService::fetch(
             req,
             self.link.callback(
-                |response: Response<Json<Result<GetFavoritesResponse, anyhow::Error>>>| {
+                |response: Response<Json<Result<GetMangasResponse, anyhow::Error>>>| {
                     if let (meta, Json(Ok(data))) = response.into_parts() {
                         if meta.status.is_success() {
                             return Msg::FavoritesReady(data);
