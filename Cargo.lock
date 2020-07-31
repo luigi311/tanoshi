@@ -383,16 +383,6 @@ dependencies = [
 
 [[package]]
 name = "dirs"
-version = "2.0.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "13aea89a5c93364a98e9b37b2fa237effbb694d5cfe01c5b70941f7eb087d5e3"
-dependencies = [
- "cfg-if",
- "dirs-sys",
-]
-
-[[package]]
-name = "dirs"
 version = "3.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "142995ed02755914747cc6ca76fc7e4583cd18578746716d0508ea6ed558b9ff"
@@ -1772,9 +1762,9 @@ dependencies = [
 
 [[package]]
 name = "rust-embed"
-version = "5.5.1"
+version = "5.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3a17890cbd0fae97c2006fa1ecec9554946443c319f4dd8cd8d3b92031725161"
+checksum = "213acf1bc5a6dfcd70b62db1e9a7d06325c0e73439c312fcb8599d456d9686ee"
 dependencies = [
  "rust-embed-impl",
  "rust-embed-utils",
@@ -2139,19 +2129,19 @@ dependencies = [
 
 [[package]]
 name = "tanoshi"
-version = "0.11.1"
+version = "0.12.0"
 dependencies = [
  "anyhow",
  "base64 0.12.3",
  "bytes",
  "chrono",
  "clap",
- "dirs 2.0.2",
+ "dirs",
  "futures",
  "jsonwebtoken",
  "lazy_static",
  "libloading",
- "log 0.3.9",
+ "log 0.4.8",
  "mime_guess 2.0.3",
  "pretty_env_logger",
  "rand 0.7.3",
@@ -2175,7 +2165,7 @@ version = "0.14.0"
 dependencies = [
  "anyhow",
  "chrono",
- "dirs 3.0.1",
+ "dirs",
  "rustc_version",
  "serde",
  "serde_yaml",
@@ -2184,7 +2174,7 @@ dependencies = [
 
 [[package]]
 name = "tanoshi-web"
-version = "0.11.1"
+version = "0.12.0"
 dependencies = [
  "anyhow",
  "chrono",
