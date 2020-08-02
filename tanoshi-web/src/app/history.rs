@@ -257,7 +257,7 @@ impl History {
                             <RouterAnchor<AppRoute>
                             classes="flex inline-flex border-b border-gray-light p-2 content-center hover:bg-gray-200"
                             route=AppRoute::Chapter(update.chapter_id, 1)>
-                                <div class="mr-4 my-2 h-16 w-16 object-fit object-center bg-center bg-cover rounded-full" style={format!("background-image: url({})", update.thumbnail_url.clone())}/>
+                                <div class="mr-4 my-2 h-16 w-16 flex-none object-fit object-center bg-center bg-cover rounded-full" style={format!("background-image: url({})", update.thumbnail_url.clone())}/>
                                 <div class="flex flex-col my-auto">
                                      {self.title(update.title.clone())}
                                     <span class="text-md">{format!("Chapter {}", update.number.clone())}</span>

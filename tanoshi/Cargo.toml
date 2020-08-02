@@ -21,7 +21,6 @@ log = {version = "*"}
 pretty_env_logger = {version = "0.4"}
 jsonwebtoken = {version = "7"}
 chrono = { version = "0.4", features = ["serde"] }
-futures = {version = "0.3"}
 anyhow = "1"
 libloading = {version = "0.6"}
 rust-embed= {version="5.6"}
@@ -30,7 +29,6 @@ clap = "3.0.0-beta.1"
 bytes = "0.5"
 dirs = "3"
 rusqlite = {version = "0.23", features=["bundled", "chrono", "serde_json", "url", "array", "modern_sqlite"]}
-tbot = "0.6"
 base64 = "0.12"
 lazy_static = "1.4"
 url = "2.1"
