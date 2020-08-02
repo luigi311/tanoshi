@@ -1,6 +1,6 @@
 [package]
 name = "tanoshi-web"
-version = "0.12.0"
+version = "0.12.1"
 authors = ["Muhammad Fadhlika <fadhlika@gmail.com>"]
 edition = "2018"
 description = "Tanoshi Web"
@@ -27,7 +27,7 @@ log = "0.4"
 wasm-logger = "0.2"
 anyhow = "1"
 quote = "1"
-js-sys = "0.3 "
+js-sys = "0.3"
 chrono = { version = "0.4", features = ["serde"] }
 tanoshi-lib = {path = "../tanoshi-lib", features = ["rest"]}
 
