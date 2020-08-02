@@ -3,6 +3,7 @@ use yew::prelude::*;
 use yew::services::fetch::{FetchService, FetchTask, Request, Response};
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 use yew_router::components::RouterAnchor;
+use web_sys::HtmlElement;
 
 use super::component::Spinner;
 use crate::app::{job, AppRoute};
@@ -42,6 +43,8 @@ pub struct Detail {
     is_fetching: bool,
     should_fetch: bool,
     worker: Box<dyn Bridge<job::Worker>>,
+    title_ref: NodeRef,
+    desc_ref: NodeRef,
 }
 
 pub enum Msg {
@@ -85,6 +88,8 @@ impl Component for Detail {
             is_fetching: true,
             should_fetch: true,
             worker,
+            title_ref: NodeRef::default(),
+            desc_ref: NodeRef::default(),
         }
     }
 
@@ -110,6 +115,15 @@ impl Component for Detail {
                 self.manga = data.manga;
                 self.get_chapters(false);
                 self.is_fetching = false;
+
+                if let Some(title) = self.title_ref.cast::<HtmlElement>() {
+                    let _ = title.set_inner_html(self.manga.title.as_str());
+                }
+
+                if let Some(desc) = self.desc_ref.cast::<HtmlElement>() {
+                    let _ = desc.set_inner_html(self.manga.description.as_ref().unwrap_or(&"N/A".to_string()));
+                }
+
                 return false;
             }
             Msg::ChapterReady(data) => {
@@ -182,11 +196,11 @@ impl Component for Detail {
                     </div>
                 </div>
                 <div class="flex flex-col m-2">
-                    <p class="md:text-xl sm:text-base font-bold">{self.manga.title.to_owned()}</p>
-                    <p class="md:text-xl sm:text-sm font-semibold">{self.manga.author.join(", ").to_owned()}</p>
-                    <p class="md:text-xl sm:text-sm font-semibold">{self.manga.status.as_ref().unwrap_or(&"N/A".to_string()).to_owned()}</p>
+                    <span ref=self.title_ref.clone() class="md:text-xl sm:text-base font-bold"></span>
+                    <span class="md:text-xl sm:text-sm font-semibold">{self.manga.author.join(", ").to_owned()}</span>
+                    <span class="md:text-xl sm:text-sm font-semibold">{self.manga.status.as_ref().unwrap_or(&"N/A".to_string()).to_owned()}</span>
                     //<p class="md:text-xl sm:text-sm font-medium break-normal">{self.manga.genre.join(", ").to_owned()}</p>
-                    <p class="break-normal md:text-base sm:text-xs">{self.manga.description.as_ref().unwrap_or(&"N/A".to_string()).to_owned()}</p>
+                    <p ref=self.desc_ref.clone() class="break-normal md:text-base sm:text-xs"></p>
                 </div>
             </div>
             <div class="w-6/7 mx-2 flex flex-col rounded-lg">

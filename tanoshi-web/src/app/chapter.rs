@@ -40,6 +40,7 @@ pub struct Chapter {
     settings: SettingParams,
     page_refs: Vec<NodeRef>,
     container_ref: NodeRef,
+    title_ref: NodeRef,
     closure: Closure<dyn Fn()>,
     worker: Box<dyn Bridge<job::Worker>>,
     should_fetch: bool,
@@ -124,6 +125,7 @@ impl Component for Chapter {
             settings,
             page_refs: vec![],
             container_ref: NodeRef::default(),
+            title_ref: NodeRef::default(),
             closure,
             worker: job::Worker::bridge(worker_callback),
             should_fetch: true,
@@ -189,6 +191,11 @@ impl Component for Chapter {
                         None => window().set_onscroll(Some(self.closure.as_ref().unchecked_ref())),
                     };
                 }
+
+                if let Some(title) = self.title_ref.cast::<HtmlElement>() {
+                    let _ = title.set_inner_html(self.manga.title.as_str());
+                }
+
                 self.is_fetching = false;
             }
             Msg::PageForward => {
@@ -334,7 +341,7 @@ impl Component for Chapter {
                             </svg>
                        </RouterAnchor<AppRoute>>
                        <div class="flex flex-col mx-2 mb-2">
-                        <span class="text-white text-center">{self.manga.title.to_owned()}</span>
+                        <span ref=self.title_ref.clone() class="text-white text-center"></span>
                         <span class="text-white text-center text-sm">{self.get_current_volume_and_chapter()}</span>
                        </div>
                        <button
