@@ -154,7 +154,7 @@ impl Component for Manga {
             ontouchmove=self.link.callback(|e| Msg::TouchMove(e))
             onclick=self.link.callback(|e| Msg::Click(e))
             >
-                <div class="manga-cover sm:cover cover-sm bg-center bg-cover relative" style={format!("background-image: url({})",thumbnail)}>
+                <div class="manga-cover sm:cover cover-sm bg-center bg-cover relative hover:shadow-none" style={format!("background-image: url({})",thumbnail)}>
                     <span class="absolute sm:title title-sm bottom-0 sm:text-sm text-xs bg-black opacity-75 text-white p-1 truncate">{self.title.clone()}</span>
                 </div>
             </div>
