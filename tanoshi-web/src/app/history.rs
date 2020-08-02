@@ -13,10 +13,11 @@ use super::component::Spinner;
 use tanoshi_lib::manga::{History as HistoryModel, Update as UpdateModel};
 use tanoshi_lib::rest::{HistoryResponse, UpdatesResponse};
 
-use yew::utils::{document, window};
-
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
+use web_sys::Node;
+use yew::utils::{document, window};
+use yew::virtual_dom::VNode;
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum PageType {
@@ -238,9 +239,9 @@ impl History {
                             <RouterAnchor<AppRoute>
                             classes="flex inline-flex border-b border-gray-light p-2 content-center hover:bg-gray-200"
                             route=AppRoute::Chapter(h.chapter_id, (h.read + 1) as usize)>
-                                <div class="mr-4 my-2 h-16 w-16 object-fit object-center bg-center bg-cover rounded-full" style={format!("background-image: url({})", h.thumbnail_url.clone().unwrap_or("".to_string()))}/>
+                                <div class="mr-4 my-2 h-16 w-16 flex-none object-fit object-center bg-center bg-cover rounded-full" style={format!("background-image: url({})", h.thumbnail_url.clone().unwrap_or("".to_string()))}/>
                                 <div class="flex flex-col my-auto">
-                                    <span class="text-lg font-semibold">{h.title.clone()}</span>
+                                    {self.title(h.title.clone())}
                                     <span class="text-md">{format!("Chapter {}", h.chapter.clone())}</span>
                                 </div>
                             </RouterAnchor<AppRoute>>
@@ -258,7 +259,7 @@ impl History {
                             route=AppRoute::Chapter(update.chapter_id, 1)>
                                 <div class="mr-4 my-2 h-16 w-16 object-fit object-center bg-center bg-cover rounded-full" style={format!("background-image: url({})", update.thumbnail_url.clone())}/>
                                 <div class="flex flex-col my-auto">
-                                    <span class="text-lg font-semibold">{update.title.clone()}</span>
+                                     {self.title(update.title.clone())}
                                     <span class="text-md">{format!("Chapter {}", update.number.clone())}</span>
                                 </div>
                             </RouterAnchor<AppRoute>>
@@ -267,6 +268,21 @@ impl History {
                 }).collect()
             }
         }
+    }
+
+    fn title(&self, title: String) -> Html {
+        let div = web_sys::window()
+            .unwrap()
+            .document()
+            .unwrap()
+            .create_element("span")
+            .unwrap();
+        let _ = div.class_list().add_2("text-lg", "font-semibold");
+        let _ = div.set_inner_html(&title);
+
+        let node = Node::from(div);
+        let vnode = VNode::VRef(node);
+        vnode
     }
 
     fn fetch_history(&mut self) {
@@ -292,7 +308,7 @@ impl History {
             self.is_fetching = true;
         }
     }
-
+    
     fn fetch_updates(&mut self) {
         let req = Request::get(format!("/api/updates?page={}", self.page))
             .header("Authorization", self.token.to_string())

@@ -1,10 +1,12 @@
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::__rt::core::time::Duration;
+use web_sys::Node;
 use yew::format::{Json, Nothing};
 use yew::prelude::*;
 use yew::services::fetch::{FetchTask, Request, Response};
 use yew::services::storage::Area;
 use yew::services::{FetchService, StorageService, Task, TimeoutService};
+use yew::virtual_dom::VNode;
 use yew::{
     html, Bridge, Bridged, Children, Component, ComponentLink, Html, Properties, ShouldRender,
 };
@@ -91,6 +93,8 @@ impl Component for Manga {
         false
     }
 
+    fn rendered(&mut self, _first_render: bool) {}
+
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
             Msg::Click(e) => {
@@ -142,8 +146,28 @@ impl Component for Manga {
     }
 
     fn view(&self) -> Html {
-        let _title = self.title.to_owned();
-        let thumbnail = self.thumbnail.to_owned();
+        let div = web_sys::window()
+            .unwrap()
+            .document()
+            .unwrap()
+            .create_element("span")
+            .unwrap();
+        let _ = div.class_list().add_7(
+            "absolute",
+            "sm:title",
+            "title-sm",
+            "bottom-0",
+            "sm:text-sm",
+            "text-xs",
+            "bg-black",
+        );
+        let _ = div
+            .class_list()
+            .add_4("opacity-75", "text-white", "p-1", "truncate");
+        let _ = div.set_inner_html(&self.title);
+
+        let node = Node::from(div);
+        let vnode = VNode::VRef(node);
         html! {
             <div
             class=self.classes()
@@ -154,8 +178,8 @@ impl Component for Manga {
             ontouchmove=self.link.callback(|e| Msg::TouchMove(e))
             onclick=self.link.callback(|e| Msg::Click(e))
             >
-                <div class="manga-cover sm:cover cover-sm bg-center bg-cover relative" style={format!("background-image: url({})",thumbnail)}>
-                    <span class="absolute sm:title title-sm bottom-0 sm:text-sm text-xs bg-black opacity-75 text-white p-1 truncate">{self.title.clone()}</span>
+                <div class="manga-cover sm:cover cover-sm bg-center bg-cover relative hover:shadow-none" style={format!("background-image: url({})",self.thumbnail.to_owned())}>
+                    {vnode}
                 </div>
             </div>
         }
