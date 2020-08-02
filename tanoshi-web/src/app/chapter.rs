@@ -335,7 +335,7 @@ impl Component for Chapter {
                        </RouterAnchor<AppRoute>>
                        <div class="flex flex-col mx-2 mb-2">
                         <span class="text-white text-center">{self.manga.title.to_owned()}</span>
-                        <span class="text-white text-center text-sm">{if let Some(v) = &self.chapter.vol {format!("Volume {}", v)} else if let Some(c) = &self.chapter.no {format!("Chapter {}", c)} else {"".to_string()}}</span>
+                        <span class="text-white text-center text-sm">{self.get_current_volume_and_chapter()}</span>
                        </div>
                        <button
                         onclick=self.link.callback(|_| Msg::Refresh)
@@ -563,5 +563,14 @@ impl Chapter {
         };
         self.worker
             .send(job::Request::PostHistory(self.token.clone(), h));
+    }
+
+    fn get_current_volume_and_chapter(&self) -> String {
+        match (self.chapter.vol.as_ref(), self.chapter.no.as_ref()) {
+            (Some(vol), Some(ch)) => format!("Volume {} Chapter {}", vol, ch),
+            (Some(vol), None) => format!("Volume {}", vol),
+            (None, Some(ch)) => format!("Chapter {}", ch),
+            (None, None) => "".to_string(),
+        }
     }
 }
