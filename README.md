@@ -26,9 +26,6 @@ My plan is to make this as close as tachiyomi features. Planned features are lis
 
 Note that this project is still under heavy development, expect breaking changes on any release until hitting 1.0. 
 
-## Why Rust
-Rust is the most loved programming language, I thought this is my chance to learn rust too.
-
 ## Installation
 ### Prebuilt Binary
 Download and run binary from latest release, aside from plugins all dependencies are statically linked.
