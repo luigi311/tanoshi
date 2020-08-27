@@ -88,7 +88,7 @@ impl Component for Browse {
 
     fn view(&self) -> Html {
         html! {
-                <>
+                <div class = "bg-white dark:bg-gray-900">
                     <div class="block fixed inset-x-0 top-0 z-50 bg-tachiyomi-blue safe-top"></div>
                     <NavigationBar />
                     <Router<BrowseRoute>
@@ -101,7 +101,7 @@ impl Component for Browse {
                         BrowseRoute::Home => html!{<Home/>},
                         BrowseRoute::Settings => html!{<Settings />},
                     }}) / >
-            < / >
+            </div>
         }
     }
 }

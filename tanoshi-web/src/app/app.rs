@@ -94,7 +94,7 @@ impl Component for App {
 
     fn view(&self) -> Html {
         html! {
-            <div class="w-full h-screen bg-white dark:bg-gray-900">
+            <div class="w-full h-screen">
                 <Router<AppRoute, ()>
                 render = Router::render(|switch: AppRoute| {
                 match switch {
