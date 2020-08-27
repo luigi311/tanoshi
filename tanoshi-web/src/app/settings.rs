@@ -222,9 +222,11 @@ impl Component for Settings {
             Msg::DarkMode(data) => {
                 if data.value == "false" {
                     let _ = window().unwrap().document().unwrap().document_element().unwrap().class_list().add_1("mode-dark");
+                    let _ = window().unwrap().document().unwrap().body().unwrap().class_list().add_1("bg-gray-900");
                     self.is_dark_mode = true;
                 } else {
                     let _ = window().unwrap().document().unwrap().document_element().unwrap().class_list().remove_1("mode-dark");
+                    let _ = window().unwrap().document().unwrap().body().unwrap().class_list().remove_1("bg-gray-900");
                     self.is_dark_mode = false;
                 }
                 self.storage.store("dark-mode", Ok(format!("{}", self.is_dark_mode)));
