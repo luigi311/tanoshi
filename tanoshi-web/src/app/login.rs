@@ -96,18 +96,18 @@ impl Component for Login {
 
     fn view(&self) -> Html {
         html! {
-            <div class="container mx-auto" style="padding-top: calc(env(safe-area-inset-top) + .5rem)">
+            <div class="container mx-auto bg-white dark:bg-gray-900" style="padding-top: calc(env(safe-area-inset-top) + .5rem)">
                 <div class="block fixed inset-x-0 top-0 z-50 bg-tachiyomi-blue safe-top z-50 shadow"></div>
                 <div class="flex justify-center px-6 my-12">
                 <div class="w-full xl:w-3/4 lg:w-11/12 flex">
-                    <div class="w-full  bg-white p-5 rounded-lg lg:rounded-l-none">
-                        <form class="px-8 pt-6 pb-8 mb-4 bg-white rounded" onsubmit=self.link.callback(|e| Msg::Submit(e))>
+                    <div class="w-full p-5 rounded-lg lg:rounded-l-none">
+                        <form class="px-8 pt-6 pb-8 mb-4 rounded" onsubmit=self.link.callback(|e| Msg::Submit(e))>
                             <div class="mb-4">
-                                <label class="block mb-2 text-sm font-bold text-gray-700" for="username">
+                                <label class="block mb-2 text-sm font-bold text-gray-700 dark:text-gray-300" for="username">
                                     {"Username"}
                                 </label>
                                 <input
-                                    class="w-full px-3 py-2 text-sm leading-tight text-gray-700 border rounded shadow appearance-none focus:outline-none focus:shadow-outline"
+                                    class="w-full bg-white dark:bg-gray-800 px-3 py-2 text-sm leading-tight text-gray-700 dark:text-gray-300 rounded shadow appearance-none focus:outline-none focus:shadow-outline"
                                     id="username"
                                     type="text"
                                     value=self.user.username.to_owned()
@@ -115,11 +115,11 @@ impl Component for Login {
                                 />
                             </div>
                             <div class="mb-4">
-                                <label class="block mb-2 text-sm font-bold text-gray-700" for="password">
+                                <label class="block mb-2 text-sm font-bold text-gray-700 dark:text-gray-300" for="password">
                                     {"Password"}
                                 </label>
                                 <input
-                                    class="w-full px-3 py-2 mb-3 text-sm leading-tight text-gray-700 border rounded shadow appearance-none focus:outline-none focus:shadow-outline"
+                                    class="w-full bg-white dark:bg-gray-800 px-3 py-2 mb-3 text-sm leading-tight text-gray-700 dark:text-gray-300 rounded shadow appearance-none focus:outline-none focus:shadow-outline"
                                     id="password"
                                     type="password"
                                     value=self.user.password.clone().unwrap_or("".to_string()).to_owned()
