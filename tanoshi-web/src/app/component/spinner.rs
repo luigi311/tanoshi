@@ -40,8 +40,8 @@ impl Component for Spinner {
         html! {
                 <div class={
                     if !self.is_active {"hidden"}
-                    else if self.is_fullscreen{"w-full h-full fixed flex top-0 left-0 bg-white opacity-75 z-10 justify-center"}
-                    else {"w-full h-full block flex m-auto bg-white opacity-75 z-10 justify-center"}
+                    else if self.is_fullscreen{"w-full h-full fixed flex top-0 left-0 bg-white dark:bg-black opacity-75 z-10 justify-center"}
+                    else {"w-full h-full block flex m-auto z-10 justify-center"}
                 }>
                     <div class="loader self-center "></div>
                 </div>

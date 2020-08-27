@@ -8,6 +8,9 @@ use super::chapter::Chapter;
 use super::job;
 use super::login::Login;
 use super::logout::Logout;
+use yew::services::StorageService;
+use web_sys::window;
+use yew::services::storage::Area;
 
 #[derive(Switch, Debug, Clone)]
 pub enum AppRoute {
@@ -40,6 +43,14 @@ impl Component for App {
     type Properties = ();
 
     fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self {
+        let storage = StorageService::new(Area::Local).unwrap();
+        if let Ok(is_dark_mode) = storage.restore("dark-mode") {
+            if is_dark_mode == "true" {
+                let _ = window().unwrap().document().unwrap().document_element().unwrap().class_list().add_1("mode-dark");
+                let _ = window().unwrap().document().unwrap().body().unwrap().class_list().add_1("bg-gray-900");
+            }
+        }
+
         let callback = link.callback(|route| Msg::RouterCallback(route));
         let router = RouteAgent::bridge(callback);
 

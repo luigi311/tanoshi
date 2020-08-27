@@ -153,14 +153,14 @@ impl Select {
             .filter_map(|s| if s.installed { Some(s.clone()) } else { None })
             .collect::<Vec<SourceIndex>>();
         html! {
-            <div class="flex flex-col rounded-lg border border-grey-light mx-2 shadow" style="margin-top: calc(env(safe-area-inset-top) + .5rem)">
+            <div class="flex flex-col rounded-lg border border-gray-100 dark:border-gray-700 mx-2 shadow" style="margin-top: calc(env(safe-area-inset-top) + .5rem)">
             {
                 for sources.iter().map(|source| html!{
                     <RouterAnchor<BrowseRoute>
-                        classes="flex inline-flex justify-between border-b border-gray-light p-2 content-center hover:bg-gray-200"
+                        classes="flex inline-flex justify-between border-b border-gray-100 dark:border-gray-700 p-2 content-center hover:bg-gray-200 dark-hover:bg-gray-700"
                         route=BrowseRoute::Catalogue(CatalogueRoute::Source(source.name.clone()))>
-                        <span class="text-lg font-semibold">{source.name.to_owned()}</span>
-                        <span class="text-md mx-2">{source.installed_version.to_owned()}</span>
+                        <span class="text-lg font-semibold text-gray-900 dark:text-gray-300">{source.name.to_owned()}</span>
+                        <span class="text-md mx-2 text-gray-900 dark:text-gray-300">{source.installed_version.to_owned()}</span>
                     </RouterAnchor<BrowseRoute>>
                 })
             }
@@ -170,14 +170,14 @@ impl Select {
 
     fn available_view(&self) -> Html {
         html! {
-            <div class="flex flex-col rounded-lg border border-grey-light mx-2 shadow" style="margin-top: calc(env(safe-area-inset-top) + .5rem)">
+            <div class="flex flex-col rounded-lg border border-gray-100 dark:border-gray-700 mx-2 shadow" style="margin-top: calc(env(safe-area-inset-top) + .5rem)">
             {
                 for (0..self.sources.len()).map(|i| html!{
                     <div
-                        class="flex inline-flex justify-between border-b border-gray-light p-2 content-center hover:bg-gray-200">
-                        <span class="text-lg font-semibold">{self.sources[i].name.clone()}</span>
+                        class="flex inline-flex justify-between border-b border-gray-100 dark:border-gray-700 p-2 content-center hover:bg-gray-200 dark-hover:bg-gray-700">
+                        <span class="text-lg font-semibold text-gray-900 dark:text-gray-300">{self.sources[i].name.clone()}</span>
                         <div>
-                        <span class="text-md mx-2">{self.sources[i].version.clone()}</span>
+                        <span class="text-md mx-2 text-gray-900 dark:text-gray-300">{self.sources[i].version.clone()}</span>
                         <button class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold px-4 rounded"
                             disabled={!self.sources[i].update && self.sources[i].installed}
                             onclick={self.link.callback(move |_| Msg::InstallExtension(i))}>

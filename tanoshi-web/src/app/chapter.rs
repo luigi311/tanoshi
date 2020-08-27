@@ -1,11 +1,11 @@
 use js_sys;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
-use web_sys::{HtmlElement, HtmlImageElement};
+use web_sys::{HtmlElement, HtmlImageElement, window};
 use yew::prelude::*;
 use yew::services::storage::Area;
 use yew::services::StorageService;
-use yew::utils::{document, window};
+
 use yew::{html, Component, ComponentLink, Html, InputData, Properties, ShouldRender};
 use yew_router::{agent::RouteRequest, prelude::*};
 
@@ -45,6 +45,7 @@ pub struct Chapter {
     worker: Box<dyn Bridge<job::Worker>>,
     should_fetch: bool,
     scrolled: bool,
+    is_dark_mode: bool,
 }
 
 pub enum Msg {
@@ -82,22 +83,39 @@ impl Component for Chapter {
                 "".to_string()
             }
         };
+        let is_dark_mode = {
+            if let Ok(is_dark_mode) = storage.restore("dark-mode") {
+                if is_dark_mode == "true" {
+                    true
+                } else {
+                    false
+                }
+            } else {
+                false
+            }
+        };
 
-        if settings.background_color == BackgroundColor::Black {
-            document()
-                .body()
-                .expect("document should have a body")
-                .dyn_ref::<web_sys::HtmlElement>()
-                .unwrap()
-                .style()
-                .set_property("background-color", "black")
-                .expect("failed to set background color");
-        }
+        match (settings.background_color.clone(), is_dark_mode) {
+            (BackgroundColor::Black, true) => {
+                let _ = window().unwrap().document().unwrap().body().unwrap().class_list().add_1("bg-black");
+                let _ = window().unwrap().document().unwrap().body().unwrap().class_list().remove_1("bg-gray-900");
+            }
+            (BackgroundColor::Black, false) => {
+                let _ = window().unwrap().document().unwrap().body().unwrap().class_list().add_1("bg-black");
+            }
+            (BackgroundColor::White, true) => {
+                let _ = window().unwrap().document().unwrap().body().unwrap().class_list().add_1("bg-white");
+                let _ = window().unwrap().document().unwrap().body().unwrap().class_list().remove_1("bg-gray-900");
+            }
+            (BackgroundColor::White, false) => {
+                let _ = window().unwrap().document().unwrap().body().unwrap().class_list().add_1("bg-white");
+            }
+        };
 
         let tmp_link = link.clone();
         let closure = Closure::wrap(Box::new(move || {
-            let current_scroll = window().scroll_y().expect("error get scroll y")
-                + window().inner_height().unwrap().as_f64().unwrap();
+            let current_scroll = window().unwrap().scroll_y().expect("error get scroll y")
+                + window().unwrap().inner_height().unwrap().as_f64().unwrap();
 
             tmp_link.send_message(Msg::ScrollEvent(current_scroll));
         }) as Box<dyn Fn()>);
@@ -130,6 +148,7 @@ impl Component for Chapter {
             worker: job::Worker::bridge(worker_callback),
             should_fetch: true,
             scrolled: false,
+            is_dark_mode,
         }
     }
 
@@ -167,7 +186,10 @@ impl Component for Chapter {
             self.scrolled = true;
         }
 
-        document()
+        window()
+            .unwrap()
+            .document()
+            .unwrap()
             .get_element_by_id("manga-reader")
             .expect("should have manga reader")
             .dyn_ref::<HtmlElement>()
@@ -186,9 +208,9 @@ impl Component for Chapter {
                 self.page_refs = self.pages.iter().map(|_| NodeRef::default()).collect();
 
                 if self.settings.page_rendering == PageRendering::LongStrip {
-                    match window().onscroll() {
+                    match window().unwrap().onscroll() {
                         Some(_) => {}
-                        None => window().set_onscroll(Some(self.closure.as_ref().unchecked_ref())),
+                        None => window().unwrap().set_onscroll(Some(self.closure.as_ref().unchecked_ref())),
                     };
                 }
 
@@ -423,18 +445,24 @@ impl Component for Chapter {
 
     fn destroy(&mut self) {
         if self.settings.page_rendering == PageRendering::LongStrip {
-            window().set_onscroll(None);
+            window().unwrap().set_onscroll(None);
         }
-        if self.settings.background_color == BackgroundColor::Black {
-            document()
-                .body()
-                .expect("document should have a body")
-                .dyn_ref::<web_sys::HtmlElement>()
-                .unwrap()
-                .style()
-                .set_property("background-color", "white")
-                .expect("failed to set background color");
-        }
+        match (self.settings.background_color.clone(), self.is_dark_mode) {
+            (BackgroundColor::Black, true) => {
+                let _ = window().unwrap().document().unwrap().body().unwrap().class_list().remove_1("bg-black");
+                let _ = window().unwrap().document().unwrap().body().unwrap().class_list().add_1("bg-gray-900");
+            }
+            (BackgroundColor::Black, false) => {
+                let _ = window().unwrap().document().unwrap().body().unwrap().class_list().remove_1("bg-black");
+            }
+            (BackgroundColor::White, true) => {
+                let _ = window().unwrap().document().unwrap().body().unwrap().class_list().remove_1("bg-white");
+                let _ = window().unwrap().document().unwrap().body().unwrap().class_list().add_1("bg-gray-900");
+            }
+            (BackgroundColor::White, false) => {
+                let _ = window().unwrap().document().unwrap().body().unwrap().class_list().remove_1("bg-white");
+            }
+        };
     }
 }
 
