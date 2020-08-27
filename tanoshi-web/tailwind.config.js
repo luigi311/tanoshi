@@ -22,8 +22,12 @@ module.exports = {
         },
     },
     variants: {
-        backgroundColor: ['responsive', 'hover', 'focus', 'active', 'group-hover', 'disabled'],
+        backgroundColor: ['dark', 'responsive', 'hover', 'dark-hover', 'focus', 'active', 'group-hover', 'dark-group-hover', 'disabled', 'dark-disabled'],
         tableLayout: ['responsive', 'hover', 'focus'],
+        textColor: ['dark', 'responsive', 'hover', 'dark-hover', 'focus', 'active', 'group-hover', 'disabled'],
+        borderColor: ['dark'],
     },
-    plugins: [],
+    plugins: [
+        require('tailwindcss-dark-mode')()
+    ]
 }

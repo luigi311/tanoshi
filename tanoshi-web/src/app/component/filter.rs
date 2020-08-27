@@ -75,37 +75,37 @@ impl Component for Filter {
         html! {
             <div ref={self.node_ref.clone()} class={self.classes()}>
                 <div class="absolute w-full shadow p-2 flex justify-between">
-                    <button class="flex rounded text-tachiyomi-blue py-1 px-2 justify-center" onclick=self.link.callback(|_| Msg::Cancel)>{"Cancel"}</button>
+                    <button class="flex rounded text-tachiyomi-blue dark:text-tachiyomi-blue-lighter py-1 px-2 justify-center" onclick=self.link.callback(|_| Msg::Cancel)>{"Cancel"}</button>
                     <button class="flex rounded bg-tachiyomi-blue text-white py-1 px-2 shadow justify-center" onclick=self.link.callback(|_| Msg::Done)>{"Search"}</button>
                 </div>
                 <div class="w-full max-w-full flex flex-col mx-auto mt-12">
-                    <div class="w-full shadow p-2">{"Sort By"}</div>
-                    <button class="inline-flex justify-center p-2" onclick=self.link.callback(|_| Msg::SortClick(SortByParam::LastUpdated))>
+                    <div class="w-full shadow p-2 dark:text-gray-300 text-gray-700">{"Sort By"}</div>
+                    <button class="inline-flex justify-center p-2 dark:text-gray-300 text-gray-700" onclick=self.link.callback(|_| Msg::SortClick(SortByParam::LastUpdated))>
                         {
                             match self.props.sort_by {
                                 SortByParam::LastUpdated  => self.asc_or_desc(),
                                 _ => self.empty_svg(),
                             }
                         }
-                        <span>{"Last Updated"}</span>
+                        <span class="dark:text-gray-300 text-gray-700">{"Last Updated"}</span>
                     </button>
-                    <button class="inline-flex justify-center p-2" onclick=self.link.callback(|_| Msg::SortClick(SortByParam::Title))>
+                    <button class="inline-flex justify-center p-2 dark:text-gray-300 text-gray-700" onclick=self.link.callback(|_| Msg::SortClick(SortByParam::Title))>
                         {
                             match self.props.sort_by {
                                 SortByParam::Title  => self.asc_or_desc(),
                                 _ => self.empty_svg(),
                             }
                         }
-                        <span>{"Title"}</span>
+                        <span class="dark:text-gray-300 text-gray-700">{"Title"}</span>
                     </button>
-                    <button class="inline-flex justify-center p-2" onclick=self.link.callback(|_| Msg::SortClick(SortByParam::Comment))>
+                    <button class="inline-flex justify-center p-2 dark:text-gray-300 text-gray-700" onclick=self.link.callback(|_| Msg::SortClick(SortByParam::Comment))>
                         {
                             match self.props.sort_by {
                                 SortByParam::Comment  => self.asc_or_desc(),
                                 _ => self.empty_svg(),
                             }
                         }
-                        <span>{"Comment"}</span>
+                        <span class="dark:text-gray-300 text-gray-700 dark:text-gray-300 text-gray-700">{"Comment"}</span>
                     </button>
                     <button class="inline-flex justify-center p-2" onclick=self.link.callback(|_| Msg::SortClick(SortByParam::Views))>
                         {
@@ -114,7 +114,7 @@ impl Component for Filter {
                                 _ => self.empty_svg(),
                             }
                         }
-                        <span>{"Views"}</span>
+                        <span class="dark:text-gray-300 text-gray-700">{"Views"}</span>
                     </button>
                 </div>
             </div>
@@ -143,6 +143,8 @@ impl Filter {
             "safe-bottom",
             "flex",
             "flex-col",
+            "bg-white",
+            "dark:bg-gray-900"
         ];
         if self.props.show {
             classes.push("slideInUp");

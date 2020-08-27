@@ -10,7 +10,7 @@ use yew::{html, ChangeData, Component, ComponentLink, Html, InputData, Propertie
 use yew_router::components::RouterAnchor;
 
 use wasm_bindgen::prelude::*;
-use web_sys::window;
+use web_sys::{window};
 
 use crate::app::AppRoute;
 
@@ -43,6 +43,7 @@ pub struct Settings {
     me_telegram_chat_id: Option<i64>,
     change_password: bool,
     closure: Closure<dyn FnMut(JsValue)>,
+    is_dark_mode: bool,
 }
 
 pub enum Msg {
@@ -63,6 +64,7 @@ pub enum Msg {
     SaveUser(usize),
     SaveUserSuccess(usize),
     ClearCache,
+    DarkMode(InputData),
     Noop,
 }
 
@@ -80,6 +82,18 @@ impl Component for Settings {
             }
         };
 
+        let is_dark_mode = {
+            if let Ok(is_dark_mode) = storage.restore("dark-mode") {
+                if is_dark_mode == "true" {
+                    true
+                } else {
+                    false
+                }
+            } else {
+                false
+            }
+        };
+
         let token = storage
             .restore::<Result<String, _>>("token")
             .unwrap_or("".to_string());
@@ -93,7 +107,7 @@ impl Component for Settings {
             link,
             storage,
             settings,
-            token: token,
+            token,
             is_admin: false,
             users: vec![],
             me_username: "".to_string(),
@@ -103,6 +117,7 @@ impl Component for Settings {
             me_telegram_chat_id: None,
             change_password: false,
             closure,
+            is_dark_mode,
         }
     }
 
@@ -203,6 +218,16 @@ impl Component for Settings {
                     .location()
                     .reload()
                     .expect("should reload");
+            }
+            Msg::DarkMode(data) => {
+                if data.value == "false" {
+                    let _ = window().unwrap().document().unwrap().document_element().unwrap().class_list().add_1("mode-dark");
+                    self.is_dark_mode = true;
+                } else {
+                    let _ = window().unwrap().document().unwrap().document_element().unwrap().class_list().remove_1("mode-dark");
+                    self.is_dark_mode = false;
+                }
+                self.storage.store("dark-mode", Ok(format!("{}", self.is_dark_mode)));
             }
             Msg::Noop => {
                 return false;
@@ -365,8 +390,8 @@ impl Settings {
 
     fn setting_card(&self, label: &str, child: Html) -> Html {
         html! {
-            <div class="flex justify-between border-b border-gray-light p-2 content-center">
-                <span class="font-semibold my-auto">{label}</span>
+            <div class="flex justify-between border-b border-gray-300 dark:border-gray-700 p-2 content-center">
+                <span class="font-semibold my-auto text-gray-800 dark:text-gray-200">{label}</span>
                 <div class="inline-flex">{child}</div>
             </div>
         }
@@ -374,51 +399,51 @@ impl Settings {
 
     fn admin_settings(&self) -> Html {
         html! {
-            <div class="flex flex-col rounded-lg border border-grey-light m-2" id="admin">
+            <div class="flex flex-col rounded-lg border border-gray-300 dark:border-gray-700 m-2" id="admin">
                 {self.separator("Users")}
                 {
                     html! {
                         <div class="table w-full">
                             <div class="table-header-group">
                                 <div class="table-row">
-                                    <th class="table-cell w-1/3 p-2 border-b text-left">{"Username"}</th>
-                                    <th class="table-cell w-1/3 p-2 border-b text-center">{"Role"}</th>
-                                    <th class="table-cell w-1/3 p-2 border-b text-right">{"Actions"}</th>
+                                    <th class="table-cell w-1/3 p-2 border-b border-gray-300 dark:border-gray-700 text-left text-gray-800 dark:text-gray-200">{"Username"}</th>
+                                    <th class="table-cell w-1/3 p-2 border-b border-gray-300 dark:border-gray-700 text-center text-gray-800 dark:text-gray-200">{"Role"}</th>
+                                    <th class="table-cell w-1/3 p-2 border-b border-gray-300 dark:border-gray-700 text-right text-gray-800 dark:text-gray-200">{"Actions"}</th>
                                 </div>
                             </div>
                             <div class="table-row-group">
                             {
                             for (0..self.users.len()).map(|i| html!{
                                 <div class="table-row">
-                                    <div class="table-cell p-2 border-b text-left">{
+                                    <div class="table-cell p-2 border-b border-gray-300 dark:border-gray-700 text-left text-gray-800 dark:text-gray-200">{
                                         if !self.users[i].is_edit || !self.users[i].is_new {
                                            html!{self.users[i].user.username.clone()}
                                         } else {
                                             html!{
                                                 <input
-                                                    class="w-full border-b border-grey-light"
+                                                    class="w-full p-1 bg-gray-300 dark:bg-gray-800 border-b border-gray-300 dark:border-gray-800 text-gray-800 dark:text-gray-200"
                                                     value=self.users[i].user.username.clone()
                                                     oninput=self.link.callback(move |e: InputData| Msg::UsernameChange(i, e.value))/>
                                             }
                                         }
                                     }</div>
-                                    <div class="table-cell p-2 border-b text-center">
+                                    <div class="table-cell p-2 border-b border-gray-300 dark:border-gray-700 text-center text-gray-800 dark:text-gray-200">
                                     {
                                         if !self.users[i].is_edit {
                                             html!{self.users[i].user.role.clone()}
                                         } else {
                                             html!{
-                                                <select onchange=self.link.callback(move |e: ChangeData| Msg::RoleChange(i, e))>
-                                                    <option value="READER" selected={self.users[i].user.role.clone() == "READER".to_string()}>{"READER"}</option>
-                                                    <option value="ADMIN" selected={self.users[i].user.role.clone() == "ADMIN".to_string()}>{"ADMIN"}</option>
+                                                <select class="bg-gray-300 dark:bg-gray-700 p-1" onchange=self.link.callback(move |e: ChangeData| Msg::RoleChange(i, e))>
+                                                    <option class="bg-gray-300 dark:bg-gray-700" value="READER" selected={self.users[i].user.role.clone() == "READER".to_string()}>{"READER"}</option>
+                                                    <option class="bg-gray-300 dark:bg-gray-700" value="ADMIN" selected={self.users[i].user.role.clone() == "ADMIN".to_string()}>{"ADMIN"}</option>
                                                 </select>
                                             }
                                         }
                                     }
                                     </div>
-                                    <div class="table-cell p-2 border-b text-right">
+                                    <div class="table-cell p-2 border-b border-gray-300 dark:border-gray-700 text-right text-gray-800 dark:text-gray-200">
                                         <button
-                                            class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold p-1 rounded"
+                                            class="bg-gray-300 hover:bg-gray-400 dark-hover:bg-gray-600 text-gray-800 dark:text-gray-200 font-bold p-1 rounded"
                                             onclick={
                                                 if !self.users[i].is_edit {
                                                     self.link.callback(move |_| Msg::EditUser(i))
@@ -437,7 +462,7 @@ impl Settings {
                         </div>
                     }
                 }
-                <button class={"bg-grey-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-r"}
+                <button class={"dark-hover:bg-gray-700 hover:bg-gray-400 dark-hover:bg-gray-600 text-gray-800 dark:text-gray-200 font-bold py-2 px-4 rounded-r"}
                     onclick=self.link.callback(|_| Msg::NewUser)>
                     {"New User"}
                 </button>
@@ -447,13 +472,13 @@ impl Settings {
 
     fn account_setting(&self) -> Html {
         html! {
-            <div class="flex flex-col rounded-lg border border-grey-light m-2" id="account-setting">
+            <div class="flex flex-col rounded-lg border border-gray-300 dark:border-gray-700 m-2" id="account-setting">
                 {self.separator("Account")}
                 {self.setting_card("Username", html! {
-                    <span>{self.me_username.clone()}</span>
+                    <span class="text-gray-800 dark:text-gray-200">{self.me_username.clone()}</span>
                 })}
                 {self.setting_card("Role", html! {
-                    <span>{self.me_role.clone()}</span>
+                    <span class="text-gray-800 dark:text-gray-200">{self.me_role.clone()}</span>
                 })}
                 {
                     if self.change_password {
@@ -461,7 +486,7 @@ impl Settings {
                             <>
                             {self.setting_card("New Password", html! {
                                 <input
-                                    class="w-full border-b border-grey-light"
+                                    class="w-full p-1 bg-gray-300 dark:bg-gray-800 border-b border-gray-300 dark:border-gray-700 text-gray-800 dark:text-gray-200"
                                     type="password"
                                     value=self.me_password.clone().unwrap_or("".to_string()).to_owned()
                                     oninput=self.link.callback(|e| Msg::PasswordChange(e))/>
@@ -469,7 +494,7 @@ impl Settings {
                             {self.setting_card("Confirm Password", html! {
                                 <div class="flex flex-col">
                                 <input
-                                    class="w-full border-b border-grey-light"
+                                    class="w-full p-1 bg-gray-300 dark:bg-gray-800 border-b border-gray-300 dark:border-gray-700 text-gray-800 dark:text-gray-200"
                                     type="password"
                                     value=self.me_confirm_password.clone().unwrap_or("".to_string()).to_owned()
                                     oninput=self.link.callback(|e| Msg::ConfirmPasswordChange(e))/>
@@ -483,7 +508,7 @@ impl Settings {
                                 }
                                 </div>
                             })}
-                            <button class={"bg-grey-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-r border-b"}
+                            <button class={"bg-gray-300 dark:bg-gray-800 hover:bg-gray-400 dark-hover:bg-gray-700 text-gray-800 dark:text-gray-200 font-bold py-2 px-4 rounded-r border-bborder-gray-300 dark:border-gray-700 "}
                                 onclick=self.link.callback(|_| Msg::SubmitPassword)>
                                 {"Submit"}
                             </button>
@@ -493,11 +518,11 @@ impl Settings {
                         html!{}
                     }
                 }
-                <button class={"bg-grey-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-r border-b"}
+                <button class={"bg-gray-100 dark:bg-gray-800 hover:bg-gray-400 dark-hover:bg-gray-700 text-gray-800 dark:text-gray-200 font-bold py-2 px-4 rounded-r border-b border-gray-300 dark:border-gray-700"}
                     onclick=self.link.callback(|_| Msg::ChangePassword)>
                     {if !self.change_password {"Change Password"} else {"Cancel"}}
                 </button>
-                <RouterAnchor<AppRoute> route=AppRoute::Logout classes={"bg-grey-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-r text-center"}>
+                <RouterAnchor<AppRoute> route=AppRoute::Logout classes={"bg-gray-100 dark:bg-gray-800 hover:bg-gray-400 dark-hover:bg-gray-700 text-gray-800 dark:text-gray-200 font-bold py-2 px-4 rounded-r text-center"}>
                     {"Logout"}
                 </RouterAnchor<AppRoute>>
             </div>
@@ -506,7 +531,7 @@ impl Settings {
 
     fn reading_settings(&self) -> Html {
         html! {
-            <div class="flex flex-col rounded-lg border border-grey-light m-2" id="reading-setting">
+            <div class="flex flex-col rounded-lg border border-gray-300 dark:border-gray-700 m-2" id="reading-setting">
                 {self.separator("Reader")}
                 {
                     self.setting_card("Direction", html! {
@@ -574,8 +599,17 @@ impl Settings {
 
     fn misc_settings(&self) -> Html {
         html! {
-            <div class="flex flex-col rounded-lg border border-grey-light m-2" id="misc-setting">
+            <div class="flex flex-col rounded-lg border border-gray-300 dark:border-gray-700 m-2" id="misc-setting">
                 {self.separator("Miscellaneous")}
+                {
+                    self.setting_card("Dark Mode", html! {
+                    <div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+                        <input type="checkbox" name="toggle" id="toggle" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"
+                        value={self.is_dark_mode} checked={self.is_dark_mode} oninput=self.link.callback(|e| Msg::DarkMode(e))/>
+                        <label for="toggle" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"></label>
+                    </div>
+                    })
+                }
                 {
                     self.setting_card("Clear Cache", html! {
                         <button class={"bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-1 px-2 rounded-l"}

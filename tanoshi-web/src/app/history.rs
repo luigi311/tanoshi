@@ -183,15 +183,15 @@ impl Component for History {
 
     fn view(&self) -> Html {
         html! {
-           <div class="container mx-auto pb-20" style="padding-top: calc(env(safe-area-inset-top) + .5rem)">
-                <div class="flex flex-col rounded-lg border border-grey-light m-2 shadow" id="updates">
+           <div class="container mx-auto pb-20 max-h-screen overflow-scroll" style="padding-top: calc(env(safe-area-inset-top) + .5rem)">
+                <div class="flex flex-col rounded-lg border border-gray-300 dark:border-gray-700 m-2 shadow" id="updates">
                 {self.updates_or_history_cards()}
                 </div>
                 {
                     match self.is_fetching {
                         false => html!{
-                            <div class="flex rounded-lg border border-grey-light m-2 shadow justify-center">
-                                <button class="w-full h-full block" onclick=self.link.callback(|_| Msg::ScrolledDown)>{"Load More"}</button>
+                            <div class="flex rounded-lg border border-gray-300 dark:border-gray-700 m-2 shadow justify-center">
+                                <button class="w-full h-full block text-gray-700 dark:text-gray-300 my-2" onclick=self.link.callback(|_| Msg::ScrolledDown)>{"Load More"}</button>
                             </div>
                         },
                         true => html!{<Spinner is_active=self.is_fetching is_fullscreen=false />}
@@ -216,7 +216,7 @@ impl History {
 
     fn show_separator(&self, show_sep: Option<bool>, days: Option<i64>) -> Html {
         html! {
-            <div class={if show_sep.unwrap_or(false) {"shadow p-2 bg-tachiyomi-blue"} else {"hidden"}}>
+            <div class={if show_sep.unwrap_or(false) {"shadow p-2 bg-tachiyomi-blue rounded-t"} else {"hidden"}}>
                 <span class="text-semibold text-white">{
                     match days.unwrap_or(0) {
                         0 => "Today".to_string(),
@@ -237,12 +237,12 @@ impl History {
                         <>
                             {self.show_separator(h.show_sep, h.days)}
                             <RouterAnchor<AppRoute>
-                            classes="flex inline-flex border-b border-gray-light p-2 content-center hover:bg-gray-200"
+                            classes="flex inline-flex border-t border-gray-300 dark:border-gray-700 p-2 content-center hover:bg-gray-200 dark-hover:bg-gray-700"
                             route=AppRoute::Chapter(h.chapter_id, (h.read + 1) as usize)>
                                 <div class="mr-4 my-2 h-16 w-16 flex-none object-fit object-center bg-center bg-cover rounded-full" style={format!("background-image: url({})", h.thumbnail_url.clone().unwrap_or("".to_string()))}/>
-                                <div class="flex flex-col my-auto">
+                                <div class="flex flex-col my-auto text-gray-700 dark:text-gray-300">
                                     {self.title(h.title.clone())}
-                                    <span class="text-md">{format!("Chapter {}", h.chapter.clone())}</span>
+                                    <span class="text-md text-gray-700 dark:text-gray-300">{format!("Chapter {}", h.chapter.clone())}</span>
                                 </div>
                             </RouterAnchor<AppRoute>>
                         </>
@@ -255,12 +255,12 @@ impl History {
                         <>
                             {self.show_separator(update.show_sep, update.days)}
                             <RouterAnchor<AppRoute>
-                            classes="flex inline-flex border-b border-gray-light p-2 content-center hover:bg-gray-200"
+                            classes="flex inline-flex border-t border-gray-300 dark:border-gray-700 p-2 content-center hover:bg-gray-200 dark-hover:bg-gray-700"
                             route=AppRoute::Chapter(update.chapter_id, 1)>
                                 <div class="mr-4 my-2 h-16 w-16 flex-none object-fit object-center bg-center bg-cover rounded-full" style={format!("background-image: url({})", update.thumbnail_url.clone())}/>
-                                <div class="flex flex-col my-auto">
+                                <div class="flex flex-col my-auto text-gray-700 dark:text-gray-300">
                                      {self.title(update.title.clone())}
-                                    <span class="text-md">{format!("Chapter {}", update.number.clone())}</span>
+                                    <span class="text-md text-gray-700 dark:text-gray-300">{format!("Chapter {}", update.number.clone())}</span>
                                 </div>
                             </RouterAnchor<AppRoute>>
                         </>

@@ -159,7 +159,7 @@ impl Component for Detail {
 
     fn view(&self) -> Html {
         html! {
-            <div class="container pb-20" style="margin-top: calc(env(safe-area-inset-top) + 3rem)">
+            <div class="container pb-20 overflow-scroll max-h-screen" style="margin-top: calc(env(safe-area-inset-top) + 3rem)">
             <div class="w-full px-2 pb-2 flex justify-between block fixed inset-x-0 top-0 z-50 bg-tachiyomi-blue shadow" style="padding-top: calc(env(safe-area-inset-top) + .5rem)">
                 <button
                 onclick=self.link.callback(|_| Msg::FavoriteEvent)
@@ -196,23 +196,23 @@ impl Component for Detail {
                     </div>
                 </div>
                 <div class="flex flex-col m-2">
-                    <span ref=self.title_ref.clone() class="md:text-xl sm:text-base font-bold"></span>
-                    <span class="md:text-xl sm:text-sm font-semibold">{self.manga.author.join(", ").to_owned()}</span>
-                    <span class="md:text-xl sm:text-sm font-semibold">{self.manga.status.as_ref().unwrap_or(&"N/A".to_string()).to_owned()}</span>
-                    //<p class="md:text-xl sm:text-sm font-medium break-normal">{self.manga.genre.join(", ").to_owned()}</p>
-                    <p ref=self.desc_ref.clone() class="break-normal md:text-base sm:text-xs"></p>
+                    <span ref=self.title_ref.clone() class="md:text-xl sm:text-base font-bold text-gray-900 dark:text-gray-300"></span>
+                    <span class="md:text-xl sm:text-sm font-semibold text-gray-900 dark:text-gray-300">{self.manga.author.join(", ").to_owned()}</span>
+                    <span class="md:text-xl sm:text-sm font-semibold text-gray-900 dark:text-gray-300">{self.manga.status.as_ref().unwrap_or(&"N/A".to_string()).to_owned()}</span>
+                    //<p class="md:text-xl sm:text-sm font-medium break-normal text-gray-900 dark:text-gray-300">{self.manga.genre.join(", ").to_owned()}</p>
+                    <p ref=self.desc_ref.clone() class="break-normal md:text-base sm:text-xs text-gray-900 dark:text-gray-300"></p>
                 </div>
             </div>
-            <div class="w-6/7 mx-2 flex flex-col rounded-lg">
+            <div class="w-6/7 mx-2 flex flex-col rounded-lg border border-gray-100 dark:border-gray-700">
                 {
                     for self.chapters.iter().map(|(chapter)| html!{
                         <div class={
-                            format!("hover:bg-gray-200 border border-grey-light {}", if chapter.read.unwrap_or(0) > 0 {"bg-gray-200"} else {""})
+                            format!("hover:bg-gray-200 dark-hover:bg-gray-700 border-b border-gray-100 dark:border-gray-700 {}", if chapter.read.unwrap_or(0) > 0 {"bg-gray-200 dark:bg-gray-800"} else {""})
                         }>
                             <RouterAnchor<AppRoute>
                             classes="inline-flex flex-wrap justify-between w-full px-2 py-2 text-left block"
                             route=AppRoute::Chapter(chapter.id, (chapter.read.unwrap_or(0) + 1) as usize)>
-                                <span class="px-2 py-2">
+                                <span class="px-2 py-2 text-gray-900 dark:text-gray-300">
                                 {
                                     format!("{}{}{}",
                                     if let Some(v) = &chapter.vol {
@@ -235,7 +235,7 @@ impl Component for Detail {
                                     })
                                 }
                                 </span>
-                                <span class="flex-shrink-0 text-sm text-gray-800 px-2 py-2">{chapter.uploaded.date()}</span>
+                                <span class="flex-shrink-0 text-sm text-gray-800 dark:text-gray-400 px-2 py-2">{chapter.uploaded.date()}</span>
                             </RouterAnchor<AppRoute>>
                         </div>
                     })
