@@ -23,7 +23,6 @@ pub struct Webtoon {
     loaded_page: Vec<String>,
     page_scroll_height: Vec<i32>,
     scrolled: bool,
-    count: i32,
 }
 
 pub enum Msg {
@@ -55,20 +54,15 @@ impl Component for Webtoon {
             loaded_page: vec![],
             page_scroll_height: vec![],
             scrolled: false,
-            count: 0,
         }
     }
 
     fn update(&mut self, msg: Self::Message) -> bool {
         match msg {
             Msg::ScrollEvent(scroll) => {
-                log::info!("count: {}", self.count);
-                self.count+= 1;
                 let mut page = 0;
                 for i in 0..self.props.pages.len() {
-                    // log::debug!("current {} page {} scroll {} scroll top {}", self.props.current_page, page, scroll - el.scroll_height(), page as i32 *  el.scroll_height());
                     if scroll - self.page_scroll_height[i] > i as i32 * self.page_scroll_height[i] {
-                        // log::debug!("should be last page {}", page);
                         page = i;
                     } else {
                         break;
@@ -120,14 +114,11 @@ impl Component for Webtoon {
 
     fn rendered(&mut self, _first_render: bool) {
         if !self.scrolled {
-            // log::debug!("first render");
             if let Some(el) = window().unwrap().document().unwrap().get_element_by_id(format!("{}", self.props.current_page).as_str()) {
                 el.scroll_into_view();
-                // log::debug!("scrolled");
                 self.scrolled = true;
             }
         }
-        log::info!("rendered");
         for page in 0..self.props.pages.len() {
             if let Some(el) = window().unwrap().document().unwrap().get_element_by_id(format!("{}", page).as_str()) {
                 self.page_scroll_height[page] = el.scroll_height();
@@ -180,7 +171,7 @@ impl Component for Webtoon {
 
 impl Webtoon {
     fn page_or_empty(&self, i: usize, page: &String) -> String {
-        if i >= self.props.current_page.checked_sub(1).unwrap_or(0) && i < self.props.current_page + 3
+        if i >= self.props.current_page.checked_sub(2).unwrap_or(0) && i < self.props.current_page + 3
         {
             page.to_string()
         } else {

@@ -38,7 +38,6 @@ pub struct Reader {
     settings: SettingParams,
     worker: Box<dyn Bridge<job::Worker>>,
     should_fetch: bool,
-    scrolled: bool,
     is_dark_mode: bool,
 }
 
@@ -127,7 +126,6 @@ impl Component for Reader {
             settings,
             worker: job::Worker::bridge(worker_callback),
             should_fetch: true,
-            scrolled: false,
             is_dark_mode,
         }
     }
@@ -187,6 +185,13 @@ impl Component for Reader {
             Msg::PageChange(page) => {
                 self.current_page = page;
                 self.set_history();
+                let route_string = format!(
+                    "/chapter/{}/page/{}",
+                    self.current_chapter_id,
+                    self.current_page + 1,
+                );
+                let route = Route::from(route_string);
+                self.router.send(RouteRequest::ReplaceRouteNoBroadcast(route));
             }
             Msg::NextChapter => {
                 self.next_chapter();
@@ -215,7 +220,6 @@ impl Component for Reader {
             }
             Msg::Refresh => {
                 self.read(true);
-                self.scrolled = false;
             }
             Msg::Noop => {
                 return false;
@@ -308,15 +312,6 @@ impl Reader {
             "".to_string()
         }
     }
-
-    // fn move_to_page(&mut self, page: usize) {
-    //     self.current_page = page;
-    //     if self.settings.page_rendering == PageRendering::LongStrip {
-    //         if let Some(el) = self.page_refs[page].cast::<HtmlImageElement>() {
-    //             el.scroll_into_view();
-    //         }
-    //     }
-    // }
 
     fn next_chapter(&mut self) {
         let current_chapter_idx = match self
