@@ -21,13 +21,16 @@ pub struct Webtoon {
     link: ComponentLink<Self>,
     closure: Closure<dyn Fn()>,
     loaded_page: Vec<String>,
+    page_scroll_height: Vec<i32>,
     scrolled: bool,
+    count: i32,
 }
 
 pub enum Msg {
     ScrollEvent(i32),
     ImageLoad(usize),
     ImageError(usize, Event),
+    Noop,
 }
 
 impl Component for Webtoon {
@@ -50,33 +53,40 @@ impl Component for Webtoon {
             link,
             closure,
             loaded_page: vec![],
+            page_scroll_height: vec![],
             scrolled: false,
+            count: 0,
         }
     }
 
     fn update(&mut self, msg: Self::Message) -> bool {
         match msg {
             Msg::ScrollEvent(scroll) => {
-                for page in 0..self.props.pages.len() {
-                    if let Some(el) = window().unwrap().document().unwrap().get_element_by_id(format!("{}", page).as_str()) {
-                        let el_scroll_height = page as i32 *  el.scroll_height();
-
-                        log::debug!("current {} page {} scroll {} scroll top {}", self.props.current_page, page, scroll - el.scroll_height(), page as i32 *  el.scroll_height());
-                        if scroll - el.scroll_height() > page as i32 * el.scroll_height() {
-                            log::debug!("should be last page {}", page);
-                            self.props.current_page = page;
-                        } else {
-                            self.props.on_page_change.emit(self.props.current_page);
-                            break;
-                        }
+                log::info!("count: {}", self.count);
+                self.count+= 1;
+                let mut page = 0;
+                for i in 0..self.props.pages.len() {
+                    // log::debug!("current {} page {} scroll {} scroll top {}", self.props.current_page, page, scroll - el.scroll_height(), page as i32 *  el.scroll_height());
+                    if scroll - self.page_scroll_height[i] > i as i32 * self.page_scroll_height[i] {
+                        // log::debug!("should be last page {}", page);
+                        page = i;
+                    } else {
+                        break;
                     }
+                }
+                if self.props.current_page != page {
+                    self.props.current_page = page;
+                    self.props.on_page_change.emit(self.props.current_page);
+                    return true;
+                } else {
+                    return false;
                 }
             }
             Msg::ImageLoad(index) => {
                 if let Some(img) = window().unwrap().document().unwrap().get_element_by_id(format!("{}", index).as_str()) {
                     img.class_list().remove_4("border", "border-dashed", "md:h-screen", "h-page").expect("failed remove class");
                     img.class_list().add_1("h-auto").expect("failed add class");
-                    img.remove_attribute("style");
+                    img.remove_attribute("style").expect("failed remove attribute");
                     self.loaded_page[index] = img.get_attribute("src").unwrap();
                 }
             }
@@ -85,6 +95,7 @@ impl Component for Webtoon {
                     img.set_attribute("style", r#"background: transparent url("data:image/svg+xml;utf8,<svg fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" stroke="currentColor"><path d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>") no-repeat scroll center center"#).expect("failed set property");
                 }
             }
+            Msg::Noop => {return false;}
         }
         true
     }
@@ -96,8 +107,10 @@ impl Component for Webtoon {
         } else if self.props.pages != props.pages {
             self.props = props;
             self.loaded_page.clear();
+            self.page_scroll_height.clear();
             for _ in self.props.pages.iter() {
                 self.loaded_page.push("".to_string());
+                self.page_scroll_height.push(0);
             }
             true
         } else {
@@ -107,11 +120,17 @@ impl Component for Webtoon {
 
     fn rendered(&mut self, _first_render: bool) {
         if !self.scrolled {
-            log::debug!("first render");
+            // log::debug!("first render");
             if let Some(el) = window().unwrap().document().unwrap().get_element_by_id(format!("{}", self.props.current_page).as_str()) {
                 el.scroll_into_view();
-                log::debug!("scrolled");
+                // log::debug!("scrolled");
                 self.scrolled = true;
+            }
+        }
+        log::info!("rendered");
+        for page in 0..self.props.pages.len() {
+            if let Some(el) = window().unwrap().document().unwrap().get_element_by_id(format!("{}", page).as_str()) {
+                self.page_scroll_height[page] = el.scroll_height();
             }
         }
     }
@@ -135,7 +154,7 @@ impl Component for Webtoon {
                                 html! {
                                      <img id={i}
                                         onload={self.link.callback(move |_| Msg::ImageLoad(i))}
-                                        onerror={self.link.callback(move |e| Msg::ImageError(i, e))}
+                                        onerror={if self.page_or_empty(i, &page) != "" {self.link.callback(move |e| Msg::ImageError(i, e))} else {{self.link.callback(move |_| Msg::Noop)}}}
                                         class="block object-contain border border-dashed w-auto h-page md:h-screen cursor-pointer"
                                         src={self.page_or_empty(i, &page)}
                                         onmouseup={reader_link.callback(|_| ReaderMsg::ToggleBar)}
@@ -161,7 +180,7 @@ impl Component for Webtoon {
 
 impl Webtoon {
     fn page_or_empty(&self, i: usize, page: &String) -> String {
-        if i >= self.props.current_page.checked_sub(1).unwrap_or(0) && i < self.props.current_page + 2
+        if i >= self.props.current_page.checked_sub(1).unwrap_or(0) && i < self.props.current_page + 3
         {
             page.to_string()
         } else {
