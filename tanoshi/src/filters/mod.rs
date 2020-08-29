@@ -1,9 +1,10 @@
-use serde_json::json;
-
 use warp::Filter;
 
 use crate::auth::Claims;
 use crate::handlers::auth as auth_handler;
+
+use crate::handlers::TransactionReject;
+use tanoshi_lib::rest::ErrorResponse;
 
 pub mod auth;
 pub mod favorites;
@@ -59,6 +60,9 @@ pub async fn handle_rejection(
     } else if let Some(e) = err.find::<warp::reject::MissingHeader>() {
         code = warp::http::StatusCode::UNAUTHORIZED;
         message = format!("Mission {} header", e.clone());
+    } else if let Some(e) = err.find::<TransactionReject>() {
+        code = warp::http::StatusCode::INTERNAL_SERVER_ERROR;
+        message = e.message.to_string();
     } else {
         code = warp::http::StatusCode::INTERNAL_SERVER_ERROR;
         message = "Unhandled".to_string();
@@ -66,8 +70,11 @@ pub async fn handle_rejection(
 
     error!("code: {}, message: {:?}", code.clone(), err);
 
+    let res = ErrorResponse{
+      message,
+    };
     Ok(warp::reply::with_status(
-        warp::reply::json(&json!({ "message": message })),
+        warp::reply::json(&res),
         code,
     ))
 }

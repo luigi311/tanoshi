@@ -19,6 +19,8 @@ pub use self::spinner::Spinner;
 pub mod model;
 
 mod filter;
+pub use filter::Filter;
+
 mod pager;
 pub use pager::Pager;
 
@@ -31,7 +33,8 @@ pub use reader_seekbar::ReaderSeekbar;
 mod webtoon;
 pub use webtoon::Webtoon;
 
-pub use filter::Filter;
+mod toast;
+pub use toast::{Toast, Type as ToastType};
 
 use std::cell::RefCell;
 use std::ops::Deref;

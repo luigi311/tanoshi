@@ -292,6 +292,12 @@ pub mod rest {
     pub struct AddFavoritesResponse {
         pub status: String,
     }
+
+    /// Response when error occured
+    #[derive(Debug, Serialize, Deserialize, Clone)]
+    pub struct ErrorResponse {
+        pub message: String,
+    }
 }
 
 /// This module contains `Extension` trait, and function for interacting with `Extension`
