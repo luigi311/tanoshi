@@ -39,18 +39,19 @@ impl Component for Page {
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
             Msg::ImageLoad => {
-                let img = self.props.page_ref.cast::<HtmlElement>().unwrap();
-                let _ = img.class_list().remove_2("h-screen", "sm:h-page");
-                let _ = img.class_list().add_1("h-auto");
-                let _ = img.style().remove_property("background");
-                true
+                if let Some(img) = self.props.page_ref.cast::<HtmlElement>() {
+                    img.class_list().add_1("h-auto").expect("failed add class");
+                    img.class_list().remove_2("h-screen", "sm:h-page").expect("failed remove class");
+                    img.style().remove_property("background").expect("failed remove property");
+                }
             }
             Msg::Error => {
-                let img = self.props.page_ref.cast::<HtmlElement>().unwrap();
-                let _ = img.style().set_property("background", r#"transparent url("data:image/svg+xml;utf8,<svg fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" stroke="currentColor"><path d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>") no-repeat scroll center center"#);
-                true
+                if let Some(img) = self.props.page_ref.cast::<HtmlElement>() {
+                    img.style().set_property("background", r#"transparent url("data:image/svg+xml;utf8,<svg fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" stroke="currentColor"><path d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>") no-repeat scroll center center"#).expect("failed set property");
+                }
             }
         }
+        true
     }
 
     fn change(&mut self, props: Self::Properties) -> ShouldRender {

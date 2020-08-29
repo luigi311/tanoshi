@@ -36,7 +36,7 @@ pub enum BackgroundColor {
     White,
 }
 
-#[derive(Deserialize, Serialize, Clone)]
+#[derive(Deserialize, Serialize, PartialEq, Clone)]
 pub struct SettingParams {
     pub page_rendering: PageRendering,
     pub background_color: BackgroundColor,
