@@ -176,7 +176,7 @@ impl Component for Detail {
                 </button>
                 <RouterAnchor<AppRoute>
                 classes="hover:bg-tachiyomi-blue-darker rounded flex-grow text-white text-center my-1 mx-2 px-3 w-full"
-                route=AppRoute::Chapter(self.manga.last_read.unwrap_or(self.chapters.last().unwrap_or(&ChapterModel::default()).id), (self.manga.last_page.as_ref().unwrap_or(&0) + 1) as usize)>
+                route=AppRoute::Reader(self.manga.last_read.unwrap_or(self.chapters.last().unwrap_or(&ChapterModel::default()).id), (self.manga.last_page.as_ref().unwrap_or(&0) + 1) as usize)>
                     //<svg class="fill-current mx-2 my-auto self-center" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path class="heroicon-ui" d="M7 5H5v14h14V5h-2v10a1 1 0 0 1-1.45.9L12 14.11l-3.55 1.77A1 1 0 0 1 7 15V5zM5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5c0-1.1.9-2 2-2zm4 2v8.38l2.55-1.27a1 1 0 0 1 .9 0L15 13.38V5H9z"/></svg>
                     {"Read"}
                 </RouterAnchor<AppRoute>>
@@ -203,15 +203,15 @@ impl Component for Detail {
                     <p ref=self.desc_ref.clone() class="break-normal md:text-base sm:text-xs text-gray-900 dark:text-gray-300"></p>
                 </div>
             </div>
-            <div class="w-6/7 mx-2 flex flex-col rounded-lg border border-gray-100 dark:border-gray-700">
+            <div class="w-6/7 mx-2 flex flex-col rounded-lg border border-gray-300 dark:border-gray-700">
                 {
                     for self.chapters.iter().map(|(chapter)| html!{
                         <div class={
-                            format!("hover:bg-gray-200 dark-hover:bg-gray-700 border-b border-gray-100 dark:border-gray-700 {}", if chapter.read.unwrap_or(0) > 0 {"bg-gray-200 dark:bg-gray-800"} else {""})
+                            format!("hover:bg-gray-200 dark-hover:bg-gray-700 border-b border-gray-300 dark:border-gray-700 {}", if chapter.read.unwrap_or(0) > 0 {"bg-gray-200 dark:bg-gray-800"} else {""})
                         }>
                             <RouterAnchor<AppRoute>
                             classes="inline-flex flex-wrap justify-between w-full px-2 py-2 text-left block"
-                            route=AppRoute::Chapter(chapter.id, (chapter.read.unwrap_or(0) + 1) as usize)>
+                            route=AppRoute::Reader(chapter.id, (chapter.read.unwrap_or(0) + 1) as usize)>
                                 <span class="px-2 py-2 text-gray-900 dark:text-gray-300">
                                 {
                                     format!("{}{}{}",

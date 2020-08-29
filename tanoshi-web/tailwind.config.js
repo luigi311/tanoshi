@@ -26,6 +26,7 @@ module.exports = {
         tableLayout: ['responsive', 'hover', 'focus'],
         textColor: ['dark', 'responsive', 'hover', 'dark-hover', 'focus', 'active', 'group-hover', 'disabled'],
         borderColor: ['dark'],
+        height: ['responsive']
     },
     plugins: [
         require('tailwindcss-dark-mode')()

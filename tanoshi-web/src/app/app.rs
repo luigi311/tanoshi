@@ -4,7 +4,7 @@ use yew_router::prelude::{Route, RouteAgent};
 use yew_router::{router::Router, Switch};
 
 use super::browse::{self, Browse, BrowseRoute};
-use super::chapter::Chapter;
+use super::reader::Reader;
 use super::job;
 use super::login::Login;
 use super::logout::Logout;
@@ -15,7 +15,7 @@ use yew::services::storage::Area;
 #[derive(Switch, Debug, Clone)]
 pub enum AppRoute {
     #[to = "/chapter/{chapter_id}/page/{page}"]
-    Chapter(i32, usize),
+    Reader(i32, usize),
     #[to = "/login"]
     Login,
     #[to = "/logout"]
@@ -98,7 +98,7 @@ impl Component for App {
                 <Router<AppRoute, ()>
                 render = Router::render(|switch: AppRoute| {
                 match switch {
-                    AppRoute::Chapter(chapter_id, page) => html!{<Chapter chapter_id=chapter_id page=page/>},
+                    AppRoute::Reader(chapter_id, page) => html!{<Reader chapter_id=chapter_id page=page/>},
                     AppRoute::Login => html!{<Login />},
                     AppRoute::Logout => html!{<Logout />},
                     AppRoute::Browse(route) => {

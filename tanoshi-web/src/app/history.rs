@@ -238,7 +238,7 @@ impl History {
                             {self.show_separator(h.show_sep, h.days)}
                             <RouterAnchor<AppRoute>
                             classes="flex inline-flex border-t border-gray-300 dark:border-gray-700 p-2 content-center hover:bg-gray-200 dark-hover:bg-gray-700"
-                            route=AppRoute::Chapter(h.chapter_id, (h.read + 1) as usize)>
+                            route=AppRoute::Reader(h.chapter_id, (h.read + 1) as usize)>
                                 <div class="mr-4 my-2 h-16 w-16 flex-none object-fit object-center bg-center bg-cover rounded-full" style={format!("background-image: url({})", h.thumbnail_url.clone().unwrap_or("".to_string()))}/>
                                 <div class="flex flex-col my-auto text-gray-700 dark:text-gray-300">
                                     {self.title(h.title.clone())}
@@ -256,7 +256,7 @@ impl History {
                             {self.show_separator(update.show_sep, update.days)}
                             <RouterAnchor<AppRoute>
                             classes="flex inline-flex border-t border-gray-300 dark:border-gray-700 p-2 content-center hover:bg-gray-200 dark-hover:bg-gray-700"
-                            route=AppRoute::Chapter(update.chapter_id, 1)>
+                            route=AppRoute::Reader(update.chapter_id, 1)>
                                 <div class="mr-4 my-2 h-16 w-16 flex-none object-fit object-center bg-center bg-cover rounded-full" style={format!("background-image: url({})", update.thumbnail_url.clone())}/>
                                 <div class="flex flex-col my-auto text-gray-700 dark:text-gray-300">
                                      {self.title(update.title.clone())}
