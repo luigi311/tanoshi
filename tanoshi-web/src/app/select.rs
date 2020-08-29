@@ -1,18 +1,17 @@
 use http::{Request, Response};
 use web_sys::HtmlElement;
-use yew::format::{Json, Nothing, Text};
+use yew::format::{Json, Nothing};
 use yew::prelude::*;
 use yew::services::fetch::{FetchService, FetchTask};
-use yew::utils::window;
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 use yew_router::components::RouterAnchor;
 
 use tanoshi_lib::manga::SourceIndex;
-use tanoshi_lib::rest::GetSourceIndexResponse;
+use tanoshi_lib::rest::{GetSourceIndexResponse, ErrorResponse};
 
 use super::browse::BrowseRoute;
 use super::catalogue::CatalogueRoute;
-use super::component::Spinner;
+use super::component::{Spinner, Toast, ToastType};
 
 pub enum Tab {
     Installed,
@@ -29,6 +28,8 @@ pub struct Select {
     is_fetching: bool,
     active_tab: Tab,
     button_refs: Vec<NodeRef>,
+    show_toast: bool,
+    toast_message: String,
 }
 
 pub enum Msg {
@@ -37,6 +38,7 @@ pub enum Msg {
     ChangeToInstalledTab,
     InstallExtension(usize),
     ExtensionInstalled,
+    ExtensionError(ErrorResponse),
     Noop,
 }
 
@@ -52,16 +54,8 @@ impl Component for Select {
             is_fetching: false,
             active_tab: Tab::Installed,
             button_refs: vec![NodeRef::default(), NodeRef::default()],
-        }
-    }
-
-    fn change(&mut self, _props: Self::Properties) -> ShouldRender {
-        false
-    }
-
-    fn rendered(&mut self, first_render: bool) {
-        if first_render {
-            self.fetch_sources();
+            show_toast: false,
+            toast_message: "".to_string(),
         }
     }
 
@@ -109,9 +103,18 @@ impl Component for Select {
             Msg::ExtensionInstalled => {
                 self.fetch_sources();
             }
+            Msg::ExtensionError(res) => {
+                self.show_toast = true;
+                self.toast_message = res.message;
+                self.is_fetching = false;
+            }
             Msg::Noop => {}
         }
         true
+    }
+
+    fn change(&mut self, _props: Self::Properties) -> ShouldRender {
+        false
     }
 
     fn view(&self) -> Html {
@@ -136,12 +139,15 @@ impl Component for Select {
                         Tab::Available => self.available_view(),
                     }
                 }
+                <Toast visible={self.show_toast} toast_type={ToastType::Error} message={&self.toast_message} />
             </div>
         }
     }
 
-    fn destroy(&mut self) {
-        window().set_onscroll(None);
+    fn rendered(&mut self, first_render: bool) {
+        if first_render {
+            self.fetch_sources();
+        }
     }
 }
 
@@ -231,10 +237,12 @@ impl Select {
 
         if let Ok(task) = FetchService::fetch(
             req,
-            self.link.callback(|response: Response<Text>| {
-                if let (meta, Ok(_)) = response.into_parts() {
+            self.link.callback(|response: Response<Json<Result<ErrorResponse, anyhow::Error>>>| {
+                if let (meta, Json(Ok(res))) = response.into_parts() {
                     if meta.status.is_success() {
                         return Msg::ExtensionInstalled;
+                    } else {
+                        return Msg::ExtensionError(res);
                     }
                 }
                 Msg::Noop

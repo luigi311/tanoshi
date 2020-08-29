@@ -1,7 +1,6 @@
 use js_sys;
-use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
-use web_sys::{HtmlElement, HtmlImageElement, window};
+use web_sys::{HtmlElement, window};
 use yew::prelude::*;
 use yew::services::storage::Area;
 use yew::services::StorageService;
@@ -9,10 +8,10 @@ use yew::services::StorageService;
 use yew::{html, Component, ComponentLink, Html, InputData, Properties, ShouldRender};
 use yew_router::{agent::RouteRequest, prelude::*};
 
-use crate::app::{browse::BrowseRoute, job, AppRoute};
+use crate::app::{job};
 
-use super::component::model::{BackgroundColor, PageRendering, ReadingDirection, SettingParams};
-use super::component::{Page, Pager, Webtoon, PageList, Spinner, WeakComponentLink, ReaderToolbar, ReaderSeekbar};
+use super::component::model::{BackgroundColor, PageRendering, SettingParams};
+use super::component::{Pager, Webtoon, Spinner, WeakComponentLink, ReaderToolbar, ReaderSeekbar};
 
 use tanoshi_lib::manga::{Chapter as ChapterModel, Manga as MangaModel};
 use tanoshi_lib::rest::{HistoryRequest, ReadResponse};
@@ -297,20 +296,6 @@ impl Reader {
         self.worker
             .send(job::Request::FetchRead(self.current_chapter_id, refresh));
         self.is_fetching = true;
-    }
-
-    fn page_or_empty(&self, i: usize, page: &String) -> String {
-        let (before, after) = match self.settings.page_rendering {
-            PageRendering::DoublePage => (2, 4),
-            _ => (1, 2),
-        };
-
-        if i >= self.current_page.checked_sub(before).unwrap_or(0) && i < self.current_page + after
-        {
-            page.to_string()
-        } else {
-            "".to_string()
-        }
     }
 
     fn next_chapter(&mut self) {
