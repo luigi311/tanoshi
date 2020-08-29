@@ -1,9 +1,8 @@
 use http::{Request, Response};
 use web_sys::HtmlElement;
-use yew::format::{Json, Nothing, Text};
+use yew::format::{Json, Nothing};
 use yew::prelude::*;
 use yew::services::fetch::{FetchService, FetchTask};
-use yew::utils::window;
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 use yew_router::components::RouterAnchor;
 

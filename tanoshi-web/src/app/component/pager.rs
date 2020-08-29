@@ -1,5 +1,4 @@
 use yew::prelude::*;
-use web_sys::MouseEvent;
 use crate::app::component::model::{SettingParams, ReadingDirection, PageRendering};
 use crate::app::reader::{Reader, Msg as ReaderMsg};
 use crate::app::component::{WeakComponentLink, Page};
