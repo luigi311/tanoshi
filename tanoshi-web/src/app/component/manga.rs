@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use wasm_bindgen::__rt::core::time::Duration;
 use web_sys::Node;
 use yew::format::{Json, Nothing};
 use yew::prelude::*;
@@ -12,6 +11,7 @@ use yew::{
 };
 use yew_router::agent::{RouteAgent, RouteRequest};
 use yew_router::prelude::*;
+use std::time::Duration;
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct FavoriteManga {
@@ -32,6 +32,8 @@ pub struct Props {
     pub is_favorite: bool,
     #[prop_or_default]
     pub children: Children,
+    #[prop_or_default]
+    pub on_to_detail: Callback<()>,
 }
 
 pub struct Manga {
@@ -42,9 +44,10 @@ pub struct Manga {
     router: Box<dyn Bridge<RouteAgent>>,
     title: String,
     thumbnail: String,
-    pub is_favorite: bool,
+    is_favorite: bool,
     token: String,
     is_dragging: bool,
+    on_to_detail: Callback<()>,
 }
 
 pub enum Msg {
@@ -86,6 +89,7 @@ impl Component for Manga {
             is_favorite: props.is_favorite,
             token,
             is_dragging: false,
+            on_to_detail: props.on_to_detail,
         }
     }
 
@@ -105,6 +109,7 @@ impl Component for Manga {
             }
             Msg::MouseUp(e) => {
                 e.prevent_default();
+                self.on_to_detail.emit(());
                 self.to_detail();
             }
             Msg::TouchStart(_e) => {

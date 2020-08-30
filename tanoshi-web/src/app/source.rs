@@ -2,6 +2,7 @@ use super::component::{Filter, Manga, MangaList, Spinner, WeakComponentLink};
 use web_sys::HtmlElement;
 use yew::prelude::*;
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
+use yew::services::{StorageService, storage::Area::Local};
 
 use tanoshi_lib::manga::{Manga as MangaModel, Params, SortByParam, SortOrderParam, SourceLogin};
 use tanoshi_lib::rest::GetMangasResponse;
@@ -31,6 +32,8 @@ pub struct Source {
     sort_by: SortByParam,
     sort_order: SortOrderParam,
     catalogue_ref: NodeRef,
+    storage: StorageService,
+    scroll_position: i32,
 }
 
 pub enum Msg {
@@ -50,6 +53,7 @@ pub enum Msg {
     FilterCancel,
     SortByChange(SortByParam),
     SortOrderChange(SortOrderParam),
+    GoToDetail,
     Noop,
 }
 
@@ -65,11 +69,37 @@ impl Component for Source {
         });
         let worker = job::Worker::bridge(worker_callback);
 
+        let mut storage = StorageService::new(Local).unwrap();
+        let mangas = if let Ok(data) = storage.restore(format!("source-{}-mangas", props.source_name.clone()).as_str()) {
+            let val = serde_json::from_str(&data).unwrap();
+            storage.remove(format!("source-{}-mangas", props.source_name.clone()).as_str());
+            val
+        } else {
+            vec![]
+        };
+        let page = if let Ok(data) = storage.restore(format!("source-{}-page", props.source_name.clone()).as_str()) {
+            let val = data.parse().unwrap();
+            storage.remove(format!("source-{}-page", props.source_name.clone()).as_str());
+            val
+        } else {
+            1
+        };
+
+        let scroll_position = if let Ok(data) = storage.restore(format!("source-{}-pos", props.source_name.clone()).as_str()) {
+            let val = data.parse().unwrap();
+            storage.remove(format!("source-{}-pos", props.source_name.clone()).as_str());
+            val
+        } else {
+            0
+        };
+
+
+
         Source {
             link,
             source_name: props.source_name,
-            page: 1,
-            mangas: vec![],
+            page,
+            mangas,
             is_fetching: true,
             closure: None,
             keyword: "".to_string(),
@@ -80,6 +110,8 @@ impl Component for Source {
             sort_by: SortByParam::Views,
             sort_order: SortOrderParam::Desc,
             catalogue_ref: NodeRef::default(),
+            storage,
+            scroll_position,
         }
     }
 
@@ -100,12 +132,15 @@ impl Component for Source {
                 let cloned_div = div.clone();
                 self.closure = Some(Closure::wrap(Box::new(move || {
                     if (cloned_div.scroll_height() - cloned_div.scroll_top()) == cloned_div.client_height() {
-                        log::info!("scrolled");
                         tmp_link.send_message(Msg::ScrolledDown);
                     }
                 }) as Box<dyn Fn()>));
 
                 div.set_onscroll(Some(self.closure.as_ref().unwrap().as_ref().unchecked_ref()));
+
+                if self.scroll_position > 0 {
+                    div.scroll_by_with_x_and_y(0.0, self.scroll_position as f64);
+                }
             }
         }
     }
@@ -187,6 +222,15 @@ impl Component for Source {
             Msg::SortOrderChange(sort_order) => {
                 self.sort_order = sort_order;
             }
+            Msg::GoToDetail => {
+                if let Some(div) = self.catalogue_ref.cast::<HtmlElement>() {
+                    self.scroll_position = div.scroll_top();
+                }
+                self.storage.store(format!("source-{}-mangas", self.source_name).as_str(), Ok(serde_json::to_string(&self.mangas).unwrap()));
+                self.storage.store(format!("source-{}-page", self.source_name).as_str(), Ok(self.page.to_string()));
+                self.storage.store(format!("source-{}-pos", self.source_name).as_str(), Ok(self.scroll_position.to_string()));
+                return false;
+            }
             Msg::Noop => {
                 return false;
             }
@@ -243,7 +287,8 @@ impl Source {
                             id=manga.id
                             title=&manga.title
                             thumbnail=&manga.thumbnail_url
-                            is_favorite=&manga.is_favorite />
+                            is_favorite=&manga.is_favorite
+                            on_to_detail=self.link.callback(|_| Msg::GoToDetail)/>
                     }})
                     }
                 </MangaList>
