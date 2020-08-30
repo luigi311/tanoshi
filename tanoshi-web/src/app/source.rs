@@ -247,11 +247,11 @@ impl Source {
                     }})
                     }
                 </MangaList>
-                <div class="grid grid-cols-1" id="catalogue">
+                <div class="grid grid-cols-1 h-8" id="catalogue">
                 {
                     match self.is_fetching {
                         true => html!{<Spinner is_active=true is_fullscreen=false />},
-                        false => html!{<button class="flex rounded-lg border border-gray-300 dark:border-gray-700 m-2 py-2 shadow justify-center text-gray-200 dark:text-grey-800" onclick=self.link.callback(|_| Msg::ScrolledDown)>{"Load More"}</button>}
+                        false => html!{<button class="flex rounded-lg border border-gray-300 dark:border-gray-700 m-2 py-2 shadow justify-center dark:text-gray-200 dark:text-grey-800" onclick=self.link.callback(|_| Msg::ScrolledDown)>{"Load More"}</button>}
                     }
                 }
                 </div>
