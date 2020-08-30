@@ -1,6 +1,6 @@
 use http::{Request, Response};
 use web_sys::HtmlElement;
-use yew::format::{Json, Nothing};
+use yew::format::{Json, Nothing, Text};
 use yew::prelude::*;
 use yew::services::fetch::{FetchService, FetchTask};
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
@@ -237,11 +237,12 @@ impl Select {
 
         if let Ok(task) = FetchService::fetch(
             req,
-            self.link.callback(|response: Response<Json<Result<ErrorResponse, anyhow::Error>>>| {
-                if let (meta, Json(Ok(res))) = response.into_parts() {
+            self.link.callback(|response: Response<Text>| {
+                if let (meta, body) = response.into_parts() {
                     if meta.status.is_success() {
                         return Msg::ExtensionInstalled;
                     } else {
+                        let res: ErrorResponse = serde_json::from_str(&body.unwrap()).unwrap();
                         return Msg::ExtensionError(res);
                     }
                 }
