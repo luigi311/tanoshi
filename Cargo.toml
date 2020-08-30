@@ -6,8 +6,5 @@ members = [
 ]
 default-members = ["tanoshi"]
 
-[profile.release.package.tanoshi]
-opt-level = 3
-
 [profile.release.package.tanoshi-web]
-opt-level = "s"
+opt-level = "z"

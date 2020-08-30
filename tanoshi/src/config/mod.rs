@@ -8,12 +8,16 @@ pub struct Config {
     pub base_url: Option<String>,
     #[serde(default = "default_port")]
     pub port: u16,
+    #[serde(default = "default_tls_port")]
+    pub tls_port: u16,
+    #[serde(default = "String::default")]
+    pub cert: String,
+    #[serde(default = "String::default")]
+    pub key: String,
     #[serde(default = "default_database_path")]
     pub database_path: String,
     #[serde(default = "default_secret")]
     pub secret: String,
-    #[serde(default = "default_cache_ttl")]
-    pub cache_ttl: u64,
     #[serde(default = "default_update_interval")]
     pub update_interval: u64,
     pub telegram_token: Option<String>,
@@ -28,9 +32,11 @@ impl Default for Config {
         Self {
             base_url: None,
             port: default_port(),
+            tls_port: default_tls_port(),
+            cert: "".to_string(),
+            key: "".to_string(),
             database_path: default_database_path(),
             secret: default_secret(),
-            cache_ttl: default_cache_ttl(),
             update_interval: default_update_interval(),
             telegram_token: None,
             plugin_path: default_plugin_path(),
@@ -43,8 +49,8 @@ fn default_port() -> u16 {
     80
 }
 
-fn default_cache_ttl() -> u64 {
-    1
+fn default_tls_port() -> u16 {
+    443
 }
 
 fn default_update_interval() -> u64 {
