@@ -1,35 +1,36 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="utf-8" />
+    <meta charset="utf-8"/>
+    <meta name="Description" content="Tanoshi: Selfhosted web manga reader">
     <title>Tanoshi</title>
     <meta charset="utf-8">
-    <link rel="manifest" href="/manifest.json">
-    <link rel='icon' href='/tanoshi.png' type='image/png' />
+    <link rel="manifest" href="/manifest.webmanifest">
+    <link rel='icon' href='/tanoshi.png' type='image/png'/>
     <link rel="stylesheet" href="/animate.css">
     <meta name="viewport"
-        content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0, viewport-fit=cover">
+          content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0, viewport-fit=cover">
     <link rel="apple-touch-icon" href="apple-touch-icon.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
     <meta name="mobile-web-app-capable" content="yes">
-    <meta name="mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="mobile-web-app-status-bar-style" content="black-translucent"/>
     <meta name="theme-color" content="#5b749b">
     <script>
-        window.onload = () => {
-            'use strict';
-
-            if ('serviceWorker' in navigator) {
-                navigator.serviceWorker
-                    .register('/sw.js');
-            }
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/service-worker.js').then(registration => {
+                    console.log('SW registered: ', registration);
+                }).catch(registrationError => {
+                    console.log('SW registration failed: ', registrationError);
+                });
+            });
         }
     </script>
 </head>
-
 <body>
-    <script src="/tanoshi-web.js"></script>
+<noscript>
+    <p>Enable javascript to use <a href="https://github.com/faldez/tanoshi">tanoshi</a></p>
+</noscript>
 </body>
-
 </html>

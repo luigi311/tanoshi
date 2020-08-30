@@ -98,46 +98,38 @@ impl Component for Login {
         html! {
             <div class="container mx-auto bg-white dark:bg-gray-900" style="padding-top: calc(env(safe-area-inset-top) + .5rem)">
                 <div class="block fixed inset-x-0 top-0 z-50 bg-tachiyomi-blue safe-top z-50 shadow"></div>
-                <div class="flex justify-center px-6 my-12">
-                <div class="w-full xl:w-3/4 lg:w-11/12 flex">
+                <div class="w-full xl:w-3/4 lg:w-11/12 flex justify-center">
                     <div class="w-full p-5 rounded-lg lg:rounded-l-none">
-                        <form class="px-8 pt-6 pb-8 mb-4 rounded" onsubmit=self.link.callback(|e| Msg::Submit(e))>
-                            <div class="mb-4">
-                                <label class="block mb-2 text-sm font-bold text-gray-700 dark:text-gray-300" for="username">
+                        <form onsubmit=self.link.callback(|e| Msg::Submit(e))>
+                                <label class="mb-2 text-sm font-bold text-gray-700 dark:text-gray-300" for="username">
                                     {"Username"}
                                 </label>
                                 <input
-                                    class="w-full bg-white dark:bg-gray-800 px-3 py-2 text-sm leading-tight text-gray-700 dark:text-gray-300 rounded shadow appearance-none focus:outline-none focus:shadow-outline"
+                                    class="w-full bg-white dark:bg-gray-800 px-3 py-2 mb-3 text-sm leading-tight text-gray-700 dark:text-gray-300 rounded border border-gray-300 dark:border-gray-700 appearance-none focus:outline-none focus:shadow-outline"
                                     id="username"
                                     type="text"
                                     value=self.user.username.to_owned()
                                     oninput=self.link.callback(|e| Msg::UsernameChange(e))
                                 />
-                            </div>
-                            <div class="mb-4">
-                                <label class="block mb-2 text-sm font-bold text-gray-700 dark:text-gray-300" for="password">
+                                <label class="mb-2 text-sm font-bold text-gray-700 dark:text-gray-300" for="password">
                                     {"Password"}
                                 </label>
                                 <input
-                                    class="w-full bg-white dark:bg-gray-800 px-3 py-2 mb-3 text-sm leading-tight text-gray-700 dark:text-gray-300 rounded shadow appearance-none focus:outline-none focus:shadow-outline"
+                                    class="w-full bg-white dark:bg-gray-800 px-3 py-2 mb-3 text-sm leading-tight text-gray-700 dark:text-gray-300 rounded border border-gray-300 dark:border-gray-700 appearance-none focus:outline-none focus:shadow-outline"
                                     id="password"
                                     type="password"
                                     value=self.user.password.clone().unwrap_or("".to_string()).to_owned()
                                     oninput=self.link.callback(|e| Msg::PasswordChange(e))
                                 />
-                            </div>
-                            <div class="mb-6 text-center">
                                 <button
                                     class="w-full px-4 py-2 font-bold text-white bg-blue-500 rounded-full hover:bg-blue-700 focus:outline-none focus:shadow-outline"
                                     type="submit"
                                 >
                                     {"Sign In"}
                                 </button>
-                            </div>
                         </form>
                     </div>
                 </div>
-            </div>
             </div>
         }
     }
