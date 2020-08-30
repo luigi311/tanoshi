@@ -12,7 +12,7 @@ module.exports = (env, argv) => {
     return {
         devServer: {
             historyApiFallback: {
-                index:'/'
+                index: '/'
             },
             contentBase: distPath,
             host: '0.0.0.0',
@@ -24,6 +24,7 @@ module.exports = (env, argv) => {
         entry: './index.js',
         output: {
             path: distPath,
+            publicPath: '/',
             filename: isProduction ? '[name].[contenthash].js' : '[name].[hash].js'
         },
         optimization: {
@@ -41,10 +42,10 @@ module.exports = (env, argv) => {
         plugins: [
             new CleanWebpackPlugin(),
             new HtmlWebpackPlugin({
-                template: './static/index.html'
+                template: 'static/index.html'
             }),
             new CopyWebpackPlugin([
-                { from: './static', to: distPath }
+                { from: 'static', to: distPath }
             ]),
             new WasmPackPlugin({
                 crateDirectory: ".",
