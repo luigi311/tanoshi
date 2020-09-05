@@ -87,19 +87,13 @@ impl Component for Reader {
             }
         };
 
-        match (settings.background_color.clone(), is_dark_mode) {
-            (BackgroundColor::Black, true) => {
-                let _ = window().unwrap().document().unwrap().body().unwrap().class_list().add_1("bg-black");
-                let _ = window().unwrap().document().unwrap().body().unwrap().class_list().remove_1("bg-gray-900");
-            }
-            (BackgroundColor::Black, false) => {
+        
+        let _ = window().unwrap().document().unwrap().body().unwrap().class_list().remove_2("bg-gray-100", "dark:bg-gray-800");
+        match settings.background_color.clone() {
+            BackgroundColor::Black => {
                 let _ = window().unwrap().document().unwrap().body().unwrap().class_list().add_1("bg-black");
             }
-            (BackgroundColor::White, true) => {
-                let _ = window().unwrap().document().unwrap().body().unwrap().class_list().add_1("bg-white");
-                let _ = window().unwrap().document().unwrap().body().unwrap().class_list().remove_1("bg-gray-900");
-            }
-            (BackgroundColor::White, false) => {
+            BackgroundColor::White => {
                 let _ = window().unwrap().document().unwrap().body().unwrap().class_list().add_1("bg-white");
             }
         };
@@ -272,19 +266,12 @@ impl Component for Reader {
     }
 
     fn destroy(&mut self) {
-        match (self.settings.background_color.clone(), self.is_dark_mode) {
-            (BackgroundColor::Black, true) => {
-                let _ = window().unwrap().document().unwrap().body().unwrap().class_list().remove_1("bg-black");
-                let _ = window().unwrap().document().unwrap().body().unwrap().class_list().add_1("bg-gray-900");
-            }
-            (BackgroundColor::Black, false) => {
+        let _ = window().unwrap().document().unwrap().body().unwrap().class_list().add_2("bg-gray-100", "dark:bg-gray-800");
+        match self.settings.background_color.clone() {
+            BackgroundColor::Black => {
                 let _ = window().unwrap().document().unwrap().body().unwrap().class_list().remove_1("bg-black");
             }
-            (BackgroundColor::White, true) => {
-                let _ = window().unwrap().document().unwrap().body().unwrap().class_list().remove_1("bg-white");
-                let _ = window().unwrap().document().unwrap().body().unwrap().class_list().add_1("bg-gray-900");
-            }
-            (BackgroundColor::White, false) => {
+            BackgroundColor::White => {
                 let _ = window().unwrap().document().unwrap().body().unwrap().class_list().remove_1("bg-white");
             }
         };

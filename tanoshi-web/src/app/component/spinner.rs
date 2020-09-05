@@ -35,12 +35,12 @@ impl Component for Spinner {
         }
         false
     }
-    //w-full h-full block m-auto bg-white opacity-75 z-10
+
     fn view(&self) -> Html {
         let class =
             if !self.is_active {"hidden"}
-            else if self.is_fullscreen{"w-full h-full fixed flex top-0 left-0 bg-white dark:bg-black bg-opacity-50 z-10 justify-center"}
-            else {"w-full h-full block flex m-auto z-10 justify-center"};
+            else if self.is_fullscreen{"w-full h-full fixed flex top-0 left-0 bg-white dark:bg-gray-900 bg-opacity-50 z-10 justify-center"}
+            else {"w-full block flex mx-auto z-10 justify-center"};
         html! {
                 <div class={class}>
                     <div class="loader-dots block relative w-20 h-5 m-auto">

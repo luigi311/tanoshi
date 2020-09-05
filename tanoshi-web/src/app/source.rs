@@ -240,7 +240,7 @@ impl Component for Source {
 
     fn view(&self) -> Html {
         return html! {
-            <div ref={self.catalogue_ref.clone()} id="catalogue" class="container mx-auto pb-20 overflow-scroll max-h-screen">
+            <div ref={self.catalogue_ref.clone()} id="catalogue" class="  pb-20 overflow-scroll max-h-screen">
                 <div class="w-full px-2 pb-2 flex justify-between block fixed inset-x-0 top-0 z-50 bg-tachiyomi-blue shadow" style="padding-top: calc(env(safe-area-inset-top) + .5rem)">
                     <button onclick=self.link.callback(|_| Msg::Filter) class="hover:bg-tachiyomi-blue-darker focus:bg-tachiyomi-blue-darker rounded flex-none">
                         <svg fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" class="mx-2 self-center flex-none"><path d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path></svg>
@@ -292,14 +292,12 @@ impl Source {
                     }})
                     }
                 </MangaList>
-                <div class="grid grid-cols-1 h-8" id="catalogue">
                 {
                     match self.is_fetching {
                         true => html!{<Spinner is_active=true is_fullscreen=false />},
-                        false => html!{<button class="flex rounded-lg border border-gray-300 dark:border-gray-700 m-2 py-2 shadow justify-center dark:text-gray-200 dark:text-grey-800" onclick=self.link.callback(|_| Msg::ScrolledDown)>{"Load More"}</button>}
+                        false => html!{<button class="w-full dark:text-gray-200 dark:text-grey-800 my-2" onclick=self.link.callback(|_| Msg::ScrolledDown)>{"Load More"}</button>}
                     }
                 }
-                </div>
             </>
         }
     }

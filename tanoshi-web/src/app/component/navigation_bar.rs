@@ -1,7 +1,7 @@
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 use yew_router::components::RouterAnchor;
-
-use crate::app::{browse::BrowseRoute, catalogue::CatalogueRoute, AppRoute};
+use yew_router::switch::AllowMissing;
+use crate::app::{browse::BrowseRoute, catalogue::CatalogueRoute, AppRoute, settings::SettingRoute};
 
 #[derive(Clone, PartialEq, Properties)]
 pub struct Props {}
@@ -28,7 +28,7 @@ impl Component for NavigationBar {
 
     fn view(&self) -> Html {
         html! {
-           <div class="block fixed inset-x-0 bottom-0 z-50 shadow-top safe-bottom bg-white dark:bg-gray-900">
+           <div class="block fixed inset-x-0 bottom-0 z-50 border-t border-gray-300 dark:border-gray-700 safe-bottom bg-white dark:bg-gray-900">
            <div id="tabs" class="flex justify-between">
                 <RouterAnchor<AppRoute> route=AppRoute::Browse(BrowseRoute::Home) classes="w-full text-black dark:text-gray-300 focus:text-tachiyomi-blue hover:text-tachiyomi-blue justify-center inline-block text-center pt-2 pb-1">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24"  class="fill-current inline-block mb-1">
@@ -54,7 +54,7 @@ impl Component for NavigationBar {
                         </svg>
                         <span class="tab tab-home block text-xs">{"History"}</span>
                </RouterAnchor<AppRoute>>
-               <RouterAnchor<AppRoute> route=AppRoute::Browse(BrowseRoute::Settings) classes="w-full text-black dark:text-gray-300 focus:text-tachiyomi-blue hover:text-tachiyomi-blue justify-center inline-block text-center pt-2 pb-1">
+               <RouterAnchor<AppRoute> route=AppRoute::Browse(BrowseRoute::Settings(SettingRoute::Home)) classes="w-full text-black dark:text-gray-300 focus:text-tachiyomi-blue hover:text-tachiyomi-blue justify-center inline-block text-center pt-2 pb-1">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24"  class="fill-current inline-block mb-1">
                         <path class="heroicon-ui" d="M9 4.58V4c0-1.1.9-2 2-2h2a2 2 0 0 1 2 2v.58a8 8 0 0 1 1.92 1.11l.5-.29a2 2 0 0 1 2.74.73l1 1.74a2 2 0 0 1-.73 2.73l-.5.29a8.06 8.06 0 0 1 0 2.22l.5.3a2 2 0 0 1 .73 2.72l-1 1.74a2 2 0 0 1-2.73.73l-.5-.3A8 8 0 0 1 15 19.43V20a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2v-.58a8 8 0 0 1-1.92-1.11l-.5.29a2 2 0 0 1-2.74-.73l-1-1.74a2 2 0 0 1 .73-2.73l.5-.29a8.06 8.06 0 0 1 0-2.22l-.5-.3a2 2 0 0 1-.73-2.72l1-1.74a2 2 0 0 1 2.73-.73l.5.3A8 8 0 0 1 9 4.57zM7.88 7.64l-.54.51-1.77-1.02-1 1.74 1.76 1.01-.17.73a6.02 6.02 0 0 0 0 2.78l.17.73-1.76 1.01 1 1.74 1.77-1.02.54.51a6 6 0 0 0 2.4 1.4l.72.2V20h2v-2.04l.71-.2a6 6 0 0 0 2.41-1.4l.54-.51 1.77 1.02 1-1.74-1.76-1.01.17-.73a6.02 6.02 0 0 0 0-2.78l-.17-.73 1.76-1.01-1-1.74-1.77 1.02-.54-.51a6 6 0 0 0-2.4-1.4l-.72-.2V4h-2v2.04l-.71.2a6 6 0 0 0-2.41 1.4zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm0-2a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/>
                     </svg>

@@ -1,4 +1,5 @@
 use crate::app::AppRoute;
+use std::collections::BTreeMap;
 use web_sys::HtmlElement;
 use yew::format::{Json, Nothing};
 use yew::services::fetch::{FetchTask, Request, Response};
@@ -41,13 +42,12 @@ pub struct Props {}
 pub struct History {
     fetch_task: Option<FetchTask>,
     link: ComponentLink<Self>,
-    history: Vec<HistoryModel>,
-    updates: Vec<UpdateModel>,
+    history: BTreeMap<i64, Vec<HistoryModel>>,
+    updates: BTreeMap<i64, Vec<UpdateModel>>,
     token: String,
     is_fetching: bool,
     closure: Closure<dyn Fn()>,
     page: i32,
-    prev_days: i64,
     should_fetch: bool,
     page_type: PageType,
     route_service: RouteService<()>,
@@ -95,13 +95,12 @@ impl Component for History {
         History {
             fetch_task: None,
             link,
-            history: vec![],
-            updates: vec![],
+            history: BTreeMap::new(),
+            updates: BTreeMap::new(),
             token,
             is_fetching: false,
             closure,
             page: 1,
-            prev_days: -1,
             should_fetch: true,
             page_type,
             route_service,
@@ -140,15 +139,16 @@ impl Component for History {
                 if history.is_empty() {
                     window().set_onscroll(None);
                 } else {
+                    let mut prev_days: i64 = -1;
                     for his in history.iter_mut() {
                         let days = self.calculate_days(his.at);
-                        if self.prev_days != days {
-                            self.prev_days = days;
+                        if prev_days != days {
+                            prev_days = days;
                             his.days = Some(days);
                             his.show_sep = Some(true);
                         }
+                        self.history.entry(days).and_modify(|h| h.push(his.clone())).or_insert(vec![his.clone()]);
                     }
-                    self.history.append(&mut history);
                 }
                 self.is_fetching = false;
             }
@@ -163,15 +163,16 @@ impl Component for History {
             }
             Msg::UpdatesReady(data) => {
                 let mut updates = data.updates;
+                let mut prev_days: i64 = -1;
                 for update in updates.iter_mut() {
                     let days = self.calculate_days(update.uploaded);
-                    if self.prev_days != days {
-                        self.prev_days = days;
+                    if prev_days != days {
+                        prev_days = days;
                         update.days = Some(days);
                         update.show_sep = Some(true);
                     }
+                    self.updates.entry(days).and_modify(|u| u.push(update.clone())).or_insert(vec![update.clone()]);
                 }
-                self.updates.append(&mut updates);
                 self.is_fetching = false;
             }
             Msg::Noop => {
@@ -183,15 +184,15 @@ impl Component for History {
 
     fn view(&self) -> Html {
         html! {
-           <div class="container mx-auto pb-20 max-h-screen overflow-scroll" style="padding-top: calc(env(safe-area-inset-top) + .5rem)">
-                <div class="flex flex-col rounded-lg border border-gray-300 dark:border-gray-700 m-2 shadow" id="updates">
+           <div class="mx-auto pb-20 max-h-screen overflow-scroll" style="padding-top: calc(env(safe-area-inset-top) + .5rem)">
+                <div class="flex flex-col" id="updates">
                 {self.updates_or_history_cards()}
                 </div>
                 {
                     match self.is_fetching {
                         false => html!{
-                            <div class="flex rounded-lg border border-gray-300 dark:border-gray-700 m-2 shadow justify-center">
-                                <button class="w-full h-full block text-gray-700 dark:text-gray-300 my-2" onclick=self.link.callback(|_| Msg::ScrolledDown)>{"Load More"}</button>
+                            <div class="flex justify-center">
+                                <button class="w-full block text-gray-700 dark:text-gray-300 my-2" onclick=self.link.callback(|_| Msg::ScrolledDown)>{"Load More"}</button>
                             </div>
                         },
                         true => html!{<Spinner is_active=self.is_fetching is_fullscreen=false />}
@@ -214,57 +215,76 @@ impl History {
         today.date().signed_duration_since(at.date()).num_days()
     }
 
-    fn show_separator(&self, show_sep: Option<bool>, days: Option<i64>) -> Html {
-        html! {
-            <div class={if show_sep.unwrap_or(false) {"shadow p-2 bg-tachiyomi-blue rounded-t"} else {"hidden"}}>
-                <span class="text-semibold text-white">{
-                    match days.unwrap_or(0) {
-                        0 => "Today".to_string(),
-                        1 => "Yesterday".to_string(),
-                        _ => format!("{} Days Ago", days.unwrap_or(0))
-                    }
-                }
-                </span>
-            </div>
-        }
-    }
-
     fn updates_or_history_cards(&self) -> Html {
         match self.page_type {
             PageType::History => {
-                self.history.iter().map(|h| {
+                self.history.iter().map(|(days, histories)| {
                     html!{
-                        <>
-                            {self.show_separator(h.show_sep, h.days)}
-                            <RouterAnchor<AppRoute>
-                            classes="flex inline-flex border-t border-gray-300 dark:border-gray-700 p-2 content-center hover:bg-gray-200 dark-hover:bg-gray-700"
-                            route=AppRoute::Reader(h.chapter_id, (h.read + 1) as usize)>
-                                <div class="mr-4 my-2 h-16 w-16 flex-none object-fit object-center bg-center bg-cover rounded-full" style={format!("background-image: url({})", h.thumbnail_url.clone().unwrap_or("".to_string()))}/>
-                                <div class="flex flex-col my-auto text-gray-700 dark:text-gray-300">
-                                    {self.title(h.title.clone())}
-                                    <span class="text-md text-gray-700 dark:text-gray-300">{format!("Chapter {}", h.chapter.clone())}</span>
+                        <div class="flex justify-center bg-white dark:bg-gray-900 mb-2 border-b border-t border-gray-300 dark:border-gray-700 p-2">
+                            <div class="flex flex-col w-full xl:w-1/2">
+                                <span class="font-bold text-gray-900 dark:text-gray-100 text-xl">{
+                                    match days {
+                                        0 => "Today".to_string(),
+                                        1 => "Yesterday".to_string(),
+                                        _ => format!("{} Days Ago", days)
+                                    }
+                                }
+                                </span>
+                                <div class="divide-y divide-gray-300 dark:divide-gray-700">
+                                {
+                                    for histories.iter().map(|h| {
+                                        html!{
+                                            <RouterAnchor<AppRoute>
+                                                classes="w-full flex inline-flex content-center hover:bg-gray-200 dark:hover:bg-gray-700"
+                                                route=AppRoute::Reader(h.chapter_id, (h.read + 1) as usize)>
+                                                <div class="mr-4 my-2 h-16 w-16 flex-none object-fit object-center bg-center bg-cover rounded-full" style={format!("background-image: url({})", h.thumbnail_url.clone().unwrap_or("".to_string()))}/>
+                                                <div class="flex flex-col my-auto text-gray-700 dark:text-gray-300">
+                                                    {self.title(h.title.clone())}
+                                                    <span class="text-md text-gray-700 dark:text-gray-300">{format!("Chapter {}", h.chapter.clone())}</span>
+                                                </div>
+                                            </RouterAnchor<AppRoute>>
+                                        }
+                                    })
+                                }
                                 </div>
-                            </RouterAnchor<AppRoute>>
-                        </>
-                    }
+                            </div>
+                        </div>
+                }
                 }).collect()
             },
             PageType::Updates => {
-                self.updates.iter().map(|update| {
+                self.updates.iter().map(|(days, updates)| {
                     html!{
-                        <>
-                            {self.show_separator(update.show_sep, update.days)}
-                            <RouterAnchor<AppRoute>
-                            classes="flex inline-flex border-t border-gray-300 dark:border-gray-700 p-2 content-center hover:bg-gray-200 dark-hover:bg-gray-700"
-                            route=AppRoute::Reader(update.chapter_id, 1)>
-                                <div class="mr-4 my-2 h-16 w-16 flex-none object-fit object-center bg-center bg-cover rounded-full" style={format!("background-image: url({})", update.thumbnail_url.clone())}/>
-                                <div class="flex flex-col my-auto text-gray-700 dark:text-gray-300">
-                                     {self.title(update.title.clone())}
-                                    <span class="text-md text-gray-700 dark:text-gray-300">{format!("Chapter {}", update.number.clone())}</span>
+                        <div class="flex justify-center bg-white dark:bg-gray-900 mb-2 border-b border-t border-gray-300 dark:border-gray-700 p-2">
+                            <div class="flex flex-col w-full xl:w-1/2">
+                                <span class="font-bold text-gray-900 dark:text-gray-100 text-xl">{
+                                    match days {
+                                        0 => "Today".to_string(),
+                                        1 => "Yesterday".to_string(),
+                                        _ => format!("{} Days Ago", days)
+                                    }
+                                }
+                                </span>
+                                <div class="divide-y divide-gray-300 dark:divide-gray-700">
+                                {
+                                    for updates.iter().map(|update| {
+                                        html!{
+                                            <RouterAnchor<AppRoute>
+                                                classes="w-full flex inline-flex content-center hover:bg-gray-200 dark:hover:bg-gray-700"
+                                                route=AppRoute::Reader(update.chapter_id, 1)>
+                                                    <div class="mr-4 my-2 h-16 w-16 flex-none object-fit object-center bg-center bg-cover rounded-full" style={format!("background-image: url({})", update.thumbnail_url.clone())}/>
+                                                    <div class="flex flex-col my-auto text-gray-700 dark:text-gray-300">
+                                                         {self.title(update.title.clone())}
+                                                        <span class="text-md text-gray-700 dark:text-gray-300">{format!("Chapter {}", update.number.clone())}</span>
+                                                    </div>
+                                                </RouterAnchor<AppRoute>>
+                                        }
+                                    })
+                                }
                                 </div>
-                            </RouterAnchor<AppRoute>>
-                        </>
-                    }
+                            </div>
+                        </div>
+                }
                 }).collect()
             }
         }
