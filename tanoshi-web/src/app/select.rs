@@ -11,7 +11,7 @@ use tanoshi_lib::rest::{GetSourceIndexResponse, ErrorResponse};
 
 use super::browse::BrowseRoute;
 use super::catalogue::CatalogueRoute;
-use super::component::{Spinner, Toast, ToastType};
+use super::component::{Spinner, Toast, ToastType, TopBar};
 
 pub enum Tab {
     Installed,
@@ -120,7 +120,7 @@ impl Component for Select {
     fn view(&self) -> Html {
         html! {
             <div class="mx-auto pb-20 pt-12">
-                <div class="w-full px-2 pb-2 flex justify-around block fixed inset-x-0 top-0 z-50 bg-tachiyomi-blue shadow" style="padding-top: calc(env(safe-area-inset-top) + .5rem)">
+                <TopBar>
                     <button ref=self.button_refs[0].clone()
                         onclick=self.link.callback(|_| Msg::ChangeToInstalledTab)
                         class="hover:bg-tachiyomi-blue-darker rounded flex-grow bg-tachiyomi-blue-darker mr-px">
@@ -131,7 +131,7 @@ impl Component for Select {
                         class="hover:bg-tachiyomi-blue-darker rounded flex-grow ml-px">
                         <span class="text-white my-2">{"Available"}</span>
                     </button>
-                </div>
+                </TopBar>
                 <Spinner is_active=self.is_fetching is_fullscreen=true />
                 {
                     match self.active_tab {

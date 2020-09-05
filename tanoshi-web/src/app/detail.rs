@@ -5,7 +5,7 @@ use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 use yew_router::components::RouterAnchor;
 use web_sys::HtmlElement;
 
-use super::component::Spinner;
+use super::component::{Spinner, TopBar};
 use crate::app::{job, AppRoute};
 
 use tanoshi_lib::manga::{Chapter as ChapterModel, Manga as MangaModel};
@@ -93,22 +93,6 @@ impl Component for Detail {
         }
     }
 
-    fn change(&mut self, props: Self::Properties) -> ShouldRender {
-        if self.manga_id != props.manga_id {
-            self.manga_id = props.manga_id;
-            self.should_fetch = true;
-            return true;
-        }
-        false
-    }
-
-    fn rendered(&mut self, _first_render: bool) {
-        if self.should_fetch {
-            self.get_manga_info();
-            self.should_fetch = false;
-        }
-    }
-
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
             Msg::MangaReady(data) => {
@@ -157,10 +141,19 @@ impl Component for Detail {
         true
     }
 
+    fn change(&mut self, props: Self::Properties) -> ShouldRender {
+        if self.manga_id != props.manga_id {
+            self.manga_id = props.manga_id;
+            self.should_fetch = true;
+            return true;
+        }
+        false
+    }
+
     fn view(&self) -> Html {
         html! {
             <div class="pb-20 overflow-scroll max-h-screen" style="margin-top: calc(env(safe-area-inset-top) + 3rem)">
-            <div id="top-bar" class="w-full px-2 pb-2 flex justify-between block fixed inset-x-0 top-0 z-50 bg-tachiyomi-blue shadow" style="padding-top: calc(env(safe-area-inset-top) + .5rem)">
+            <TopBar>
                 <button
                 onclick=self.link.callback(|_| Msg::FavoriteEvent)
                 class="hover:bg-tachiyomi-blue-darker rounded flex-none">
@@ -187,7 +180,7 @@ impl Component for Detail {
                         <path class="heroicon-ui" d="M6 18.7V21a1 1 0 0 1-2 0v-5a1 1 0 0 1 1-1h5a1 1 0 1 1 0 2H7.1A7 7 0 0 0 19 12a1 1 0 1 1 2 0 9 9 0 0 1-15 6.7zM18 5.3V3a1 1 0 0 1 2 0v5a1 1 0 0 1-1 1h-5a1 1 0 0 1 0-2h2.9A7 7 0 0 0 5 12a1 1 0 1 1-2 0 9 9 0 0 1 15-6.7z"/>
                     </svg>
                 </button>
-            </div>
+            </TopBar>
             <Spinner is_active={self.is_fetching} is_fullscreen=true />
             <div id="detail" class="flex justify-center border-t border-b border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 p-2 mb-2">
                 <div class="w-full md:w-1/2 flex flex-col">
@@ -243,6 +236,13 @@ impl Component for Detail {
                 }
             </div>
             </div>
+        }
+    }
+
+    fn rendered(&mut self, _first_render: bool) {
+        if self.should_fetch {
+            self.get_manga_info();
+            self.should_fetch = false;
         }
     }
 }

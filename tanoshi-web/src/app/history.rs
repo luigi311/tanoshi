@@ -10,7 +10,7 @@ use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 use yew_router::components::RouterAnchor;
 use yew_router::service::RouteService;
 
-use super::component::Spinner;
+use super::component::{Spinner, TopBar};
 use tanoshi_lib::manga::{History as HistoryModel, Update as UpdateModel};
 use tanoshi_lib::rest::{HistoryResponse, UpdatesResponse};
 
@@ -184,7 +184,15 @@ impl Component for History {
 
     fn view(&self) -> Html {
         html! {
-           <div class="mx-auto pb-20 max-h-screen overflow-scroll" style="padding-top: calc(env(safe-area-inset-top) + .5rem)">
+           <div class="mx-auto pb-20 max-h-screen overflow-scroll pt-12" style="margin-top:env(safe-area-inset-top)">
+                <TopBar>
+                    <span class="w-full text-center text-white">{
+                        match self.page_type {
+                            PageType::History => "History",
+                            PageType::Updates => "Updates",
+                        }
+                    }</span>
+                </TopBar>
                 <div class="flex flex-col" id="updates">
                 {self.updates_or_history_cards()}
                 </div>

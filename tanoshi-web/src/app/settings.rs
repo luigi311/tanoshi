@@ -1,6 +1,8 @@
 use super::component::model::{
     BackgroundColor, Claims, PageRendering, ReadingDirection, SettingParams, User,
 };
+use super::component::TopBar;
+
 use serde::Deserialize;
 use yew::format::{Json, Nothing, Text};
 use yew::services::fetch::{FetchService, FetchTask, Request, Response};
@@ -288,7 +290,10 @@ impl Component for Settings {
 
     fn view(&self) -> Html {
         html! {
-            <div class="pb-20" style="padding-top: calc(env(safe-area-inset-top) + .5rem)">
+            <div class="pb-20 pt-12" style="margin-top:env(safe-area-inset-top)">
+                <TopBar>
+                    <span class="w-full text-center text-white">{"Settings"}</span>
+                </TopBar>
                 {
                     match &self.setting_page {
                         SettingRoute::Account => self.account_setting(),
@@ -468,7 +473,7 @@ impl Settings {
     fn admin_settings(&self) -> Html {
         html! {
             <>
-            <div class="flex flex-col bg-white dark:bg-gray-900 border-t border-b border-gray-300 dark:border-gray-700 mt-2" id="admin">
+            <div class="flex flex-col bg-white dark:bg-gray-900 border-t border-b border-gray-300 dark:border-gray-700" id="admin">
                 <div class="table w-full md:w-1/2 mx-auto">
                     <div class="table-header-group">
                         <div class="table-row">
@@ -538,7 +543,7 @@ impl Settings {
     fn account_setting(&self) -> Html {
         html! {
             <>
-            <div class="mt-2 flex flex-col my-2 bg-white dark:bg-gray-900 divide-y divide-gray-300 dark:divide-gray-700 border-t border-b border-gray-300 dark:border-gray-700" id="account-setting">
+            <div class="flex flex-col my-2 bg-white dark:bg-gray-900 divide-y divide-gray-300 dark:divide-gray-700 border-t border-b border-gray-300 dark:border-gray-700" id="account-setting">
                 {self.setting_card("Username", html! {
                     <span class="text-gray-800 dark:text-gray-200">{self.me_username.clone()}</span>
                 })}
@@ -597,7 +602,7 @@ impl Settings {
 
     fn reading_settings(&self) -> Html {
         html! {
-            <div class="bg-white dark:bg-gray-900 flex flex-col border-b border-t border-gray-300 dark:border-gray-700 divide-y divide-gray-300 dark:divide-gray-700 mt-2" id="reading-setting">
+            <div class="bg-white dark:bg-gray-900 flex flex-col border-b border-t border-gray-300 dark:border-gray-700 divide-y divide-gray-300 dark:divide-gray-700" id="reading-setting">
                 {
                     self.setting_card("Direction", html! {
                         <div class="inline-flex">
@@ -664,7 +669,7 @@ impl Settings {
 
     fn misc_settings(&self) -> Html {
         html! {
-            <div class="bg-white dark:bg-gray-900 flex flex-col border-b border-t border-gray-300 dark:border-gray-700 mt-2 divide-y divide-gray-300 dark:divide-gray-700" id="misc-setting">
+            <div class="bg-white dark:bg-gray-900 flex flex-col border-b border-t border-gray-300 dark:border-gray-700 divide-y divide-gray-300 dark:divide-gray-700" id="misc-setting">
                 {
                     self.setting_card("Dark Mode", html! {
                     <div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">

@@ -1,4 +1,4 @@
-use super::component::{Filter, Manga, MangaList, Spinner, WeakComponentLink};
+use super::component::{Filter, Manga, MangaList, Spinner, WeakComponentLink, TopBar};
 use web_sys::HtmlElement;
 use yew::prelude::*;
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
@@ -240,8 +240,8 @@ impl Component for Source {
 
     fn view(&self) -> Html {
         return html! {
-            <div ref={self.catalogue_ref.clone()} id="catalogue" class="  pb-20 overflow-scroll max-h-screen">
-                <div class="w-full px-2 pb-2 flex justify-between block fixed inset-x-0 top-0 z-50 bg-tachiyomi-blue shadow" style="padding-top: calc(env(safe-area-inset-top) + .5rem)">
+            <div ref={self.catalogue_ref.clone()} id="catalogue" class="pb-20 overflow-scroll max-h-screen">
+                <TopBar>
                     <button onclick=self.link.callback(|_| Msg::Filter) class="hover:bg-tachiyomi-blue-darker focus:bg-tachiyomi-blue-darker rounded flex-none">
                         <svg fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" class="mx-2 self-center flex-none"><path d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path></svg>
                     </button>
@@ -258,7 +258,7 @@ impl Component for Source {
                             <path class="heroicon-ui" d="M19 10h2a1 1 0 0 1 0 2h-2v2a1 1 0 0 1-2 0v-2h-2a1 1 0 0 1 0-2h2V8a1 1 0 0 1 2 0v2zM9 12A5 5 0 1 1 9 2a5 5 0 0 1 0 10zm0-2a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm8 11a1 1 0 0 1-2 0v-2a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3v2a1 1 0 0 1-2 0v-2a5 5 0 0 1 5-5h5a5 5 0 0 1 5 5v2z"/>
                         </svg>
                     </button>
-                </div>
+                </TopBar>
                 {if !self.is_login_page{self.view_mangas()} else {self.view_login_page()}}
                 <Filter
                     show={self.show_filter}

@@ -5,7 +5,7 @@ use yew::services::storage::Area;
 use yew::services::{FetchService, StorageService};
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 
-use super::component::{Manga, MangaList, Spinner, WeakComponentLink, Filter};
+use super::component::{Manga, MangaList, Spinner, WeakComponentLink, Filter, TopBar};
 use tanoshi_lib::manga::{Manga as MangaModel, SortByParam, SortOrderParam, Params};
 use tanoshi_lib::rest::GetMangasResponse;
 
@@ -121,7 +121,7 @@ impl Component for Home {
         let list_link = &WeakComponentLink::<MangaList>::default();
         html! {
            <div class="pb-20 sm:pb-25 flex justify-center" style="padding-top: calc(env(safe-area-inset-top) + .5rem)">
-                <div class="w-full px-2 pb-2 flex justify-between block fixed inset-x-0 top-0 z-50 bg-tachiyomi-blue border-b border-tachiyomi-blue-darker" style="padding-top: calc(env(safe-area-inset-top) + .5rem)">
+                <TopBar>
                     <button onclick=self.link.callback(|_| Msg::Filter) class="hover:bg-tachiyomi-blue-darker focus:bg-tachiyomi-blue-darker rounded flex-none">
                         <svg fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" class="mx-2 self-center flex-none"><path d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path></svg>
                     </button>
@@ -133,7 +133,7 @@ impl Component for Home {
                             <path class="heroicon-ui" d="M6 18.7V21a1 1 0 0 1-2 0v-5a1 1 0 0 1 1-1h5a1 1 0 1 1 0 2H7.1A7 7 0 0 0 19 12a1 1 0 1 1 2 0 9 9 0 0 1-15 6.7zM18 5.3V3a1 1 0 0 1 2 0v5a1 1 0 0 1-1 1h-5a1 1 0 0 1 0-2h2.9A7 7 0 0 0 5 12a1 1 0 1 1-2 0 9 9 0 0 1 15-6.7z"/>
                         </svg>
                     </button>
-                </div>
+                </TopBar>
                 <Spinner is_active=self.is_fetching is_fullscreen=true />
                 <MangaList weak_link=list_link>
                     { for self.mangas.iter().map(|manga| {
