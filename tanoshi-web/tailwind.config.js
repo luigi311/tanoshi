@@ -2,9 +2,9 @@ module.exports = {
     theme: {
         extend: {
             colors: {
-                'tachiyomi-blue': '#5b749b',
-                'tachiyomi-blue-lighter': '#7e93b3',
-                'tachiyomi-blue-darker': '#455876'
+                'accent': '#5b749b',
+                'accent-lighter': '#7e93b3',
+                'accent-darker': '#455876'
             },
             minHeight: {
                 '24': '6rem'

@@ -186,7 +186,7 @@ impl Component for History {
         html! {
            <div class="mx-auto pb-20 max-h-screen overflow-scroll pt-12" style="margin-top:env(safe-area-inset-top)">
                 <TopBar>
-                    <span class="w-full text-center text-white">{
+                    <span class="w-full text-center text-black dark:text-white">{
                         match self.page_type {
                             PageType::History => "History",
                             PageType::Updates => "Updates",

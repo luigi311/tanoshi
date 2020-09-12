@@ -156,7 +156,7 @@ impl Component for Detail {
             <TopBar>
                 <button
                 onclick=self.link.callback(|_| Msg::FavoriteEvent)
-                class="hover:bg-tachiyomi-blue-darker rounded flex-none">
+                class="hover:bg-accent-darker rounded flex-none">
                     <svg class="mx-2 my-auto self-center" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" >
                     {
                         if !self.manga.is_favorite {
@@ -168,14 +168,14 @@ impl Component for Detail {
                     </svg>
                 </button>
                 <RouterAnchor<AppRoute>
-                classes="hover:bg-tachiyomi-blue-darker rounded flex-grow text-white text-center my-1 mx-2 px-3 w-full"
+                classes="hover:bg-accent-darker rounded flex-grow text-white text-center my-1 mx-2 px-3 w-full"
                 route=AppRoute::Reader(self.manga.last_read.unwrap_or(self.chapters.last().unwrap_or(&ChapterModel::default()).id), (self.manga.last_page.as_ref().unwrap_or(&0) + 1) as usize)>
                     //<svg class="fill-current mx-2 my-auto self-center" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path class="heroicon-ui" d="M7 5H5v14h14V5h-2v10a1 1 0 0 1-1.45.9L12 14.11l-3.55 1.77A1 1 0 0 1 7 15V5zM5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5c0-1.1.9-2 2-2zm4 2v8.38l2.55-1.27a1 1 0 0 1 .9 0L15 13.38V5H9z"/></svg>
                     {"Read"}
                 </RouterAnchor<AppRoute>>
                 <button
                 onclick=self.link.callback(|_| Msg::Refresh)
-                class="hover:bg-tachiyomi-blue-darker rounded flex-none">
+                class="hover:bg-accent-darker rounded flex-none">
                     <svg class="mx-2 my-auto self-center" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" >
                         <path class="heroicon-ui" d="M6 18.7V21a1 1 0 0 1-2 0v-5a1 1 0 0 1 1-1h5a1 1 0 1 1 0 2H7.1A7 7 0 0 0 19 12a1 1 0 1 1 2 0 9 9 0 0 1-15 6.7zM18 5.3V3a1 1 0 0 1 2 0v5a1 1 0 0 1-1 1h-5a1 1 0 0 1 0-2h2.9A7 7 0 0 0 5 12a1 1 0 1 1-2 0 9 9 0 0 1 15-6.7z"/>
                     </svg>

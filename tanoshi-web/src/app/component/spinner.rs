@@ -44,10 +44,10 @@ impl Component for Spinner {
         html! {
                 <div class={class}>
                     <div class="loader-dots block relative w-20 h-5 m-auto">
-                        <div class="absolute top-0 mt-1 w-3 h-3 rounded-full bg-tachiyomi-blue"></div>
-                        <div class="absolute top-0 mt-1 w-3 h-3 rounded-full bg-tachiyomi-blue"></div>
-                        <div class="absolute top-0 mt-1 w-3 h-3 rounded-full bg-tachiyomi-blue"></div>
-                        <div class="absolute top-0 mt-1 w-3 h-3 rounded-full bg-tachiyomi-blue"></div>
+                        <div class="absolute top-0 mt-1 w-3 h-3 rounded-full bg-accent"></div>
+                        <div class="absolute top-0 mt-1 w-3 h-3 rounded-full bg-accent"></div>
+                        <div class="absolute top-0 mt-1 w-3 h-3 rounded-full bg-accent"></div>
+                        <div class="absolute top-0 mt-1 w-3 h-3 rounded-full bg-accent"></div>
                     </div>
                 </div>
         }

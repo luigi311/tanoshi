@@ -292,7 +292,7 @@ impl Component for Settings {
         html! {
             <div class="pb-20 pt-12" style="margin-top:env(safe-area-inset-top)">
                 <TopBar>
-                    <span class="w-full text-center text-white">{"Settings"}</span>
+                    <span class="w-full text-center text-black dark:text-white">{"Settings"}</span>
                 </TopBar>
                 {
                     match &self.setting_page {

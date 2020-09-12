@@ -13,6 +13,8 @@ use super::browse::BrowseRoute;
 use super::catalogue::CatalogueRoute;
 use super::component::{Spinner, Toast, ToastType, TopBar};
 
+use std::collections::HashMap;
+
 pub enum Tab {
     Installed,
     Available,
@@ -24,7 +26,7 @@ pub struct Props {}
 pub struct Select {
     fetch_task: Option<FetchTask>,
     link: ComponentLink<Self>,
-    sources: Vec<SourceIndex>,
+    sources: HashMap<bool, Vec<SourceIndex>>,
     is_fetching: bool,
     active_tab: Tab,
     button_refs: Vec<NodeRef>,
@@ -50,7 +52,7 @@ impl Component for Select {
         Select {
             fetch_task: None,
             link,
-            sources: vec![],
+            sources: HashMap::new(),
             is_fetching: false,
             active_tab: Tab::Installed,
             button_refs: vec![NodeRef::default(), NodeRef::default()],
@@ -62,7 +64,9 @@ impl Component for Select {
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
             Msg::SourceReady(data) => {
-                self.sources = data.sources;
+                for source in data.sources.iter() {
+                    self.sources.entry(source.installed).and_modify(|s| s.push(source.clone())).or_insert(vec![source.clone()]);
+                }
                 self.is_fetching = false;
             }
             Msg::ChangeToInstalledTab => {
@@ -98,7 +102,7 @@ impl Component for Select {
                 }
             }
             Msg::InstallExtension(index) => {
-                self.install_source(self.sources[index].name.clone());
+                self.install_source(self.sources[&false][index].name.clone());
             }
             Msg::ExtensionInstalled => {
                 self.fetch_sources();
@@ -121,24 +125,11 @@ impl Component for Select {
         html! {
             <div class="mx-auto pb-20 pt-12">
                 <TopBar>
-                    <button ref=self.button_refs[0].clone()
-                        onclick=self.link.callback(|_| Msg::ChangeToInstalledTab)
-                        class="hover:bg-tachiyomi-blue-darker rounded flex-grow bg-tachiyomi-blue-darker mr-px">
-                        <span class="text-white my-2">{"Installed"}</span>
-                    </button>
-                    <button  ref=self.button_refs[1].clone()
-                        onclick=self.link.callback(|_| Msg::ChangeToAvailableTab)
-                        class="hover:bg-tachiyomi-blue-darker rounded flex-grow ml-px">
-                        <span class="text-white my-2">{"Available"}</span>
-                    </button>
+                    <span class="w-full text-center">{"Catalogue"}</span>
                 </TopBar>
                 <Spinner is_active=self.is_fetching is_fullscreen=true />
-                {
-                    match self.active_tab {
-                        Tab::Installed => self.installed_view(),
-                        Tab::Available => self.available_view(),
-                    }
-                }
+                {self.installed_view()}
+                {self.available_view()}
                 <Toast visible={self.show_toast} toast_type={ToastType::Error} message={&self.toast_message} />
             </div>
         }
@@ -153,17 +144,17 @@ impl Component for Select {
 
 impl Select {
     fn installed_view(&self) -> Html {
-        let sources = self
-            .sources
-            .iter()
-            .filter_map(|s| if s.installed { Some(s.clone()) } else { None })
-            .collect::<Vec<SourceIndex>>();
-        html! {
+        if !self.sources.contains_key(&true) {
+            return html!{};
+        }
+        return html!{
+            <>
+            <div class="w-full md:w-1/2 flex justify-center m-2"><span class="text-black dark:text-white">{"Installed"}</span></div>
             <div class="flex flex-col bg-white dark:bg-gray-900 divide-y divide-gray-300 dark:divide-gray-700 border-t border-b border-gray-300 dark:border-gray-700" style="margin-top:env(safe-area-inset-top)">
             {
-                for sources.iter().map(|source| html!{
+                for self.sources[&true].iter().map(|source| html!{
                     <RouterAnchor<BrowseRoute>
-                        classes="flex inline-flex justify-center p-2 content-center hover:bg-gray-200 dark:hover:bg-gray-700"
+                        classes="flex inline-flex justify-center p-2 content-center"
                         route=BrowseRoute::Catalogue(CatalogueRoute::Source(source.name.clone()))>
                         <div class="w-full md:w-1/2 flex justify-between items-center text-gray-900 dark:text-gray-300">
                             <div class="flex flex-col">
@@ -176,29 +167,35 @@ impl Select {
                 })
             }
             </div>
-        }
+            </>
+        };
     }
 
     fn available_view(&self) -> Html {
-        html! {
+        if !self.sources.contains_key(&false) {
+            return html!{};
+        }
+        return html! {
+            <>
+            <div class="w-full md:w-1/2 flex justify-center m-2"><span class="text-black dark:text-white">{"Available"}</span></div>
             <div class="flex flex-col bg-white dark:bg-gray-900 divide-y divide-gray-300 dark:divide-gray-700 border-t border-b border-gray-300 dark:border-gray-700" style="margin-top: calc(env(safe-area-inset-top) + .5rem)">
             {
-                for (0..self.sources.len()).map(|i| html!{
-                    <div class="flex inline-flex justify-center p-2 content-center hover:bg-gray-200 dark:hover:bg-gray-700">
+                for (0..self.sources[&false].len()).map(|i| html!{
+                    <div class="flex inline-flex justify-center p-2 content-center">
                     <div class="w-full md:w-1/2 flex justify-between items-center text-gray-900 dark:text-gray-300">
                         <div class="flex flex-col">
-                            <span class="text-md font-semibold text-gray-900 dark:text-gray-300">{self.sources[i].name.clone()}</span>
-                            <span class="text-sm">{self.sources[i].version.clone()}</span>
+                            <span class="text-md font-semibold text-gray-900 dark:text-gray-300">{self.sources[&false][i].name.clone()}</span>
+                            <span class="text-sm">{self.sources[&false][i].version.clone()}</span>
                         </div>
                         <button class="bg-tachiyomi-blue text-white p-2 rounded-full"
-                            disabled={!self.sources[i].update && self.sources[i].installed}
+                            disabled={!self.sources[&false][i].update && self.sources[&false][i].installed}
                             onclick={self.link.callback(move |_| Msg::InstallExtension(i))}>
                             {
-                                if self.sources[i].update {
+                                if self.sources[&false][i].update {
                                     "Update"
-                                } else if !self.sources[i].update && !self.sources[i].installed{
+                                } else if !self.sources[&false][i].update && !self.sources[&false][i].installed{
                                     "Install"
-                                } else if !self.sources[i].update && self.sources[i].installed {
+                                } else if !self.sources[&false][i].update && self.sources[&false][i].installed {
                                     "Installed"
                                 } else {
                                     ""
@@ -210,7 +207,8 @@ impl Select {
                 })
             }
             </div>
-        }
+            </>
+        };
     }
 
     fn fetch_sources(&mut self) {

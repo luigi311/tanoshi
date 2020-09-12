@@ -18,6 +18,7 @@ pub struct Filter {
     link: ComponentLink<Self>,
     props: Props,
     node_ref: NodeRef,
+    classes: Vec<&'static str>,
 }
 
 pub enum Msg {
@@ -31,15 +32,43 @@ impl Component for Filter {
     type Properties = Props;
 
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
+        let classes = vec!["hidden"];
         Filter {
             link,
             props,
             node_ref: NodeRef::default(),
+            classes,
         }
     }
 
     fn change(&mut self, props: Self::Properties) -> ShouldRender {
         if self.props != props {
+            if self.props.show != props.show {
+                if self.classes[0] == "hidden" {
+                    self.classes = vec![
+                        "animated",
+                        "faster",
+                        "fixed",
+                        "h-1/2",
+                        "z-25",
+                        "inset-x-0",
+                        "bottom-0",
+                        "mx-auto",
+                        "h-auto",
+                        "w-full",
+                        "md:w-1/2",
+                        "lg:w-1/2",
+                        "rounded-t-md",
+                        "bg-white",
+                        "shadow-top",
+                        "safe-bottom",
+                        "flex",
+                        "flex-col",
+                        "bg-white",
+                        "dark:bg-gray-900"
+                    ];
+                }
+            }
             self.props = props;
             true
         } else {
@@ -73,10 +102,10 @@ impl Component for Filter {
 
     fn view(&self) -> Html {
         html! {
-            <div ref={self.node_ref.clone()} class={self.classes()}>
+            <div id="filter" ref={self.node_ref.clone()} class={self.classes()}>
                 <div class="absolute w-full shadow p-2 flex justify-between">
-                    <button class="flex rounded text-tachiyomi-blue dark:text-tachiyomi-blue-lighter py-1 px-2 justify-center" onclick=self.link.callback(|_| Msg::Cancel)>{"Cancel"}</button>
-                    <button class="flex rounded bg-tachiyomi-blue text-white py-1 px-2 shadow justify-center" onclick=self.link.callback(|_| Msg::Done)>{"Search"}</button>
+                    <button class="flex rounded text-accent dark:text-accent-lighter py-1 px-2 justify-center" onclick=self.link.callback(|_| Msg::Cancel)>{"Cancel"}</button>
+                    <button class="flex rounded bg-accent text-white py-1 px-2 shadow justify-center" onclick=self.link.callback(|_| Msg::Done)>{"Search"}</button>
                 </div>
                 <div class="w-full max-w-full flex flex-col mx-auto mt-12">
                     <div class="w-full shadow p-2 dark:text-gray-300 text-gray-700">{"Sort By"}</div>
@@ -124,28 +153,7 @@ impl Component for Filter {
 
 impl Filter {
     fn classes(&self) -> Vec<&str> {
-        let mut classes = vec![
-            "animated",
-            "faster",
-            "fixed",
-            "h-1/2",
-            "z-25",
-            "inset-x-0",
-            "bottom-0",
-            "mx-auto",
-            "h-auto",
-            "w-full",
-            "md:w-1/2",
-            "lg:w-1/2",
-            "rounded-t-md",
-            "bg-white",
-            "shadow-top",
-            "safe-bottom",
-            "flex",
-            "flex-col",
-            "bg-white",
-            "dark:bg-gray-900"
-        ];
+        let mut classes = self.classes.clone();
         if self.props.show {
             classes.push("slideInUp");
         } else {

@@ -1,3 +1,4 @@
+#![type_length_limit="1202569"]
 extern crate argon2;
 extern crate libloading as lib;
 extern crate pretty_env_logger;
