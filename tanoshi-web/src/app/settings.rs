@@ -680,6 +680,13 @@ impl Settings {
                     })
                 }
                 {
+                    self.setting_card("Version", html! {
+                        <span class={"text-gray-800 dark:text-gray-200"}>
+                            {super::VERSION}
+                        </span>
+                    })
+                }
+                {
                     self.setting_card("Clear Cache", html! {
                         <button class={"bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-1 px-2 rounded-l"}
                             onclick=self.link.callback(|_| Msg::ClearCache)>

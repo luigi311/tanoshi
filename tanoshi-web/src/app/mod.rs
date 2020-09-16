@@ -1,6 +1,8 @@
 pub mod app;
 pub use app::{App, AppRoute};
 
+const VERSION: &'static str = env!("CARGO_PKG_VERSION");
+
 pub mod browse;
 pub mod catalogue;
 pub mod reader;
