@@ -1,9 +1,9 @@
-name: release
+name: preelease
 
 on:
   push:
     tags:
-      - v[0-9]+.[0-9]+.[0-9]+
+      - v[0-9]+.[0-9]+.[0-9]+-pre
 
 jobs:
   create-release:
@@ -20,7 +20,7 @@ jobs:
           tag_name: ${{ github.ref }}
           release_name: Release ${{ github.ref }}
           draft: false
-          prerelease: false
+          prerelease: true
   build-macos:
     runs-on: macos-latest
     needs: create-release

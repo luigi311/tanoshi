@@ -5,7 +5,9 @@ on:
     branches: [master]
     paths-ignore:
       - "README.md"
+      - "**/README.md"
       - "screenshots/**"
+      - .github/**
 
 jobs:
   build-linux:
