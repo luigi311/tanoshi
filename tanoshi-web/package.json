@@ -27,6 +27,7 @@
   },
   "resolutions": {
     "chokidar": "^3.4.0",
-    "websocket-extensions": ">=0.1.4"
+    "websocket-extensions": ">=0.1.4",
+    "node-forge": "^0.10.0"
   }
 }
