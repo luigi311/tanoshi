@@ -5,6 +5,3 @@ members = [
     "tanoshi-lib"
 ]
 default-members = ["tanoshi"]
-
-[profile.release.package.tanoshi-web]
-opt-level = "z"

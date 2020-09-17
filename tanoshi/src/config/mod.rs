@@ -8,19 +8,12 @@ pub struct Config {
     pub base_url: Option<String>,
     #[serde(default = "default_port")]
     pub port: u16,
-    #[serde(default = "default_tls_port")]
-    pub tls_port: u16,
-    #[serde(default = "String::default")]
-    pub cert: String,
-    #[serde(default = "String::default")]
-    pub key: String,
     #[serde(default = "default_database_path")]
     pub database_path: String,
     #[serde(default = "default_secret")]
     pub secret: String,
     #[serde(default = "default_update_interval")]
     pub update_interval: u64,
-    pub telegram_token: Option<String>,
     #[serde(default = "default_plugin_path")]
     pub plugin_path: String,
     #[serde(default = "BTreeMap::new")]
@@ -32,13 +25,9 @@ impl Default for Config {
         Self {
             base_url: None,
             port: default_port(),
-            tls_port: default_tls_port(),
-            cert: "".to_string(),
-            key: "".to_string(),
             database_path: default_database_path(),
             secret: default_secret(),
             update_interval: default_update_interval(),
-            telegram_token: None,
             plugin_path: default_plugin_path(),
             plugin_config: Default::default(),
         }
@@ -47,10 +36,6 @@ impl Default for Config {
 
 fn default_port() -> u16 {
     80
-}
-
-fn default_tls_port() -> u16 {
-    443
 }
 
 fn default_update_interval() -> u64 {

@@ -1,9 +1,10 @@
 use yew::{html, Bridge, Bridged, Component, ComponentLink, Html, Properties, ShouldRender};
 use yew_router::prelude::{Route, RouteAgent};
 use yew_router::{router::Router, Switch};
+use yew_router::switch::AllowMissing;
 
 use crate::app::catalogue::CatalogueRoute;
-
+use crate::app::settings::SettingRoute;
 use super::catalogue::Catalogue;
 use super::component::NavigationBar;
 use super::detail::Detail;
@@ -21,8 +22,8 @@ pub enum BrowseRoute {
     Updates,
     #[to = "/history"]
     History,
-    #[to = "/settings"]
-    Settings,
+    #[to = "/settings{*:rest}"]
+    Settings(SettingRoute),
     #[to = "/"]
     Home,
 }
@@ -88,8 +89,8 @@ impl Component for Browse {
 
     fn view(&self) -> Html {
         html! {
-                <div class = "bg-white dark:bg-gray-900">
-                    <div class="block fixed inset-x-0 top-0 z-50 bg-tachiyomi-blue safe-top"></div>
+                <div>
+                    <div class="block fixed inset-x-0 top-0 z-50 safe-top"></div>
                     <NavigationBar />
                     <Router<BrowseRoute>
                     render = Router::render(|switch: BrowseRoute| {
@@ -99,7 +100,7 @@ impl Component for Browse {
                         BrowseRoute::Updates => html!{<History/>},
                         BrowseRoute::History => html!{<History/>},
                         BrowseRoute::Home => html!{<Home/>},
-                        BrowseRoute::Settings => html!{<Settings />},
+                        BrowseRoute::Settings(setting_page) => html!{<Settings setting_page=setting_page />},
                     }}) / >
             </div>
         }

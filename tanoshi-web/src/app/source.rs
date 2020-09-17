@@ -1,4 +1,4 @@
-use super::component::{Filter, Manga, MangaList, Spinner, WeakComponentLink};
+use super::component::{Filter, Manga, MangaList, Spinner, WeakComponentLink, TopBar};
 use web_sys::HtmlElement;
 use yew::prelude::*;
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
@@ -240,25 +240,25 @@ impl Component for Source {
 
     fn view(&self) -> Html {
         return html! {
-            <div ref={self.catalogue_ref.clone()} id="catalogue" class="container mx-auto pb-20 overflow-scroll max-h-screen">
-                <div class="w-full px-2 pb-2 flex justify-between block fixed inset-x-0 top-0 z-50 bg-tachiyomi-blue shadow" style="padding-top: calc(env(safe-area-inset-top) + .5rem)">
-                    <button onclick=self.link.callback(|_| Msg::Filter) class="hover:bg-tachiyomi-blue-darker focus:bg-tachiyomi-blue-darker rounded flex-none">
+            <div ref={self.catalogue_ref.clone()} id="catalogue" class="pb-20 px-2 overflow-scroll max-h-screen">
+                <TopBar>
+                    <button onclick=self.link.callback(|_| Msg::Filter) class="hover:bg-accent-darker focus:bg-accent-darker rounded flex-none">
                         <svg fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" class="mx-2 self-center flex-none"><path d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path></svg>
                     </button>
                     <form class="mx-2 flex-grow" onsubmit=self.link.callback(|e| Msg::Search(e))>
                         <input type="search"
-                            class="w-full px-3 py-2 focus:outline-none text-sm leading-tight text-white bg-tachiyomi-blue-darker shadow-inner rounded appearance-none"
+                            class="w-full px-3 py-2 focus:outline-none text-sm leading-tight text-white bg-accent-darker shadow-inner rounded appearance-none"
                             placeholder={"Search"}
                             value={self.keyword.clone()}
                             oninput=self.link.callback(|e| Msg::KeywordChanged(e))/>
                     </form>
                     <button onclick=self.link.callback(|_| Msg::SourceLogin)
-                        class="hover:bg-tachiyomi-blue-darker focus:bg-tachiyomi-blue-darker rounded flex-none">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" class="mx-2 my-auto self-center">
-                            <path class="heroicon-ui" d="M19 10h2a1 1 0 0 1 0 2h-2v2a1 1 0 0 1-2 0v-2h-2a1 1 0 0 1 0-2h2V8a1 1 0 0 1 2 0v2zM9 12A5 5 0 1 1 9 2a5 5 0 0 1 0 10zm0-2a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm8 11a1 1 0 0 1-2 0v-2a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3v2a1 1 0 0 1-2 0v-2a5 5 0 0 1 5-5h5a5 5 0 0 1 5 5v2z"/>
+                        class="hover:bg-accent-darker focus:bg-accent-darker rounded flex-none">
+                        <svg viewBox="0 0 20 20" fill="currentColor" class="login w-6 h-6 mx-2 self-center flex-none">
+                            <path fill-rule="evenodd" d="M3 3a1 1 0 011 1v12a1 1 0 11-2 0V4a1 1 0 011-1zm7.707 3.293a1 1 0 010 1.414L9.414 9H17a1 1 0 110 2H9.414l1.293 1.293a1 1 0 01-1.414 1.414l-3-3a1 1 0 010-1.414l3-3a1 1 0 011.414 0z" clip-rule="evenodd"></path>
                         </svg>
                     </button>
-                </div>
+                </TopBar>
                 {if !self.is_login_page{self.view_mangas()} else {self.view_login_page()}}
                 <Filter
                     show={self.show_filter}
@@ -292,14 +292,12 @@ impl Source {
                     }})
                     }
                 </MangaList>
-                <div class="grid grid-cols-1 h-8" id="catalogue">
                 {
                     match self.is_fetching {
                         true => html!{<Spinner is_active=true is_fullscreen=false />},
-                        false => html!{<button class="flex rounded-lg border border-gray-300 dark:border-gray-700 m-2 py-2 shadow justify-center dark:text-gray-200 dark:text-grey-800" onclick=self.link.callback(|_| Msg::ScrolledDown)>{"Load More"}</button>}
+                        false => html!{<button class="w-full dark:text-gray-200 dark:text-grey-800 my-2" onclick=self.link.callback(|_| Msg::ScrolledDown)>{"Load More"}</button>}
                     }
                 }
-                </div>
             </>
         }
     }
@@ -308,14 +306,14 @@ impl Source {
         html! {
             <div class="flex justify-center px-6 my-12" style="margin-top: calc(env(safe-area-inset-top) + .5rem)">
                 <div class="w-full xl:w-3/4 lg:w-11/12 flex">
-                    <div class="w-full  bg-white p-5 rounded-lg lg:rounded-l-none">
-                        <form class="px-8 pt-6 pb-8 mb-4 bg-white rounded" onsubmit=self.link.callback(|e| Msg::Submit(e))>
+                    <div class="w-full p-5">
+                        <form class="px-8 pt-6 pb-8 mb-4 rounded" onsubmit=self.link.callback(|e| Msg::Submit(e))>
                             <div class="mb-4">
-                                <label class="block mb-2 text-sm font-bold text-gray-700" for="username">
+                                <label class="block mb-2 text-sm font-bold text-gray-700 dark:text-gray-300" for="username">
                                     {"Username"}
                                 </label>
                                 <input
-                                    class="w-full px-3 py-2 text-sm leading-tight text-gray-700 border rounded shadow appearance-none focus:outline-none focus:shadow-outline"
+                                    class="w-full px-3 py-2 text-sm leading-tight bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-700 rounded shadow appearance-none focus:outline-none focus:shadow-outline"
                                     id="username"
                                     type="text"
                                     value=self.login.username.to_owned()
@@ -323,17 +321,17 @@ impl Source {
                                 />
                             </div>
                             <div class="mb-4">
-                                <label class="block mb-2 text-sm font-bold text-gray-700" for="password">
+                                <label class="block mb-2 text-sm font-bold text-gray-700 dark:text-gray-300" for="password">
                                     {"Password"}
                                 </label>
                                 <input
-                                    class="w-full px-3 py-2 mb-3 text-sm leading-tight text-gray-700 border rounded shadow appearance-none focus:outline-none focus:shadow-outline"
+                                    class="w-full px-3 py-2 mb-3 text-sm bg-white dark:bg-gray-800 leading-tight text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-700 rounded shadow appearance-none focus:outline-none focus:shadow-outline"
                                     id="password"
                                     type="password"
                                     value=self.login.password.clone()
                                     oninput=self.link.callback(|e| Msg::PasswordChange(e))
                                 />
-                                <label class="block mb-2 text-sm font-bold text-gray-700" for="remember-me">
+                                <label class="block mb-2 text-sm font-bold text-gray-700 dark:text-gray-300" for="remember-me">
                                     {"Remember Me"}
                                 </label>
                                 <input
@@ -343,13 +341,14 @@ impl Source {
                                     checked=self.login.remember_me.unwrap_or(false)
                                     oninput=self.link.callback(|e| Msg::RememberMeChange(e))
                                 />
-                                <label class="block mb-2 text-sm font-bold text-gray-700" for="token">
+                                <label class="block mb-2 text-sm font-bold text-gray-700 dark:text-gray-300" for="token">
                                     {"2FA Code"}
                                 </label>
                                 <input
-                                    class="w-full px-3 py-2 mb-3 text-sm leading-tight text-gray-700 border rounded shadow appearance-none focus:outline-none focus:shadow-outline"
+                                    class="w-full px-3 py-2 mb-3 text-sm leading-tight bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-700 rounded shadow appearance-none focus:outline-none focus:shadow-outline"
+                                    type="text" 
+                                    name="token" 
                                     id="token"
-                                    type="text"
                                     inputmode="numeric"
                                     value=self.login.two_factor.clone().unwrap_or("".to_string())
                                     oninput=self.link.callback(|e| Msg::TwoFactorChange(e))

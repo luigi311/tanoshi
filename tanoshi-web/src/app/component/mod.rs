@@ -36,6 +36,9 @@ pub use webtoon::Webtoon;
 mod toast;
 pub use toast::{Toast, Type as ToastType};
 
+mod top_bar;
+pub use top_bar::TopBar;
+
 use std::cell::RefCell;
 use std::ops::Deref;
 use std::rc::Rc;

@@ -20,7 +20,6 @@ use clap::Clap;
 use rust_embed::RustEmbed;
 
 use std::sync::{Arc, RwLock};
-use tokio::join;
 use warp::{http::header::HeaderValue, path::Tail, reply::Response, Filter, Rejection, Reply};
 
 use config::Config;
@@ -206,34 +205,7 @@ async fn main() -> Result<()> {
 
     let routes = api.or(static_files).with(warp::log("manga"));
 
-    if config.cert != "" && config.cert != "" {
-        let tls_port = config.tls_port;
-        let redirect = warp::path::full()
-            .and(warp::header::<String>("host"))
-            .map(move |path: warp::path::FullPath, host: String| {
-                let authority_string = {
-                    let host_parts: Vec<&str> = host.split(':').collect();
-                    assert!(host_parts.len() == 1 || host_parts.len() == 2);
-                    format!("{}:{}", host_parts[0], tls_port)
-                };
-                let uri = warp::http::Uri::builder()
-                    .scheme("https")
-                    .authority(&*authority_string)
-                    .path_and_query(path.as_str())
-                    .build()
-                    .unwrap();
-                warp::redirect(uri)
-            });
-        let http_server = warp::serve(redirect).run(([0, 0, 0, 0], config.port));
-        let https_server = warp::serve(routes.clone()).tls()
-            .cert_path(config.cert)
-            .key_path(config.key)
-            .run(([0, 0, 0, 0], config.tls_port));
-
-        join!(http_server, https_server);
-    } else {
-        warp::serve(routes).run(([0, 0, 0, 0], config.port)).await;
-    }
+    warp::serve(routes).run(([0, 0, 0, 0], config.port)).await;
 
     return Ok(());
 }

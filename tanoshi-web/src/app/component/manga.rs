@@ -157,35 +157,33 @@ impl Component for Manga {
             .unwrap()
             .create_element("span")
             .unwrap();
-        let _ = div.class_list().add_7(
+        let _ = div.class_list().add_6(
             "absolute",
-            "sm:title",
-            "title-sm",
             "bottom-0",
             "sm:text-sm",
             "text-xs",
             "bg-black",
+            "w-full"
         );
         let _ = div
             .class_list()
-            .add_4("opacity-75", "text-white", "p-1", "truncate");
+            .add_5("opacity-75", "text-white", "p-1", "truncate", "rounded-b-md");
         let _ = div.set_inner_html(&self.title);
 
         let node = Node::from(div);
         let vnode = VNode::VRef(node);
         html! {
             <div
-            class=self.classes()
-            onmousedown=self.link.callback(|e| Msg::MouseDown(e))
-            onmouseup=self.link.callback(|e| Msg::MouseUp(e))
-            ontouchstart=self.link.callback(|e| Msg::TouchStart(e))
-            ontouchend=self.link.callback(|e| Msg::TouchEnd(e))
-            ontouchmove=self.link.callback(|e| Msg::TouchMove(e))
-            onclick=self.link.callback(|e| Msg::Click(e))
+                class=self.classes()
+                onmousedown=self.link.callback(|e| Msg::MouseDown(e))
+                onmouseup=self.link.callback(|e| Msg::MouseUp(e))
+                ontouchstart=self.link.callback(|e| Msg::TouchStart(e))
+                ontouchend=self.link.callback(|e| Msg::TouchEnd(e))
+                ontouchmove=self.link.callback(|e| Msg::TouchMove(e))
+                onclick=self.link.callback(|e| Msg::Click(e))
             >
-                <div class="manga-cover sm:cover cover-sm bg-center bg-cover relative hover:shadow-none" style={format!("background-image: url({})",self.thumbnail.to_owned())}>
-                    {vnode}
-                </div>
+                <img class="absolute w-full h-full object-cover rounded-md" src={self.thumbnail.to_owned()} />
+                {vnode}
             </div>
         }
     }
@@ -193,7 +191,7 @@ impl Component for Manga {
 
 impl Manga {
     fn classes(&self) -> Vec<&str> {
-        let mut classes = vec!["relative", "cursor-pointer"];
+        let mut classes = vec!["cursor-pointer", "relative", "rounded-md", "pb-7/5"];
         if self.is_favorite {
             classes.push("favorite");
         }

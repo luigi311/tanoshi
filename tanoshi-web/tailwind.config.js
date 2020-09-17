@@ -2,16 +2,19 @@ module.exports = {
     theme: {
         extend: {
             colors: {
-                'tachiyomi-blue': '#5b749b',
-                'tachiyomi-blue-lighter': '#7e93b3',
-                'tachiyomi-blue-darker': '#455876'
+                'accent': '#5b749b',
+                'accent-lighter': '#7e93b3',
+                'accent-darker': '#455876'
             },
             minHeight: {
                 '24': '6rem'
             },
             height: {
                 page: 'calc(100vw * 1.59)',
-                '1/2': '50%'
+                '1/2': '50%',
+            },
+            padding: {
+                '7/5': '141.5094339622642%',
             },
             boxShadow: {
                 top: '0 -1px 3px 0px rgba(0,0,0,0.1), 0 -1px 2px 0 rgba(0, 0, 0, .06)'
@@ -22,13 +25,13 @@ module.exports = {
         },
     },
     variants: {
-        backgroundColor: ['dark', 'responsive', 'hover', 'dark-hover', 'focus', 'active', 'group-hover', 'dark-group-hover', 'disabled', 'dark-disabled'],
+        backgroundColor: ['dark', 'responsive', 'hover', 'focus', 'active', 'disabled'],
         tableLayout: ['responsive', 'hover', 'focus'],
-        textColor: ['dark', 'responsive', 'hover', 'dark-hover', 'focus', 'active', 'group-hover', 'disabled'],
-        borderColor: ['dark'],
-        height: ['responsive']
+        textColor: ['dark', 'responsive', 'hover', 'focus', 'active', 'group-hover', 'disabled'],
     },
-    plugins: [
-        require('tailwindcss-dark-mode')()
-    ]
+    plugins: [],
+    dark: 'class',
+    experimental: {
+        darkModeVariant: true,
+    }
 }
