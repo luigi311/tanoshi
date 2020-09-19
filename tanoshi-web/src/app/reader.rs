@@ -17,6 +17,7 @@ use super::component::{Pager, ReaderSeekbar, ReaderToolbar, Spinner, WeakCompone
 use std::collections::HashMap;
 use tanoshi_lib::manga::{Chapter as ChapterModel, Manga as MangaModel};
 use tanoshi_lib::rest::{HistoryRequest, ReadResponse};
+use yew::format::Json;
 
 #[derive(Clone, Properties)]
 pub struct Props {
@@ -49,7 +50,6 @@ pub enum Msg {
     ToggleBar,
     PageSliderChange(usize),
     RouterCallback,
-    SetHistoryRequested,
     Refresh,
     Noop,
 }
@@ -110,7 +110,6 @@ impl Component for Reader {
 
         let worker_callback = link.callback(|msg| match msg {
             job::Response::ReadFetched(data) => Msg::ReadReady(data),
-            job::Response::HistoryPosted => Msg::SetHistoryRequested,
             _ => Msg::Noop,
         });
 
@@ -130,49 +129,6 @@ impl Component for Reader {
             worker: job::Worker::bridge(worker_callback),
             should_fetch: true,
         }
-    }
-
-    fn change(&mut self, props: Self::Properties) -> ShouldRender {
-        if self.current_chapter_id != props.chapter_id
-            || self.current_page != props.page.checked_sub(1).unwrap_or(0)
-        {
-            self.current_chapter_id = props.chapter_id;
-            self.current_page = props.page.checked_sub(1).unwrap_or(0);
-            true
-        } else {
-            false
-        }
-    }
-
-    fn rendered(&mut self, first_render: bool) {
-        if first_render {
-            if self.settings.page_rendering == PageRendering::DoublePage
-                && self.current_page % 2 != 0
-            {
-                let route_string = format!(
-                    "/chapter/{}/page/{}",
-                    self.current_chapter_id, self.current_page
-                );
-
-                let route = Route::from(route_string);
-                self.router.send(RouteRequest::ChangeRoute(route));
-            }
-        }
-        if self.should_fetch {
-            self.should_fetch = false;
-            self.read(false);
-        }
-
-        window()
-            .unwrap()
-            .document()
-            .unwrap()
-            .get_element_by_id("manga-reader")
-            .expect("should have manga reader")
-            .dyn_ref::<HtmlElement>()
-            .expect("should load HtmlElement")
-            .focus()
-            .unwrap();
     }
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
@@ -218,9 +174,6 @@ impl Component for Reader {
             Msg::RouterCallback => {
                 self.read(false);
             }
-            Msg::SetHistoryRequested => {
-                return false;
-            }
             Msg::Refresh => {
                 self.read(true);
             }
@@ -229,6 +182,18 @@ impl Component for Reader {
             }
         }
         true
+    }
+
+    fn change(&mut self, props: Self::Properties) -> ShouldRender {
+        if self.current_chapter_id != props.chapter_id
+            || self.current_page != props.page.checked_sub(1).unwrap_or(0)
+        {
+            self.current_chapter_id = props.chapter_id;
+            self.current_page = props.page.checked_sub(1).unwrap_or(0);
+            true
+        } else {
+            false
+        }
     }
 
     fn view(&self) -> Html {
@@ -275,6 +240,37 @@ impl Component for Reader {
         };
     }
 
+    fn rendered(&mut self, first_render: bool) {
+        if first_render {
+            if self.settings.page_rendering == PageRendering::DoublePage
+                && self.current_page % 2 != 0
+            {
+                let route_string = format!(
+                    "/chapter/{}/page/{}",
+                    self.current_chapter_id, self.current_page
+                );
+
+                let route = Route::from(route_string);
+                self.router.send(RouteRequest::ChangeRoute(route));
+            }
+        }
+        if self.should_fetch {
+            self.should_fetch = false;
+            self.read(false);
+        }
+
+        window()
+            .unwrap()
+            .document()
+            .unwrap()
+            .get_element_by_id("manga-reader")
+            .expect("should have manga reader")
+            .dyn_ref::<HtmlElement>()
+            .expect("should load HtmlElement")
+            .focus()
+            .unwrap();
+    }
+
     fn destroy(&mut self) {
         let _ = window()
             .unwrap()
@@ -311,9 +307,23 @@ impl Component for Reader {
 
 impl Reader {
     fn read(&mut self, refresh: bool) {
-        self.worker
-            .send(job::Request::FetchRead(self.current_chapter_id, refresh));
-        self.is_fetching = true;
+        if let Ok(task) = super::api::fetch_read(
+            self.current_chapter_id,
+            refresh,
+            self.link.callback(
+                move |response: super::api::FetchJsonResponse<ReadResponse>| {
+                    if let (meta, Json(Ok(data))) = response.into_parts() {
+                        if meta.status.is_success() {
+                            return Msg::ReadReady(data);
+                        }
+                    }
+                    Msg::Noop
+                },
+            ),
+        ) {
+            self.fetch_task_map.insert("read", task);
+            self.is_fetching = true;
+        }
     }
 
     fn next_chapter(&mut self) {

@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Error};
 use tanoshi_lib::manga::Params;
-use tanoshi_lib::rest::{GetMangasResponse, HistoryRequest};
+use tanoshi_lib::rest::{GetMangasResponse, HistoryRequest, ReadResponse};
 use yew::format::{Json, Nothing, Text};
 use yew::services::fetch::{FetchService, FetchTask, Request, Response};
 use yew::services::storage::Area;
@@ -57,6 +57,20 @@ pub fn post_history(
         .header("Authorization", token)
         .header("Content-Type", "application/json")
         .body(Json(&request))
+        .expect("failed to build request");
+
+    FetchService::fetch(req, callback)
+}
+
+pub fn fetch_read(
+    chapter_id: i32,
+    refresh: bool,
+    callback: FetchJsonCallback<ReadResponse>,
+) -> Result<FetchTask, Error> {
+    let token = get_token()?;
+    let req = Request::get(format!("/api/read/{}?refresh={}", chapter_id, refresh))
+        .header("Authorization", token)
+        .body(Nothing)
         .expect("failed to build request");
 
     FetchService::fetch(req, callback)

@@ -20,7 +20,6 @@ use tanoshi_lib::rest::{
 
 #[derive(Deserialize, Serialize)]
 pub enum Request {
-    PostHistory(String, HistoryRequest),
     FetchMangas(String, Params),
     FetchManga(i32),
     FetchChapters(i32, bool),
@@ -33,7 +32,6 @@ pub enum Request {
 
 #[derive(Deserialize, Serialize)]
 pub enum Response {
-    HistoryPosted,
     MangasFetched(GetMangasResponse),
     MangaFetched(GetMangaResponse),
     ChaptersFetched(GetChaptersResponse),
@@ -52,7 +50,6 @@ pub struct Worker {
 }
 
 pub enum Msg {
-    HistoryPosted(HandlerId),
     MangasReady(HandlerId, GetMangasResponse),
     MangaReady(HandlerId, GetMangaResponse),
     ChaptersReady(HandlerId, GetChaptersResponse),
@@ -86,10 +83,6 @@ impl Agent for Worker {
 
     fn update(&mut self, msg: Self::Message) {
         match msg {
-            Msg::HistoryPosted(id) => {
-                self.fetch_task.remove(&id.clone());
-                self.link.respond(id, Response::HistoryPosted);
-            }
             Msg::MangasReady(id, data) => {
                 self.fetch_task.remove(&id.clone());
                 self.link.respond(id, Response::MangasFetched(data));
@@ -132,27 +125,6 @@ impl Agent for Worker {
 
     fn handle_input(&mut self, msg: Self::Input, id: HandlerId) {
         match msg {
-            Request::PostHistory(token, request) => {
-                let req = HttpRequest::post("/api/history")
-                    .header("Authorization", token.to_string())
-                    .header("Content-Type", "application/json")
-                    .body(Json(&request))
-                    .expect("failed to build request");
-
-                if let Ok(task) = FetchService::fetch(
-                    req,
-                    self.link.callback(move |response: HttpResponse<Text>| {
-                        if let (meta, Ok(_)) = response.into_parts() {
-                            if meta.status.is_success() {
-                                return Msg::HistoryPosted(id);
-                            }
-                        }
-                        Msg::Noop
-                    }),
-                ) {
-                    self.fetch_task.insert(id.clone(), FetchTask::from(task));
-                }
-            }
             Request::FetchMangas(source_name, params) => {
                 let params = serde_urlencoded::to_string(params).unwrap();
 
