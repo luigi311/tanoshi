@@ -1,24 +1,17 @@
 use http::{Request, Response};
-use web_sys::HtmlElement;
 use yew::format::{Json, Nothing, Text};
-use yew::prelude::*;
 use yew::services::fetch::{FetchService, FetchTask};
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 use yew_router::components::RouterAnchor;
 
 use tanoshi_lib::manga::SourceIndex;
-use tanoshi_lib::rest::{GetSourceIndexResponse, ErrorResponse};
+use tanoshi_lib::rest::{ErrorResponse, GetSourceIndexResponse};
 
 use super::browse::BrowseRoute;
 use super::catalogue::CatalogueRoute;
 use super::component::{Spinner, Toast, ToastType, TopBar};
 
 use std::collections::HashMap;
-
-pub enum Tab {
-    Installed,
-    Available,
-}
 
 #[derive(Clone, Properties)]
 pub struct Props {}
@@ -28,16 +21,12 @@ pub struct Select {
     link: ComponentLink<Self>,
     sources: HashMap<bool, Vec<SourceIndex>>,
     is_fetching: bool,
-    active_tab: Tab,
-    button_refs: Vec<NodeRef>,
     show_toast: bool,
     toast_message: String,
 }
 
 pub enum Msg {
     SourceReady(GetSourceIndexResponse),
-    ChangeToAvailableTab,
-    ChangeToInstalledTab,
     InstallExtension(usize),
     ExtensionInstalled,
     ExtensionError(ErrorResponse),
@@ -54,8 +43,6 @@ impl Component for Select {
             link,
             sources: HashMap::new(),
             is_fetching: false,
-            active_tab: Tab::Installed,
-            button_refs: vec![NodeRef::default(), NodeRef::default()],
             show_toast: false,
             toast_message: "".to_string(),
         }
@@ -65,41 +52,12 @@ impl Component for Select {
         match msg {
             Msg::SourceReady(data) => {
                 for source in data.sources.iter() {
-                    self.sources.entry(source.installed).and_modify(|s| s.push(source.clone())).or_insert(vec![source.clone()]);
+                    self.sources
+                        .entry(source.installed)
+                        .and_modify(|s| s.push(source.clone()))
+                        .or_insert(vec![source.clone()]);
                 }
                 self.is_fetching = false;
-            }
-            Msg::ChangeToInstalledTab => {
-                self.active_tab = Tab::Installed;
-                self.fetch_sources();
-                if let Some(button) = self.button_refs[0].cast::<HtmlElement>() {
-                    button
-                        .class_list()
-                        .add_1("bg-tachiyomi-blue-darker")
-                        .expect("failed add class");
-                }
-                if let Some(button) = self.button_refs[1].cast::<HtmlElement>() {
-                    button
-                        .class_list()
-                        .remove_1("bg-tachiyomi-blue-darker")
-                        .expect("failed remove class");
-                }
-            }
-            Msg::ChangeToAvailableTab => {
-                self.active_tab = Tab::Available;
-                self.fetch_sources();
-                if let Some(button) = self.button_refs[0].cast::<HtmlElement>() {
-                    button
-                        .class_list()
-                        .remove_1("bg-tachiyomi-blue-darker")
-                        .expect("failed remove class");
-                }
-                if let Some(button) = self.button_refs[1].cast::<HtmlElement>() {
-                    button
-                        .class_list()
-                        .add_1("bg-tachiyomi-blue-darker")
-                        .expect("failed add class");
-                }
             }
             Msg::InstallExtension(index) => {
                 self.install_source(self.sources[&false][index].name.clone());
@@ -145,9 +103,9 @@ impl Component for Select {
 impl Select {
     fn installed_view(&self) -> Html {
         if !self.sources.contains_key(&true) {
-            return html!{};
+            return html! {};
         }
-        return html!{
+        return html! {
             <>
             <div class="w-full md:w-1/2 flex justify-center m-2"><span class="text-black dark:text-white">{"Installed"}</span></div>
             <div class="flex flex-col bg-white dark:bg-gray-900 divide-y divide-gray-300 dark:divide-gray-700 border-t border-b border-gray-300 dark:border-gray-700" style="margin-top:env(safe-area-inset-top)">
@@ -173,7 +131,7 @@ impl Select {
 
     fn available_view(&self) -> Html {
         if !self.sources.contains_key(&false) {
-            return html!{};
+            return html! {};
         }
         return html! {
             <>
@@ -242,15 +200,13 @@ impl Select {
         if let Ok(task) = FetchService::fetch(
             req,
             self.link.callback(|response: Response<Text>| {
-                if let (meta, body) = response.into_parts() {
-                    if meta.status.is_success() {
-                        return Msg::ExtensionInstalled;
-                    } else {
-                        let res: ErrorResponse = serde_json::from_str(&body.unwrap()).unwrap();
-                        return Msg::ExtensionError(res);
-                    }
+                let (meta, body) = response.into_parts();
+                if meta.status.is_success() {
+                    return Msg::ExtensionInstalled;
+                } else {
+                    let res: ErrorResponse = serde_json::from_str(&body.unwrap()).unwrap();
+                    return Msg::ExtensionError(res);
                 }
-                Msg::Noop
             }),
         ) {
             self.fetch_task = Some(FetchTask::from(task));
