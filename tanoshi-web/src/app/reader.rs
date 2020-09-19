@@ -2,6 +2,7 @@ use js_sys;
 use wasm_bindgen::JsCast;
 use web_sys::{window, HtmlElement};
 use yew::prelude::*;
+use yew::services::fetch::FetchTask;
 use yew::services::storage::Area;
 use yew::services::StorageService;
 
@@ -13,6 +14,7 @@ use crate::app::job;
 use super::component::model::{BackgroundColor, PageRendering, SettingParams};
 use super::component::{Pager, ReaderSeekbar, ReaderToolbar, Spinner, WeakComponentLink, Webtoon};
 
+use std::collections::HashMap;
 use tanoshi_lib::manga::{Chapter as ChapterModel, Manga as MangaModel};
 use tanoshi_lib::rest::{HistoryRequest, ReadResponse};
 
@@ -25,7 +27,7 @@ pub struct Props {
 pub struct Reader {
     link: ComponentLink<Self>,
     router: Box<dyn Bridge<RouteAgent>>,
-    token: String,
+    fetch_task_map: HashMap<&'static str, FetchTask>,
     manga: MangaModel,
     chapter: ChapterModel,
     current_chapter_id: i32,
@@ -115,7 +117,7 @@ impl Component for Reader {
         Reader {
             link,
             router,
-            token,
+            fetch_task_map: HashMap::new(),
             manga: MangaModel::default(),
             current_chapter_id: props.chapter_id,
             chapter: ChapterModel::default(),
@@ -377,8 +379,9 @@ impl Reader {
             read: self.current_page as i32,
             at: self.get_date(),
         };
-        self.worker
-            .send(job::Request::PostHistory(self.token.clone(), h));
+        if let Ok(task) = super::api::post_history(h, self.link.callback(|_| Msg::Noop)) {
+            self.fetch_task_map.insert("history", task);
+        }
     }
 
     fn get_current_volume_and_chapter(&self) -> String {
