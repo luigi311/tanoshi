@@ -15,8 +15,8 @@ use yew_router::Switch;
 use wasm_bindgen::prelude::*;
 use web_sys::window;
 
-use crate::app::AppRoute;
 use crate::app::browse::BrowseRoute;
+use crate::app::AppRoute;
 
 #[derive(Switch, Debug, Clone, PartialEq)]
 pub enum SettingRoute {
@@ -60,11 +60,11 @@ pub struct Settings {
     me_role: String,
     me_password: Option<String>,
     me_confirm_password: Option<String>,
-    me_telegram_chat_id: Option<i64>,
     change_password: bool,
     closure: Closure<dyn FnMut(JsValue)>,
     is_dark_mode: bool,
     setting_page: SettingRoute,
+    backend_version: String,
 }
 
 pub enum Msg {
@@ -86,6 +86,7 @@ pub enum Msg {
     SaveUserSuccess(usize),
     ClearCache,
     DarkMode(InputData),
+    VersionFetched(String),
     Noop,
 }
 
@@ -135,11 +136,11 @@ impl Component for Settings {
             me_role: "".to_string(),
             me_confirm_password: None,
             me_password: None,
-            me_telegram_chat_id: None,
             change_password: false,
             closure,
             is_dark_mode,
             setting_page: props.setting_page,
+            backend_version: "".to_string(),
         }
     }
 
@@ -163,8 +164,9 @@ impl Component for Settings {
                 self.me_role = claim.role;
                 if self.is_admin {
                     self.fetch_users();
+                } else {
+                    self.fetch_version();
                 }
-                self.me_telegram_chat_id = claim.telegram_chat_id;
             }
             Msg::UserListReady(users) => {
                 self.users = users
@@ -175,6 +177,7 @@ impl Component for Settings {
                         is_new: false,
                     })
                     .collect();
+                self.fetch_version();
             }
             Msg::NewUser => self.users.push(UserRow {
                 user: User {
@@ -266,6 +269,9 @@ impl Component for Settings {
                 self.storage
                     .store("dark-mode", Ok(format!("{}", self.is_dark_mode)));
             }
+            Msg::VersionFetched(version) => {
+                self.backend_version = version;
+            }
             Msg::Noop => {
                 return false;
             }
@@ -279,12 +285,6 @@ impl Component for Settings {
             true
         } else {
             false
-        }
-    }
-
-    fn rendered(&mut self, first_render: bool) {
-        if first_render {
-            self.validate_token();
         }
     }
 
@@ -302,7 +302,7 @@ impl Component for Settings {
                         SettingRoute::Misc => self.misc_settings(),
                         SettingRoute::Home => html!{
                             <div class="flex flex-col bg-white dark:bg-gray-900 divide-y divide-gray-300 dark:divide-gray-700 border-t border-b border-gray-300 dark:border-gray-700">
-                                <RouterAnchor<BrowseRoute> 
+                                <RouterAnchor<BrowseRoute>
                                     classes="flex inline-flex justify-center p-2 content-center hover:bg-gray-200 dark:hover:bg-gray-700"
                                     route=BrowseRoute::Settings(SettingRoute::Account)>
                                     <div class="w-full md:w-1/2 flex justify-between text-gray-900 dark:text-gray-300">
@@ -310,7 +310,7 @@ impl Component for Settings {
                                         <svg viewBox="0 0 20 20" fill="currentColor" class="chevron-right w-6 h-6"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path></svg>
                                     </div>
                                 </RouterAnchor<BrowseRoute>>
-                                <RouterAnchor<BrowseRoute> 
+                                <RouterAnchor<BrowseRoute>
                                     classes="flex inline-flex justify-center p-2 content-center hover:bg-gray-200 dark:hover:bg-gray-700"
                                     route=BrowseRoute::Settings(SettingRoute::Admin)>
                                     <div class="w-full md:w-1/2 flex justify-between text-gray-900 dark:text-gray-300">
@@ -318,7 +318,7 @@ impl Component for Settings {
                                         <svg viewBox="0 0 20 20" fill="currentColor" class="chevron-right w-6 h-6"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path></svg>
                                     </div>
                                 </RouterAnchor<BrowseRoute>>
-                                <RouterAnchor<BrowseRoute> 
+                                <RouterAnchor<BrowseRoute>
                                     classes="flex inline-flex justify-center p-2 content-center hover:bg-gray-200 dark:hover:bg-gray-700"
                                     route=BrowseRoute::Settings(SettingRoute::Reading)>
                                     <div class="w-full md:w-1/2 flex justify-between text-gray-900 dark:text-gray-300">
@@ -326,7 +326,7 @@ impl Component for Settings {
                                         <svg viewBox="0 0 20 20" fill="currentColor" class="chevron-right w-6 h-6"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path></svg>
                                     </div>
                                 </RouterAnchor<BrowseRoute>>
-                                <RouterAnchor<BrowseRoute> 
+                                <RouterAnchor<BrowseRoute>
                                     classes="flex inline-flex justify-center p-2 content-center hover:bg-gray-200 dark:hover:bg-gray-700"
                                     route=BrowseRoute::Settings(SettingRoute::Misc)>
                                     <div class="w-full md:w-1/2 flex justify-between text-gray-900 dark:text-gray-300">
@@ -339,6 +339,12 @@ impl Component for Settings {
                     }
                 }
             </div>
+        }
+    }
+
+    fn rendered(&mut self, first_render: bool) {
+        if first_render {
+            self.validate_token();
         }
     }
 }
@@ -453,6 +459,26 @@ impl Settings {
                     }
                 }
                 Msg::Noop
+            }),
+        ) {
+            self.fetch_task = Some(FetchTask::from(task));
+        }
+    }
+
+    fn fetch_version(&mut self) {
+        let req = Request::get("/api/version")
+            .body(Nothing)
+            .expect("failed to build request");
+
+        if let Ok(task) = FetchService::fetch(
+            req,
+            self.link.callback(|response: Response<Text>| {
+                let (meta, version) = response.into_parts();
+                if meta.status.is_success() {
+                    Msg::VersionFetched(version.unwrap_or("".to_string()))
+                } else {
+                    Msg::Noop
+                }
             }),
         ) {
             self.fetch_task = Some(FetchTask::from(task));
@@ -680,9 +706,16 @@ impl Settings {
                     })
                 }
                 {
-                    self.setting_card("Version", html! {
+                    self.setting_card("Web Version", html! {
                         <span class={"text-gray-800 dark:text-gray-200"}>
                             {super::VERSION}
+                        </span>
+                    })
+                }
+                {
+                    self.setting_card("Backend Version", html! {
+                        <span class={"text-gray-800 dark:text-gray-200"}>
+                            {&self.backend_version}
                         </span>
                     })
                 }
