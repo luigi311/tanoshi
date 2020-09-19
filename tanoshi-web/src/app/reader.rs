@@ -60,14 +60,7 @@ impl Component for Reader {
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
         let callback = link.callback(|_| Msg::RouterCallback);
         let router = RouteAgent::bridge(callback);
-        let storage = StorageService::new(Area::Local).unwrap();
-        let settings = {
-            if let Ok(settings) = storage.restore("settings") {
-                serde_json::from_str(settings.as_str()).expect("failed to serialize")
-            } else {
-                SettingParams::default()
-            }
-        };
+        let settings = SettingParams::parse_from_local_storage();
 
         let _ = window()
             .unwrap()

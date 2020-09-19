@@ -53,6 +53,25 @@ impl Default for SettingParams {
     }
 }
 
+impl SettingParams {
+    pub fn parse_from_local_storage() -> SettingParams {
+        if let Ok(storage) = crate::app::api::get_local_storage() {
+            if let Ok(settings) = storage.restore("settings") {
+                if let Ok(settings) = serde_json::from_str(settings.as_str()) {
+                    return settings;
+                }
+            }
+        }
+        return SettingParams::default();
+    }
+
+    pub fn save(&self) {
+        if let Ok(mut storage) = crate::app::api::get_local_storage() {
+            storage.store("settings", self);
+        }
+    }
+}
+
 impl From<&SettingParams> for Text {
     fn from(param: &SettingParams) -> Self {
         let val = serde_json::to_string(&param).unwrap();

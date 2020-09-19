@@ -96,13 +96,7 @@ impl Component for Settings {
 
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
         let storage = StorageService::new(Area::Local).unwrap();
-        let settings = {
-            if let Ok(settings) = storage.restore("settings") {
-                serde_json::from_str(settings.as_str()).expect("failed to serialize")
-            } else {
-                SettingParams::default()
-            }
-        };
+        let settings = SettingParams::parse_from_local_storage();
 
         let is_dark_mode = {
             if let Ok(is_dark_mode) = storage.restore("dark-mode") {
@@ -148,15 +142,15 @@ impl Component for Settings {
         match msg {
             Msg::SetReadingDirection(value) => {
                 self.settings.reading_direction = value;
-                self.storage.store("settings", &self.settings)
+                self.settings.save();
             }
             Msg::SetBackgroundColor(value) => {
                 self.settings.background_color = value;
-                self.storage.store("settings", &self.settings)
+                self.settings.save();
             }
             Msg::SetPageRendering(value) => {
                 self.settings.page_rendering = value;
-                self.storage.store("settings", &self.settings)
+                self.settings.save();
             }
             Msg::Authorized(claim) => {
                 self.is_admin = claim.role == "ADMIN".to_string();
