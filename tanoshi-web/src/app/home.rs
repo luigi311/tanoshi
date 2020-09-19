@@ -5,8 +5,8 @@ use yew::services::storage::Area;
 use yew::services::{FetchService, StorageService};
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 
-use super::component::{Manga, MangaList, Spinner, WeakComponentLink, Filter, TopBar};
-use tanoshi_lib::manga::{Manga as MangaModel, SortByParam, SortOrderParam, Params};
+use super::component::{Filter, Manga, MangaList, Spinner, TopBar, WeakComponentLink};
+use tanoshi_lib::manga::{Manga as MangaModel, Params, SortByParam, SortOrderParam};
 use tanoshi_lib::rest::GetMangasResponse;
 
 #[derive(Clone, Properties)]
@@ -81,7 +81,8 @@ impl Component for Home {
             }
             Msg::MangaUpdated => {
                 self.fetch_manga_chapter();
-            }Msg::Filter => {
+            }
+            Msg::Filter => {
                 if !self.show_filter {
                     self.show_filter = true;
                 } else {
@@ -171,13 +172,8 @@ impl Component for Home {
 impl Home {
     fn fetch_manga_chapter(&mut self) {
         if let Some(manga_id) = self.update_queue.pop() {
-            let req = Request::get(format!("/api/manga/{}/chapter?refresh=true", manga_id))
-                .header("Authorization", self.token.to_string())
-                .body(Nothing)
-                .expect("failed to build request");
-
-            if let Ok(task) = FetchService::fetch(
-                req,
+            if let Ok(task) = super::api::fetch_manga_chapter(
+                manga_id,
                 self.link
                     .callback(|_response: Response<Text>| Msg::MangaUpdated),
             ) {
@@ -191,21 +187,17 @@ impl Home {
     }
 
     fn fetch_favorites(&mut self) {
-        let params = serde_urlencoded::to_string(Params {
+        let params = Params {
             keyword: None,
             sort_by: Some(self.sort_by.clone()),
             sort_order: Some(self.sort_order.clone()),
             page: None,
             genres: None,
             refresh: None,
-        }).unwrap();
-        let req = Request::get(format!("/api/favorites?{}", params))
-            .header("Authorization", self.token.to_string())
-            .body(Nothing)
-            .expect("failed to build request");
+        };
 
-        if let Ok(task) = FetchService::fetch(
-            req,
+        if let Ok(task) = super::api::fetch_favorites(
+            params,
             self.link.callback(
                 |response: Response<Json<Result<GetMangasResponse, anyhow::Error>>>| {
                     if let (meta, Json(Ok(data))) = response.into_parts() {
