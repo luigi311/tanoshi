@@ -108,6 +108,13 @@ impl Agent for Worker {
         }
     }
 
+    fn connected(&mut self, _id: HandlerId) {
+        self.token = self
+            .storage
+            .restore::<Result<String>>("token")
+            .unwrap_or("".to_string());
+    }
+
     fn handle_input(&mut self, msg: Self::Input, id: HandlerId) {
         match msg {
             Request::FetchMangas(source_name, params) => {
@@ -252,13 +259,6 @@ impl Agent for Worker {
                 }
             }
         }
-    }
-
-    fn connected(&mut self, _id: HandlerId) {
-        self.token = self
-            .storage
-            .restore::<Result<String>>("token")
-            .unwrap_or("".to_string());
     }
 
     fn disconnected(&mut self, _id: HandlerId) {}

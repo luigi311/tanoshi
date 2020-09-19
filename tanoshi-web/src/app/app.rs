@@ -33,7 +33,7 @@ pub struct App {
 
 pub enum Msg {
     RouterCallback(Route),
-    TokenInvalidorExpired,
+    TokenInvalidOrExpired,
     Noop,
 }
 
@@ -78,7 +78,7 @@ impl Component for App {
             Msg::RouterCallback(route) => {
                 self.route = route.route;
             }
-            Msg::TokenInvalidorExpired => {
+            Msg::TokenInvalidOrExpired => {
                 self.router
                     .send(RouteRequest::ChangeRoute(Route::from("/login".to_string())));
             }
@@ -118,7 +118,7 @@ impl Component for App {
                     let (meta, _res) = response.into_parts();
                     let status = meta.status;
                     if status == http::StatusCode::UNAUTHORIZED {
-                        return Msg::TokenInvalidorExpired;
+                        return Msg::TokenInvalidOrExpired;
                     }
                     Msg::Noop
                 },
