@@ -4,13 +4,14 @@ use yew_router::prelude::{Route, RouteAgent};
 use yew_router::{router::Router, Switch};
 
 use super::browse::{self, Browse, BrowseRoute};
-use super::reader::Reader;
 use super::job;
 use super::login::Login;
 use super::logout::Logout;
-use yew::services::StorageService;
+use super::reader::Reader;
 use web_sys::window;
+use yew::services::fetch::FetchTask;
 use yew::services::storage::Area;
+use yew::services::StorageService;
 
 #[derive(Switch, Debug, Clone)]
 pub enum AppRoute {
@@ -29,7 +30,7 @@ pub struct App {
     link: ComponentLink<Self>,
     router: Box<dyn Bridge<RouteAgent>>,
     route: String,
-    worker: Box<dyn Bridge<job::Worker>>,
+    fetch_task: Option<FetchTask>,
 }
 
 pub enum Msg {
@@ -43,36 +44,36 @@ impl Component for App {
     type Properties = ();
 
     fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self {
+        let _ = window()
+            .unwrap()
+            .document()
+            .unwrap()
+            .body()
+            .unwrap()
+            .class_list()
+            .add_2("bg-gray-100", "dark:bg-gray-800");
+
         let storage = StorageService::new(Area::Local).unwrap();
-        let _ = window().unwrap().document().unwrap().body().unwrap().class_list().add_2("bg-gray-100", "dark:bg-gray-800");
         if let Ok(is_dark_mode) = storage.restore("dark-mode") {
-            if is_dark_mode == "true" { 
-                let _ = window().unwrap().document().unwrap().document_element().unwrap().class_list().add_1("dark");
+            if is_dark_mode == "true" {
+                let _ = window()
+                    .unwrap()
+                    .document()
+                    .unwrap()
+                    .document_element()
+                    .unwrap()
+                    .class_list()
+                    .add_1("dark");
             }
         }
 
         let callback = link.callback(|route| Msg::RouterCallback(route));
         let router = RouteAgent::bridge(callback);
-
-        let worker_callback = link.callback(|msg| match msg {
-            job::Response::TokenInvalidorExpired => Msg::TokenInvalidorExpired,
-            _ => Msg::Noop,
-        });
         App {
             link,
             router,
             route: "/".to_string(),
-            worker: job::Worker::bridge(worker_callback),
-        }
-    }
-
-    fn change(&mut self, _props: Self::Properties) -> ShouldRender {
-        false
-    }
-
-    fn rendered(&mut self, first_render: bool) {
-        if first_render {
-            self.worker.send(job::Request::ValidateToken);
+            fetch_task: None,
         }
     }
 
@@ -92,6 +93,10 @@ impl Component for App {
         true
     }
 
+    fn change(&mut self, _props: Self::Properties) -> ShouldRender {
+        false
+    }
+
     fn view(&self) -> Html {
         html! {
             <div class="w-full h-screen">
@@ -107,6 +112,23 @@ impl Component for App {
                     },
                 }}) />
             </div>
+        }
+    }
+
+    fn rendered(&mut self, first_render: bool) {
+        if first_render {
+            if let Ok(task) = super::api::validate_token(self.link.callback(
+                move |response: super::api::FetchTextResponse| {
+                    let (meta, _res) = response.into_parts();
+                    let status = meta.status;
+                    if status == http::StatusCode::UNAUTHORIZED {
+                        return Msg::TokenInvalidorExpired;
+                    }
+                    Msg::Noop
+                },
+            )) {
+                self.fetch_task = Some(task);
+            }
         }
     }
 }

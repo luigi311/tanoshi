@@ -38,7 +38,6 @@ pub struct Reader {
     is_fetching: bool,
     is_bar_visible: bool,
     settings: SettingParams,
-    worker: Box<dyn Bridge<job::Worker>>,
     should_fetch: bool,
 }
 
@@ -67,13 +66,6 @@ impl Component for Reader {
                 serde_json::from_str(settings.as_str()).expect("failed to serialize")
             } else {
                 SettingParams::default()
-            }
-        };
-        let token = {
-            if let Ok(token) = storage.restore("token") {
-                token
-            } else {
-                "".to_string()
             }
         };
 
@@ -108,11 +100,6 @@ impl Component for Reader {
             }
         };
 
-        let worker_callback = link.callback(|msg| match msg {
-            job::Response::ReadFetched(data) => Msg::ReadReady(data),
-            _ => Msg::Noop,
-        });
-
         Reader {
             link,
             router,
@@ -126,7 +113,6 @@ impl Component for Reader {
             is_fetching: false,
             is_bar_visible: true,
             settings,
-            worker: job::Worker::bridge(worker_callback),
             should_fetch: true,
         }
     }

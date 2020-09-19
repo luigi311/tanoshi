@@ -24,6 +24,16 @@ pub fn get_token() -> Result<String, Error> {
     storage.restore("token")
 }
 
+pub fn validate_token(callback: FetchTextCallback) -> Result<FetchTask, Error> {
+    let token = get_token()?;
+    let req = Request::get("/api/validate")
+        .header("Authorization", token)
+        .body(Nothing)
+        .expect("failed to build request");
+
+    FetchService::fetch(req, callback)
+}
+
 pub fn fetch_manga_chapter(manga_id: i32, callback: FetchTextCallback) -> Result<FetchTask, Error> {
     let token = get_token()?;
     let req = Request::get(format!("/api/manga/{}/chapter?refresh=true", manga_id))
