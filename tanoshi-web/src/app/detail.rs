@@ -6,10 +6,10 @@ use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 use yew_router::components::RouterAnchor;
 
 use super::component::{Spinner, TopBar};
-use crate::app::{job, AppRoute};
+use crate::app::AppRoute;
 
 use tanoshi_lib::manga::{Chapter as ChapterModel, Manga as MangaModel};
-use tanoshi_lib::rest::{GetChaptersResponse, GetMangaResponse};
+use tanoshi_lib::rest::{AddFavoritesResponse, GetChaptersResponse, GetMangaResponse};
 
 use serde::{Deserialize, Serialize};
 
@@ -21,11 +21,6 @@ use yew::services::StorageService;
 pub struct FavoriteManga {
     pub source: String,
     pub title: String,
-}
-
-#[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct AddFavoritesResponse {
-    pub status: String,
 }
 
 #[derive(Clone, Properties)]
@@ -42,7 +37,6 @@ pub struct Detail {
     chapters: Vec<ChapterModel>,
     is_fetching: bool,
     should_fetch: bool,
-    worker: Box<dyn Bridge<job::Worker>>,
     title_ref: NodeRef,
     desc_ref: NodeRef,
 }
@@ -71,13 +65,6 @@ impl Component for Detail {
             }
         };
 
-        let worker_callback = link.callback(|msg| match msg {
-            job::Response::MangaFetched(data) => Msg::MangaReady(data),
-            job::Response::ChaptersFetched(data) => Msg::ChapterReady(data),
-            _ => Msg::Noop,
-        });
-        let worker = job::Worker::bridge(worker_callback);
-
         Detail {
             fetch_task: None,
             link,
@@ -87,7 +74,6 @@ impl Component for Detail {
             chapters: vec![],
             is_fetching: true,
             should_fetch: true,
-            worker,
             title_ref: NodeRef::default(),
             desc_ref: NodeRef::default(),
         }
@@ -256,27 +242,49 @@ impl Component for Detail {
 
 impl Detail {
     fn get_manga_info(&mut self) {
-        self.worker.send(job::Request::FetchManga(self.manga_id));
-        self.is_fetching = true;
+        if let Ok(task) = super::api::fetch_manga(
+            self.manga_id,
+            self.link.callback(
+                move |response: super::api::FetchJsonResponse<GetMangaResponse>| {
+                    if let (meta, Json(Ok(data))) = response.into_parts() {
+                        if meta.status.is_success() {
+                            return Msg::MangaReady(data);
+                        }
+                    }
+                    Msg::Noop
+                },
+            ),
+        ) {
+            self.fetch_task = Some(task);
+            self.is_fetching = true;
+        }
     }
 
     fn get_chapters(&mut self, refresh: bool) {
-        self.worker
-            .send(job::Request::FetchChapters(self.manga_id, refresh));
-        self.is_fetching = true;
+        if let Ok(task) = super::api::fetch_chapters(
+            self.manga_id,
+            refresh,
+            self.link.callback(
+                move |response: super::api::FetchJsonResponse<GetChaptersResponse>| {
+                    if let (meta, Json(Ok(data))) = response.into_parts() {
+                        if meta.status.is_success() {
+                            return Msg::ChapterReady(data);
+                        }
+                    }
+                    Msg::Noop
+                },
+            ),
+        ) {
+            self.fetch_task = Some(task);
+            self.is_fetching = true;
+        }
     }
 
     fn favorite(&mut self) {
-        let req = Request::post(format!("/api/favorites/manga/{}", self.manga_id))
-            .header("Authorization", self.token.to_owned())
-            .header("Content-Type", "application/json")
-            .body(Nothing)
-            .expect("failed to build request");
-
-        if let Ok(task) = FetchService::fetch(
-            req,
+        if let Ok(task) = super::api::favorite(
+            self.manga_id,
             self.link.callback(
-                |response: Response<Json<Result<AddFavoritesResponse, anyhow::Error>>>| {
+                |response: super::api::FetchJsonResponse<AddFavoritesResponse>| {
                     if let (meta, Json(Ok(data))) = response.into_parts() {
                         if meta.status.is_success() {
                             return Msg::Favorited(data);
@@ -291,15 +299,10 @@ impl Detail {
     }
 
     fn unfavorite(&mut self) {
-        let req = Request::delete(format!("/api/favorites/manga/{}", self.manga_id))
-            .header("Authorization", self.token.to_owned())
-            .body(Nothing)
-            .expect("failed to build request");
-
-        if let Ok(task) = FetchService::fetch(
-            req,
+        if let Ok(task) = super::api::unfavorite(
+            self.manga_id,
             self.link.callback(
-                |response: Response<Json<Result<AddFavoritesResponse, anyhow::Error>>>| {
+                |response: super::api::FetchJsonResponse<AddFavoritesResponse>| {
                     if let (meta, Json(Ok(data))) = response.into_parts() {
                         if meta.status.is_success() {
                             return Msg::Unfavorited(data);

@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::time::Duration;
 use web_sys::Node;
 use yew::format::{Json, Nothing};
 use yew::prelude::*;
@@ -11,7 +12,6 @@ use yew::{
 };
 use yew_router::agent::{RouteAgent, RouteRequest};
 use yew_router::prelude::*;
-use std::time::Duration;
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct FavoriteManga {
@@ -163,11 +163,15 @@ impl Component for Manga {
             "sm:text-sm",
             "text-xs",
             "bg-black",
-            "w-full"
+            "w-full",
         );
-        let _ = div
-            .class_list()
-            .add_5("opacity-75", "text-white", "p-1", "truncate", "rounded-b-md");
+        let _ = div.class_list().add_5(
+            "opacity-75",
+            "text-white",
+            "p-1",
+            "truncate",
+            "rounded-b-md",
+        );
         let _ = div.set_inner_html(&self.title);
 
         let node = Node::from(div);
@@ -199,16 +203,10 @@ impl Manga {
     }
 
     fn favorite(&mut self) {
-        let req = Request::post(format!("/api/favorites/manga/{}", self.id))
-            .header("Authorization", self.token.to_owned())
-            .header("Content-Type", "application/json")
-            .body(Nothing)
-            .expect("failed to build request");
-
-        if let Ok(task) = FetchService::fetch(
-            req,
+        if let Ok(task) = super::api::favorite(
+            self.manga_id,
             self.link.callback(
-                |response: Response<Json<Result<AddFavoritesResponse, anyhow::Error>>>| {
+                |response: super::api::FetchJsonResponse<AddFavoritesResponse>| {
                     if let (meta, Json(Ok(data))) = response.into_parts() {
                         if meta.status.is_success() {
                             return Msg::Favorited(data);
@@ -223,15 +221,10 @@ impl Manga {
     }
 
     fn unfavorite(&mut self) {
-        let req = Request::delete(format!("/api/favorites/manga/{}", self.id))
-            .header("Authorization", self.token.to_owned())
-            .body(Nothing)
-            .expect("failed to build request");
-
-        if let Ok(task) = FetchService::fetch(
-            req,
+        if let Ok(task) = super::api::unfavorite(
+            self.manga_id,
             self.link.callback(
-                |response: Response<Json<Result<AddFavoritesResponse, anyhow::Error>>>| {
+                |response: super::api::FetchJsonResponse<AddFavoritesResponse>| {
                     if let (meta, Json(Ok(data))) = response.into_parts() {
                         if meta.status.is_success() {
                             return Msg::Unfavorited(data);

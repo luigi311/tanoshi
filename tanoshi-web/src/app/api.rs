@@ -1,8 +1,8 @@
 use anyhow::{anyhow, Error};
 use tanoshi_lib::manga::{Params, SourceLogin, SourceLoginResult};
 use tanoshi_lib::rest::{
-    GetChaptersResponse, GetMangaResponse, GetMangasResponse, GetPagesResponse, HistoryRequest,
-    ReadResponse,
+    AddFavoritesResponse, GetChaptersResponse, GetMangaResponse, GetMangasResponse,
+    GetPagesResponse, HistoryRequest, ReadResponse,
 };
 use yew::format::{Binary, Json, Nothing, Text};
 use yew::services::fetch::{FetchService, FetchTask, Request, Response};
@@ -103,7 +103,7 @@ pub fn fetch_mangas(
 ) -> Result<FetchTask, Error> {
     let params = serde_urlencoded::to_string(params)?;
     let token = get_token()?;
-    let source_auth = get_source_auth(source_name)?;
+    let source_auth = get_source_auth(source_name).unwrap_or("".to_string());
 
     let req = Request::get(format!("/api/source/{}?{}", source_name, params))
         .header("Authorization", token)
@@ -174,6 +174,34 @@ pub fn post_source_login(
         .header("Authorization", token)
         .header("Content-Type", "application/json")
         .body(Json(&login))
+        .expect("failed to build request");
+
+    FetchService::fetch(req, callback)
+}
+
+pub fn favorite(
+    manga_id: i32,
+    callback: FetchJsonCallback<AddFavoritesResponse>,
+) -> Result<FetchTask, Error> {
+    let token = get_token()?;
+    let req = Request::post(format!("/api/favorites/manga/{}", manga_id))
+        .header("Authorization", token)
+        .header("Content-Type", "application/json")
+        .body(Nothing)
+        .expect("failed to build request");
+
+    FetchService::fetch(req, callback)
+}
+
+pub fn unfavorite(
+    manga_id: i32,
+    callback: FetchJsonCallback<AddFavoritesResponse>,
+) -> Result<FetchTask, Error> {
+    let token = get_token()?;
+    let req = Request::delete(format!("/api/favorites/manga/{}", manga_id))
+        .header("Authorization", token)
+        .header("Content-Type", "application/json")
+        .body(Nothing)
         .expect("failed to build request");
 
     FetchService::fetch(req, callback)
