@@ -1,7 +1,8 @@
+use crate::app::{
+    browse::BrowseRoute, catalogue::CatalogueRoute, settings::SettingRoute, AppRoute,
+};
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 use yew_router::components::RouterAnchor;
-use yew_router::switch::AllowMissing;
-use crate::app::{browse::BrowseRoute, catalogue::CatalogueRoute, AppRoute, settings::SettingRoute};
 
 #[derive(Clone, PartialEq, Properties)]
 pub struct Props {}

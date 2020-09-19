@@ -1,10 +1,10 @@
-use yew::prelude::*;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use web_sys::{window, Event};
+use yew::prelude::*;
 
-use crate::app::component::{WeakComponentLink};
-use crate::app::reader::{Reader, Msg as ReaderMsg};
+use crate::app::component::WeakComponentLink;
+use crate::app::reader::{Msg as ReaderMsg, Reader};
 
 #[derive(Clone, PartialEq, Properties)]
 pub struct Props {
@@ -18,7 +18,7 @@ pub struct Props {
 pub struct Webtoon {
     props: Props,
     link: ComponentLink<Self>,
-    closure: Closure<dyn Fn()>,
+    _closure: Closure<dyn Fn()>,
     loaded_page: Vec<String>,
     page_scroll_height: Vec<i32>,
     scrolled: bool,
@@ -37,19 +37,21 @@ impl Component for Webtoon {
 
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
         let tmp_link = link.clone();
-        let closure = Closure::wrap(Box::new(move || {
+        let _closure = Closure::wrap(Box::new(move || {
             let current_scroll = window().unwrap().scroll_y().expect("error get scroll y")
                 + window().unwrap().inner_height().unwrap().as_f64().unwrap();
 
             tmp_link.send_message(Msg::ScrollEvent(current_scroll as i32));
         }) as Box<dyn Fn()>);
 
-        window().unwrap().set_onscroll(Some(closure.as_ref().unchecked_ref()));
+        window()
+            .unwrap()
+            .set_onscroll(Some(_closure.as_ref().unchecked_ref()));
 
         Webtoon {
             props,
             link,
-            closure,
+            _closure,
             loaded_page: vec![],
             page_scroll_height: vec![],
             scrolled: false,
@@ -76,19 +78,34 @@ impl Component for Webtoon {
                 }
             }
             Msg::ImageLoad(index) => {
-                if let Some(img) = window().unwrap().document().unwrap().get_element_by_id(format!("{}", index).as_str()) {
-                    img.class_list().remove_4("border", "border-dashed", "md:h-screen", "h-page").expect("failed remove class");
+                if let Some(img) = window()
+                    .unwrap()
+                    .document()
+                    .unwrap()
+                    .get_element_by_id(format!("{}", index).as_str())
+                {
+                    img.class_list()
+                        .remove_4("border", "border-dashed", "md:h-screen", "h-page")
+                        .expect("failed remove class");
                     img.class_list().add_1("h-auto").expect("failed add class");
-                    img.remove_attribute("style").expect("failed remove attribute");
+                    img.remove_attribute("style")
+                        .expect("failed remove attribute");
                     self.loaded_page[index] = img.get_attribute("src").unwrap();
                 }
             }
             Msg::ImageError(index, _event) => {
-                if let Some(img) = window().unwrap().document().unwrap().get_element_by_id(format!("{}", index).as_str()) {
+                if let Some(img) = window()
+                    .unwrap()
+                    .document()
+                    .unwrap()
+                    .get_element_by_id(format!("{}", index).as_str())
+                {
                     img.set_attribute("style", r#"background: transparent url("data:image/svg+xml;utf8,<svg fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" stroke="currentColor"><path d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>") no-repeat scroll center center"#).expect("failed set property");
                 }
             }
-            Msg::Noop => {return false;}
+            Msg::Noop => {
+                return false;
+            }
         }
         true
     }
@@ -108,20 +125,6 @@ impl Component for Webtoon {
             true
         } else {
             false
-        }
-    }
-
-    fn rendered(&mut self, _first_render: bool) {
-        if !self.scrolled {
-            if let Some(el) = window().unwrap().document().unwrap().get_element_by_id(format!("{}", self.props.current_page).as_str()) {
-                el.scroll_into_view();
-                self.scrolled = true;
-            }
-        }
-        for page in 0..self.props.pages.len() {
-            if let Some(el) = window().unwrap().document().unwrap().get_element_by_id(format!("{}", page).as_str()) {
-                self.page_scroll_height[page] = el.scroll_height();
-            }
         }
     }
 
@@ -163,6 +166,30 @@ impl Component for Webtoon {
         }
     }
 
+    fn rendered(&mut self, _first_render: bool) {
+        if !self.scrolled {
+            if let Some(el) = window()
+                .unwrap()
+                .document()
+                .unwrap()
+                .get_element_by_id(format!("{}", self.props.current_page).as_str())
+            {
+                el.scroll_into_view();
+                self.scrolled = true;
+            }
+        }
+        for page in 0..self.props.pages.len() {
+            if let Some(el) = window()
+                .unwrap()
+                .document()
+                .unwrap()
+                .get_element_by_id(format!("{}", page).as_str())
+            {
+                self.page_scroll_height[page] = el.scroll_height();
+            }
+        }
+    }
+
     fn destroy(&mut self) {
         window().unwrap().set_onscroll(None);
     }
@@ -170,7 +197,8 @@ impl Component for Webtoon {
 
 impl Webtoon {
     fn page_or_empty(&self, i: usize, page: &String) -> String {
-        if i >= self.props.current_page.checked_sub(2).unwrap_or(0) && i < self.props.current_page + 3
+        if i >= self.props.current_page.checked_sub(2).unwrap_or(0)
+            && i < self.props.current_page + 3
         {
             page.to_string()
         } else {

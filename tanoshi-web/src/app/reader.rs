@@ -1,6 +1,6 @@
 use js_sys;
 use wasm_bindgen::JsCast;
-use web_sys::{HtmlElement, window};
+use web_sys::{window, HtmlElement};
 use yew::prelude::*;
 use yew::services::storage::Area;
 use yew::services::StorageService;
@@ -8,10 +8,10 @@ use yew::services::StorageService;
 use yew::{html, Component, ComponentLink, Html, InputData, Properties, ShouldRender};
 use yew_router::{agent::RouteRequest, prelude::*};
 
-use crate::app::{job};
+use crate::app::job;
 
 use super::component::model::{BackgroundColor, PageRendering, SettingParams};
-use super::component::{Pager, Webtoon, Spinner, WeakComponentLink, ReaderToolbar, ReaderSeekbar};
+use super::component::{Pager, ReaderSeekbar, ReaderToolbar, Spinner, WeakComponentLink, Webtoon};
 
 use tanoshi_lib::manga::{Chapter as ChapterModel, Manga as MangaModel};
 use tanoshi_lib::rest::{HistoryRequest, ReadResponse};
@@ -37,7 +37,6 @@ pub struct Reader {
     settings: SettingParams,
     worker: Box<dyn Bridge<job::Worker>>,
     should_fetch: bool,
-    is_dark_mode: bool,
 }
 
 pub enum Msg {
@@ -75,26 +74,35 @@ impl Component for Reader {
                 "".to_string()
             }
         };
-        let is_dark_mode = {
-            if let Ok(is_dark_mode) = storage.restore("dark-mode") {
-                if is_dark_mode == "true" {
-                    true
-                } else {
-                    false
-                }
-            } else {
-                false
-            }
-        };
 
-        
-        let _ = window().unwrap().document().unwrap().body().unwrap().class_list().remove_2("bg-gray-100", "dark:bg-gray-800");
+        let _ = window()
+            .unwrap()
+            .document()
+            .unwrap()
+            .body()
+            .unwrap()
+            .class_list()
+            .remove_2("bg-gray-100", "dark:bg-gray-800");
         match settings.background_color.clone() {
             BackgroundColor::Black => {
-                let _ = window().unwrap().document().unwrap().body().unwrap().class_list().add_1("bg-black");
+                let _ = window()
+                    .unwrap()
+                    .document()
+                    .unwrap()
+                    .body()
+                    .unwrap()
+                    .class_list()
+                    .add_1("bg-black");
             }
             BackgroundColor::White => {
-                let _ = window().unwrap().document().unwrap().body().unwrap().class_list().add_1("bg-white");
+                let _ = window()
+                    .unwrap()
+                    .document()
+                    .unwrap()
+                    .body()
+                    .unwrap()
+                    .class_list()
+                    .add_1("bg-white");
             }
         };
 
@@ -119,7 +127,6 @@ impl Component for Reader {
             settings,
             worker: job::Worker::bridge(worker_callback),
             should_fetch: true,
-            is_dark_mode,
         }
     }
 
@@ -184,7 +191,8 @@ impl Component for Reader {
                     self.current_page + 1,
                 );
                 let route = Route::from(route_string);
-                self.router.send(RouteRequest::ReplaceRouteNoBroadcast(route));
+                self.router
+                    .send(RouteRequest::ReplaceRouteNoBroadcast(route));
             }
             Msg::NextChapter => {
                 self.next_chapter();
@@ -266,13 +274,34 @@ impl Component for Reader {
     }
 
     fn destroy(&mut self) {
-        let _ = window().unwrap().document().unwrap().body().unwrap().class_list().add_2("bg-gray-100", "dark:bg-gray-800");
+        let _ = window()
+            .unwrap()
+            .document()
+            .unwrap()
+            .body()
+            .unwrap()
+            .class_list()
+            .add_2("bg-gray-100", "dark:bg-gray-800");
         match self.settings.background_color.clone() {
             BackgroundColor::Black => {
-                let _ = window().unwrap().document().unwrap().body().unwrap().class_list().remove_1("bg-black");
+                let _ = window()
+                    .unwrap()
+                    .document()
+                    .unwrap()
+                    .body()
+                    .unwrap()
+                    .class_list()
+                    .remove_1("bg-black");
             }
             BackgroundColor::White => {
-                let _ = window().unwrap().document().unwrap().body().unwrap().class_list().remove_1("bg-white");
+                let _ = window()
+                    .unwrap()
+                    .document()
+                    .unwrap()
+                    .body()
+                    .unwrap()
+                    .class_list()
+                    .remove_1("bg-white");
             }
         };
     }
@@ -329,10 +358,7 @@ impl Reader {
         };
         if current_chapter_idx < self.chapters.len() {
             self.pages.clear();
-            let route_string = format!(
-                "/chapter/{}/page/1",
-                self.current_chapter_id,
-            );
+            let route_string = format!("/chapter/{}/page/1", self.current_chapter_id,);
             let route = Route::from(route_string);
             self.router.send(RouteRequest::ReplaceRoute(route));
         }

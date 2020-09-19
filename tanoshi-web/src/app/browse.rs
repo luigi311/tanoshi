@@ -1,16 +1,15 @@
 use yew::{html, Bridge, Bridged, Component, ComponentLink, Html, Properties, ShouldRender};
 use yew_router::prelude::{Route, RouteAgent};
 use yew_router::{router::Router, Switch};
-use yew_router::switch::AllowMissing;
 
-use crate::app::catalogue::CatalogueRoute;
-use crate::app::settings::SettingRoute;
 use super::catalogue::Catalogue;
 use super::component::NavigationBar;
 use super::detail::Detail;
 use super::history::History;
 use super::home::Home;
 use super::settings::Settings;
+use crate::app::catalogue::CatalogueRoute;
+use crate::app::settings::SettingRoute;
 
 #[derive(Switch, Debug, Clone)]
 pub enum BrowseRoute {

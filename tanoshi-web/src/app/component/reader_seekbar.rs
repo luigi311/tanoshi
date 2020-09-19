@@ -1,5 +1,5 @@
-use yew::prelude::*;
 use web_sys::HtmlElement;
+use yew::prelude::*;
 
 #[derive(Clone, PartialEq, Properties)]
 pub struct Props {
@@ -7,27 +7,23 @@ pub struct Props {
     pub disabled: bool,
     pub length: usize,
     pub current_page: usize,
-    pub on_input: Callback<InputData>
+    pub on_input: Callback<InputData>,
 }
 
 pub struct ReaderSeekbar {
     props: Props,
-    link: ComponentLink<Self>,
     root_ref: NodeRef,
 }
 
-pub enum Msg {
-    Noop
-}
+pub enum Msg {}
 
-impl Component for ReaderSeekbar{
+impl Component for ReaderSeekbar {
     type Message = Msg;
     type Properties = Props;
 
-    fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
-        ReaderSeekbar{
+    fn create(props: Self::Properties, _link: ComponentLink<Self>) -> Self {
+        ReaderSeekbar {
             props,
-            link,
             root_ref: NodeRef::default(),
         }
     }
@@ -37,35 +33,35 @@ impl Component for ReaderSeekbar{
     }
 
     fn change(&mut self, props: Self::Properties) -> bool {
-       if self.props != props {
-           self.props = props;
-           if !self.props.visible {
-               if let Some(bar) = self.root_ref.cast::<HtmlElement>() {
-                   bar.class_list()
-                       .remove_1("slideInUp")
-                       .expect("failed remove class");
-                   bar.class_list()
-                       .add_1("slideOutDown")
-                       .expect("failed add class");
-               }
-           } else {
-               if let Some(bar) = self.root_ref.cast::<HtmlElement>() {
-                   bar.class_list()
-                       .remove_1("slideOutDown")
-                       .expect("failed remove class");
-                   bar.class_list()
-                       .add_1("slideInUp")
-                       .expect("failed add class");
-               }
-           }
-           true
-       } else {
-           false
-       }
+        if self.props != props {
+            self.props = props;
+            if !self.props.visible {
+                if let Some(bar) = self.root_ref.cast::<HtmlElement>() {
+                    bar.class_list()
+                        .remove_1("slideInUp")
+                        .expect("failed remove class");
+                    bar.class_list()
+                        .add_1("slideOutDown")
+                        .expect("failed add class");
+                }
+            } else {
+                if let Some(bar) = self.root_ref.cast::<HtmlElement>() {
+                    bar.class_list()
+                        .remove_1("slideOutDown")
+                        .expect("failed remove class");
+                    bar.class_list()
+                        .add_1("slideInUp")
+                        .expect("failed add class");
+                }
+            }
+            true
+        } else {
+            false
+        }
     }
 
     fn view(&self) -> Html {
-        html!{
+        html! {
             <div ref=self.root_ref.clone()
                  class="animated slideInUp faster block fixed inset-x-0 bottom-0 z-50 bg-gray-900 opacity-75 shadow safe-bottom">
                 <div class="flex px-4 py-5 justify-center">

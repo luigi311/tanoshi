@@ -1,5 +1,5 @@
-use yew::prelude::*;
 use yew::html::Children;
+use yew::prelude::*;
 
 #[derive(Clone, PartialEq, Properties)]
 pub struct Props {
@@ -11,22 +11,18 @@ pub struct TopBar {
     props: Props,
 }
 
-pub enum Msg {
-
-}
+pub enum Msg {}
 
 impl Component for TopBar {
     type Message = Msg;
     type Properties = Props;
 
-    fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
-        TopBar {
-            props
-        }
+    fn create(props: Self::Properties, _link: ComponentLink<Self>) -> Self {
+        TopBar { props }
     }
 
-    fn update(&mut self, msg: Self::Message) -> bool {
-        true
+    fn update(&mut self, _msg: Self::Message) -> bool {
+        false
     }
 
     fn change(&mut self, props: Self::Properties) -> bool {

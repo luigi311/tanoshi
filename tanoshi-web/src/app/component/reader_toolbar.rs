@@ -1,8 +1,8 @@
+use crate::app::browse::BrowseRoute;
+use crate::app::AppRoute;
+use web_sys::{HtmlElement, MouseEvent};
 use yew::prelude::*;
 use yew_router::prelude::*;
-use web_sys::{MouseEvent, HtmlElement};
-use crate::app::AppRoute;
-use crate::app::browse::BrowseRoute;
 
 #[derive(Clone, PartialEq, Properties)]
 pub struct Props {
@@ -15,26 +15,22 @@ pub struct Props {
 
 pub struct ReaderToolbar {
     props: Props,
-    link: ComponentLink<Self>,
     root_ref: NodeRef,
-    title_ref: NodeRef
+    title_ref: NodeRef,
 }
 
-pub enum Msg {
-    Noop
-}
+pub enum Msg {}
 
-impl Component for ReaderToolbar{
+impl Component for ReaderToolbar {
     type Message = Msg;
     type Properties = Props;
 
-    fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
-       ReaderToolbar{
-           props,
-           link,
-           root_ref: NodeRef::default(),
-           title_ref: NodeRef::default(),
-       }
+    fn create(props: Self::Properties, _link: ComponentLink<Self>) -> Self {
+        ReaderToolbar {
+            props,
+            root_ref: NodeRef::default(),
+            title_ref: NodeRef::default(),
+        }
     }
 
     fn update(&mut self, _msg: Self::Message) -> bool {

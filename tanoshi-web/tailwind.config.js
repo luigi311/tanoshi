@@ -13,7 +13,7 @@ module.exports = {
                 page: 'calc(100vw * 1.59)',
                 '1/2': '50%',
             },
-            padding: {
+            spacing: {
                 '7/5': '141.5094339622642%',
             },
             boxShadow: {
