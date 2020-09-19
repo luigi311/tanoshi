@@ -4,14 +4,12 @@ use yew_router::prelude::{Route, RouteAgent};
 use yew_router::{router::Router, Switch};
 
 use super::browse::{self, Browse, BrowseRoute};
-use super::job;
 use super::login::Login;
 use super::logout::Logout;
 use super::reader::Reader;
+use crate::app::component::model::SettingParams;
 use web_sys::window;
 use yew::services::fetch::FetchTask;
-use yew::services::storage::Area;
-use yew::services::StorageService;
 
 #[derive(Switch, Debug, Clone)]
 pub enum AppRoute {
@@ -53,18 +51,16 @@ impl Component for App {
             .class_list()
             .add_2("bg-gray-100", "dark:bg-gray-800");
 
-        let storage = StorageService::new(Area::Local).unwrap();
-        if let Ok(is_dark_mode) = storage.restore("dark-mode") {
-            if is_dark_mode == "true" {
-                let _ = window()
-                    .unwrap()
-                    .document()
-                    .unwrap()
-                    .document_element()
-                    .unwrap()
-                    .class_list()
-                    .add_1("dark");
-            }
+        let settings = SettingParams::parse_from_local_storage();
+        if settings.dark_mode {
+            let _ = window()
+                .unwrap()
+                .document()
+                .unwrap()
+                .document_element()
+                .unwrap()
+                .class_list()
+                .add_1("dark");
         }
 
         let callback = link.callback(|route| Msg::RouterCallback(route));

@@ -41,6 +41,7 @@ pub struct SettingParams {
     pub page_rendering: PageRendering,
     pub background_color: BackgroundColor,
     pub reading_direction: ReadingDirection,
+    pub dark_mode: bool,
 }
 
 impl Default for SettingParams {
@@ -49,6 +50,7 @@ impl Default for SettingParams {
             page_rendering: PageRendering::SinglePage,
             background_color: BackgroundColor::Black,
             reading_direction: ReadingDirection::LeftToRight,
+            dark_mode: false,
         }
     }
 }

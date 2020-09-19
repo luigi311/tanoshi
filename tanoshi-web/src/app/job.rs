@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use yew::worker::*;
 
-use yew::format::{Binary, Json, Nothing, Text};
+use yew::format::{Binary, Json, Nothing};
 use yew::services::fetch::{FetchService, FetchTask};
 use yew::services::storage::{Area, StorageService};
 
@@ -14,8 +14,7 @@ use anyhow::Result;
 
 use tanoshi_lib::manga::{Params, SourceLogin, SourceLoginResult};
 use tanoshi_lib::rest::{
-    GetChaptersResponse, GetMangaResponse, GetMangasResponse, GetPagesResponse, HistoryRequest,
-    ReadResponse,
+    GetChaptersResponse, GetMangaResponse, GetMangasResponse, GetPagesResponse,
 };
 
 #[derive(Deserialize, Serialize)]

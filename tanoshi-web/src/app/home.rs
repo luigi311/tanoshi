@@ -1,8 +1,6 @@
-use yew::format::{Json, Nothing, Text};
+use yew::format::{Json, Text};
 use yew::prelude::*;
-use yew::services::fetch::{FetchTask, Request, Response};
-use yew::services::storage::Area;
-use yew::services::{FetchService, StorageService};
+use yew::services::fetch::{FetchTask, Response};
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 
 use super::component::{Filter, Manga, MangaList, Spinner, TopBar, WeakComponentLink};
@@ -41,15 +39,6 @@ impl Component for Home {
     type Properties = Props;
 
     fn create(_props: Self::Properties, link: ComponentLink<Self>) -> Self {
-        let storage = StorageService::new(Area::Local).unwrap();
-        let token = {
-            if let Ok(token) = storage.restore("token") {
-                token
-            } else {
-                "".to_string()
-            }
-        };
-
         Home {
             fetch_task: None,
             link,

@@ -3,13 +3,9 @@ use wasm_bindgen::JsCast;
 use web_sys::{window, HtmlElement};
 use yew::prelude::*;
 use yew::services::fetch::FetchTask;
-use yew::services::storage::Area;
-use yew::services::StorageService;
 
 use yew::{html, Component, ComponentLink, Html, InputData, Properties, ShouldRender};
 use yew_router::{agent::RouteRequest, prelude::*};
-
-use crate::app::job;
 
 use super::component::model::{BackgroundColor, PageRendering, SettingParams};
 use super::component::{Pager, ReaderSeekbar, ReaderToolbar, Spinner, WeakComponentLink, Webtoon};
