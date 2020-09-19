@@ -1,9 +1,9 @@
+use web_sys::HtmlElement;
 use yew::format::{Json, Nothing};
 use yew::prelude::*;
 use yew::services::fetch::{FetchService, FetchTask, Request, Response};
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 use yew_router::components::RouterAnchor;
-use web_sys::HtmlElement;
 
 use super::component::{Spinner, TopBar};
 use crate::app::{job, AppRoute};
@@ -105,7 +105,12 @@ impl Component for Detail {
                 }
 
                 if let Some(desc) = self.desc_ref.cast::<HtmlElement>() {
-                    let _ = desc.set_inner_html(self.manga.description.as_ref().unwrap_or(&"N/A".to_string()));
+                    let _ = desc.set_inner_html(
+                        self.manga
+                            .description
+                            .as_ref()
+                            .unwrap_or(&"N/A".to_string()),
+                    );
                 }
 
                 return false;
@@ -185,7 +190,9 @@ impl Component for Detail {
             <div id="detail" class="flex justify-center border-t border-b border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 p-2 mb-2">
                 <div class="w-full md:w-1/2 flex flex-col">
                     <div class="flex">
-                        <img class="w-32 md:40 object-cover mr-2" src=self.manga.thumbnail_url />
+                        <div class="pb-7/6">
+                            <img class="w-32 md:40 object-cover mr-2" src=self.manga.thumbnail_url />
+                        </div>
                         <div class="flex flex-col">
                             <span ref=self.title_ref.clone() class="md:text-xl sm:text-base font-bold text-gray-900 dark:text-gray-300"></span>
                             <span class="md:text-xl sm:text-sm font-semibold text-gray-900 dark:text-gray-300">{self.manga.author.join(", ").to_owned()}</span>
