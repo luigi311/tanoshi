@@ -115,7 +115,7 @@ async fn main() -> Result<()> {
                     password: Some("admin".to_string()),
                     role: "ADMIN".to_string(),
                 })
-                    .await;
+                .await;
             }
 
             if let Err(e) = conn.pragma_update(
@@ -171,8 +171,13 @@ async fn main() -> Result<()> {
         }
     }
 
-    let static_files = warp::get().and(warp::path::tail()).and_then(serve).with(warp::compression::gzip());
-    let index = warp::get().and_then(serve_index).with(warp::compression::gzip());
+    let static_files = warp::get()
+        .and(warp::path::tail())
+        .and_then(serve)
+        .with(warp::compression::gzip());
+    let index = warp::get()
+        .and_then(serve_index)
+        .with(warp::compression::gzip());
 
     let static_files = static_files.or(index);
 
@@ -191,7 +196,7 @@ async fn main() -> Result<()> {
     let update = update::Update::new(config.database_path.clone());
     let updates_api = filters::updates::updates(secret.clone(), update.clone());
 
-    let version_check = warp::path!("version")
+    let version_check = warp::path!("api" / "version")
         .and(warp::get())
         .map(|| Ok(warp::reply::html(env!("CARGO_PKG_VERSION"))));
 
