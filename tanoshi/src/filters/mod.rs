@@ -11,6 +11,7 @@ pub mod favorites;
 pub mod history;
 pub mod manga;
 pub mod updates;
+pub mod static_files;
 
 #[derive(Debug)]
 pub struct ExpiredOrInvalidToken;

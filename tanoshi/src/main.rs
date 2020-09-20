@@ -17,20 +17,14 @@ mod update;
 
 use anyhow::{anyhow, Result};
 use clap::Clap;
-use rust_embed::RustEmbed;
 
 use std::sync::{Arc, RwLock};
-use warp::{http::header::HeaderValue, path::Tail, reply::Response, Filter, Rejection, Reply};
-
+use warp::Filter;
 use config::Config;
 
 lazy_static! {
     static ref QUERIES: Vec<&'static str> = vec![include_str!("../migration/1.sql"),];
 }
-
-#[derive(RustEmbed)]
-#[folder = "../tanoshi-web/dist/"]
-struct Asset;
 
 #[derive(Clap)]
 #[clap(version = "0.13.0")]
@@ -171,15 +165,7 @@ async fn main() -> Result<()> {
         }
     }
 
-    let static_files = warp::get()
-        .and(warp::path::tail())
-        .and_then(serve)
-        .with(warp::compression::gzip());
-    let index = warp::get()
-        .and_then(serve_index)
-        .with(warp::compression::gzip());
-
-    let static_files = static_files.or(index);
+    let serve_static = filters::static_files::static_files();
 
     let auth = auth::auth::Auth::new(config.database_path.clone());
     let auth_api = filters::auth::authentication(secret.clone(), auth.clone());
@@ -208,33 +194,10 @@ async fn main() -> Result<()> {
         .or(version_check)
         .recover(filters::handle_rejection);
 
-    let routes = api.or(static_files).with(warp::log("manga"));
+    let routes = api.or(serve_static).with(warp::log("manga"));
 
     warp::serve(routes).run(([0, 0, 0, 0], config.port)).await;
 
     return Ok(());
 }
 
-async fn serve_index() -> Result<impl Reply, Rejection> {
-    serve_impl("index.html")
-}
-
-async fn serve(path: Tail) -> Result<impl Reply, Rejection> {
-    serve_impl(path.as_str())
-}
-
-fn serve_impl(path: &str) -> Result<impl Reply, Rejection> {
-    let asset = Asset::get(path).ok_or_else(warp::reject::not_found)?;
-    let mime = mime_guess::from_path(path).first_or_octet_stream();
-
-    let mut res = Response::new(asset.into());
-    res.headers_mut().insert(
-        "content-type",
-        HeaderValue::from_str(mime.as_ref()).unwrap(),
-    );
-    res.headers_mut().insert(
-        "Cache-Control",
-        HeaderValue::from_str("max-age=31536000").unwrap(),
-    );
-    Ok(res)
-}

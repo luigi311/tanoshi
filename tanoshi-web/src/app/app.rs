@@ -124,6 +124,8 @@ impl Component for App {
                 },
             )) {
                 self.fetch_task = Some(task);
+            } else {
+                self.link.send_message(Msg::TokenInvalidOrExpired);
             }
         }
     }
