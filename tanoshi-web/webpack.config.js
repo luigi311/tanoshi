@@ -5,7 +5,6 @@ const { CleanWebpackPlugin } = require('clean-webpack-plugin');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const WorkboxPlugin = require('workbox-webpack-plugin');
 const CompressionPlugin = require('compression-webpack-plugin');
-const BrotliPlugin = require('brotli-webpack-plugin');
 
 const distPath = path.resolve(__dirname, "dist");
 module.exports = (env, argv) => {
@@ -58,6 +57,25 @@ module.exports = (env, argv) => {
                 // and not allow any straggling "old" SWs to hang around
                 clientsClaim: true,
                 skipWaiting: true,
+            }),
+            new CompressionPlugin({
+                filename: '[path][base].gz',
+                algorithm: 'gzip',
+                test: /\.js$|\.wasm$/,
+                threshold: 10240,
+                minRatio: 0.8,
+            }),
+            new CompressionPlugin({
+                filename: '[path][base].br',
+                algorithm: 'brotliCompress',
+                test: /\.(js|wasm)$/,
+                compressionOptions: {
+                  // zlib’s `level` option matches Brotli’s `BROTLI_PARAM_QUALITY` option.
+                  level: 11,
+                },
+                threshold: 10240,
+                minRatio: 0.8,
+                deleteOriginalAssets: false,
             }),
         ],
         watch: argv.mode !== "production",
