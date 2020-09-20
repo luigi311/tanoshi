@@ -2,7 +2,6 @@ use super::component::{Filter, Manga, MangaList, Spinner, TopBar, WeakComponentL
 use web_sys::HtmlElement;
 use yew::prelude::*;
 use yew::services::fetch::FetchTask;
-use yew::services::{storage::Area::Local, StorageService};
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 
 use tanoshi_lib::manga::{

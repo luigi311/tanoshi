@@ -1,11 +1,9 @@
-use serde::{Deserialize, Serialize};
 use std::time::Duration;
 use web_sys::Node;
-use yew::format::{Json, Nothing};
+use yew::format::{Json};
 use yew::prelude::*;
-use yew::services::fetch::{FetchTask, Request, Response};
-use yew::services::storage::Area;
-use yew::services::{FetchService, StorageService, Task, TimeoutService};
+use yew::services::fetch::{FetchTask};
+use yew::services::{Task, TimeoutService};
 use yew::virtual_dom::VNode;
 use yew::{
     html, Bridge, Bridged, Children, Component, ComponentLink, Html, Properties, ShouldRender,
@@ -13,16 +11,8 @@ use yew::{
 use yew_router::agent::{RouteAgent, RouteRequest};
 use yew_router::prelude::*;
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct FavoriteManga {
-    pub source: String,
-    pub title: String,
-}
-
-#[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct AddFavoritesResponse {
-    pub status: String,
-}
+use crate::app::api;
+use tanoshi_lib::rest::AddFavoritesResponse;
 
 #[derive(Clone, PartialEq, Properties)]
 pub struct Props {
@@ -45,7 +35,6 @@ pub struct Manga {
     title: String,
     thumbnail: String,
     is_favorite: bool,
-    token: String,
     is_dragging: bool,
     on_to_detail: Callback<()>,
 }
@@ -68,14 +57,6 @@ impl Component for Manga {
     type Properties = Props;
 
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
-        let storage = StorageService::new(Area::Local).unwrap();
-        let token = {
-            if let Ok(token) = storage.restore("token") {
-                token
-            } else {
-                "".to_string()
-            }
-        };
         let callback = link.callback(|_| Msg::Noop);
         let router = RouteAgent::bridge(callback);
         Manga {
@@ -87,7 +68,6 @@ impl Component for Manga {
             title: props.title,
             thumbnail: props.thumbnail,
             is_favorite: props.is_favorite,
-            token,
             is_dragging: false,
             on_to_detail: props.on_to_detail,
         }
@@ -203,10 +183,10 @@ impl Manga {
     }
 
     fn favorite(&mut self) {
-        if let Ok(task) = super::api::favorite(
-            self.manga_id,
+        if let Ok(task) = api::favorite(
+            self.id,
             self.link.callback(
-                |response: super::api::FetchJsonResponse<AddFavoritesResponse>| {
+                |response: api::FetchJsonResponse<AddFavoritesResponse>| {
                     if let (meta, Json(Ok(data))) = response.into_parts() {
                         if meta.status.is_success() {
                             return Msg::Favorited(data);
@@ -221,10 +201,10 @@ impl Manga {
     }
 
     fn unfavorite(&mut self) {
-        if let Ok(task) = super::api::unfavorite(
-            self.manga_id,
+        if let Ok(task) = api::unfavorite(
+            self.id,
             self.link.callback(
-                |response: super::api::FetchJsonResponse<AddFavoritesResponse>| {
+                |response: api::FetchJsonResponse<AddFavoritesResponse>| {
                     if let (meta, Json(Ok(data))) = response.into_parts() {
                         if meta.status.is_success() {
                             return Msg::Unfavorited(data);

@@ -1,7 +1,7 @@
 use web_sys::HtmlElement;
-use yew::format::{Json, Nothing};
+use yew::format::{Json};
 use yew::prelude::*;
-use yew::services::fetch::{FetchService, FetchTask, Request, Response};
+use yew::services::fetch::{FetchTask};
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 use yew_router::components::RouterAnchor;
 
@@ -11,18 +11,6 @@ use crate::app::AppRoute;
 use tanoshi_lib::manga::{Chapter as ChapterModel, Manga as MangaModel};
 use tanoshi_lib::rest::{AddFavoritesResponse, GetChaptersResponse, GetMangaResponse};
 
-use serde::{Deserialize, Serialize};
-
-use anyhow;
-use yew::services::storage::Area;
-use yew::services::StorageService;
-
-#[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct FavoriteManga {
-    pub source: String,
-    pub title: String,
-}
-
 #[derive(Clone, Properties)]
 pub struct Props {
     pub manga_id: i32,
@@ -31,7 +19,6 @@ pub struct Props {
 pub struct Detail {
     fetch_task: Option<FetchTask>,
     link: ComponentLink<Self>,
-    token: String,
     manga_id: i32,
     manga: MangaModel,
     chapters: Vec<ChapterModel>,
@@ -56,19 +43,9 @@ impl Component for Detail {
     type Properties = Props;
 
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
-        let storage = StorageService::new(Area::Local).unwrap();
-        let token = {
-            if let Ok(token) = storage.restore("token") {
-                token
-            } else {
-                "".to_string()
-            }
-        };
-
         Detail {
             fetch_task: None,
             link,
-            token,
             manga_id: props.manga_id,
             manga: MangaModel::default(),
             chapters: vec![],

@@ -2,9 +2,9 @@ use anyhow::{anyhow, Error};
 use tanoshi_lib::manga::{Params, SourceLogin, SourceLoginResult};
 use tanoshi_lib::rest::{
     AddFavoritesResponse, GetChaptersResponse, GetMangaResponse, GetMangasResponse,
-    GetPagesResponse, HistoryRequest, ReadResponse,
+    HistoryRequest, ReadResponse,
 };
-use yew::format::{Binary, Json, Nothing, Text};
+use yew::format::{Json, Nothing, Text};
 use yew::services::fetch::{FetchService, FetchTask, Request, Response};
 use yew::services::storage::Area;
 use yew::services::StorageService;
@@ -12,11 +12,9 @@ use yew::Callback;
 
 pub type FetchJsonResponse<T> = Response<Json<Result<T, Error>>>;
 pub type FetchTextResponse = Response<Text>;
-pub type FetchBinaryResponse = Response<Binary>;
 
 type FetchJsonCallback<T> = Callback<FetchJsonResponse<T>>;
 type FetchTextCallback = Callback<FetchTextResponse>;
-type FetchBinaryCallback = Callback<FetchBinaryResponse>;
 
 pub fn get_local_storage() -> Result<StorageService, Error> {
     match StorageService::new(Area::Local) {
@@ -142,26 +140,6 @@ pub fn fetch_chapters(
     .expect("failed to build request");
 
     FetchService::fetch(req, callback)
-}
-
-pub fn fetch_pages(
-    chapter_id: i32,
-    refresh: bool,
-    callback: FetchJsonCallback<GetPagesResponse>,
-) -> Result<FetchTask, Error> {
-    let req = Request::get(format!("/api/chapter/{}?refresh={}", chapter_id, refresh))
-        .body(Nothing)
-        .expect("failed to build request");
-
-    FetchService::fetch(req, callback)
-}
-
-pub fn fetch_page(path: &str, callback: FetchBinaryCallback) -> Result<FetchTask, Error> {
-    let req = Request::get(path)
-        .body(Nothing)
-        .expect("failed to build request");
-
-    FetchService::fetch_binary(req, callback)
 }
 
 pub fn post_source_login(

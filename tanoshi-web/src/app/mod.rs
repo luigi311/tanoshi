@@ -6,7 +6,6 @@ const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 pub mod api;
 pub mod browse;
 pub mod catalogue;
-pub mod common;
 pub mod component;
 pub mod detail;
 pub mod history;
