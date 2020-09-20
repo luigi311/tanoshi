@@ -2,19 +2,18 @@ use js_sys;
 use wasm_bindgen::JsCast;
 use web_sys::{window, HtmlElement};
 use yew::prelude::*;
-use yew::services::storage::Area;
-use yew::services::StorageService;
+use yew::services::fetch::FetchTask;
 
 use yew::{html, Component, ComponentLink, Html, InputData, Properties, ShouldRender};
 use yew_router::{agent::RouteRequest, prelude::*};
 
-use crate::app::job;
-
 use super::component::model::{BackgroundColor, PageRendering, SettingParams};
 use super::component::{Pager, ReaderSeekbar, ReaderToolbar, Spinner, WeakComponentLink, Webtoon};
 
+use std::collections::HashMap;
 use tanoshi_lib::manga::{Chapter as ChapterModel, Manga as MangaModel};
 use tanoshi_lib::rest::{HistoryRequest, ReadResponse};
+use yew::format::Json;
 
 #[derive(Clone, Properties)]
 pub struct Props {
@@ -25,7 +24,7 @@ pub struct Props {
 pub struct Reader {
     link: ComponentLink<Self>,
     router: Box<dyn Bridge<RouteAgent>>,
-    token: String,
+    fetch_task_map: HashMap<&'static str, FetchTask>,
     manga: MangaModel,
     chapter: ChapterModel,
     current_chapter_id: i32,
@@ -35,7 +34,6 @@ pub struct Reader {
     is_fetching: bool,
     is_bar_visible: bool,
     settings: SettingParams,
-    worker: Box<dyn Bridge<job::Worker>>,
     should_fetch: bool,
 }
 
@@ -47,7 +45,6 @@ pub enum Msg {
     ToggleBar,
     PageSliderChange(usize),
     RouterCallback,
-    SetHistoryRequested,
     Refresh,
     Noop,
 }
@@ -59,21 +56,7 @@ impl Component for Reader {
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
         let callback = link.callback(|_| Msg::RouterCallback);
         let router = RouteAgent::bridge(callback);
-        let storage = StorageService::new(Area::Local).unwrap();
-        let settings = {
-            if let Ok(settings) = storage.restore("settings") {
-                serde_json::from_str(settings.as_str()).expect("failed to serialize")
-            } else {
-                SettingParams::default()
-            }
-        };
-        let token = {
-            if let Ok(token) = storage.restore("token") {
-                token
-            } else {
-                "".to_string()
-            }
-        };
+        let settings = SettingParams::parse_from_local_storage();
 
         let _ = window()
             .unwrap()
@@ -106,16 +89,10 @@ impl Component for Reader {
             }
         };
 
-        let worker_callback = link.callback(|msg| match msg {
-            job::Response::ReadFetched(data) => Msg::ReadReady(data),
-            job::Response::HistoryPosted => Msg::SetHistoryRequested,
-            _ => Msg::Noop,
-        });
-
         Reader {
             link,
             router,
-            token,
+            fetch_task_map: HashMap::new(),
             manga: MangaModel::default(),
             current_chapter_id: props.chapter_id,
             chapter: ChapterModel::default(),
@@ -125,52 +102,8 @@ impl Component for Reader {
             is_fetching: false,
             is_bar_visible: true,
             settings,
-            worker: job::Worker::bridge(worker_callback),
             should_fetch: true,
         }
-    }
-
-    fn change(&mut self, props: Self::Properties) -> ShouldRender {
-        if self.current_chapter_id != props.chapter_id
-            || self.current_page != props.page.checked_sub(1).unwrap_or(0)
-        {
-            self.current_chapter_id = props.chapter_id;
-            self.current_page = props.page.checked_sub(1).unwrap_or(0);
-            true
-        } else {
-            false
-        }
-    }
-
-    fn rendered(&mut self, first_render: bool) {
-        if first_render {
-            if self.settings.page_rendering == PageRendering::DoublePage
-                && self.current_page % 2 != 0
-            {
-                let route_string = format!(
-                    "/chapter/{}/page/{}",
-                    self.current_chapter_id, self.current_page
-                );
-
-                let route = Route::from(route_string);
-                self.router.send(RouteRequest::ChangeRoute(route));
-            }
-        }
-        if self.should_fetch {
-            self.should_fetch = false;
-            self.read(false);
-        }
-
-        window()
-            .unwrap()
-            .document()
-            .unwrap()
-            .get_element_by_id("manga-reader")
-            .expect("should have manga reader")
-            .dyn_ref::<HtmlElement>()
-            .expect("should load HtmlElement")
-            .focus()
-            .unwrap();
     }
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
@@ -216,9 +149,6 @@ impl Component for Reader {
             Msg::RouterCallback => {
                 self.read(false);
             }
-            Msg::SetHistoryRequested => {
-                return false;
-            }
             Msg::Refresh => {
                 self.read(true);
             }
@@ -227,6 +157,18 @@ impl Component for Reader {
             }
         }
         true
+    }
+
+    fn change(&mut self, props: Self::Properties) -> ShouldRender {
+        if self.current_chapter_id != props.chapter_id
+            || self.current_page != props.page.checked_sub(1).unwrap_or(0)
+        {
+            self.current_chapter_id = props.chapter_id;
+            self.current_page = props.page.checked_sub(1).unwrap_or(0);
+            true
+        } else {
+            false
+        }
     }
 
     fn view(&self) -> Html {
@@ -273,6 +215,37 @@ impl Component for Reader {
         };
     }
 
+    fn rendered(&mut self, first_render: bool) {
+        if first_render {
+            if self.settings.page_rendering == PageRendering::DoublePage
+                && self.current_page % 2 != 0
+            {
+                let route_string = format!(
+                    "/chapter/{}/page/{}",
+                    self.current_chapter_id, self.current_page
+                );
+
+                let route = Route::from(route_string);
+                self.router.send(RouteRequest::ChangeRoute(route));
+            }
+        }
+        if self.should_fetch {
+            self.should_fetch = false;
+            self.read(false);
+        }
+
+        window()
+            .unwrap()
+            .document()
+            .unwrap()
+            .get_element_by_id("manga-reader")
+            .expect("should have manga reader")
+            .dyn_ref::<HtmlElement>()
+            .expect("should load HtmlElement")
+            .focus()
+            .unwrap();
+    }
+
     fn destroy(&mut self) {
         let _ = window()
             .unwrap()
@@ -309,9 +282,23 @@ impl Component for Reader {
 
 impl Reader {
     fn read(&mut self, refresh: bool) {
-        self.worker
-            .send(job::Request::FetchRead(self.current_chapter_id, refresh));
-        self.is_fetching = true;
+        if let Ok(task) = super::api::fetch_read(
+            self.current_chapter_id,
+            refresh,
+            self.link.callback(
+                move |response: super::api::FetchJsonResponse<ReadResponse>| {
+                    if let (meta, Json(Ok(data))) = response.into_parts() {
+                        if meta.status.is_success() {
+                            return Msg::ReadReady(data);
+                        }
+                    }
+                    Msg::Noop
+                },
+            ),
+        ) {
+            self.fetch_task_map.insert("read", task);
+            self.is_fetching = true;
+        }
     }
 
     fn next_chapter(&mut self) {
@@ -377,8 +364,9 @@ impl Reader {
             read: self.current_page as i32,
             at: self.get_date(),
         };
-        self.worker
-            .send(job::Request::PostHistory(self.token.clone(), h));
+        if let Ok(task) = super::api::post_history(h, self.link.callback(|_| Msg::Noop)) {
+            self.fetch_task_map.insert("history", task);
+        }
     }
 
     fn get_current_volume_and_chapter(&self) -> String {

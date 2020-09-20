@@ -1,16 +1,18 @@
-use super::component::{Filter, Manga, MangaList, Spinner, WeakComponentLink, TopBar};
+use super::component::{Filter, Manga, MangaList, Spinner, TopBar, WeakComponentLink};
 use web_sys::HtmlElement;
 use yew::prelude::*;
+use yew::services::fetch::FetchTask;
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
-use yew::services::{StorageService, storage::Area::Local};
 
-use tanoshi_lib::manga::{Manga as MangaModel, Params, SortByParam, SortOrderParam, SourceLogin};
+use tanoshi_lib::manga::{
+    Manga as MangaModel, Params, SortByParam, SortOrderParam, SourceLogin, SourceLoginResult,
+};
 use tanoshi_lib::rest::GetMangasResponse;
 
-use crate::app::job;
-
+use crate::app::api::{get_local_storage, FetchJsonResponse};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
+use yew::format::Json;
 
 #[derive(Clone, Properties)]
 pub struct Props {
@@ -22,17 +24,16 @@ pub struct Source {
     source_name: String,
     page: i32,
     mangas: Vec<MangaModel>,
+    fetch_task: Option<FetchTask>,
     is_fetching: bool,
     closure: Option<Closure<dyn Fn()>>,
     keyword: String,
-    worker: Box<dyn Bridge<job::Worker>>,
     is_login_page: bool,
     login: SourceLogin,
     show_filter: bool,
     sort_by: SortByParam,
     sort_order: SortOrderParam,
     catalogue_ref: NodeRef,
-    storage: StorageService,
     scroll_position: i32,
 }
 
@@ -42,7 +43,7 @@ pub enum Msg {
     KeywordChanged(InputData),
     Search(FocusEvent),
     SourceLogin,
-    LoginSuccess,
+    LoginReady(SourceLoginResult),
     Submit(FocusEvent),
     UsernameChange(InputData),
     PasswordChange(InputData),
@@ -62,22 +63,19 @@ impl Component for Source {
     type Properties = Props;
 
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
-        let worker_callback = link.callback(|msg| match msg {
-            job::Response::MangasFetched(data) => Msg::MangasReady(data),
-            job::Response::LoginPosted(_data) => Msg::LoginSuccess,
-            _ => Msg::Noop,
-        });
-        let worker = job::Worker::bridge(worker_callback);
-
-        let mut storage = StorageService::new(Local).unwrap();
-        let mangas = if let Ok(data) = storage.restore(format!("source-{}-mangas", props.source_name.clone()).as_str()) {
+        let mut storage = super::api::get_local_storage().unwrap();
+        let mangas = if let Ok(data) =
+            storage.restore(format!("source-{}-mangas", props.source_name.clone()).as_str())
+        {
             let val = serde_json::from_str(&data).unwrap();
             storage.remove(format!("source-{}-mangas", props.source_name.clone()).as_str());
             val
         } else {
             vec![]
         };
-        let page = if let Ok(data) = storage.restore(format!("source-{}-page", props.source_name.clone()).as_str()) {
+        let page = if let Ok(data) =
+            storage.restore(format!("source-{}-page", props.source_name.clone()).as_str())
+        {
             let val = data.parse().unwrap();
             storage.remove(format!("source-{}-page", props.source_name.clone()).as_str());
             val
@@ -85,7 +83,9 @@ impl Component for Source {
             1
         };
 
-        let scroll_position = if let Ok(data) = storage.restore(format!("source-{}-pos", props.source_name.clone()).as_str()) {
+        let scroll_position = if let Ok(data) =
+            storage.restore(format!("source-{}-pos", props.source_name.clone()).as_str())
+        {
             let val = data.parse().unwrap();
             storage.remove(format!("source-{}-pos", props.source_name.clone()).as_str());
             val
@@ -93,55 +93,22 @@ impl Component for Source {
             0
         };
 
-
-
         Source {
             link,
             source_name: props.source_name,
             page,
             mangas,
+            fetch_task: None,
             is_fetching: true,
             closure: None,
             keyword: "".to_string(),
-            worker,
             is_login_page: false,
             login: SourceLogin::default(),
             show_filter: false,
             sort_by: SortByParam::Views,
             sort_order: SortOrderParam::Desc,
             catalogue_ref: NodeRef::default(),
-            storage,
             scroll_position,
-        }
-    }
-
-    fn change(&mut self, props: Self::Properties) -> ShouldRender {
-        if self.source_name != props.clone().source_name {
-            self.source_name = props.source_name;
-            return true;
-        }
-        return false;
-    }
-
-    fn rendered(&mut self, first_render: bool) {
-        if first_render {
-            self.fetch_mangas();
-
-            let tmp_link = self.link.clone();
-            if let Some(div) = self.catalogue_ref.cast::<HtmlElement>() {
-                let cloned_div = div.clone();
-                self.closure = Some(Closure::wrap(Box::new(move || {
-                    if (cloned_div.scroll_height() - cloned_div.scroll_top()) == cloned_div.client_height() {
-                        tmp_link.send_message(Msg::ScrolledDown);
-                    }
-                }) as Box<dyn Fn()>));
-
-                div.set_onscroll(Some(self.closure.as_ref().unwrap().as_ref().unchecked_ref()));
-
-                if self.scroll_position > 0 {
-                    div.scroll_by_with_x_and_y(0.0, self.scroll_position as f64);
-                }
-            }
         }
     }
 
@@ -176,7 +143,14 @@ impl Component for Source {
                 self.is_login_page = !self.is_login_page;
                 self.is_fetching = false;
             }
-            Msg::LoginSuccess => {
+            Msg::LoginReady(data) => {
+                if let Ok(mut storage) = get_local_storage() {
+                    storage.store(
+                        format!("source-token-{}", &data.clone().source_name).as_str(),
+                        Ok(data.clone().value),
+                    );
+                }
+
                 self.is_login_page = false;
                 self.fetch_mangas();
             }
@@ -226,9 +200,20 @@ impl Component for Source {
                 if let Some(div) = self.catalogue_ref.cast::<HtmlElement>() {
                     self.scroll_position = div.scroll_top();
                 }
-                self.storage.store(format!("source-{}-mangas", self.source_name).as_str(), Ok(serde_json::to_string(&self.mangas).unwrap()));
-                self.storage.store(format!("source-{}-page", self.source_name).as_str(), Ok(self.page.to_string()));
-                self.storage.store(format!("source-{}-pos", self.source_name).as_str(), Ok(self.scroll_position.to_string()));
+                if let Ok(mut storage) = super::api::get_local_storage() {
+                    storage.store(
+                        format!("source-{}-mangas", self.source_name).as_str(),
+                        Ok(serde_json::to_string(&self.mangas).unwrap()),
+                    );
+                    storage.store(
+                        format!("source-{}-page", self.source_name).as_str(),
+                        Ok(self.page.to_string()),
+                    );
+                    storage.store(
+                        format!("source-{}-pos", self.source_name).as_str(),
+                        Ok(self.scroll_position.to_string()),
+                    );
+                }
                 return false;
             }
             Msg::Noop => {
@@ -236,6 +221,14 @@ impl Component for Source {
             }
         }
         true
+    }
+
+    fn change(&mut self, props: Self::Properties) -> ShouldRender {
+        if self.source_name != props.clone().source_name {
+            self.source_name = props.source_name;
+            return true;
+        }
+        return false;
     }
 
     fn view(&self) -> Html {
@@ -271,6 +264,32 @@ impl Component for Source {
                 />
             </div>
         };
+    }
+
+    fn rendered(&mut self, first_render: bool) {
+        if first_render {
+            self.fetch_mangas();
+
+            let tmp_link = self.link.clone();
+            if let Some(div) = self.catalogue_ref.cast::<HtmlElement>() {
+                let cloned_div = div.clone();
+                self.closure = Some(Closure::wrap(Box::new(move || {
+                    if (cloned_div.scroll_height() - cloned_div.scroll_top())
+                        == cloned_div.client_height()
+                    {
+                        tmp_link.send_message(Msg::ScrolledDown);
+                    }
+                }) as Box<dyn Fn()>));
+
+                div.set_onscroll(Some(
+                    self.closure.as_ref().unwrap().as_ref().unchecked_ref(),
+                ));
+
+                if self.scroll_position > 0 {
+                    div.scroll_by_with_x_and_y(0.0, self.scroll_position as f64);
+                }
+            }
+        }
     }
 }
 
@@ -346,8 +365,8 @@ impl Source {
                                 </label>
                                 <input
                                     class="w-full px-3 py-2 mb-3 text-sm leading-tight bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-700 rounded shadow appearance-none focus:outline-none focus:shadow-outline"
-                                    type="text" 
-                                    name="token" 
+                                    type="text"
+                                    name="token"
                                     id="token"
                                     inputmode="numeric"
                                     value=self.login.two_factor.clone().unwrap_or("".to_string())
@@ -376,28 +395,52 @@ impl Source {
     }
 
     fn login(&mut self) {
-        self.worker.send(job::Request::PostLogin(
-            self.source_name.clone(),
+        if let Ok(task) = super::api::post_source_login(
+            &self.source_name,
             self.login.clone(),
-        ));
-        self.is_fetching = true;
+            self.link
+                .callback(move |response: FetchJsonResponse<SourceLoginResult>| {
+                    if let (meta, Json(Ok(data))) = response.into_parts() {
+                        if meta.status.is_success() {
+                            return Msg::LoginReady(data);
+                        }
+                    }
+                    Msg::Noop
+                }),
+        ) {
+            self.fetch_task = Some(task);
+            self.is_fetching = true;
+        }
     }
 
     fn fetch_mangas(&mut self) {
-        self.worker.send(job::Request::FetchMangas(
-            self.source_name.clone(),
-            Params {
-                keyword: Some(self.keyword.to_owned()),
-                sort_by: Some(self.sort_by.clone()),
-                sort_order: Some(self.sort_order.clone()),
-                page: Some(self.page.to_string()),
-                genres: None,
-                refresh: match self.page {
-                    1 => Some(true),
-                    _ => None,
-                },
+        let params = Params {
+            keyword: Some(self.keyword.to_owned()),
+            sort_by: Some(self.sort_by.clone()),
+            sort_order: Some(self.sort_order.clone()),
+            page: Some(self.page.to_string()),
+            genres: None,
+            refresh: match self.page {
+                1 => Some(true),
+                _ => None,
             },
-        ));
-        self.is_fetching = true;
+        };
+        if let Ok(task) = super::api::fetch_mangas(
+            &self.source_name,
+            params,
+            self.link.callback(
+                move |response: super::api::FetchJsonResponse<GetMangasResponse>| {
+                    if let (meta, Json(Ok(data))) = response.into_parts() {
+                        if meta.status.is_success() {
+                            return Msg::MangasReady(data);
+                        }
+                    }
+                    Msg::Noop
+                },
+            ),
+        ) {
+            self.fetch_task = Some(task);
+            self.is_fetching = true;
+        }
     }
 }

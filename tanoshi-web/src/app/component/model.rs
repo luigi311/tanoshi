@@ -41,6 +41,7 @@ pub struct SettingParams {
     pub page_rendering: PageRendering,
     pub background_color: BackgroundColor,
     pub reading_direction: ReadingDirection,
+    pub dark_mode: bool,
 }
 
 impl Default for SettingParams {
@@ -49,6 +50,26 @@ impl Default for SettingParams {
             page_rendering: PageRendering::SinglePage,
             background_color: BackgroundColor::Black,
             reading_direction: ReadingDirection::LeftToRight,
+            dark_mode: false,
+        }
+    }
+}
+
+impl SettingParams {
+    pub fn parse_from_local_storage() -> SettingParams {
+        if let Ok(storage) = crate::app::api::get_local_storage() {
+            if let Ok(settings) = storage.restore("settings") {
+                if let Ok(settings) = serde_json::from_str(settings.as_str()) {
+                    return settings;
+                }
+            }
+        }
+        return SettingParams::default();
+    }
+
+    pub fn save(&self) {
+        if let Ok(mut storage) = crate::app::api::get_local_storage() {
+            storage.store("settings", self);
         }
     }
 }

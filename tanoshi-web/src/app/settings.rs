@@ -6,8 +6,6 @@ use super::component::TopBar;
 use serde::Deserialize;
 use yew::format::{Json, Nothing, Text};
 use yew::services::fetch::{FetchService, FetchTask, Request, Response};
-use yew::services::storage::Area;
-use yew::services::StorageService;
 use yew::{html, ChangeData, Component, ComponentLink, Html, InputData, Properties, ShouldRender};
 use yew_router::components::RouterAnchor;
 use yew_router::Switch;
@@ -51,7 +49,6 @@ pub struct Props {
 pub struct Settings {
     fetch_task: Option<FetchTask>,
     link: ComponentLink<Self>,
-    storage: StorageService,
     settings: SettingParams,
     token: String,
     is_admin: bool,
@@ -62,7 +59,6 @@ pub struct Settings {
     me_confirm_password: Option<String>,
     change_password: bool,
     closure: Closure<dyn FnMut(JsValue)>,
-    is_dark_mode: bool,
     setting_page: SettingRoute,
     backend_version: String,
 }
@@ -95,30 +91,8 @@ impl Component for Settings {
     type Properties = Props;
 
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
-        let storage = StorageService::new(Area::Local).unwrap();
-        let settings = {
-            if let Ok(settings) = storage.restore("settings") {
-                serde_json::from_str(settings.as_str()).expect("failed to serialize")
-            } else {
-                SettingParams::default()
-            }
-        };
-
-        let is_dark_mode = {
-            if let Ok(is_dark_mode) = storage.restore("dark-mode") {
-                if is_dark_mode == "true" {
-                    true
-                } else {
-                    false
-                }
-            } else {
-                false
-            }
-        };
-
-        let token = storage
-            .restore::<Result<String, _>>("token")
-            .unwrap_or("".to_string());
+        let settings = SettingParams::parse_from_local_storage();
+        let token = super::api::get_token().unwrap_or("".to_string());
 
         let closure = Closure::wrap(Box::new(move |value| {
             log::info!("cache {:?}", value);
@@ -127,7 +101,6 @@ impl Component for Settings {
         Settings {
             fetch_task: None,
             link,
-            storage,
             settings,
             token,
             is_admin: false,
@@ -138,7 +111,6 @@ impl Component for Settings {
             me_password: None,
             change_password: false,
             closure,
-            is_dark_mode,
             setting_page: props.setting_page,
             backend_version: "".to_string(),
         }
@@ -148,15 +120,15 @@ impl Component for Settings {
         match msg {
             Msg::SetReadingDirection(value) => {
                 self.settings.reading_direction = value;
-                self.storage.store("settings", &self.settings)
+                self.settings.save();
             }
             Msg::SetBackgroundColor(value) => {
                 self.settings.background_color = value;
-                self.storage.store("settings", &self.settings)
+                self.settings.save();
             }
             Msg::SetPageRendering(value) => {
                 self.settings.page_rendering = value;
-                self.storage.store("settings", &self.settings)
+                self.settings.save();
             }
             Msg::Authorized(claim) => {
                 self.is_admin = claim.role == "ADMIN".to_string();
@@ -254,7 +226,7 @@ impl Component for Settings {
                         .unwrap()
                         .class_list()
                         .add_1("dark");
-                    self.is_dark_mode = true;
+                    self.settings.dark_mode = true;
                 } else {
                     let _ = window()
                         .unwrap()
@@ -264,10 +236,9 @@ impl Component for Settings {
                         .unwrap()
                         .class_list()
                         .remove_1("dark");
-                    self.is_dark_mode = false;
+                    self.settings.dark_mode = false;
                 }
-                self.storage
-                    .store("dark-mode", Ok(format!("{}", self.is_dark_mode)));
+                self.settings.save();
             }
             Msg::VersionFetched(version) => {
                 self.backend_version = version;
@@ -700,7 +671,7 @@ impl Settings {
                     self.setting_card("Dark Mode", html! {
                     <div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
                         <input type="checkbox" name="toggle" id="toggle" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"
-                        value={self.is_dark_mode} checked={self.is_dark_mode} oninput=self.link.callback(|e| Msg::DarkMode(e))/>
+                        value={self.settings.dark_mode} checked={self.settings.dark_mode} oninput=self.link.callback(|e| Msg::DarkMode(e))/>
                         <label for="toggle" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"></label>
                     </div>
                     })
