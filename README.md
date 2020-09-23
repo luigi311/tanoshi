@@ -61,11 +61,17 @@ Tanoshi default to look configuration in `$HOME/.tanoshi/config.yml` on macos an
 # Port for tanoshi to server, default to 80
 port: 3030
 # Absolute path to database
-database_path: /path/to/database
+database_path: /absolute/path/to/database
 # JWT secret, any random value, changing this will render any active token invalid
 secret: secret
 # Absolute path to where plugin is stored
-plugin_path: /home/user/.tanoshi/plugins
+plugin_path: /absolute/path/to/plugins
+# config map for plugin
+plugin_config:
+  # Plugin name
+  local:
+    # Absolute path to manga
+    path: /absolute/path/to/manga
 ```
 
 # Build
