@@ -66,3 +66,27 @@ fn default_plugin_path() -> String {
     }
     path.to_str().unwrap().to_string()
 }
+
+impl Config {
+    pub fn open<P: AsRef<std::path::Path>>(path: Option<P>) -> Result<Config, anyhow::Error> {
+        match path {
+            Some(path) => {
+                let file = std::fs::File::open(path)?;
+                serde_yaml::from_reader(file).map_err(Self::map_yaml_error)
+            }
+            None => {
+                let config = Self::default();
+                let path = dirs::home_dir().unwrap().join(".tanoshi");
+                let _ = std::fs::create_dir_all(path.clone());
+                let path = path.join("config.yml");
+                let _ = std::fs::write(&path, serde_yaml::to_string(&config).unwrap());
+                info!("Write default config at {:?}", path);
+                Ok(config)
+            }
+        }
+    }
+
+    fn map_yaml_error(err: serde_yaml::Error) -> anyhow::Error {
+        anyhow::anyhow!("error parse yaml: {}", err)
+    }
+}
