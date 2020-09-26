@@ -1,6 +1,9 @@
 use lib::Library;
 use std::path::PathBuf;
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::{BTreeMap, HashMap},
+    sync::Arc,
+};
 use tanoshi_lib::extensions::{Extension, PluginDeclaration};
 use tanoshi_lib::manga::{Chapter, Manga, Params, Source, SourceLogin, SourceLoginResult};
 
@@ -55,6 +58,45 @@ impl Extensions {
         Extensions {
             extensions: HashMap::new(),
         }
+    }
+
+    pub fn initialize<P: AsRef<std::path::Path>>(
+        &mut self,
+        path: P,
+        config: BTreeMap<String, serde_yaml::Value>,
+    ) -> Result<()> {
+        for entry in std::fs::read_dir(path.as_ref())?
+            .into_iter()
+            .filter(move |path| {
+                if let Ok(p) = path {
+                    let ext = p
+                        .clone()
+                        .path()
+                        .extension()
+                        .unwrap_or("".as_ref())
+                        .to_owned();
+                    if ext == "so" || ext == "dll" || ext == "dylib" {
+                        return true;
+                    }
+                }
+                return false;
+            })
+        {
+            let path = entry?.path();
+            let name = path
+                .file_stem()
+                .unwrap_or_default()
+                .to_str()
+                .unwrap_or_default()
+                .to_string()
+                .replace("lib", "");
+            info!("load plugin from {:?}", path.clone());
+            unsafe {
+                self.load(path.to_str().unwrap().to_string(), config.get(&name))
+                    .unwrap()
+            }
+        }
+        Ok(())
     }
 
     pub fn get(&self, name: &String) -> Option<&ExtensionProxy> {
