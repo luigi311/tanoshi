@@ -14,6 +14,7 @@ mod filters;
 mod handlers;
 mod history;
 mod update;
+mod migration;
 
 use anyhow::{anyhow, Result};
 use clap::Clap;
@@ -21,10 +22,6 @@ use clap::Clap;
 use std::sync::{Arc, RwLock};
 use warp::Filter;
 use config::Config;
-
-lazy_static! {
-    static ref QUERIES: Vec<&'static str> = vec![include_str!("../migration/1.sql"),];
-}
 
 #[derive(Clap)]
 #[clap(version = "0.13.0")]
@@ -41,50 +38,8 @@ async fn main() -> Result<()> {
     let opts: Opts = Opts::parse();
     let config = Config::open(opts.config)?;
 
-    {
-        let conn = match rusqlite::Connection::open(config.database_path.clone()) {
-            Ok(conn) => conn,
-            Err(e) => {
-                return Err(anyhow!("failed open database file: {}", e));
-            }
-        };
-
-        let user_version: i32 = conn
-            .pragma_query_value(Some(rusqlite::DatabaseName::Main), "user_version", |row| {
-                row.get(0)
-            })
-            .unwrap_or(0);
-        info!("Schema version {}", user_version);
-
-        if QUERIES.len() > user_version as usize {
-            info!("Schema version mismatch");
-            for (i, query) in QUERIES.iter().enumerate() {
-                if i + 1 > user_version as usize {
-                    info!("Migrating {}", i + 1);
-                    if let Err(e) = conn.execute_batch(query) {
-                        return Err(anyhow!("failed: {}", e));
-                    }
-                }
-            }
-
-            if user_version == 0 {
-                let auth = auth::auth::Auth::new(config.database_path.clone());
-                auth.register(auth::User {
-                    username: "admin".to_string(),
-                    password: Some("admin".to_string()),
-                    role: "ADMIN".to_string(),
-                })
-                .await;
-            }
-
-            if let Err(e) = conn.pragma_update(
-                Some(rusqlite::DatabaseName::Main),
-                "user_version",
-                &(QUERIES.len() as i32),
-            ) {
-                return Err(anyhow!("error set PRAGMA user_version: {}", e));
-            }
-        }
+    if migration::migrate(&config.database_path).await.is_err() {
+        log::error!("failed when migrating database...");
     }
 
     let secret = config.secret;
