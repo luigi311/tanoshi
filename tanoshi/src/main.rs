@@ -39,42 +39,7 @@ async fn main() -> Result<()> {
     pretty_env_logger::init();
 
     let opts: Opts = Opts::parse();
-
-    let slice = match opts.config {
-        Some(path) => {
-            info!("Load config from {}", path.clone());
-            match std::fs::read(path) {
-                Ok(slice) => Some(slice),
-                Err(_e) => None,
-            }
-        }
-        None => {
-            let path = dirs::home_dir()
-                .unwrap()
-                .join(".tanoshi")
-                .join("config.yml");
-            match std::fs::read(path.clone()) {
-                Ok(slice) => Some(slice),
-                Err(_e) => None,
-            }
-        }
-    };
-
-    let config: Config = match slice {
-        Some(s) => match serde_yaml::from_slice(&s) {
-            Ok(config) => config,
-            Err(e) => return Err(anyhow!("error parsing config: {}", e)),
-        },
-        None => {
-            let cfg = Config::default();
-            let path = dirs::home_dir().unwrap().join(".tanoshi");
-            let _ = std::fs::create_dir_all(path.clone());
-            let path = path.join("config.yml");
-            let _ = std::fs::write(&path, serde_yaml::to_string(&cfg).unwrap());
-            info!("Write default config at {:?}", path);
-            cfg
-        }
-    };
+    let config = Config::open(opts.config)?;
 
     {
         let conn = match rusqlite::Connection::open(config.database_path.clone()) {
