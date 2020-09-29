@@ -1,9 +1,10 @@
+use std::collections::HashMap;
 use super::component::{Filter, Manga, MangaList, Spinner, TopBar, WeakComponentLink};
 use web_sys::HtmlElement;
 use yew::prelude::*;
 use yew::services::fetch::FetchTask;
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
-
+use yew::worker::{Bridge, Bridged};
 use tanoshi_lib::{manga::{
     Manga as MangaModel, Params, SortByParam, SortOrderParam, SourceLogin, SourceLoginResult,
 }, rest::AddFavoritesResponse};
@@ -11,6 +12,8 @@ use tanoshi_lib::rest::GetMangasResponse;
 use yew_router::{agent::RouteRequest, prelude::Route, prelude::RouteAgent};
 
 use crate::app::api;
+use crate::app::worker::{Worker, Request as WorkerRequest, Response as WorkerResponse};
+
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use yew::format::Json;
@@ -37,6 +40,7 @@ pub struct Source {
     catalogue_ref: NodeRef,
     scroll_position: i32,
     router: Box<dyn Bridge<RouteAgent>>,
+    worker: Box<dyn Bridge<Worker>>,
 }
 
 pub enum Msg {
@@ -56,9 +60,9 @@ pub enum Msg {
     FilterCancel,
     SortByChange(SortByParam),
     SortOrderChange(SortOrderParam),
-    OnTap(usize),
-    Favorited(usize, AddFavoritesResponse),
-    Unfavorited(usize, AddFavoritesResponse),
+    OnLongTap(usize),
+    Favorited(usize),
+    Unfavorited(usize),
     GoToDetail(i32),
     Noop,
 }
@@ -101,6 +105,18 @@ impl Component for Source {
         let callback = link.callback(|_| Msg::Noop);
         let router = RouteAgent::bridge(callback);
 
+        let worker_callback = link.callback(|res| match res {
+            WorkerResponse::Favorited(index, favorite) => {
+                if favorite { 
+                    Msg::Favorited(index) 
+                } else { 
+                    Msg::Unfavorited(index)
+                }
+            }
+            _ => Msg::Noop,
+        });
+        let worker = Worker::bridge(worker_callback);
+
         Source {
             link,
             source_name: props.source_name,
@@ -118,6 +134,7 @@ impl Component for Source {
             catalogue_ref: NodeRef::default(),
             scroll_position,
             router,
+            worker,
         }
     }
 
@@ -126,7 +143,7 @@ impl Component for Source {
             Msg::MangasReady(data) => {
                 self.is_fetching = false;
 
-                let mut mangas = data.mangas.clone();
+                let mut mangas = data.mangas;
                 if self.page == 1 {
                     self.mangas = mangas;
                 } else {
@@ -205,22 +222,20 @@ impl Component for Source {
             Msg::SortOrderChange(sort_order) => {
                 self.sort_order = sort_order;
             }
-            Msg::OnTap(index) => {
+            Msg::OnLongTap(index) => {
                 if self.mangas[index].is_favorite {
                     self.unfavorite(index);
                 } else {
                     self.favorite(index);
                 }
             }
-            Msg::Favorited(index, res) => {
-                if res.status == "success" {
-                    self.mangas[index].is_favorite = true;
-                }
+            Msg::Favorited(index) => {
+                self.mangas[index].is_favorite = true;
+                self.get_manga_info(self.mangas[index].id);
+                self.get_chapters(self.mangas[index].id, true);
             }
-            Msg::Unfavorited(index, res) => {
-                if res.status == "success" {
-                    self.mangas[index].is_favorite = false;
-                }
+            Msg::Unfavorited(index) => {
+                self.mangas[index].is_favorite = false;
             }
             Msg::GoToDetail(manga_id) => {
                 if let Some(div) = self.catalogue_ref.cast::<HtmlElement>() {
@@ -338,7 +353,7 @@ impl Source {
                             thumbnail=&manga.thumbnail_url
                             is_favorite=&manga.is_favorite
                             on_tap=self.link.callback(move |_| Msg::GoToDetail(id))
-                            on_long_tap=self.link.callback(move |_| Msg::OnTap(idx))/>
+                            on_long_tap=self.link.callback(move |_| Msg::OnLongTap(idx))/>
                         }})
                     }
                 </MangaList>
@@ -475,42 +490,22 @@ impl Source {
         }
     }
 
+    fn get_manga_info(&mut self, manga_id: i32) {
+        self.worker.send(WorkerRequest::FetchMangaDetail(manga_id))
+    }
+
+    fn get_chapters(&mut self, manga_id: i32, refresh: bool) {
+        self.worker.send(WorkerRequest::FetchMangaChapters(manga_id))
+    }
+
     fn favorite(&mut self, index: usize) {
         let manga_id = self.mangas[index].id;
-        if let Ok(task) = api::favorite(
-            manga_id,
-            self.link.callback(
-                move |response: api::FetchJsonResponse<AddFavoritesResponse>| {
-                    if let (meta, Json(Ok(data))) = response.into_parts() {
-                        if meta.status.is_success() {
-                            return Msg::Favorited(index, data);
-                        }
-                    }
-                    Msg::Noop
-                },
-            ),
-        ) {
-            self.fetch_task = Some(FetchTask::from(task));
-        }
+        self.worker.send(WorkerRequest::Favorite(manga_id, index, true));
     }
 
     fn unfavorite(&mut self, index: usize) {
         let manga_id = self.mangas[index].id;
-        if let Ok(task) = api::unfavorite(
-            manga_id,
-            self.link.callback(
-                move |response: api::FetchJsonResponse<AddFavoritesResponse>| {
-                    if let (meta, Json(Ok(data))) = response.into_parts() {
-                        if meta.status.is_success() {
-                            return Msg::Unfavorited(index, data);
-                        }
-                    }
-                    Msg::Noop
-                },
-            ),
-        ) {
-            self.fetch_task = Some(FetchTask::from(task));
-        }
+        self.worker.send(WorkerRequest::Favorite(manga_id, index, false));
     }
 
     fn to_detail(&mut self, manga_id: i32) {

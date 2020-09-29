@@ -16,3 +16,4 @@ pub mod reader;
 pub mod select;
 pub mod settings;
 pub mod source;
+pub mod worker;
