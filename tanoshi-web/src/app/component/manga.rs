@@ -93,7 +93,9 @@ impl Component for Manga {
             }
             Msg::MouseDownTimeout => {
                 self.job = None;
-                self.props.on_long_tap.emit(());
+                if !self.is_dragging {
+                    self.props.on_long_tap.emit(());
+                }
             }
         }
         false
