@@ -1,13 +1,10 @@
-use std::collections::HashMap;
 use super::component::{Filter, Manga, MangaList, Spinner, TopBar, WeakComponentLink};
 use web_sys::HtmlElement;
 use yew::prelude::*;
 use yew::services::fetch::FetchTask;
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 use yew::worker::{Bridge, Bridged};
-use tanoshi_lib::{manga::{
-    Manga as MangaModel, Params, SortByParam, SortOrderParam, SourceLogin, SourceLoginResult,
-}, rest::AddFavoritesResponse};
+use tanoshi_lib::manga::{Manga as MangaModel, Params, SortByParam, SortOrderParam, SourceLogin, SourceLoginResult};
 use tanoshi_lib::rest::GetMangasResponse;
 use yew_router::{agent::RouteRequest, prelude::Route, prelude::RouteAgent};
 
@@ -494,7 +491,7 @@ impl Source {
         self.worker.send(WorkerRequest::FetchMangaDetail(manga_id))
     }
 
-    fn get_chapters(&mut self, manga_id: i32, refresh: bool) {
+    fn get_chapters(&mut self, manga_id: i32, _refresh: bool) {
         self.worker.send(WorkerRequest::FetchMangaChapters(manga_id))
     }
 

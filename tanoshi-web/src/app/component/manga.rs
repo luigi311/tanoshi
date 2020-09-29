@@ -4,7 +4,7 @@ use yew::prelude::*;
 use yew::services::{Task, TimeoutService};
 use yew::virtual_dom::VNode;
 use yew::{
-    html, Children, Component, ComponentLink, Html, Properties, ShouldRender,
+    html, Component, ComponentLink, Html, Properties, ShouldRender,
 };
 
 #[derive(Clone, PartialEq, Properties)]
@@ -34,7 +34,6 @@ pub enum Msg {
     TouchStart(TouchEvent),
     TouchEnd(TouchEvent),
     TouchMove(TouchEvent),
-    Noop,
 }
 
 impl Component for Manga {
@@ -96,7 +95,6 @@ impl Component for Manga {
                 self.job = None;
                 self.props.on_long_tap.emit(());
             }
-            Msg::Noop => return false,
         }
         false
     }

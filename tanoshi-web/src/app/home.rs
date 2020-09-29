@@ -114,7 +114,6 @@ impl Component for Home {
                 if data.status == "success" {
                     self.mangas.swap_remove(index);
                 }
-                log::info!("remove index {}", index);
             }
             Msg::Noop => {
                 return false;

@@ -46,15 +46,12 @@ impl Agent for Worker {
     fn update(&mut self, msg: Self::Message) {
         match msg {
             Msg::Initialized => {
-                log::info!("Initialized!");
             }
             Msg::MangaDetailFetched(who) => {
-                log::info!("Data was fetched");
                 self.fetch_task.remove(format!("detail#{:?}", who).as_str());
                 self.link.respond(who, Response::DataFetched);
             }
             Msg::MangaChaptersFetched(who) => {
-                log::info!("Data was fetched");
                 self.fetch_task.remove(format!("chapters#{:?}", who).as_str());
                 self.link.respond(who, Response::DataFetched);
             }

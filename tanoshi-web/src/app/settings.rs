@@ -95,7 +95,7 @@ impl Component for Settings {
         let token = super::api::get_token().unwrap_or("".to_string());
 
         let closure = Closure::wrap(Box::new(move |value| {
-            log::info!("cache {:?}", value);
+            log::debug!("cache {:?}", value);
         }) as Box<dyn FnMut(JsValue)>);
 
         Settings {
