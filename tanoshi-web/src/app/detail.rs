@@ -125,7 +125,7 @@ impl Component for Detail {
                 <button
                 onclick=self.link.callback(|_| Msg::FavoriteEvent)
                 class="hover:bg-accent-darker rounded flex-none">
-                    <svg class="mx-2 my-auto self-center" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" >
+                    <svg class="mx-2 my-auto self-center" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" fill="currentColor">
                     {
                         if !self.manga.is_favorite {
                             html!{<path class="heroicon-ui" d="M6.1 21.98a1 1 0 0 1-1.45-1.06l1.03-6.03-4.38-4.26a1 1 0 0 1 .56-1.71l6.05-.88 2.7-5.48a1 1 0 0 1 1.8 0l2.7 5.48 6.06.88a1 1 0 0 1 .55 1.7l-4.38 4.27 1.04 6.03a1 1 0 0 1-1.46 1.06l-5.4-2.85-5.42 2.85zm4.95-4.87a1 1 0 0 1 .93 0l4.08 2.15-.78-4.55a1 1 0 0 1 .29-.88l3.3-3.22-4.56-.67a1 1 0 0 1-.76-.54l-2.04-4.14L9.47 9.4a1 1 0 0 1-.75.54l-4.57.67 3.3 3.22a1 1 0 0 1 .3.88l-.79 4.55 4.09-2.15z"/>}
@@ -144,14 +144,14 @@ impl Component for Detail {
                 <button
                 onclick=self.link.callback(|_| Msg::Refresh)
                 class="hover:bg-accent-darker rounded flex-none">
-                    <svg class="mx-2 my-auto self-center" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" >
+                    <svg class="mx-2 my-auto self-center" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" fill="currentColor">
                         <path class="heroicon-ui" d="M6 18.7V21a1 1 0 0 1-2 0v-5a1 1 0 0 1 1-1h5a1 1 0 1 1 0 2H7.1A7 7 0 0 0 19 12a1 1 0 1 1 2 0 9 9 0 0 1-15 6.7zM18 5.3V3a1 1 0 0 1 2 0v5a1 1 0 0 1-1 1h-5a1 1 0 0 1 0-2h2.9A7 7 0 0 0 5 12a1 1 0 1 1-2 0 9 9 0 0 1 15-6.7z"/>
                     </svg>
                 </button>
             </TopBar>
             <Spinner is_active={self.is_fetching} is_fullscreen=true />
             <div id="detail" class="flex justify-center border-t border-b border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 p-2 mb-2">
-                <div class="w-full md:w-1/2 flex flex-col">
+                <div class="w-full lg:w-1/2 flex flex-col">
                     <div class="flex">
                         <div class="pb-7/6">
                             <img class="w-32 md:40 object-cover mr-2" src=self.manga.thumbnail_url />
@@ -172,7 +172,7 @@ impl Component for Detail {
                         <RouterAnchor<AppRoute>
                             classes="flex inline-flex justify-center p-2 content-center hover:bg-gray-200 dark:hover:bg-gray-700"
                             route=AppRoute::Reader(chapter.id, (chapter.read.unwrap_or(0) + 1) as usize)>
-                            <div class="w-full md:w-1/2 flex justify-between items-center text-gray-900 dark:text-gray-300">
+                            <div class=format!("w-full lg:w-1/2 flex justify-between items-center {}", if chapter.read.unwrap_or(0) == 0 {"text-gray-900 dark:text-gray-300"} else {"text-gray-500"})>
                                 <div class="flex flex-col">
                                     <span class="text-md font-semibold">
                                     {
