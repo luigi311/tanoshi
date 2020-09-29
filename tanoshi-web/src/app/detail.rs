@@ -151,7 +151,7 @@ impl Component for Detail {
             </TopBar>
             <Spinner is_active={self.is_fetching} is_fullscreen=true />
             <div id="detail" class="flex justify-center border-t border-b border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 p-2 mb-2">
-                <div class="w-full md:w-1/2 flex flex-col">
+                <div class="w-full lg:w-1/2 flex flex-col">
                     <div class="flex">
                         <div class="pb-7/6">
                             <img class="w-32 md:40 object-cover mr-2" src=self.manga.thumbnail_url />
@@ -172,7 +172,7 @@ impl Component for Detail {
                         <RouterAnchor<AppRoute>
                             classes="flex inline-flex justify-center p-2 content-center hover:bg-gray-200 dark:hover:bg-gray-700"
                             route=AppRoute::Reader(chapter.id, (chapter.read.unwrap_or(0) + 1) as usize)>
-                            <div class="w-full md:w-1/2 flex justify-between items-center text-gray-900 dark:text-gray-300">
+                            <div class=format!("w-full lg:w-1/2 flex justify-between items-center {}", if chapter.read.unwrap_or(0) == 0 {"text-gray-900 dark:text-gray-300"} else {"text-gray-500"})>
                                 <div class="flex flex-col">
                                     <span class="text-md font-semibold">
                                     {
