@@ -343,19 +343,19 @@ impl Source {
         html! {
             <>
                 <MangaList weak_link=list_link style="margin-top: calc(env(safe-area-inset-top) + .5rem)">
-                    { for self.mangas.iter().enumerate().map(|(idx, manga)| {
-                        let id = manga.id;
-                        html_nested!{
-                        <Manga
-                            key=id
-                            id=id
-                            title=&manga.title
-                            thumbnail=&manga.thumbnail_url
-                            is_favorite=&manga.is_favorite
-                            on_tap=self.link.callback(move |_| Msg::GoToDetail(id))
-                            on_long_tap=self.link.callback(move |_| Msg::OnLongTap(idx))/>
-                        }})
-                    }
+                { for self.mangas.iter().enumerate().map(|(idx, manga)| {
+                    let id = manga.id;
+                    html_nested!{
+                    <Manga
+                        key=id
+                        id=id
+                        title=&manga.title
+                        thumbnail=&manga.thumbnail_url
+                        is_favorite=&manga.is_favorite
+                        on_tap=self.link.callback(move |_| Msg::GoToDetail(id))
+                        on_long_tap=self.link.callback(move |_| Msg::OnLongTap(idx))/>
+                    }})
+                }
                 </MangaList>
                 {
                     match self.is_fetching {

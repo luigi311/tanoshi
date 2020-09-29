@@ -5,7 +5,9 @@ use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 
 use super::component::{Filter, Manga, MangaList, Spinner, TopBar, WeakComponentLink};
 use tanoshi_lib::manga::{Manga as MangaModel, Params, SortByParam, SortOrderParam};
-use tanoshi_lib::rest::GetMangasResponse;
+use tanoshi_lib::rest::{GetMangasResponse, AddFavoritesResponse};
+
+use yew_router::{agent::RouteRequest, prelude::Route, prelude::RouteAgent};
 
 #[derive(Clone, Properties)]
 pub struct Props {}
@@ -20,17 +22,21 @@ pub struct Home {
     show_filter: bool,
     sort_by: SortByParam,
     sort_order: SortOrderParam,
+    router: Box<dyn Bridge<RouteAgent>>,    
 }
 
 pub enum Msg {
     FavoritesReady(GetMangasResponse),
     SyncUpdates,
     MangaUpdated,
+    OnTap(i32),
+    OnLongTap(usize),
     Filter,
     FilterClosed,
     FilterCancel,
     SortByChange(SortByParam),
     SortOrderChange(SortOrderParam),
+    Unfavorited(usize, AddFavoritesResponse),
     Noop,
 }
 
@@ -39,6 +45,9 @@ impl Component for Home {
     type Properties = Props;
 
     fn create(_props: Self::Properties, link: ComponentLink<Self>) -> Self {
+        let callback = link.callback(|_| Msg::Noop);
+        let router = RouteAgent::bridge(callback);
+
         Home {
             fetch_task: None,
             link,
@@ -49,6 +58,7 @@ impl Component for Home {
             show_filter: false,
             sort_by: SortByParam::Title,
             sort_order: SortOrderParam::Asc,
+            router,
         }
     }
 
@@ -68,6 +78,12 @@ impl Component for Home {
             }
             Msg::MangaUpdated => {
                 self.fetch_manga_chapter();
+            }
+            Msg::OnTap(manga_id) => {
+                self.to_detail(manga_id);
+            }
+            Msg::OnLongTap(index) => {
+                self.unfavorite(index);
             }
             Msg::Filter => {
                 if !self.show_filter {
@@ -93,6 +109,12 @@ impl Component for Home {
             }
             Msg::SortOrderChange(sort_order) => {
                 self.sort_order = sort_order;
+            }
+            Msg::Unfavorited(index, data) => {
+                if data.status == "success" {
+                    self.mangas.swap_remove(index);
+                }
+                log::info!("remove index {}", index);
             }
             Msg::Noop => {
                 return false;
@@ -124,15 +146,18 @@ impl Component for Home {
                 </TopBar>
                 <Spinner is_active=self.is_fetching is_fullscreen=true />
                 <MangaList weak_link=list_link>
-                    { for self.mangas.iter().map(|manga| {
+                    { for self.mangas.iter().enumerate().map(|(idx, manga)| {
+                        let id = manga.id;
                         html_nested!{
                         <Manga
-                            key=manga.id
-                            id=manga.id
-                            title=&manga.title
-                            thumbnail=&manga.thumbnail_url
-                            is_favorite=false />
-                    }})
+                            key=id
+                            id=id
+                            title=manga.title.clone()
+                            thumbnail=manga.thumbnail_url.clone()
+                            is_favorite=false
+                            on_tap=self.link.callback(move |_| Msg::OnTap(id))
+                            on_long_tap=self.link.callback(move |_| Msg::OnLongTap(idx)) />
+                        }})
                     }
                 </MangaList>
                 <Filter
@@ -199,5 +224,30 @@ impl Home {
             self.fetch_task = Some(FetchTask::from(task));
             self.is_fetching = true;
         }
+    }
+
+    fn unfavorite(&mut self, index: usize) {
+        let manga_id = self.mangas[index].id;
+        if let Ok(task) = super::api::unfavorite(
+            manga_id,
+            self.link.callback(move |response: super::api::FetchJsonResponse<AddFavoritesResponse>| {
+                    if let (meta, Json(Ok(data))) = response.into_parts() {
+                        if meta.status.is_success() {
+                            return Msg::Unfavorited(index, data);
+                        }
+                    }
+                    Msg::Noop
+                },
+            ),
+        ) {
+            self.fetch_task = Some(FetchTask::from(task));
+        }
+    }
+
+    fn to_detail(&mut self, manga_id: i32) {
+        self.router.send(RouteRequest::ChangeRoute(Route::from(format!(
+                    "/manga/{}",
+                    manga_id
+                ))));
     }
 }

@@ -14,8 +14,6 @@ pub struct Props {
     pub thumbnail: String,
     pub is_favorite: bool,
     #[prop_or_default]
-    pub children: Children,
-    #[prop_or_default]
     pub on_tap: Callback<()>,
     #[prop_or_default]
     pub on_long_tap: Callback<()>,
@@ -24,13 +22,8 @@ pub struct Props {
 pub struct Manga {
     link: ComponentLink<Self>,
     job: Option<Box<dyn Task>>,
-    id: i32,
-    title: String,
-    thumbnail: String,
-    is_favorite: bool,
+    props: Props,
     is_dragging: bool,
-    on_tap: Callback<()>,
-    on_long_tap: Callback<()>,
 }
 
 pub enum Msg {
@@ -52,70 +45,56 @@ impl Component for Manga {
         Manga {
             link,
             job: None,
-            id: props.id,
-            title: props.title,
-            thumbnail: props.thumbnail,
-            is_favorite: props.is_favorite,
+            props,
             is_dragging: false,
-            on_tap: props.on_tap,
-            on_long_tap: props.on_long_tap,
         }
     }
 
     fn change(&mut self, props: Self::Properties) -> ShouldRender {
-        if self.is_favorite != props.is_favorite {
-            self.is_favorite = props.is_favorite;
+        if self.props != props {
+            self.props = props;
             true
         } else {
             false
         }
     }
 
-    fn rendered(&mut self, _first_render: bool) {}
-
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
             Msg::Click(e) => {
-                log::info!("Click");
                 e.prevent_default();
                 return false;
             }
             Msg::MouseDown(e) => {
-                log::info!("MouseDown");
                 e.prevent_default();
                 self.start_timer();
             }
             Msg::MouseUp(e) => {
-                log::info!("MouseUp");
                 e.prevent_default();
                 if !self.is_dragging && self.job.is_some() {
-                    self.on_tap.emit(());
+                    self.props.on_tap.emit(());
                     self.job = None;
                 }
             }
             Msg::TouchStart(e) => {
-                log::info!("TouchStart");
                 e.prevent_default();
                 self.start_timer();
                 self.is_dragging = false;
             }
             Msg::TouchEnd(e) => {
-                log::info!("TouchEnd");
                 e.prevent_default();
                 if !self.is_dragging && self.job.is_some() {
-                    self.on_tap.emit(());
+                    self.props.on_tap.emit(());
                     self.job = None;
                 }
             }
             Msg::TouchMove(e) => {
-                log::info!("TouchMove");
                 e.prevent_default();
                 self.is_dragging = true;
             }
             Msg::MouseDownTimeout => {
-                log::info!("MouseDownTimeout");
                 self.job = None;
-                self.on_long_tap.emit(());
+                self.props.on_long_tap.emit(());
             }
             Msg::Noop => return false,
         }
@@ -144,7 +123,7 @@ impl Component for Manga {
             "truncate",
             "rounded-b-md",
         );
-        let _ = div.set_inner_html(&self.title);
+        let _ = div.set_inner_html(&self.props.title);
 
         let node = Node::from(div);
         let vnode = VNode::VRef(node);
@@ -158,7 +137,7 @@ impl Component for Manga {
                 ontouchmove=self.link.callback(|e| Msg::TouchMove(e))
                 onclick=self.link.callback(|e| Msg::Click(e))
             >
-                <img class="absolute w-full h-full object-cover rounded-md" src={self.thumbnail.to_owned()} />
+                <img class="absolute w-full h-full object-cover rounded-md" src={self.props.thumbnail.to_owned()} />
                 {vnode}
             </div>
         }
@@ -168,7 +147,7 @@ impl Component for Manga {
 impl Manga {
     fn classes(&self) -> Vec<&str> {
         let mut classes = vec!["cursor-pointer", "relative", "rounded-md", "pb-7/5"];
-        if self.is_favorite {
+        if self.props.is_favorite {
             classes.push("favorite");
         }
         return classes;
