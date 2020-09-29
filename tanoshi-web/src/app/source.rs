@@ -3,13 +3,14 @@ use web_sys::HtmlElement;
 use yew::prelude::*;
 use yew::services::fetch::FetchTask;
 use yew::{html, Component, ComponentLink, Html, Properties, ShouldRender};
-
-use tanoshi_lib::manga::{
-    Manga as MangaModel, Params, SortByParam, SortOrderParam, SourceLogin, SourceLoginResult,
-};
+use yew::worker::{Bridge, Bridged};
+use tanoshi_lib::manga::{Manga as MangaModel, Params, SortByParam, SortOrderParam, SourceLogin, SourceLoginResult};
 use tanoshi_lib::rest::GetMangasResponse;
+use yew_router::{agent::RouteRequest, prelude::Route, prelude::RouteAgent};
 
-use crate::app::api::{get_local_storage, FetchJsonResponse};
+use crate::app::api;
+use crate::app::worker::{Worker, Request as WorkerRequest, Response as WorkerResponse};
+
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use yew::format::Json;
@@ -35,6 +36,8 @@ pub struct Source {
     sort_order: SortOrderParam,
     catalogue_ref: NodeRef,
     scroll_position: i32,
+    router: Box<dyn Bridge<RouteAgent>>,
+    worker: Box<dyn Bridge<Worker>>,
 }
 
 pub enum Msg {
@@ -54,7 +57,10 @@ pub enum Msg {
     FilterCancel,
     SortByChange(SortByParam),
     SortOrderChange(SortOrderParam),
-    GoToDetail,
+    OnLongTap(usize),
+    Favorited(usize),
+    Unfavorited(usize),
+    GoToDetail(i32),
     Noop,
 }
 
@@ -93,6 +99,21 @@ impl Component for Source {
             0
         };
 
+        let callback = link.callback(|_| Msg::Noop);
+        let router = RouteAgent::bridge(callback);
+
+        let worker_callback = link.callback(|res| match res {
+            WorkerResponse::Favorited(index, favorite) => {
+                if favorite { 
+                    Msg::Favorited(index) 
+                } else { 
+                    Msg::Unfavorited(index)
+                }
+            }
+            _ => Msg::Noop,
+        });
+        let worker = Worker::bridge(worker_callback);
+
         Source {
             link,
             source_name: props.source_name,
@@ -109,6 +130,8 @@ impl Component for Source {
             sort_order: SortOrderParam::Desc,
             catalogue_ref: NodeRef::default(),
             scroll_position,
+            router,
+            worker,
         }
     }
 
@@ -117,7 +140,7 @@ impl Component for Source {
             Msg::MangasReady(data) => {
                 self.is_fetching = false;
 
-                let mut mangas = data.mangas.clone();
+                let mut mangas = data.mangas;
                 if self.page == 1 {
                     self.mangas = mangas;
                 } else {
@@ -144,7 +167,7 @@ impl Component for Source {
                 self.is_fetching = false;
             }
             Msg::LoginReady(data) => {
-                if let Ok(mut storage) = get_local_storage() {
+                if let Ok(mut storage) = api::get_local_storage() {
                     storage.store(
                         format!("source-token-{}", &data.clone().source_name).as_str(),
                         Ok(data.clone().value),
@@ -196,7 +219,22 @@ impl Component for Source {
             Msg::SortOrderChange(sort_order) => {
                 self.sort_order = sort_order;
             }
-            Msg::GoToDetail => {
+            Msg::OnLongTap(index) => {
+                if self.mangas[index].is_favorite {
+                    self.unfavorite(index);
+                } else {
+                    self.favorite(index);
+                }
+            }
+            Msg::Favorited(index) => {
+                self.mangas[index].is_favorite = true;
+                self.get_manga_info(self.mangas[index].id);
+                self.get_chapters(self.mangas[index].id, true);
+            }
+            Msg::Unfavorited(index) => {
+                self.mangas[index].is_favorite = false;
+            }
+            Msg::GoToDetail(manga_id) => {
                 if let Some(div) = self.catalogue_ref.cast::<HtmlElement>() {
                     self.scroll_position = div.scroll_top();
                 }
@@ -214,6 +252,7 @@ impl Component for Source {
                         Ok(self.scroll_position.to_string()),
                     );
                 }
+                self.to_detail(manga_id);
                 return false;
             }
             Msg::Noop => {
@@ -291,6 +330,8 @@ impl Component for Source {
             }
         }
     }
+
+    fn destroy(&mut self) {}
 }
 
 impl Source {
@@ -299,17 +340,19 @@ impl Source {
         html! {
             <>
                 <MangaList weak_link=list_link style="margin-top: calc(env(safe-area-inset-top) + .5rem)">
-                    { for self.mangas.iter().map(|manga| {
-                        html_nested!{
-                        <Manga
-                            key=manga.id
-                            id=manga.id
-                            title=&manga.title
-                            thumbnail=&manga.thumbnail_url
-                            is_favorite=&manga.is_favorite
-                            on_to_detail=self.link.callback(|_| Msg::GoToDetail)/>
+                { for self.mangas.iter().enumerate().map(|(idx, manga)| {
+                    let id = manga.id;
+                    html_nested!{
+                    <Manga
+                        key=id
+                        id=id
+                        title=&manga.title
+                        thumbnail=&manga.thumbnail_url
+                        is_favorite=&manga.is_favorite
+                        on_tap=self.link.callback(move |_| Msg::GoToDetail(id))
+                        on_long_tap=self.link.callback(move |_| Msg::OnLongTap(idx))/>
                     }})
-                    }
+                }
                 </MangaList>
                 {
                     match self.is_fetching {
@@ -399,7 +442,7 @@ impl Source {
             &self.source_name,
             self.login.clone(),
             self.link
-                .callback(move |response: FetchJsonResponse<SourceLoginResult>| {
+                .callback(move |response: api::FetchJsonResponse<SourceLoginResult>| {
                     if let (meta, Json(Ok(data))) = response.into_parts() {
                         if meta.status.is_success() {
                             return Msg::LoginReady(data);
@@ -442,5 +485,30 @@ impl Source {
             self.fetch_task = Some(task);
             self.is_fetching = true;
         }
+    }
+
+    fn get_manga_info(&mut self, manga_id: i32) {
+        self.worker.send(WorkerRequest::FetchMangaDetail(manga_id))
+    }
+
+    fn get_chapters(&mut self, manga_id: i32, _refresh: bool) {
+        self.worker.send(WorkerRequest::FetchMangaChapters(manga_id))
+    }
+
+    fn favorite(&mut self, index: usize) {
+        let manga_id = self.mangas[index].id;
+        self.worker.send(WorkerRequest::Favorite(manga_id, index, true));
+    }
+
+    fn unfavorite(&mut self, index: usize) {
+        let manga_id = self.mangas[index].id;
+        self.worker.send(WorkerRequest::Favorite(manga_id, index, false));
+    }
+
+    fn to_detail(&mut self, manga_id: i32) {
+        self.router.send(RouteRequest::ChangeRoute(Route::from(format!(
+                    "/manga/{}",
+                    manga_id
+                ))));
     }
 }

@@ -42,7 +42,7 @@ impl Component for MangaList {
         MangaList { props }
     }
     fn update(&mut self, _: <Self as yew::html::Component>::Message) -> bool {
-        true
+        false
     }
     fn change(&mut self, props: Self::Properties) -> bool {
         if self.props != props {
