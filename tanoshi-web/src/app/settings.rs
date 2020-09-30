@@ -263,7 +263,7 @@ impl Component for Settings {
         html! {
             <div class="pb-20 pt-12" style="margin-top:env(safe-area-inset-top)">
                 <TopBar>
-                    <span class="w-full text-center text-black dark:text-white">{"Settings"}</span>
+                    <span class="w-full text-center text-white">{"Settings"}</span>
                 </TopBar>
                 {
                     match &self.setting_page {
@@ -276,7 +276,7 @@ impl Component for Settings {
                                 <RouterAnchor<BrowseRoute>
                                     classes="flex inline-flex justify-center p-2 content-center hover:bg-gray-200 dark:hover:bg-gray-700"
                                     route=BrowseRoute::Settings(SettingRoute::Account)>
-                                    <div class="w-full md:w-1/2 flex justify-between text-gray-900 dark:text-gray-300">
+                                    <div class="w-full lg:w-1/2 flex justify-between text-gray-900 dark:text-gray-300">
                                         <span class="font-semibold">{"Account"}</span>
                                         <svg viewBox="0 0 20 20" fill="currentColor" class="chevron-right w-6 h-6"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path></svg>
                                     </div>
@@ -284,7 +284,7 @@ impl Component for Settings {
                                 <RouterAnchor<BrowseRoute>
                                     classes="flex inline-flex justify-center p-2 content-center hover:bg-gray-200 dark:hover:bg-gray-700"
                                     route=BrowseRoute::Settings(SettingRoute::Admin)>
-                                    <div class="w-full md:w-1/2 flex justify-between text-gray-900 dark:text-gray-300">
+                                    <div class="w-full lg:w-1/2 flex justify-between text-gray-900 dark:text-gray-300">
                                         <span class="font-semibold">{"Admin"}</span>
                                         <svg viewBox="0 0 20 20" fill="currentColor" class="chevron-right w-6 h-6"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path></svg>
                                     </div>
@@ -292,7 +292,7 @@ impl Component for Settings {
                                 <RouterAnchor<BrowseRoute>
                                     classes="flex inline-flex justify-center p-2 content-center hover:bg-gray-200 dark:hover:bg-gray-700"
                                     route=BrowseRoute::Settings(SettingRoute::Reading)>
-                                    <div class="w-full md:w-1/2 flex justify-between text-gray-900 dark:text-gray-300">
+                                    <div class="w-full lg:w-1/2 flex justify-between text-gray-900 dark:text-gray-300">
                                         <span class="font-semibold">{"Reading"}</span>
                                         <svg viewBox="0 0 20 20" fill="currentColor" class="chevron-right w-6 h-6"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path></svg>
                                     </div>
@@ -300,7 +300,7 @@ impl Component for Settings {
                                 <RouterAnchor<BrowseRoute>
                                     classes="flex inline-flex justify-center p-2 content-center hover:bg-gray-200 dark:hover:bg-gray-700"
                                     route=BrowseRoute::Settings(SettingRoute::Misc)>
-                                    <div class="w-full md:w-1/2 flex justify-between text-gray-900 dark:text-gray-300">
+                                    <div class="w-full lg:w-1/2 flex justify-between text-gray-900 dark:text-gray-300">
                                         <span class="font-semibold">{"Misc"}</span>
                                         <svg viewBox="0 0 20 20" fill="currentColor" class="chevron-right w-6 h-6"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path></svg>
                                     </div>
@@ -459,7 +459,7 @@ impl Settings {
     fn setting_card(&self, label: &str, child: Html) -> Html {
         html! {
             <div>
-                <div class="w-full md:w-1/2 flex justify-between p-2 content-center mx-auto">
+                <div class="w-full lg:w-1/2 flex justify-between p-2 content-center mx-auto">
                     <span class="font-semibold my-auto text-gray-800 dark:text-gray-200">{label}</span>
                     {child}
                 </div>
@@ -471,7 +471,7 @@ impl Settings {
         html! {
             <>
             <div class="flex flex-col bg-white dark:bg-gray-900 border-t border-b border-gray-300 dark:border-gray-700" id="admin">
-                <div class="table w-full md:w-1/2 mx-auto">
+                <div class="table w-full lg:w-1/2 mx-auto">
                     <div class="table-header-group">
                         <div class="table-row">
                             <th class="table-cell w-1/3 p-2 border-b border-gray-300 dark:border-gray-700 text-left text-gray-800 dark:text-gray-200">{"Username"}</th>

@@ -56,7 +56,7 @@ impl Component for Filter {
                         "mx-auto",
                         "h-auto",
                         "w-full",
-                        "md:w-1/2",
+                        "lg:w-1/2",
                         "lg:w-1/2",
                         "rounded-t-md",
                         "bg-white",
@@ -113,17 +113,17 @@ impl Component for Filter {
                     <button class="flex rounded bg-accent text-white py-1 px-2 shadow justify-center" onclick=self.link.callback(|_| Msg::Done)>{"Search"}</button>
                 </div>
                 <div class="w-full max-w-full flex flex-col mx-auto mt-12">
-                    <div class="w-full shadow p-2 dark:text-gray-300 text-gray-700">{"Sort By"}</div>
-                    <button class="inline-flex justify-center p-2 dark:text-gray-300 text-gray-700" onclick=self.link.callback(|_| Msg::SortClick(SortByParam::LastUpdated))>
+                    <div class="w-full shadow  py-1 px-4 dark:text-gray-300 text-gray-700">{"Sort By"}</div>
+                    <button class="inline-flex justify-center p-2 text-gray-700 dark:text-gray-300" onclick=self.link.callback(|_| Msg::SortClick(SortByParam::LastUpdated))>
                         {
                             match self.props.sort_by {
                                 SortByParam::LastUpdated  => self.asc_or_desc(),
                                 _ => self.empty_svg(),
                             }
                         }
-                        <span class="dark:text-gray-300 text-gray-700">{"Last Updated"}</span>
+                        <span class="text-gray-700 dark:text-gray-300">{"Last Updated"}</span>
                     </button>
-                    <button class="inline-flex justify-center p-2 dark:text-gray-300 text-gray-700" onclick=self.link.callback(|_| Msg::SortClick(SortByParam::Title))>
+                    <button class="inline-flex justify-center p-2 text-gray-700 dark:text-gray-300" onclick=self.link.callback(|_| Msg::SortClick(SortByParam::Title))>
                         {
                             match self.props.sort_by {
                                 SortByParam::Title  => self.asc_or_desc(),
@@ -132,23 +132,23 @@ impl Component for Filter {
                         }
                         <span class="dark:text-gray-300 text-gray-700">{"Title"}</span>
                     </button>
-                    <button class="inline-flex justify-center p-2 dark:text-gray-300 text-gray-700" onclick=self.link.callback(|_| Msg::SortClick(SortByParam::Comment))>
+                    <button class="inline-flex justify-center p-2 text-gray-700 dark:text-gray-300" onclick=self.link.callback(|_| Msg::SortClick(SortByParam::Comment))>
                         {
                             match self.props.sort_by {
                                 SortByParam::Comment  => self.asc_or_desc(),
                                 _ => self.empty_svg(),
                             }
                         }
-                        <span class="dark:text-gray-300 text-gray-700 dark:text-gray-300 text-gray-700">{"Comment"}</span>
+                        <span class="dark:text-gray-300 text-gray-700 dark:text-gray-300">{"Comment"}</span>
                     </button>
-                    <button class="inline-flex justify-center p-2" onclick=self.link.callback(|_| Msg::SortClick(SortByParam::Views))>
+                    <button class="inline-flex justify-center p-2 text-gray-700 dark:text-gray-300" onclick=self.link.callback(|_| Msg::SortClick(SortByParam::Views))>
                         {
                             match self.props.sort_by {
                                 SortByParam::Views  => self.asc_or_desc(),
                                 _ => self.empty_svg(),
                             }
                         }
-                        <span class="dark:text-gray-300 text-gray-700">{"Views"}</span>
+                        <span class="text-gray-700 dark:text-gray-300">{"Views"}</span>
                     </button>
                 </div>
             </div>
