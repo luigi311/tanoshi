@@ -367,7 +367,7 @@ impl Source {
 
     fn view_login_page(&self) -> Html {
         html! {
-            <div class="flex justify-center px-6 my-12" style="margin-top: calc(env(safe-area-inset-top) + .5rem)">
+            <div class="flex justify-center px-2 my-12" style="margin-top: calc(env(safe-area-inset-top) + .5rem)">
                 <div class="w-full xl:w-3/4 lg:w-11/12 flex">
                     <div class="w-full p-5">
                         <form class="px-8 pt-6 pb-8 mb-4 rounded" onsubmit=self.link.callback(|e| Msg::Submit(e))>

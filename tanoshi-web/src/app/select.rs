@@ -107,14 +107,14 @@ impl Select {
         }
         return html! {
             <>
-            <div class="w-full md:w-1/2 flex justify-center m-2"><span class="text-black dark:text-white">{"Installed"}</span></div>
+            <div class="w-full lg:w-1/2 flex justify-start lg:justify-center m-2"><span class="text-black dark:text-white">{"Installed"}</span></div>
             <div class="flex flex-col bg-white dark:bg-gray-900 divide-y divide-gray-300 dark:divide-gray-700 border-t border-b border-gray-300 dark:border-gray-700" style="margin-top:env(safe-area-inset-top)">
             {
                 for self.sources[&true].iter().map(|source| html!{
                     <RouterAnchor<BrowseRoute>
                         classes="flex inline-flex justify-center p-2 content-center"
                         route=BrowseRoute::Catalogue(CatalogueRoute::Source(source.name.clone()))>
-                        <div class="w-full md:w-1/2 flex justify-between items-center text-gray-900 dark:text-gray-300">
+                        <div class="w-full lg:w-1/2 flex justify-between items-center text-gray-900 dark:text-gray-300">
                             <div class="flex flex-col">
                                 <span class="text-md font-semibold">{source.name.to_owned()}</span>
                                 <span class="text-sm">{source.installed_version.to_owned()}</span>
@@ -135,12 +135,12 @@ impl Select {
         }
         return html! {
             <>
-            <div class="w-full md:w-1/2 flex justify-center m-2"><span class="text-black dark:text-white">{"Available"}</span></div>
+            <div class="w-full lg:w-1/2 flex justify-center m-2"><span class="text-black dark:text-white">{"Available"}</span></div>
             <div class="flex flex-col bg-white dark:bg-gray-900 divide-y divide-gray-300 dark:divide-gray-700 border-t border-b border-gray-300 dark:border-gray-700" style="margin-top: calc(env(safe-area-inset-top) + .5rem)">
             {
                 for (0..self.sources[&false].len()).map(|i| html!{
                     <div class="flex inline-flex justify-center p-2 content-center">
-                    <div class="w-full md:w-1/2 flex justify-between items-center text-gray-900 dark:text-gray-300">
+                    <div class="w-full lg:w-1/2 flex justify-between items-center text-gray-900 dark:text-gray-300">
                         <div class="flex flex-col">
                             <span class="text-md font-semibold text-gray-900 dark:text-gray-300">{self.sources[&false][i].name.clone()}</span>
                             <span class="text-sm">{self.sources[&false][i].version.clone()}</span>

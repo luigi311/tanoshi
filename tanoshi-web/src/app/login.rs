@@ -98,7 +98,7 @@ impl Component for Login {
         html! {
             <div style="padding-top: calc(env(safe-area-inset-top) + .5rem)" class="flex justify-center">
                 <div class="block fixed inset-x-0 top-0 z-50 bg-accent safe-top z-50"></div>
-                <div class="w-full md:w-1/2">
+                <div class="w-full lg:w-1/2 p-2">
                     <form class="mx-auto" onsubmit=self.link.callback(|e| Msg::Submit(e))>
                         <label class="mb-2 text-sm font-bold text-gray-700 dark:text-gray-300" for="username">
                             {"Username"}
