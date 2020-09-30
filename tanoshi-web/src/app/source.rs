@@ -86,7 +86,7 @@ impl Component for Source {
             storage.remove(format!("source-{}-page", props.source_name.clone()).as_str());
             val
         } else {
-            1
+            0
         };
 
         let scroll_position = if let Ok(data) =
@@ -120,7 +120,7 @@ impl Component for Source {
             page,
             mangas,
             fetch_task: None,
-            is_fetching: true,
+            is_fetching: false,
             closure: None,
             keyword: "".to_string(),
             is_login_page: false,
@@ -139,7 +139,7 @@ impl Component for Source {
         match msg {
             Msg::MangasReady(data) => {
                 self.is_fetching = false;
-
+                self.page += 1;
                 let mut mangas = data.mangas;
                 if self.page == 1 {
                     self.mangas = mangas;
@@ -149,7 +149,6 @@ impl Component for Source {
             }
             Msg::ScrolledDown => {
                 if !self.is_fetching {
-                    self.page += 1;
                     self.fetch_mangas();
                 }
             }
@@ -307,7 +306,9 @@ impl Component for Source {
 
     fn rendered(&mut self, first_render: bool) {
         if first_render {
-            self.fetch_mangas();
+            if self.page == 0 {
+                self.fetch_mangas();
+            }
 
             let tmp_link = self.link.clone();
             if let Some(div) = self.catalogue_ref.cast::<HtmlElement>() {
@@ -461,7 +462,7 @@ impl Source {
             keyword: Some(self.keyword.to_owned()),
             sort_by: Some(self.sort_by.clone()),
             sort_order: Some(self.sort_order.clone()),
-            page: Some(self.page.to_string()),
+            page: Some((self.page + 1).to_string()),
             genres: None,
             refresh: match self.page {
                 1 => Some(true),
