@@ -1934,7 +1934,7 @@ dependencies = [
 
 [[package]]
 name = "tanoshi"
-version = "0.13.0"
+version = "0.14.0"
 dependencies = [
  "anyhow",
  "base64 0.12.3",
@@ -1977,7 +1977,7 @@ dependencies = [
 
 [[package]]
 name = "tanoshi-web"
-version = "0.13.0"
+version = "0.14.0"
 dependencies = [
  "anyhow",
  "chrono",

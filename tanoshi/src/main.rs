@@ -24,7 +24,7 @@ use warp::Filter;
 use config::Config;
 
 #[derive(Clap)]
-#[clap(version = "0.13.0")]
+#[clap(version = "0.14.0")]
 struct Opts {
     /// Path to config file
     #[clap(long)]
