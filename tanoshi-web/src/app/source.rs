@@ -376,7 +376,7 @@ impl Source {
                                     {"Username"}
                                 </label>
                                 <input
-                                    class="w-full px-3 py-2 text-sm leading-tight bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-700 rounded shadow appearance-none focus:outline-none focus:shadow-outline"
+                                    class="w-full px-3 py-2 text-sm leading-tight bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-700 rounded shadow appearance-none focus:outline-none focus:ring"
                                     id="username"
                                     type="text"
                                     value=self.login.username.to_owned()
@@ -388,7 +388,7 @@ impl Source {
                                     {"Password"}
                                 </label>
                                 <input
-                                    class="w-full px-3 py-2 mb-3 text-sm bg-white dark:bg-gray-800 leading-tight text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-700 rounded shadow appearance-none focus:outline-none focus:shadow-outline"
+                                    class="w-full px-3 py-2 mb-3 text-sm bg-white dark:bg-gray-800 leading-tight text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-700 rounded shadow appearance-none focus:outline-none focus:ring"
                                     id="password"
                                     type="password"
                                     value=self.login.password.clone()
@@ -408,7 +408,7 @@ impl Source {
                                     {"2FA Code"}
                                 </label>
                                 <input
-                                    class="w-full px-3 py-2 mb-3 text-sm leading-tight bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-700 rounded shadow appearance-none focus:outline-none focus:shadow-outline"
+                                    class="w-full px-3 py-2 mb-3 text-sm leading-tight bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-700 rounded shadow appearance-none focus:outline-none focus:ring"
                                     type="text"
                                     name="token"
                                     id="token"
@@ -423,7 +423,7 @@ impl Source {
                                     true => html!{<Spinner is_active=true is_fullscreen=false />},
                                     false => html!{
                                         <button
-                                        class="w-full px-4 py-2 font-bold text-white bg-blue-500 rounded-full hover:bg-blue-700 focus:outline-none focus:shadow-outline"
+                                        class="w-full px-4 py-2 font-bold text-white bg-blue-500 rounded-full hover:bg-blue-700 focus:outline-none focus:ring"
                                         type="submit">
                                         {"Sign In"}
                                     </button>

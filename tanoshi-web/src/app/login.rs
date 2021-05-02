@@ -104,7 +104,7 @@ impl Component for Login {
                             {"Username"}
                         </label>
                         <input
-                            class="w-full bg-white dark:bg-gray-800 px-3 py-2 mb-3 text-sm leading-tight text-gray-700 dark:text-gray-300 rounded border border-gray-300 dark:border-gray-700 appearance-none focus:outline-none focus:shadow-outline"
+                            class="w-full bg-white dark:bg-gray-800 px-3 py-2 mb-3 text-sm leading-tight text-gray-700 dark:text-gray-300 rounded border border-gray-300 dark:border-gray-700 appearance-none focus:outline-none focus:ring"
                             id="username"
                             type="text"
                             value=self.user.username.to_owned()
@@ -114,14 +114,14 @@ impl Component for Login {
                             {"Password"}
                         </label>
                         <input
-                            class="w-full bg-white dark:bg-gray-800 px-3 py-2 mb-3 text-sm leading-tight text-gray-700 dark:text-gray-300 rounded border border-gray-300 dark:border-gray-700 appearance-none focus:outline-none focus:shadow-outline"
+                            class="w-full bg-white dark:bg-gray-800 px-3 py-2 mb-3 text-sm leading-tight text-gray-700 dark:text-gray-300 rounded border border-gray-300 dark:border-gray-700 appearance-none focus:outline-none focus:ring"
                             id="password"
                             type="password"
                             value=self.user.password.clone().unwrap_or("".to_string()).to_owned()
                             oninput=self.link.callback(|e| Msg::PasswordChange(e))
                         />
                         <button
-                            class="w-full px-4 py-2 font-bold text-white bg-blue-500 rounded-full hover:bg-blue-700 focus:outline-none focus:shadow-outline"
+                            class="w-full px-4 py-2 font-bold text-white bg-blue-500 rounded-full hover:bg-blue-700 focus:outline-none focus:ring"
                             type="submit"
                         >
                             {"Sign In"}
