@@ -11,6 +11,7 @@ module.exports = (env, argv) => {
     const isProduction = (argv.mode === 'production');//package.json scripts -> build
 
     return {
+        mode: argv.mode,
         devServer: {
             historyApiFallback: {
                 index: '/'
@@ -26,13 +27,13 @@ module.exports = (env, argv) => {
         output: {
             path: distPath,
             publicPath: '/',
-            filename: isProduction ? '[name].[contenthash].js' : '[name].[hash].js'
+            filename: isProduction ? '[name].[contenthash].js' : '[name].[fullhash].js'
         },
         optimization: {
             runtimeChunk: 'single',
             splitChunks: {
                 cacheGroups: {
-                    vendor: {
+                    defaultVendors: {
                         test: /[\\/]node_modules[\\/]/,
                         name: 'vendors',
                         chunks: 'all',
@@ -78,7 +79,6 @@ module.exports = (env, argv) => {
                 deleteOriginalAssets: false,
             }),
         ],
-        watch: argv.mode !== "production",
         module: {
             rules: [
                 {
@@ -100,6 +100,9 @@ module.exports = (env, argv) => {
                     ]
                 }
             ]
+        },
+        experiments: {
+            syncWebAssembly: true
         }
     };
 };
