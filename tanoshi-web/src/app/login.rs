@@ -12,6 +12,7 @@ use yew_router::{agent::RouteRequest, prelude::*};
 use web_sys::FocusEvent;
 
 use super::component::model::{Claims, User};
+use super::component::{TopBar};
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct UserResponse {
@@ -96,8 +97,10 @@ impl Component for Login {
 
     fn view(&self) -> Html {
         html! {
-            <div style="padding-top: calc(env(safe-area-inset-top) + .5rem)" class="flex justify-center">
-                <div class="block fixed inset-x-0 top-0 z-50 bg-accent safe-top z-50"></div>
+            <div class="pb-20 overflow-scroll max-h-screen" style="margin-top: calc(env(safe-area-inset-top) + 3rem)">
+                <TopBar>
+                    <span class="mx-auto my-1">{"Login"}</span>
+                </TopBar>
                 <div class="w-full lg:w-1/2 p-2">
                     <form class="mx-auto" onsubmit=self.link.callback(|e| Msg::Submit(e))>
                         <label class="mb-2 text-sm font-bold text-gray-700 dark:text-gray-300" for="username">

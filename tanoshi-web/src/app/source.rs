@@ -273,18 +273,18 @@ impl Component for Source {
         return html! {
             <div ref={self.catalogue_ref.clone()} id="catalogue" class="pb-20 px-2 overflow-scroll max-h-screen">
                 <TopBar>
-                    <button onclick=self.link.callback(|_| Msg::Filter) class="hover:bg-accent-darker focus:bg-accent-darker rounded flex-none">
+                    <button onclick=self.link.callback(|_| Msg::Filter) class="hover:text-accent-darker focus:text-accent-darker focus:outline-none rounded flex-none">
                         <svg fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" class="mx-2 self-center flex-none"><path d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path></svg>
                     </button>
                     <form class="mx-2 flex-grow" onsubmit=self.link.callback(|e| Msg::Search(e))>
                         <input type="search"
-                            class="w-full px-3 py-2 focus:outline-none text-sm leading-tight text-white bg-accent-darker dark:bg-gray-800 shadow-inner rounded appearance-none"
+                            class="w-full px-3 py-2 focus:outline-none text-sm leading-tight text-white bg-gray-800 shadow-inner rounded appearance-none"
                             placeholder={"Search"}
                             value={self.keyword.clone()}
                             oninput=self.link.callback(|e| Msg::KeywordChanged(e))/>
                     </form>
                     <button onclick=self.link.callback(|_| Msg::SourceLogin)
-                        class="hover:bg-accent-darker focus:bg-accent-darker rounded flex-none">
+                        class="hover:text-accent-darker focus:text-accent-darker focus:outline-none rounded flex-none">
                         <svg viewBox="0 0 20 20" fill="currentColor" class="login w-6 h-6 mx-2 self-center flex-none">
                             <path fill-rule="evenodd" d="M3 3a1 1 0 011 1v12a1 1 0 11-2 0V4a1 1 0 011-1zm7.707 3.293a1 1 0 010 1.414L9.414 9H17a1 1 0 110 2H9.414l1.293 1.293a1 1 0 01-1.414 1.414l-3-3a1 1 0 010-1.414l3-3a1 1 0 011.414 0z" clip-rule="evenodd"></path>
                         </svg>
