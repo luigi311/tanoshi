@@ -23,5 +23,5 @@ module.exports = {
         textColor: ['dark', 'hover', 'focus', 'disabled'],
     },
     plugins: [],
-    dark: 'class'
+    darkMode: 'media'
 }
