@@ -36,7 +36,7 @@ impl Component for TopBar {
 
     fn view(&self) -> Html {
         html! {
-            <div class="w-full px-2 pb-2 flex justify-between block fixed inset-x-0 top-0 z-50 bg-accent border-b border-accent-darker text-white" style="padding-top: calc(env(safe-area-inset-top) + .5rem)">
+            <div class="w-full px-2 pb-2 flex justify-between block fixed inset-x-0 top-0 z-50 bg-accent border-b border-accent-darker text-white dark:border-gray-800 dark:bg-gray-900" style="padding-top: calc(env(safe-area-inset-top) + .5rem)">
             {
                 if self.props.children.is_empty() {
                     html! {}

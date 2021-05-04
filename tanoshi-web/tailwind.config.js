@@ -1,10 +1,12 @@
+const colors = require('tailwindcss/colors')
+
 module.exports = {
     theme: {
         extend: {
             colors: {
-                'accent': '#5b749b',
-                'accent-lighter': '#7e93b3',
-                'accent-darker': '#455876'
+                'accent': '#991B1B',
+                'accent-lighter': '#B91C1C',
+                'accent-darker': '#7F1D1D',
             },
             height: {
                 page: 'calc(100vw * 1.59)',
@@ -13,6 +15,16 @@ module.exports = {
             spacing: {
                 '7/5': '141.5094339622642%',
             },
+        },
+        colors: {
+            transparent: 'transparent',
+            current: 'currentColor',
+            black: colors.black,
+            white: colors.white,
+            gray: colors.trueGray,
+            red: colors.red,
+            yellow: colors.amber,
+            blue: colors.blue
         },
         container: {
             center: true,

@@ -278,7 +278,7 @@ impl Component for Source {
                     </button>
                     <form class="mx-2 flex-grow" onsubmit=self.link.callback(|e| Msg::Search(e))>
                         <input type="search"
-                            class="w-full px-3 py-2 focus:outline-none text-sm leading-tight text-white bg-accent-darker shadow-inner rounded appearance-none"
+                            class="w-full px-3 py-2 focus:outline-none text-sm leading-tight text-white bg-accent-darker dark:bg-gray-800 shadow-inner rounded appearance-none"
                             placeholder={"Search"}
                             value={self.keyword.clone()}
                             oninput=self.link.callback(|e| Msg::KeywordChanged(e))/>

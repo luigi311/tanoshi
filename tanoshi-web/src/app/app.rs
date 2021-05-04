@@ -49,7 +49,7 @@ impl Component for App {
             .body()
             .unwrap()
             .class_list()
-            .add_2("bg-gray-100", "dark:bg-gray-800");
+            .add_2("bg-gray-100", "dark:bg-black");
 
         let settings = SettingParams::parse_from_local_storage();
         if settings.dark_mode {

@@ -29,7 +29,7 @@ impl Component for NavigationBar {
 
     fn view(&self) -> Html {
         html! {
-           <div class="block fixed inset-x-0 bottom-0 z-50 border-t border-gray-300 dark:border-gray-700 safe-bottom bg-white dark:bg-gray-900">
+           <div class="block fixed inset-x-0 bottom-0 z-50 border-t border-gray-300 dark:border-gray-800 safe-bottom bg-white dark:bg-gray-900">
            <div id="tabs" class="flex justify-between">
                 <RouterAnchor<AppRoute> route=AppRoute::Browse(BrowseRoute::Home) classes="w-full text-black dark:text-gray-300 focus:text-accent hover:text-accent justify-center inline-block text-center pt-2 pb-1">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24"  class="fill-current inline-block mb-1">
