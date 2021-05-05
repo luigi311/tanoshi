@@ -1,4 +1,5 @@
 use tanoshi_lib::manga::{SortByParam, SortOrderParam};
+use super::Modal;
 use yew::prelude::*;
 
 #[derive(Clone, PartialEq, Properties)]
@@ -17,14 +18,10 @@ pub struct Props {
 pub struct Filter {
     link: ComponentLink<Self>,
     props: Props,
-    node_ref: NodeRef,
-    classes: Vec<&'static str>,
 }
 
 pub enum Msg {
     SortClick(SortByParam),
-    Done,
-    Cancel,
 }
 
 impl Component for Filter {
@@ -32,48 +29,14 @@ impl Component for Filter {
     type Properties = Props;
 
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
-        let classes = vec!["hidden"];
         Filter {
             link,
             props,
-            node_ref: NodeRef::default(),
-            classes,
         }
     }
 
     fn change(&mut self, props: Self::Properties) -> ShouldRender {
         if self.props != props {
-            if self.props.show != props.show {
-                if self.classes[0] == "hidden" {
-                    self.classes = vec![
-                        "animated",
-                        "faster",
-                        "fixed",
-                        "h-1/2",
-                        "z-25",
-                        "inset-x-0",
-                        "bottom-0",
-                        "mx-auto",
-                        "h-auto",
-                        "w-full",
-                        "lg:w-1/2",
-                        "lg:w-1/2",
-                        "rounded-t-md",
-                        "bg-white",
-                        "border",
-                        "border-t",
-                        "border-l",
-                        "border-r",
-                        "border-gray-300",
-                        "dark:border-gray-700",
-                        "safe-bottom",
-                        "flex",
-                        "flex-col",
-                        "bg-white",
-                        "dark:bg-gray-900"
-                    ];
-                }
-            }
             self.props = props;
             true
         } else {
@@ -95,78 +58,59 @@ impl Component for Filter {
                     self.props.onsortbychange.emit(self.props.sort_by.clone());
                 }
             }
-            Msg::Done => {
-                self.props.onclose.emit(());
-            }
-            Msg::Cancel => {
-                self.props.oncancel.emit(());
-            }
         }
         true
     }
 
     fn view(&self) -> Html {
         html! {
-            <div id="filter" ref={self.node_ref.clone()} class={self.classes()}>
-                <div class="absolute w-full shadow p-2 flex justify-between">
-                    <button class="flex rounded text-accent dark:text-accent-lighter py-1 px-2 justify-center" onclick=self.link.callback(|_| Msg::Cancel)>{"Cancel"}</button>
-                    <button class="flex rounded bg-accent text-white py-1 px-2 shadow justify-center" onclick=self.link.callback(|_| Msg::Done)>{"Search"}</button>
-                </div>
-                <div class="w-full max-w-full flex flex-col mx-auto mt-12">
-                    <div class="w-full shadow  py-1 px-4 dark:text-gray-300 text-gray-700">{"Sort By"}</div>
-                    <button class="inline-flex justify-center p-2 text-gray-700 dark:text-gray-300" onclick=self.link.callback(|_| Msg::SortClick(SortByParam::LastUpdated))>
-                        {
-                            match self.props.sort_by {
-                                SortByParam::LastUpdated  => self.asc_or_desc(),
-                                _ => self.empty_svg(),
-                            }
+            <Modal
+                show={self.props.show}
+                onclose={&self.props.onclose}
+                oncancel={&self.props.onclose}>
+                <div class="w-full shadow  py-1 px-4 dark:text-gray-300 text-gray-700">{"Sort By"}</div>
+                <button class="inline-flex justify-center p-2 text-gray-700 dark:text-gray-300" onclick=self.link.callback(|_| Msg::SortClick(SortByParam::LastUpdated))>
+                    {
+                        match self.props.sort_by {
+                            SortByParam::LastUpdated  => self.asc_or_desc(),
+                            _ => self.empty_svg(),
                         }
-                        <span class="text-gray-700 dark:text-gray-300">{"Last Updated"}</span>
-                    </button>
-                    <button class="inline-flex justify-center p-2 text-gray-700 dark:text-gray-300" onclick=self.link.callback(|_| Msg::SortClick(SortByParam::Title))>
-                        {
-                            match self.props.sort_by {
-                                SortByParam::Title  => self.asc_or_desc(),
-                                _ => self.empty_svg(),
-                            }
+                    }
+                    <span class="text-gray-700 dark:text-gray-300">{"Last Updated"}</span>
+                </button>
+                <button class="inline-flex justify-center p-2 text-gray-700 dark:text-gray-300" onclick=self.link.callback(|_| Msg::SortClick(SortByParam::Title))>
+                    {
+                        match self.props.sort_by {
+                            SortByParam::Title  => self.asc_or_desc(),
+                            _ => self.empty_svg(),
                         }
-                        <span class="dark:text-gray-300 text-gray-700">{"Title"}</span>
-                    </button>
-                    <button class="inline-flex justify-center p-2 text-gray-700 dark:text-gray-300" onclick=self.link.callback(|_| Msg::SortClick(SortByParam::Comment))>
-                        {
-                            match self.props.sort_by {
-                                SortByParam::Comment  => self.asc_or_desc(),
-                                _ => self.empty_svg(),
-                            }
+                    }
+                    <span class="dark:text-gray-300 text-gray-700">{"Title"}</span>
+                </button>
+                <button class="inline-flex justify-center p-2 text-gray-700 dark:text-gray-300" onclick=self.link.callback(|_| Msg::SortClick(SortByParam::Comment))>
+                    {
+                        match self.props.sort_by {
+                            SortByParam::Comment  => self.asc_or_desc(),
+                            _ => self.empty_svg(),
                         }
-                        <span class="dark:text-gray-300 text-gray-700 dark:text-gray-300">{"Comment"}</span>
-                    </button>
-                    <button class="inline-flex justify-center p-2 text-gray-700 dark:text-gray-300" onclick=self.link.callback(|_| Msg::SortClick(SortByParam::Views))>
-                        {
-                            match self.props.sort_by {
-                                SortByParam::Views  => self.asc_or_desc(),
-                                _ => self.empty_svg(),
-                            }
+                    }
+                    <span class="dark:text-gray-300 text-gray-700 dark:text-gray-300">{"Comment"}</span>
+                </button>
+                <button class="inline-flex justify-center p-2 text-gray-700 dark:text-gray-300" onclick=self.link.callback(|_| Msg::SortClick(SortByParam::Views))>
+                    {
+                        match self.props.sort_by {
+                            SortByParam::Views  => self.asc_or_desc(),
+                            _ => self.empty_svg(),
                         }
-                        <span class="text-gray-700 dark:text-gray-300">{"Views"}</span>
-                    </button>
-                </div>
-            </div>
+                    }
+                    <span class="text-gray-700 dark:text-gray-300">{"Views"}</span>
+                </button>
+            </Modal>
         }
     }
 }
 
 impl Filter {
-    fn classes(&self) -> Vec<&str> {
-        let mut classes = self.classes.clone();
-        if self.props.show {
-            classes.push("slideInUp");
-        } else {
-            classes.push("slideOutDown");
-        }
-        classes
-    }
-
     fn asc_or_desc(&self) -> Html {
         match self.props.sort_order {
             SortOrderParam::Asc => html! {

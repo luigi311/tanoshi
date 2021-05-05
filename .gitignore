@@ -6,3 +6,4 @@ target/
 mangas/
 config.yml
 *.db
+Cargo.lock

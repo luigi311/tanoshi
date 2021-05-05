@@ -39,6 +39,9 @@ pub use toast::{Toast, Type as ToastType};
 mod top_bar;
 pub use top_bar::TopBar;
 
+mod modal;
+pub use modal::Modal;
+
 use std::cell::RefCell;
 use std::ops::Deref;
 use std::rc::Rc;
