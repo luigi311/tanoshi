@@ -3,7 +3,10 @@ use crate::auth;
 use anyhow::anyhow;
 
 lazy_static! {
-    static ref QUERIES: Vec<&'static str> = vec![include_str!("1.sql"),];
+    static ref QUERIES: Vec<&'static str> = vec![
+        include_str!("1.sql"),
+        include_str!("2.sql")
+    ];
 }
 
 pub async fn migrate<P: AsRef<std::path::Path>>(path: P) -> Result<(), anyhow::Error> {

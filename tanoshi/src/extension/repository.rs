@@ -104,8 +104,12 @@ impl Repository {
         manga.title AS title,
         CASE
             WHEN author IS NOT NULL THEN author
-            ELSE ''
+            ELSE '[]'
             END author,
+        CASE
+            WHEN genre IS NOT NULL THEN genre
+            ELSE '[]'
+            END genre,
         CASE
             WHEN status IS NOT NULL THEN status
             ELSE ''
@@ -131,23 +135,22 @@ impl Repository {
         let mangas = stmt
             .query_map(params![username, Rc::new(manga_ids)], |row| {
                 let author = row
-                    .get::<_, String>(3)?
-                    .split(",")
-                    .map(|a| a.to_string())
-                    .collect();
+                    .get::<_, String>(3)?;
+                let genre = row
+                    .get::<_, String>(4)?;
                 Ok(Manga {
                     id: row.get(0)?,
                     source: row.get(1)?,
                     title: row.get(2)?,
-                    author,
-                    status: row.get(4)?,
-                    description: row.get(5)?,
-                    path: row.get(6)?,
-                    thumbnail_url: row.get(7)?,
+                    author: serde_json::from_str(&author).unwrap_or(vec![]),
+                    genre: serde_json::from_str(&genre).unwrap_or(vec![]),
+                    status: row.get(5)?,
+                    description: row.get(6)?,
+                    path: row.get(7)?,
+                    thumbnail_url: row.get(8)?,
                     last_read: None,
                     last_page: None,
-                    is_favorite: row.get(8)?,
-                    genre: vec![],
+                    is_favorite: row.get(9)?,
                 })
             })?
             .filter_map(|m| m.ok())
@@ -171,6 +174,7 @@ impl Repository {
             manga.source,
            manga.title AS title,
            author,
+           genre,
            status,
            description,
            manga.path,
@@ -194,23 +198,22 @@ impl Repository {
             params![username, manga_id],
             |row| {
                 let author = row
-                    .get::<_, String>(3)?
-                    .split(",")
-                    .map(|a| a.to_string())
-                    .collect();
+                    .get::<_, String>(3)?;
+                let genre = row
+                    .get::<_, String>(4)?;
                 Ok(Manga {
                     id: row.get(0)?,
                     source: row.get(1)?,
                     title: row.get(2)?,
-                    author,
-                    status: row.get(4)?,
-                    description: row.get(5)?,
-                    path: row.get(6)?,
-                    thumbnail_url: row.get(7)?,
-                    last_read: row.get(8)?,
-                    last_page: row.get(9)?,
-                    is_favorite: row.get(10)?,
-                    genre: vec![],
+                    author: serde_json::from_str(&author).unwrap_or(vec![]),
+                    genre: serde_json::from_str(&genre).unwrap_or(vec![]),
+                    status: row.get(5)?,
+                    description: row.get(6)?,
+                    path: row.get(7)?,
+                    thumbnail_url: row.get(8)?,
+                    last_read: row.get(9)?,
+                    last_page: row.get(10)?,
+                    is_favorite: row.get(11)?,
                 })
             })?;
 
@@ -342,12 +345,13 @@ impl Repository {
                 Ok(id) => id,
                 Err(_) => {
                     tx.execute(
-                        "INSERT INTO manga(source, title, author, status, path, thumbnail_url)
-                            VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+                        "INSERT INTO manga(source, title, author, genre, status, path, thumbnail_url)
+                            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
                         params![
                             source,
                             m.title,
-                            m.author.join(","),
+                            serde_json::to_string(&m.author).unwrap_or("[]".to_string()),
+                            serde_json::to_string(&m.genre).unwrap_or("[]".to_string()),
                             m.status,
                             m.path,
                             m.thumbnail_url
@@ -416,15 +420,21 @@ impl Repository {
 
     pub fn update_manga_info(&self, manga_id: i32, manga: Manga) -> Result<(), rusqlite::Error> {
         let db = self.connect_db();
-        let a = if manga.author.is_empty() {
+        let author = if manga.author.is_empty() {
             None
         } else {
-            Some(manga.author.join(","))
+            Some(serde_json::to_string(&manga.author).unwrap_or("[]".to_string()))
+        };
+        let genre = if manga.genre.is_empty() {
+            None
+        } else {
+            Some(serde_json::to_string(&manga.genre).unwrap_or("[]".to_string()))
         };
         db.execute(
-            "UPDATE manga SET author = COALESCE(?1, author), status = COALESCE(?2, status), description = COALESCE(?3, description) WHERE manga.id = ?4",
+            "UPDATE manga SET author = COALESCE(?1, author), genre = COALESCE(?2, genre), status = COALESCE(?3, status), description = COALESCE(?4, description) WHERE manga.id = ?5",
             params![
-                a,
+                author,
+                genre,
                 manga.status,
                 manga.description,
                 manga_id
