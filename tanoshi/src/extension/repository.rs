@@ -172,16 +172,22 @@ impl Repository {
             r#"SELECT
             manga.id,
             manga.source,
-           manga.title AS title,
-           author,
-           genre,
-           status,
-           description,
-           manga.path,
-           thumbnail_url,
-           h.chapter_id AS last_read,
-           h.last_page,
-           CASE WHEN f.manga_id IS NULL
+            manga.title AS title,
+            CASE
+                WHEN author IS NOT NULL THEN author
+                ELSE '[]'
+                END author,
+            CASE
+                WHEN genre IS NOT NULL THEN genre
+                ELSE '[]'
+                END genre,
+            status,
+            description,
+            manga.path,
+            thumbnail_url,
+            h.chapter_id AS last_read,
+            h.last_page,
+            CASE WHEN f.manga_id IS NULL
                 THEN false
                 ELSE
                     true

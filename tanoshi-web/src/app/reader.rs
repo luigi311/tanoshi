@@ -210,6 +210,8 @@ impl Component for Reader {
                     disabled={self.settings.page_rendering == PageRendering::LongStrip}
                     current_page={self.current_page}
                     length={self.pages.len()}
+                    on_next_chapter=self.link.callback(|page| Msg::NextChapter)
+                    on_prev_chapter=self.link.callback(|page| Msg::PrevChapter)
                     on_input={self.link.callback(|e: InputData| Msg::PageSliderChange(e.value.parse::<usize>().unwrap()))} />
             </>
         };

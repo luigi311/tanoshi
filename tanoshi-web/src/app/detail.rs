@@ -151,11 +151,11 @@ impl Component for Detail {
                 // </button>
             </TopBar>
             <Spinner is_active={self.is_fetching} is_fullscreen=true />
-            <div id="detail" class="flex justify-center border-t border-b border-gray-300 dark:border-gray-800 bg-white dark:bg-gray-900 p-2 mb-2">
+            <div id="detail" class="flex justify-center p-2 mb-2">
                 <div class="w-full lg:w-1/2 flex flex-col">
                     <div class="flex">
                         <div class="pb-7/6">
-                            <img class="w-32 md:40 object-cover mr-2" src=self.manga.thumbnail_url />
+                            <img class="w-32 md:40 object-cover mr-2 rounded-lg" src=self.manga.thumbnail_url />
                         </div>
                         <div class="flex flex-col">
                             <span class="md:text-xl sm:text-sm text-gray-900 dark:text-gray-300">{"Author"}</span>
@@ -167,58 +167,76 @@ impl Component for Detail {
                     </div>
                 </div>
             </div>
-            <div id="detail-description" class="flex justify-center border-t border-b border-gray-300 dark:border-gray-800 bg-white dark:bg-gray-900 p-2 mb-2">
-                <div class="w-full lg:w-1/2 flex flex-col">
+            <div id="detail-description" class="flex flex-col justify-center border-t border-b border-gray-300 dark:border-gray-800 bg-white dark:bg-gray-900 p-2 mb-2 rounded-t-lg">
+                <div class="w-full lg:w-1/2 flex flex-col mx-auto">
                     <div class="inline-flex">
-                            <button
+                        <button
                             onclick=self.link.callback(|_| Msg::FavoriteEvent)
-                            class={"mr-2 my-2 p-2 self-center border rounded border-gray-300 dark:border-gray-700 hover:bg-gray-300 dark:hover:bg-gray-700 text-accent-darker focus:outline-none"}>
+                            class={"mr-2 my-2 p-2 self-center rounded text-accent-darker focus:outline-none shadow hover:shadow-lg dark:bg-gray-800 dark:hover:bg-gray-700"}>
                             <svg class={format!("h-6 h-6 {}", if self.manga.is_favorite{"fill-current"}else{"stroke-current"})} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" fill={if self.manga.is_favorite{"currentColor"}else{"none"}} />
                             </svg>
                         </button>
+                        // <button
+                        //     onclick=self.link.callback(|_| Msg::FavoriteEvent)
+                        //     class={"mr-2 my-2 p-2 self-center rounded text-accent-darker focus:outline-none shadow hover:shadow-lg dark:bg-gray-800 dark:hover:bg-gray-700"}>
+                        //     <svg class="h-6 h-6" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                        //         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                        //         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        //     </svg>
+                        // </button>
                     </div>
                     <p ref=self.desc_ref.clone() class="break-normal md:text-base sm:text-xs text-gray-900 dark:text-gray-300"></p>
-                </div>
-            </div>
-            <div class="flex flex-col bg-white dark:bg-gray-900 divide-y divide-gray-300 dark:divide-gray-800 border-t border-b border-gray-300 dark:border-gray-800">
-                {
-                    for self.chapters.iter().map(|(chapter)| html!{
-                        <RouterAnchor<AppRoute>
-                            classes="flex inline-flex justify-center p-2 content-center hover:bg-gray-200 dark:hover:bg-gray-700"
-                            route=AppRoute::Reader(chapter.id, (chapter.read.unwrap_or(0) + 1) as usize)>
-                            <div class=format!("w-full lg:w-1/2 flex justify-between items-center {}", if chapter.read.unwrap_or(0) == 0 {"text-gray-900 dark:text-gray-300"} else {"text-gray-500"})>
-                                <div class="flex flex-col">
-                                    <span class="text-md font-semibold">
-                                    {
-                                        format!("{}{}{}",
-                                        if let Some(v) = &chapter.vol {
-                                            format!("Vol. {} ", v)
-                                        } else {
-                                            "".to_string()
-                                        },
-                                        if let Some(c) = &chapter.no {
-                                            format!("Ch. {} ", c)
-                                        } else {
-                                            "".to_string()
-                                        },
-                                        {
-                                        let t = chapter.title.as_ref().unwrap();
-                                        if !t.is_empty() {
-                                            format!("{}", t)
-                                        } else {
-                                            "".to_string()
-                                        }
-                                        })
-                                    }
-                                    </span>
-                                    <span class="text-sm">{chapter.uploaded.date()}</span>
-                                </div>
-                                <svg viewBox="0 0 20 20" fill="currentColor" class="chevron-right w-6 h-6"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path></svg>
+                    <div class="flex flex-wrap">
+                    {
+                        for self.manga.genre.iter().map(|g| html!{
+                            <div class="mr-1 mt-1 px-2 rounded-full border border-gray-500 dark:border-gray-700 text-black dark:text-gray-300">
+                                {g}
                             </div>
-                        </RouterAnchor<AppRoute>>
-                    })
-                }
+                        })
+                    }
+                    </div>
+                </div>
+                <div class="flex flex-col divide-y divide-gray-300 dark:divide-gray-800">
+                    <span class="w-full lg:w-1/2 mx-auto my-2 text-lg text-gray-700 dark:text-gray-300">{"Chapters"}</span>
+                    {
+                        for self.chapters.iter().map(|(chapter)| html!{
+                            <RouterAnchor<AppRoute>
+                                classes="flex inline-flex justify-center p-2 content-center hover:bg-gray-200 dark:hover:bg-gray-800"
+                                route=AppRoute::Reader(chapter.id, (chapter.read.unwrap_or(0) + 1) as usize)>
+                                <div class=format!("w-full lg:w-1/2 flex justify-between items-center {}", if chapter.read.unwrap_or(0) == 0 {"text-gray-900 dark:text-gray-300"} else {"text-gray-500"})>
+                                    <div class="flex flex-col">
+                                        <span class="text-md font-semibold">
+                                        {
+                                            format!("{}{}{}",
+                                            if let Some(v) = &chapter.vol {
+                                                format!("Vol. {} ", v)
+                                            } else {
+                                                "".to_string()
+                                            },
+                                            if let Some(c) = &chapter.no {
+                                                format!("Ch. {} ", c)
+                                            } else {
+                                                "".to_string()
+                                            },
+                                            {
+                                            let t = chapter.title.as_ref().unwrap();
+                                            if !t.is_empty() {
+                                                format!("{}", t)
+                                            } else {
+                                                "".to_string()
+                                            }
+                                            })
+                                        }
+                                        </span>
+                                        <span class="text-sm">{chapter.uploaded.date()}</span>
+                                    </div>
+                                    <svg viewBox="0 0 20 20" fill="currentColor" class="chevron-right w-6 h-6"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path></svg>
+                                </div>
+                            </RouterAnchor<AppRoute>>
+                        })
+                    }
+                </div>
             </div>
             </div>
         }
