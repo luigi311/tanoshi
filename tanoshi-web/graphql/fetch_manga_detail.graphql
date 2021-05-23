@@ -1,0 +1,18 @@
+query FetchMangaDetail($id: Int) {
+  manga(id: $id) {
+    id
+    title
+    author
+    genre
+    coverUrl
+    description
+    status
+    isFavorite
+    chapters {
+      id
+      title
+      uploaded
+      readAt
+    }
+  }
+}
