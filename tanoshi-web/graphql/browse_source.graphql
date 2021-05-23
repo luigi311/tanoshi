@@ -1,0 +1,8 @@
+query BrowseSource($sourceId: Int, $keyword: String, $page:Int, $sortBy: SortByParam, $sortOrder: SortOrderParam) {
+  browseSource(sourceId:$sourceId, keyword: $keyword, page:$page, sortBy: $sortBy, sortOrder: $sortOrder) {
+    id
+    title
+    coverUrl
+    isFavorite
+  }
+}

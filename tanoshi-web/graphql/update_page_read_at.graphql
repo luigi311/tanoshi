@@ -1,0 +1,3 @@
+mutation UpdatePageReadAt($pageId: Int) {
+  updatePageReadAt(pageId: $pageId)
+}

@@ -6,4 +6,6 @@ target/
 mangas/
 config.yml
 *.db
-Cargo.lock
+*.db-shm
+*.db-wal
+node_modules

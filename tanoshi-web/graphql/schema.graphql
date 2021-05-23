@@ -1,0 +1,208 @@
+schema {
+  query: QueryRoot
+  mutation: MutationRoot
+}
+
+# Directs the executor to query only when the field exists.
+directive @ifdef on FIELD
+
+type Chapter {
+  id: Int!
+  title: String!
+  path: String!
+  rank: Int!
+  prev: Int
+  next: Int
+  readAt: NaiveDateTime
+  uploaded: NaiveDateTime!
+  dateAdded: NaiveDateTime!
+  source: Source!
+  manga: Manga!
+  pages(
+    # fetch from source
+    fetch: Boolean! = false
+  ): [Page!]!
+}
+
+type Manga {
+  id: Int!
+  sourceId: Int!
+  title: String!
+  author: [String!]!
+  genre: [String!]!
+  status: String
+  description: String
+  path: String!
+  coverUrl: String!
+  lastReadChapter: Int
+  isFavorite: Boolean!
+  dateAdded: NaiveDateTime!
+  chapters: [Chapter!]!
+  chapter(
+    # chapter id
+    id: Int!
+  ): Chapter
+}
+
+type MutationRoot {
+  addToLibrary(
+    # manga id
+    mangaId: Int!
+  ): Int!
+  deleteFromLibrary(
+    # manga id
+    mangaId: Int!
+  ): Int!
+  updatePageReadAt(
+    # page id
+    pageId: Int!
+  ): Int!
+}
+
+scalar NaiveDateTime
+
+type Page {
+  id: Int!
+  sourceId: Int!
+  mangaId: Int!
+  chapterId: Int!
+  rank: Int!
+  url: String!
+  readAt: NaiveDateTime
+  dateAdded: NaiveDateTime!
+}
+
+# Information about pagination in a connection
+type PageInfo {
+  # When paginating backwards, are there more items?
+  hasPreviousPage: Boolean!
+
+  # When paginating forwards, are there more items?
+  hasNextPage: Boolean!
+
+  # When paginating backwards, the cursor to continue.
+  startCursor: String
+
+  # When paginating forwards, the cursor to continue.
+  endCursor: String
+}
+
+type QueryRoot {
+  library: [Manga!]!
+  recentUpdates(
+    after: String
+    before: String
+    first: Int
+    last: Int
+  ): RecentUpdateConnection!
+  recentChapters(
+    after: String
+    before: String
+    first: Int
+    last: Int
+  ): RecentChapterConnection!
+  browseSource(
+    # source id
+    sourceId: Int!
+
+    # keyword of the manga
+    keyword: String
+
+    # genres of the manga
+    genres: [String!]
+
+    # page
+    page: Int
+
+    # sort by
+    sortBy: SortByParam
+
+    # sort order
+    sortOrder: SortOrderParam
+  ): [Manga!]!
+  manga(
+    # manga id
+    id: Int!
+  ): Manga
+  chapter(
+    # chapter id
+    id: Int!
+  ): Chapter
+  installedSources: [Source!]!
+  source(sourceId: Int!): Source
+}
+
+type RecentChapter {
+  mangaId: Int!
+  chapterId: Int!
+  mangaTitle: String!
+  coverUrl: String!
+  chapterTitle: String!
+  readAt: NaiveDateTime!
+  lastPageRead: Int!
+}
+
+type RecentChapterConnection {
+  # Information to aid in pagination.
+  pageInfo: PageInfo!
+
+  # A list of edges.
+  edges: [RecentChapterEdge]
+}
+
+# An edge in a connection.
+type RecentChapterEdge {
+  # The item at the end of the edge
+  node: RecentChapter!
+
+  # A cursor for use in pagination
+  cursor: String!
+}
+
+type RecentUpdate {
+  mangaId: Int!
+  chapterId: Int!
+  mangaTitle: String!
+  coverUrl: String!
+  chapterTitle: String!
+  uploaded: NaiveDateTime!
+}
+
+type RecentUpdateConnection {
+  # Information to aid in pagination.
+  pageInfo: PageInfo!
+
+  # A list of edges.
+  edges: [RecentUpdateEdge]
+}
+
+# An edge in a connection.
+type RecentUpdateEdge {
+  # The item at the end of the edge
+  node: RecentUpdate!
+
+  # A cursor for use in pagination
+  cursor: String!
+}
+
+# A type represent sort parameter for query manga from source, normalized across sources
+enum SortByParam {
+  LAST_UPDATED
+  TITLE
+  COMMENT
+  VIEWS
+}
+
+# A type represent order parameter for query manga from source, normalized across sources
+enum SortOrderParam {
+  ASC
+  DESC
+}
+
+type Source {
+  id: Int!
+  name: String!
+  version: String!
+  icon: String!
+  needLogin: Boolean!
+}

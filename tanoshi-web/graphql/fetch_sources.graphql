@@ -1,0 +1,9 @@
+query FetchSources{
+  installedSources {
+    id
+    name
+    version
+    icon
+    needLogin
+  }
+}

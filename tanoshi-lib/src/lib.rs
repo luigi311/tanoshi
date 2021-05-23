@@ -7,27 +7,9 @@ pub static RUSTC_VERSION: &str = env!("RUSTC_VERSION");
 
 /// This module contains model used in extensions and rest api
 #[cfg(feature = "model")]
-pub mod manga {
-    use chrono::Local;
-    use serde::{Deserialize, Serialize};
-
-    #[derive(Debug, Deserialize, Serialize, Clone)]
-    pub struct SourceIndex {
-        pub name: String,
-        pub path: String,
-        pub rustc_version: String,
-        pub core_version: String,
-        #[serde(default)]
-        pub installed_version: String,
-        pub version: String,
-        #[serde(default)]
-        pub installed: bool,
-        #[serde(default)]
-        pub update: bool,
-    }
-
+pub mod model {
     /// Model to login to source that require login, like mangadex to search
-    #[derive(Debug, Deserialize, Serialize, Clone, Default)]
+    #[derive(Debug, Clone, Default)]
     pub struct SourceLogin {
         pub username: String,
         pub password: String,
@@ -36,7 +18,7 @@ pub mod manga {
     }
 
     /// Result of source login
-    #[derive(Debug, Deserialize, Serialize, Clone, Default)]
+    #[derive(Debug, Clone, Default)]
     pub struct SourceLoginResult {
         pub source_name: String,
         pub auth_type: String,
@@ -44,82 +26,48 @@ pub mod manga {
     }
 
     /// A type represent source
-    #[derive(Debug, Deserialize, Serialize, Clone, Default)]
+    #[derive(Debug, Clone)]
     pub struct Source {
+        pub id: i64,
         pub name: String,
         pub url: String,
         pub version: String,
+        pub icon: String,
+        pub need_login: bool,
     }
 
     /// A type represent manga details, normalized across source
-    #[derive(Debug, Deserialize, Serialize, Clone, Default)]
+    #[derive(Debug, Clone, Default)]
     pub struct Manga {
-        pub id: i32,
-        pub source: String,
+        pub source_id: i64,
         pub title: String,
-        #[serde(default, skip_serializing_if = "Vec::is_empty")]
         pub author: Vec<String>,
-        #[serde(default, skip_serializing_if = "Vec::is_empty")]
         pub genre: Vec<String>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         pub status: Option<String>,
-        #[serde(skip_serializing_if = "Option::is_none")]
         pub description: Option<String>,
         pub path: String,
-        pub thumbnail_url: String,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        pub last_read: Option<i32>,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        pub last_page: Option<i32>,
-        pub is_favorite: bool,
+        pub cover_url: String,
     }
 
     /// A type represent chapter, normalized across source
-    #[derive(Debug, Deserialize, Serialize, Clone)]
+    #[derive(Debug, Clone)]
     pub struct Chapter {
-        pub id: i32,
-        pub source: String,
-        pub manga_id: i32,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        pub vol: Option<String>,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        pub no: Option<String>,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        pub title: Option<String>,
+        pub source_id: i64,
+        pub title: String,
         pub path: String,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        pub read: Option<i32>,
+        pub rank: i64,
         pub uploaded: chrono::NaiveDateTime,
     }
 
-    impl Default for Chapter {
-        fn default() -> Self {
-            Chapter {
-                id: 0,
-                source: "".to_string(),
-                manga_id: 0,
-                vol: None,
-                no: None,
-                title: None,
-                path: "".to_string(),
-                read: None,
-                uploaded: chrono::NaiveDateTime::from_timestamp(0, 0),
-            }
-        }
-    }
-
-    /// A type represent a page
-    #[derive(Debug, Deserialize, Serialize, Clone)]
-    pub struct Image {
-        pub source_id: i32,
-        pub source_name: String,
-        pub path: String,
-        pub file_name: String,
+    #[derive(Debug, Clone)]
+    pub struct Page {
+        pub source_id: i64,
+        pub rank: i64,
         pub url: String,
     }
 
     /// A type represent sort parameter for query manga from source, normalized across source
-    #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+    #[derive(Debug, Clone, PartialEq)]
     pub enum SortByParam {
         LastUpdated,
         Title,
@@ -134,7 +82,7 @@ pub mod manga {
     }
 
     /// A type represent order parameter for query manga from source, normalized across source
-    #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+    #[derive(Debug, Clone, PartialEq)]
     pub enum SortOrderParam {
         Asc,
         Desc,
@@ -145,165 +93,14 @@ pub mod manga {
             SortOrderParam::Asc
         }
     }
-
-    /// A type represent parameter for query manga from source, normalized across source
-    #[derive(Debug, Deserialize, Serialize, Clone)]
-    pub struct Params {
-        pub keyword: Option<String>,
-        pub genres: Option<Vec<String>>,
-        pub page: Option<String>,
-        pub sort_by: Option<SortByParam>,
-        pub sort_order: Option<SortOrderParam>,
-        pub refresh: Option<bool>,
-    }
-
-    /// A type represent parameter for query manga from source, normalized across source
-    #[derive(Debug, Deserialize, Serialize, Clone)]
-    pub struct GetParams {
-        pub refresh: Option<bool>,
-    }
-
-    /// A type represent history
-    #[derive(Debug, Clone, Deserialize, Serialize)]
-    pub struct History {
-        pub manga_id: i32,
-        pub title: String,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        pub thumbnail_url: Option<String>,
-        pub chapter: String,
-        pub chapter_id: i32,
-        pub read: i32,
-        pub at: chrono::NaiveDateTime,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        pub days: Option<i64>,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        pub show_sep: Option<bool>,
-    }
-
-    /// A type represent chapter updates
-    #[derive(Debug, Clone, Deserialize, Serialize)]
-    pub struct Update {
-        pub manga_id: i32,
-        pub title: String,
-        pub thumbnail_url: String,
-        pub number: String,
-        pub chapter_id: i32,
-        pub uploaded: chrono::NaiveDateTime,
-        pub days: Option<i64>,
-        pub show_sep: Option<bool>,
-    }
-
-    impl Default for Update {
-        fn default() -> Self {
-            Update {
-                manga_id: 0,
-                title: "".to_string(),
-                thumbnail_url: "".to_string(),
-                number: "".to_string(),
-                chapter_id: 0,
-                uploaded: Local::now().naive_local(),
-                days: None,
-                show_sep: None,
-            }
-        }
-    }
-}
-
-/// This module contains request and response payload for rest api
-#[cfg(feature = "rest")]
-pub mod rest {
-    use crate::manga::{Chapter, History, Manga, Source, SourceIndex, Update};
-    use serde::{Deserialize, Serialize};
-
-    #[derive(Debug, Deserialize, Serialize, Clone)]
-    pub struct GetSourceIndexResponse {
-        pub sources: Vec<SourceIndex>,
-        pub status: String,
-    }
-
-    /// Reponse for get sources request
-    #[derive(Debug, Deserialize, Serialize, Clone)]
-    pub struct GetSourceResponse {
-        pub sources: Vec<Source>,
-        pub status: String,
-    }
-
-    /// Response for get list of manga request
-    #[derive(Debug, Deserialize, Serialize, Clone)]
-    pub struct GetMangasResponse {
-        pub mangas: Vec<Manga>,
-        pub status: String,
-    }
-
-    /// Response for get manga detail request
-    #[derive(Debug, Deserialize, Serialize, Clone)]
-    pub struct GetMangaResponse {
-        pub manga: Manga,
-        pub status: String,
-    }
-
-    /// Response for get chapters of a manga
-    #[derive(Debug, Deserialize, Serialize, Clone)]
-    pub struct GetChaptersResponse {
-        pub chapters: Vec<Chapter>,
-        pub status: String,
-    }
-
-    /// Reponse for get pages of a chapter
-    #[derive(Debug, Deserialize, Serialize, Clone)]
-    pub struct GetPagesResponse {
-        pub manga_id: i32,
-        pub pages: Vec<String>,
-        pub status: String,
-    }
-
-    #[derive(Debug, Deserialize, Serialize, Clone)]
-    pub struct ReadResponse {
-        pub manga: Manga,
-        pub chapters: Vec<Chapter>,
-        pub chapter: Chapter,
-        pub pages: Vec<String>,
-    }
-
-    /// Parameter for history request
-    #[derive(Debug, Clone, Deserialize, Serialize)]
-    pub struct HistoryRequest {
-        pub chapter_id: i32,
-        pub read: i32,
-        pub at: chrono::NaiveDateTime,
-    }
-
-    /// Response for history request
-    #[derive(Debug, Clone, Deserialize, Serialize)]
-    pub struct HistoryResponse {
-        pub history: Vec<History>,
-        pub status: String,
-    }
-
-    /// Response for chapter updates request
-    #[derive(Debug, Clone, Deserialize, Serialize)]
-    pub struct UpdatesResponse {
-        pub updates: Vec<Update>,
-        pub status: String,
-    }
-
-    /// Response for add new favorite request
-    #[derive(Debug, Serialize, Deserialize, Clone)]
-    pub struct AddFavoritesResponse {
-        pub status: String,
-    }
-
-    /// Response when error occured
-    #[derive(Debug, Serialize, Deserialize, Clone)]
-    pub struct ErrorResponse {
-        pub message: String,
-    }
 }
 
 /// This module contains `Extension` trait, and function for interacting with `Extension`
 #[cfg(feature = "extensions")]
 pub mod extensions {
-    use crate::manga::{Chapter, Manga, Params, Source, SourceLogin, SourceLoginResult};
+    use crate::model::{
+        Chapter, Manga, SortByParam, SortOrderParam, Source, SourceLogin, SourceLoginResult, Page
+    };
     use anyhow::{anyhow, Result};
     use serde_yaml;
     use std::io::Read;
@@ -311,15 +108,28 @@ pub mod extensions {
     /// `Extension` trait is an implementation for building extensions
     pub trait Extension: Send + Sync {
         /// Returns the information of the source
-        fn info(&self) -> Source;
+        fn detail(&self) -> Source;
 
         /// Returns list of manga from the source
         ///
         /// # Arguments
         ///
-        /// * `url` - An url to specified page in source that can be parsed into a list of mangas
         /// * `param` - Parameter to filter manga from source
-        fn get_mangas(&self, param: Params, auth: String) -> Result<Vec<Manga>>;
+        /// * `keyword` - Keyword of manga title to search
+        /// * `genres` - List of genres of manga to search
+        /// * `page` - Number of page
+        /// * `sort_by` - Sort results by SortByParam
+        /// * `sort_order` - Sort ascending or descending
+        /// * `auth` - If source need login to search, this param used to provide credentials
+        fn get_mangas(
+            &self,
+            keyword: Option<String>,
+            genres: Option<Vec<String>>,
+            page: Option<i32>,
+            sort_by: Option<SortByParam>,
+            sort_order: Option<SortOrderParam>,
+            auth: Option<String>,
+        ) -> Result<Vec<Manga>>;
 
         /// Returns detail of manga
         fn get_manga_info(&self, path: &String) -> Result<Manga>;
@@ -328,12 +138,12 @@ pub mod extensions {
         fn get_chapters(&self, path: &String) -> Result<Vec<Chapter>>;
 
         /// Returns list of pages from a chapter of a manga
-        fn get_pages(&self, path: &String) -> Result<Vec<String>>;
+        fn get_pages(&self, path: &String) -> Result<Vec<Page>>;
 
-        /// Returns an image by download to disk first then serve to web
+        /// Proxy image
         fn get_page(&self, url: &String) -> Result<Vec<u8>> {
             let bytes = {
-                let resp = ureq::get(&url).call();
+                let resp = ureq::get(url).call()?;
                 let mut reader = resp.into_reader();
                 let mut bytes = vec![];
                 if reader.read_to_end(&mut bytes).is_err() {
@@ -341,7 +151,6 @@ pub mod extensions {
                 }
                 bytes
             };
-
             Ok(bytes)
         }
 

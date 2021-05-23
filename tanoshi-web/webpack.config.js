@@ -9,9 +9,50 @@ const CompressionPlugin = require('compression-webpack-plugin');
 const distPath = path.resolve(__dirname, "dist");
 module.exports = (env, argv) => {
     const isProduction = (argv.mode === 'production');//package.json scripts -> build
-
+    const plugins = [
+        new CleanWebpackPlugin(),
+        new HtmlWebpackPlugin({
+            template: 'static/index.html'
+        }),
+        new CopyWebpackPlugin([
+            { from: 'static', to: distPath }
+        ]),
+        new WasmPackPlugin({
+            crateDirectory: ".",
+            extraArgs: "--no-typescript",
+        })
+    ];
+    if (isProduction) {
+        const productionPlugins = [
+            new WorkboxPlugin.GenerateSW({
+                 // these options encourage the ServiceWorkers to get in there fast
+                 // and not allow any straggling "old" SWs to hang around
+                 clientsClaim: true,
+                 skipWaiting: true,
+             }),
+             new CompressionPlugin({
+                 filename: '[path][base].gz',
+                 algorithm: 'gzip',
+                 test: /\.js$|\.wasm$/,
+                 threshold: 10240,
+                 minRatio: 0.8,
+             }),
+             new CompressionPlugin({
+                 filename: '[path][base].br',
+                 algorithm: 'brotliCompress',
+                 test: /\.(js|wasm)$/,
+                 compressionOptions: {
+                   // zlib’s `level` option matches Brotli’s `BROTLI_PARAM_QUALITY` option.
+                   level: 11,
+                 },
+                 threshold: 10240,
+                 minRatio: 0.8,
+                 deleteOriginalAssets: false,
+             }),
+         ];
+         plugins.push(...productionPlugins);
+    }
     return {
-        mode: argv.mode,
         devServer: {
             historyApiFallback: {
                 index: '/'
@@ -20,65 +61,21 @@ module.exports = (env, argv) => {
             host: '0.0.0.0',
             port: 8000,
             proxy: {
-                '/api': 'http://127.0.0.1:3030'
+                '/graphql': 'http://127.0.0.1:8080',
+                '/image': 'http://127.0.0.1:8080'
             }
         },
-        entry: './index.js',
+        entry: './static/js/index.js',
         output: {
             path: distPath,
             publicPath: '/',
             filename: isProduction ? '[name].[contenthash].js' : '[name].[fullhash].js'
         },
-        optimization: {
-            runtimeChunk: 'single',
-            splitChunks: {
-                cacheGroups: {
-                    defaultVendors: {
-                        test: /[\\/]node_modules[\\/]/,
-                        name: 'vendors',
-                        chunks: 'all',
-                    },
-                },
-            },
+        plugins: plugins,
+        watch: argv.mode !== "production",
+        experiments: {
+            asyncWebAssembly: true,
         },
-        plugins: [
-            new CleanWebpackPlugin(),
-            new HtmlWebpackPlugin({
-                template: 'static/index.html'
-            }),
-            new CopyWebpackPlugin([
-                { from: 'static', to: distPath }
-            ]),
-            new WasmPackPlugin({
-                crateDirectory: ".",
-                extraArgs: "--no-typescript",
-            }),
-            new WorkboxPlugin.GenerateSW({
-                // these options encourage the ServiceWorkers to get in there fast
-                // and not allow any straggling "old" SWs to hang around
-                clientsClaim: true,
-                skipWaiting: true,
-            }),
-            new CompressionPlugin({
-                filename: '[path][base].gz',
-                algorithm: 'gzip',
-                test: /\.js$|\.wasm$/,
-                threshold: 10240,
-                minRatio: 0.8,
-            }),
-            new CompressionPlugin({
-                filename: '[path][base].br',
-                algorithm: 'brotliCompress',
-                test: /\.(js|wasm)$/,
-                compressionOptions: {
-                  // zlib’s `level` option matches Brotli’s `BROTLI_PARAM_QUALITY` option.
-                  level: 11,
-                },
-                threshold: 10240,
-                minRatio: 0.8,
-                deleteOriginalAssets: false,
-            }),
-        ],
         module: {
             rules: [
                 {
@@ -100,9 +97,6 @@ module.exports = (env, argv) => {
                     ]
                 }
             ]
-        },
-        experiments: {
-            syncWebAssembly: true
         }
     };
 };

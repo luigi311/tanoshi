@@ -1,44 +1,41 @@
 [package]
 name = "tanoshi-web"
-version = "0.14.1"
+version = "0.14.0"
 authors = ["Muhammad Fadhlika <fadhlika@gmail.com>"]
 edition = "2018"
 description = "Tanoshi Web"
 repository = "https://github.com/faldez/tanoshi"
 license = "MIT"
 
+[profile.release]
+lto = true
+
 [lib]
 crate-type = ["cdylib"]
 
-[features]
-default = ["console_error_panic_hook"]
-
 [dependencies]
-wasm-bindgen = "0.2"
-console_error_panic_hook = { version = "0.1", optional = true }
-wee_alloc = { version = "0.4"}
-yew = {version="0.17"}
-yew-router = {version="0.14"}
-serde = "1"
-serde_json ="1"
-serde_urlencoded = "0.6"
-http = "0.2"
+console_error_panic_hook = "^0.1"
+dominator = "^0.5"
 log = "0.4"
 wasm-logger = "0.2"
-anyhow = "1"
-quote = "1"
-js-sys = "0.3"
+thiserror = "1"
 chrono = { version = "0.4", features = ["serde"] }
-tanoshi-lib = {path = "../tanoshi-lib", features = ["rest"]}
-
-[dependencies.ring]
-version = "0.16.15"
+graphql_client = { version = "^0.9", features = ["web"] }
+wasm-bindgen = "^0.2"
+serde = { version = "^1.0", features = ["derive"] }
+serde_json = "1.0"
+futures-signals = "^0.3"
+futures = "^0.3"
+js-sys = "^0.3"
+wasm-bindgen-futures = "^0.4"
+reqwest = {version = "^0.11", features = ["json"]}
 
 [dependencies.web-sys]
-version = "0.3"
+version = "^0.3"
 features = [
   'Document',
   'Element',
+  'HtmlCollection',
   'HtmlElement',
   'HtmlImageElement',
   'Node',
@@ -50,7 +47,10 @@ features = [
   'EventSource',
   'MessageEvent',
   'Location',
-  'FocusEvent'
+  'FocusEvent',
+  'ErrorEvent',
+  'Storage',
+  'PopStateEvent',
 ]
 
 [dev-dependencies]

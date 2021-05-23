@@ -1,0 +1,15 @@
+query FetchChapter($chapterId:Int) {
+  chapter(id: $chapterId) {
+      title
+      prev
+      next
+    manga {
+      id
+      title
+    }
+    pages {
+       id
+       url
+    }
+  }
+}
