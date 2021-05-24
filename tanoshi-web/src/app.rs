@@ -1,14 +1,14 @@
 use std::rc::Rc;
 
-use dominator::{Dom, clone, html};
-use futures_signals::signal::{Mutable, SignalExt};
+use dominator::{clone, html, Dom};
+use futures_signals::signal::SignalExt;
 
 use crate::catalogue::Catalogue;
 use crate::library::Library;
 use crate::manga::Manga;
 use crate::reader::Reader;
 use crate::{
-    common::{Bottombar, Route, Spinner, events},
+    common::{Bottombar, Route, Spinner},
     histories::Histories,
     settings::Settings,
     updates::Updates,

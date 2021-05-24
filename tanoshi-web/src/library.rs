@@ -85,15 +85,14 @@ impl Library {
     }
 
     pub fn render(library: Rc<Self>) -> Dom {
-        if library.cover_list.lock_ref().len() == 0 {
-            library.spinner.set_active(true);
-            library.loader.load(clone!(library => async move {
-                let covers = fetch_manga_from_favorite().await.unwrap_throw();
-                let mut cover_list = library.cover_list.lock_mut();
-                cover_list.replace_cloned(covers);
-                library.spinner.set_active(false);
-            }));
-        }
+        library.spinner.set_active(true);
+        library.loader.load(clone!(library => async move {
+            let covers = fetch_manga_from_favorite().await.unwrap_throw();
+            let mut cover_list = library.cover_list.lock_mut();
+            cover_list.replace_cloned(covers);
+            library.spinner.set_active(false);
+        }));
+        
         html!("div", {
             .class([
                 "main",
