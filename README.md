@@ -1,6 +1,8 @@
-![Build](https://github.com/faldez/tanoshi/workflows/Build/badge.svg)
+|Build|Stats|Release|
+|---|---|---|
+|![Build](https://github.com/faldez/tanoshi/workflows/Build/badge.svg)|![Release Stats](https://img.shields.io/github/downloads/faldez/tanoshi/total)|![Release](https://img.shields.io/github/v/release/faldez/tanoshi)|
 
-# <img src="tanoshi-web/static/apple-touch-icon.png" alt="" width="30" height=30/> Tanoshi
+# ![icon](tanoshi-web/static/icons/tanoshi.png) Tanoshi
 Selfhosted web manga reader with extension model.
 
 ### Mobile
