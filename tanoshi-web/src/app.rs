@@ -47,7 +47,7 @@ impl App {
                         Bottombar::render()
                     ],
                     Route::Manga(manga_id) => vec![
-                        Manga::render(Manga::new(manga_id), app.spinner.clone()),
+                        Manga::render(Manga::new(manga_id)),
                     ],
                     Route::Chapter(chapter_id) => vec![
                         Reader::render(Reader::new(chapter_id), app.clone()),
