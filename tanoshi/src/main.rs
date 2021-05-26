@@ -14,12 +14,13 @@ mod library;
 mod proxy;
 mod schema;
 mod user;
+mod status;
 
 use anyhow::Result;
 use clap::Clap;
 
 use crate::context::GlobalContext;
-use crate::schema::{MutationRoot, QueryRoot};
+use crate::schema::{MutationRoot, QueryRoot, TanoshiSchema};
 use async_graphql::extensions::ApolloTracing;
 use async_graphql::http::{playground_source, GraphQLPlaygroundConfig};
 use async_graphql::{EmptyMutation, EmptySubscription, Schema};
@@ -60,7 +61,7 @@ async fn main() -> Result<()> {
     let mangadb = db::MangaDatabase::new(pool.clone());
     let userdb = db::UserDatabase::new(pool.clone());
 
-    let schema = Schema::build(
+    let schema: TanoshiSchema = Schema::build(
         QueryRoot::default(),
         MutationRoot::default(),
         EmptySubscription::default(),
@@ -74,7 +75,7 @@ async fn main() -> Result<()> {
         .and_then(
             |token: Option<String>,
              (schema, mut request): (
-                Schema<QueryRoot, MutationRoot, EmptySubscription>,
+                TanoshiSchema,
                 async_graphql::Request,
             )| async move {
                 if let Some(token) = token {

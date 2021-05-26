@@ -1,8 +1,7 @@
-use async_graphql::{Enum, Object};
+use async_graphql::{Enum, SimpleObject};
 use serde::{Deserialize, Serialize};
-use sqlx::Encode;
 
-#[derive(Debug, Enum, Copy, Clone, Eq, PartialEq, Serialize, Deserialize, sqlx::Type)]
+#[derive(Debug, Enum, Copy, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum Role {
     Reader,
     Admin,
@@ -33,24 +32,11 @@ impl From<u8> for Role {
     }
 }
 
+#[derive(Debug, SimpleObject)]
 pub struct User {
     pub id: i64,
     pub username: String,
+    #[graphql(skip)]
     pub password: String,
     pub role: Role,
-}
-
-#[Object]
-impl User {
-    async fn id(&self) -> i64 {
-        self.id
-    }
-
-    async fn username(&self) -> String {
-        self.username.clone()
-    }
-
-    async fn role(&self) -> Role {
-        self.role.clone()
-    }
 }
