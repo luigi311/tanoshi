@@ -1,6 +1,5 @@
 use crate::catalogue::{Chapter, Manga};
 use crate::context::GlobalContext;
-use crate::db::Db;
 use async_graphql::connection::{query, Connection, Edge, EmptyFields};
 use async_graphql::{
     Context, InputValueError, InputValueResult, Object, Result, Scalar, ScalarType, Value,
@@ -16,7 +15,7 @@ pub struct LibraryRoot;
 #[Object]
 impl LibraryRoot {
     async fn library(&self, ctx: &Context<'_>) -> Vec<Manga> {
-        match ctx.data_unchecked::<GlobalContext>().db.get_library().await {
+        match ctx.data_unchecked::<GlobalContext>().mangadb.get_library().await {
             Ok(mangas) => mangas,
             Err(_) => vec![],
         }
@@ -30,7 +29,7 @@ impl LibraryRoot {
         first: Option<i32>,
         last: Option<i32>,
     ) -> Result<Connection<String, RecentUpdate, EmptyFields, EmptyFields>> {
-        let db = ctx.data_unchecked::<GlobalContext>().db.clone();
+        let db = ctx.data_unchecked::<GlobalContext>().mangadb.clone();
         query(
             after,
             before,
@@ -103,7 +102,7 @@ impl LibraryRoot {
         first: Option<i32>,
         last: Option<i32>,
     ) -> Result<Connection<String, RecentChapter, EmptyFields, EmptyFields>> {
-        let db = ctx.data_unchecked::<GlobalContext>().db.clone();
+        let db = ctx.data_unchecked::<GlobalContext>().mangadb.clone();
         query(
             after,
             before,
@@ -199,7 +198,7 @@ impl LibraryMutationRoot {
     ) -> Result<u64> {
         match ctx
             .data_unchecked::<GlobalContext>()
-            .db
+            .mangadb
             .favorite_manga(manga_id, true)
             .await
         {
@@ -215,7 +214,7 @@ impl LibraryMutationRoot {
     ) -> Result<u64> {
         match ctx
             .data_unchecked::<GlobalContext>()
-            .db
+            .mangadb
             .favorite_manga(manga_id, false)
             .await
         {
@@ -231,7 +230,7 @@ impl LibraryMutationRoot {
     ) -> Result<u64> {
         match ctx
             .data_unchecked::<GlobalContext>()
-            .db
+            .mangadb
             .update_page_read_at(page_id)
             .await
         {

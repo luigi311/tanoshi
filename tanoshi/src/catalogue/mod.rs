@@ -50,7 +50,7 @@ impl CatalogueRoot {
     ) -> Vec<Manga> {
         let sort_by = sort_by.map(|s| s.into());
         let sort_order = sort_order.map(|s| s.into());
-        let db = ctx.data_unchecked::<GlobalContext>().db.clone();
+        let db = ctx.data_unchecked::<GlobalContext>().mangadb.clone();
         let mangas = ctx
             .data_unchecked::<GlobalContext>()
             .extensions
@@ -81,7 +81,7 @@ impl CatalogueRoot {
         ctx: &Context<'_>,
         #[graphql(desc = "manga id")] id: i64,
     ) -> Option<Manga> {
-        let db = ctx.data_unchecked::<GlobalContext>().db.clone();
+        let db = ctx.data_unchecked::<GlobalContext>().mangadb.clone();
         if let Some(mut manga) = db.get_manga_by_id(id).await {
             if manga.incomplete() {
                 let m: Manga = ctx
@@ -117,7 +117,7 @@ impl CatalogueRoot {
         ctx: &Context<'_>,
         #[graphql(desc = "chapter id")] id: i64,
     ) -> Option<Chapter> {
-        let db = ctx.data_unchecked::<GlobalContext>().db.clone();
+        let db = ctx.data_unchecked::<GlobalContext>().mangadb.clone();
         db.get_chapter_by_id(id).await
     }
 }

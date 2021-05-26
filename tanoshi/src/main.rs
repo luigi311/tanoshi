@@ -56,8 +56,8 @@ async fn main() -> Result<()> {
     // let serve_static = filters::static_files::static_files();
 
     // let routes = api.or(serve_static).with(warp::log("manga"));
-
-    let pool = db::Db::establish_connection(config.database_path).await;
+    let pool = db::establish_connection(config.database_path).await;
+    let mangadb = db::MangaDatabase::new(pool);
 
     let schema = Schema::build(
         QueryRoot::default(),
@@ -65,7 +65,7 @@ async fn main() -> Result<()> {
         EmptySubscription::default(),
     )
     //.extension(ApolloTracing)
-    .data(GlobalContext::new(pool, extensions))
+    .data(GlobalContext::new(mangadb, extensions))
     .finish();
 
     let graphql_post = async_graphql_warp::graphql(schema).and_then(
