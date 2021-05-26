@@ -1,11 +1,6 @@
-use futures::future::Future;
-use futures_signals::signal_vec::MutableVec;
 use graphql_client::{GraphQLQuery, Response};
 use std::error::Error;
-use std::rc::Rc;
 use wasm_bindgen::prelude::*;
-use wasm_bindgen::JsCast;
-use wasm_bindgen_futures::{future_to_promise, spawn_local, JsFuture};
 use web_sys::window;
 
 type NaiveDateTime = String;
@@ -57,7 +52,7 @@ pub async fn fetch_manga_from_source(
         .send()
         .await?;
     let response_body: Response<browse_source::ResponseData> = res.json().await?;
-    let list = response_body.data.unwrap_throw().browse_source;
+    let list = response_body.data.ok_or("no data")?.browse_source;
 
     let covers = list
         .iter()
@@ -84,7 +79,7 @@ pub async fn fetch_manga_from_favorite() -> Result<Vec<Cover>, Box<dyn Error>> {
         .send()
         .await?;
     let response_body: Response<browse_favorites::ResponseData> = res.json().await?;
-    let list = response_body.data.unwrap_throw().library;
+    let list = response_body.data.ok_or("no data")?.library;
 
     Ok(list
         .iter()
@@ -112,7 +107,7 @@ pub async fn fetch_manga_detail(
         .send()
         .await?;
     let response_body: Response<fetch_manga_detail::ResponseData> = res.json().await?;
-    let manga = response_body.data.unwrap_throw().manga.unwrap_throw();
+    let manga = response_body.data.ok_or("no data")?.manga.unwrap_throw();
 
     Ok(manga)
 }
@@ -139,7 +134,7 @@ pub async fn fetch_chapter(
         .send()
         .await?;
     let response_body: Response<fetch_chapter::ResponseData> = res.json().await?;
-    let manga = response_body.data.unwrap_throw().chapter.unwrap_throw();
+    let manga = response_body.data.ok_or("no data")?.chapter.unwrap_throw();
 
     Ok(manga)
 }
@@ -235,7 +230,7 @@ pub async fn fetch_recent_updates(cursor: Option<String>) -> Result<fetch_recent
         .await?;
     
     let response_body: Response<fetch_recent_updates::ResponseData> = res.json().await?;
-    Ok(response_body.data.unwrap_throw().recent_updates)
+    Ok(response_body.data.ok_or("no data")?.recent_updates)
 }
 
 #[derive(GraphQLQuery)]
@@ -260,7 +255,7 @@ pub async fn fetch_histories(cursor: Option<String>) -> Result<fetch_histories::
         .await?;
     
     let response_body: Response<fetch_histories::ResponseData> = res.json().await?;
-    Ok(response_body.data.unwrap_throw().recent_chapters)
+    Ok(response_body.data.ok_or("no data")?.recent_chapters)
 }
 
 #[derive(GraphQLQuery)]
@@ -282,7 +277,7 @@ pub async fn fetch_sources() -> Result<std::vec::Vec<fetch_sources::FetchSources
         .await?;
     
     let response_body: Response<fetch_sources::ResponseData> = res.json().await?;
-    Ok(response_body.data.unwrap_throw().installed_sources)
+    Ok(response_body.data.ok_or("no data")?.installed_sources)
 }
 
 #[derive(GraphQLQuery)]
@@ -306,7 +301,7 @@ pub async fn fetch_source(source_id: i64) -> Result<Option<fetch_source_detail::
         .await?;
     
     let response_body: Response<fetch_source_detail::ResponseData> = res.json().await?;
-    Ok(response_body.data.unwrap_throw().source)
+    Ok(response_body.data.ok_or("no data")?.source)
 }
 
 #[derive(GraphQLQuery)]
@@ -332,4 +327,52 @@ pub async fn user_login(username: String, password: String) -> Result<String, Bo
     
     let response_body: Response<user_login::ResponseData> = res.json().await?;
     Ok(response_body.data.ok_or("no data")?.login)
+}
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/schema.graphql",
+    query_path = "graphql/register.graphql",
+    response_derives = "Debug"
+)]
+pub struct UserRegister;
+
+pub async fn user_register(username: String, password: String) -> Result<(), Box<dyn Error>> {
+    let client = reqwest::Client::new();
+    let var = user_register::Variables {
+        username: Some(username),
+        password: Some(password),
+    };
+    let request_body = UserRegister::build_query(var);
+    let res = client
+        .post(&graphql_url())
+        .json(&request_body)
+        .send()
+        .await?;
+    
+    let response_body: Response<user_register::ResponseData> = res.json().await?;
+    let user_id = response_body.data.ok_or("no data")?.register;
+    Ok(())
+}
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/schema.graphql",
+    query_path = "graphql/fetch_server_status.graphql",
+    response_derives = "Debug"
+)]
+pub struct FetchServerStatus;
+
+pub async fn server_status() -> Result<fetch_server_status::FetchServerStatusServerStatus, Box<dyn Error>> {
+    let client = reqwest::Client::new();
+    let var = fetch_server_status::Variables {};
+    let request_body = FetchServerStatus::build_query(var);
+    let res = client
+        .post(&graphql_url())
+        .json(&request_body)
+        .send()
+        .await?;
+    
+    let response_body: Response<fetch_server_status::ResponseData> = res.json().await?;
+    Ok(response_body.data.ok_or("no data")?.server_status)
 }

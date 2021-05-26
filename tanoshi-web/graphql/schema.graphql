@@ -95,6 +95,7 @@ type PageInfo {
 }
 
 type QueryRoot {
+  serverStatus: Status!
   login(
     # username
     username: String!
@@ -219,4 +220,9 @@ type Source {
   version: String!
   icon: String!
   needLogin: Boolean!
+}
+
+type Status {
+  activated: Boolean!
+  version: String!
 }

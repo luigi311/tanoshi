@@ -1,27 +1,36 @@
 use std::rc::Rc;
 
-use dominator::routing;
-use dominator::{Dom, clone, html};
+use dominator::{routing, text_signal};
+use dominator::{clone, html, Dom};
 use futures_signals::signal::Mutable;
+use futures_signals::signal::SignalExt;
 use wasm_bindgen::UnwrapThrowExt;
 
-use crate::query::user_login;
-use crate::utils::AsyncLoader;
-use crate::common::{Route, events};
+use crate::common::{events, Route};
+use crate::query::{server_status, user_login, user_register};
 use crate::utils::local_storage;
+use crate::utils::AsyncLoader;
+
+#[derive(Debug, Clone)]
+struct ServerStatus {
+    activated: bool,
+    version: String,
+}
 
 pub struct Login {
     username: Mutable<String>,
     password: Mutable<String>,
+    server_status: Mutable<Option<ServerStatus>>,
     loader: AsyncLoader,
 }
 
 impl Login {
     pub fn new() -> Rc<Self> {
-        Rc::new(Self{
+        Rc::new(Self {
             username: Mutable::new("".to_string()),
             password: Mutable::new("".to_string()),
-            loader: AsyncLoader::new()
+            server_status: Mutable::new(None),
+            loader: AsyncLoader::new(),
         })
     }
 
@@ -36,7 +45,32 @@ impl Login {
         }));
     }
 
+    pub fn register(login: Rc<Self>) {
+        login.loader.load(clone!(login => async move {
+            let username = login.username.get_cloned();
+            let password = login.password.get_cloned();
+            if user_register(username, password).await.is_ok() {
+                login.username.set("".to_string());
+                login.password.set("".to_string());
+                Self::fetch_server_status(login.clone());
+            }
+        }));
+    }
+
+    pub fn fetch_server_status(login: Rc<Self>) {
+        login.loader.load(clone!(login => async move {
+            if let Ok(server_status) = server_status().await {
+                login.server_status.set(Some(ServerStatus{
+                    activated: server_status.activated,
+                    version: server_status.version,
+                }));
+            }
+        }));
+    }
+
     pub fn render(login: Rc<Self>) -> Dom {
+        Self::fetch_server_status(login.clone());
+
         html!("div", {
             .class([
                 "flex",
@@ -55,6 +89,25 @@ impl Login {
                     ])
                     .attribute("src", "/icons/512.png")
                 }),
+                html!("div", {
+                    .class([
+                        "text-black",
+                        "dark:text-white",
+                        "bg-accent",
+                        "rounded",
+                        "m-2",
+                        "px-2",
+                        "py-1"
+                    ])
+                    .visible_signal(login.server_status.signal_cloned().map(|x| {
+                        if let Some(status) = x {
+                            !status.activated
+                        } else { 
+                            false
+                        }
+                    }))
+                    .text("Server is not activated, activate by create an account")
+                }),
                 html!("input", {
                     .class([
                         "m-2",
@@ -68,7 +121,8 @@ impl Login {
                     ])
                     .attribute("type", "username")
                     .attribute("placeholder", "Username")
-                    .event_preventable(clone!(login => move |e: events::Input| {
+                    .property_signal("value", login.username.signal_cloned())
+                    .event(clone!(login => move |e: events::Input| {
                         login.username.set(e.value().unwrap_or("".to_string()));
                     }))
                 }),
@@ -85,7 +139,8 @@ impl Login {
                     ])
                     .attribute("type", "password")
                     .attribute("placeholder", "Password")
-                    .event_preventable(clone!(login => move |e: events::Input| {
+                    .property_signal("value", login.password.signal_cloned())
+                    .event(clone!(login => move |e: events::Input| {
                         login.password.set(e.value().unwrap_or("".to_string()));
                     }))
                 }),
@@ -98,6 +153,27 @@ impl Login {
                     .children(&mut [
                         html!("button", {
                             .class([
+                                "mx-2",
+                                "outline-none",
+                                "hover:underline",
+                                "active:underline",
+                                "text-black",
+                                "dark:text-white"
+                            ])
+                            .visible_signal(login.server_status.signal_cloned().map(|x| {
+                                if let Some(status) = x {
+                                    !status.activated
+                                } else { 
+                                    false
+                                }
+                            }))
+                            .text("Create Account")
+                            .event(clone!(login => move |_: events::Click| {
+                                Self::register(login.clone());
+                            }))
+                        }),
+                        html!("button", {
+                            .class([
                                 "bg-accent",
                                 "active:bg-accent-lighter",
                                 "hover:bg-accent-lighter",
@@ -108,7 +184,7 @@ impl Login {
                                 "rounded"
                             ])
                             .text("Login")
-                            .event_preventable(clone!(login => move |_: events::Click| {
+                            .event(clone!(login => move |_: events::Click| {
                                 Self::login(login.clone());
                             }))
                         })
