@@ -1,4 +1,3 @@
--- Add migration script here
 CREATE TABLE manga (
     id INTEGER PRIMARY KEY,
     source_id INTEGER NOT NULL,
@@ -14,7 +13,6 @@ CREATE TABLE manga (
     date_added TIMESTAMP NOT NULL,
     UNIQUE (source_id, path)
 );
-
 CREATE TABLE chapter (
     id INTEGER PRIMARY KEY,
     source_id INTEGER NOT NULL,
@@ -27,7 +25,6 @@ CREATE TABLE chapter (
     date_added TIMESTAMP NOT NULL,
     UNIQUE (source_id, path)
 );
-
 CREATE TABLE page (
     id INTEGER PRIMARY KEY,
     source_id INTEGER NOT NULL,
