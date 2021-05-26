@@ -14,6 +14,7 @@ pub enum SettingCategory {
 
 #[derive(Debug)]
 pub enum Route {
+    Login,
     Library,
     Catalogue {
         id: i64,
@@ -37,6 +38,7 @@ impl Route {
             paths.retain(|path| *path != "");
 
             match paths.as_slice() {
+                ["login"] => Route::Login,
                 [] => Route::Library,
                 ["updates"] => Route::Updates,
                 ["histories"] => Route::Histories,
@@ -91,6 +93,7 @@ impl Route {
 
     pub fn url(&self) -> String {
         match self {
+            Route::Login => "/login".to_string(),
             Route::Library => "/".to_string(),
             Route::Catalogue{id, latest} => {
                 if *id > 0 && *latest {

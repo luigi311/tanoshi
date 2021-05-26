@@ -1,14 +1,18 @@
 use std::rc::Rc;
 
-use dominator::{Dom, clone, html};
-use futures_signals::signal::{Mutable, SignalExt};
+use dominator::routing;
+use dominator::{clone, html, Dom};
+use futures_signals::signal::SignalExt;
+use wasm_bindgen::UnwrapThrowExt;
 
 use crate::catalogue::Catalogue;
 use crate::library::Library;
+use crate::login::Login;
 use crate::manga::Manga;
 use crate::reader::Reader;
+use crate::utils::local_storage;
 use crate::{
-    common::{Bottombar, Route, Spinner, events},
+    common::{Bottombar, Route, Spinner},
     histories::Histories,
     settings::Settings,
     updates::Updates,
@@ -35,9 +39,17 @@ impl App {
     }
 
     pub fn render(app: Rc<Self>) -> Dom {
+        match local_storage().get("token").unwrap_throw() {
+            Some(_) => {},
+            None => routing::go_to_url(&Route::Login.url()),
+        };
+
         html!("div", {
             .children_signal_vec(Route::signal().map(clone!(app => move |x| {
                 match x {
+                    Route::Login => vec![
+                        Login::render(Login::new())
+                    ],
                     Route::Library => vec![
                         Library::render(app.library_page.clone()),
                         Bottombar::render()
@@ -47,7 +59,7 @@ impl App {
                         Bottombar::render()
                     ],
                     Route::Manga(manga_id) => vec![
-                        Manga::render(Manga::new(manga_id), app.spinner.clone()),
+                        Manga::render(Manga::new(manga_id)),
                     ],
                     Route::Chapter(chapter_id) => vec![
                         Reader::render(Reader::new(chapter_id), app.clone()),

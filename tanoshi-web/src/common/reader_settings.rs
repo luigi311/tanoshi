@@ -68,12 +68,13 @@ pub struct Page {
     url: String,
 }
 
-const MODAL_CLASS: [&'static str; 18] = [
+const MODAL_CLASS: [&'static str; 20] = [
     "fixed",
     "shadow",
     "w-full",
     "xl:w-1/3",
-    "p-2",
+    "px-2",
+    "pt-2",
     "rounded-t",
     "xl:rounded",
     "mb-0",
@@ -87,6 +88,7 @@ const MODAL_CLASS: [&'static str; 18] = [
     "text-gray-900",
     "dark:text-gray-50",
     "animate__animated",
+    "pb-safe-bottom"
 ];
 
 const NON_MODAL_CLASS: [&'static str; 10] = [

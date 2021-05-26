@@ -1,6 +1,5 @@
 use super::{Manga, Page, Source};
 use crate::context::GlobalContext;
-use crate::db::Db;
 use futures::{stream, StreamExt};
 use async_graphql::{Context, Object, Result, Schema, Subscription, ID};
 use chrono::NaiveDateTime;
@@ -93,7 +92,7 @@ impl Chapter {
 
     async fn manga(&self, ctx: &Context<'_>) -> Manga {
         ctx.data_unchecked::<GlobalContext>()
-            .db
+            .mangadb
             .get_manga_by_id(self.manga_id)
             .await
             .unwrap()
@@ -107,7 +106,7 @@ impl Chapter {
         let source_id = self.source_id.clone();
         let manga_id = self.manga_id.clone();
         let chapter_id = self.id.clone();
-        let db = ctx.data_unchecked::<GlobalContext>().db.clone();
+        let db = ctx.data_unchecked::<GlobalContext>().mangadb.clone();
 
         let mut result = if !fetch {
             db.get_pages_by_chapter_id(chapter_id).await
@@ -142,7 +141,7 @@ async fn fetch_pages(
     manga_id: i64,
     chapter_id: i64,
 ) -> anyhow::Result<Vec<Page>> {
-    let db = ctx.db.clone();
+    let db = ctx.mangadb.clone();
     let pages = ctx
         .extensions
         .get(source_id)

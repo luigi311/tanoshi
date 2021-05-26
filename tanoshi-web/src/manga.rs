@@ -1,4 +1,4 @@
-use crate::{query::{add_to_library, delete_from_library, fetch_manga_detail}};
+use crate::query::{add_to_library, delete_from_library, fetch_manga_detail};
 use crate::utils::{proxied_image_url, AsyncLoader};
 use crate::{
     app::App,
@@ -52,10 +52,8 @@ impl Manga {
         })
     }
 
-    pub fn fetch_detail(manga: Rc<Self>, spinner: Rc<Spinner>) {
-        spinner.set_active(true);
-        spinner.set_fullscreen(true);
-        manga.loader.load(clone!(manga, spinner => async move {
+    pub fn fetch_detail(manga: Rc<Self>) {
+        manga.loader.load(clone!(manga => async move {
             match fetch_manga_detail(manga.id).await {
                 Ok(result) => {
                     manga.title.lock_mut().replace(result.title);
@@ -76,8 +74,6 @@ impl Manga {
                     log::error!("{}", err);
                 }
             }
-
-            spinner.set_active(false);
         }));
     }
 
@@ -105,7 +101,7 @@ impl Manga {
         }));
     }
 
-    pub fn render_topbar(manga: &Self) -> Dom {
+    pub fn render_topbar(manga: Rc<Self>) -> Dom {
         html!("div", {
             .class([
                 "w-full",
@@ -151,7 +147,7 @@ impl Manga {
         })
     }
 
-    pub fn render_header(manga: &Self) -> Dom {
+    pub fn render_header(manga: Rc<Self>) -> Dom {
         html!("div", {
             .attribute("id", "detail")
             .class([
@@ -165,29 +161,51 @@ impl Manga {
             .children(&mut [
                 html!("div", {
                     .class("flex")
+                    .class_signal("animate-pulse", manga.loader.is_loading())
                     .children(&mut [
                         html!("div", {
                             .class(["pb-7/6", "mr-2"])
-                            .children(&mut [
-                                html!("img", {
-                                    .class(["w-32", "rounded", "object-cover"])
-                                    .attribute_signal("src", manga.cover_url.signal_cloned().map(|x| proxied_image_url(&x.unwrap_or("".to_string()))))
-                                    .attribute("loading", "lazy")
-                                })
-                            ])
+                            .child_signal(manga.cover_url.signal_cloned().map(|x| {
+                                if let Some(cover_url) = x {
+                                    Some(html!("img", {
+                                        .class(["w-32", "rounded", "object-cover"])
+                                        .attribute("src", &cover_url)
+                                        .attribute("loading", "lazy")
+                                    }))
+                                } else {
+                                    Some(html!("div", {
+                                        .class(["w-32", "h-44", "rounded", "bg-gray-200", "dark:bg-gray-800"])
+                                    }))
+                                }
+                            }))
                         }),
                         html!("div", {
                             .class(["flex", "flex-col"])
                             .children(&mut [
                                 html!("div", {
                                     .child_signal(manga.title.signal_cloned().map(|x| {
-                                        Some(html!("span", {
-                                            .class(["md:text-xl", "sm:text-md", "text-gray-900", "dark:text-gray-300", "mr-2"])
-                                            .text(x.unwrap_or("".to_string()).as_str())
-                                        }))
+                                        if let Some(title) = x {
+                                            Some(html!("span", {
+                                                .class(["md:text-xl", "sm:text-md", "text-gray-900", "dark:text-gray-300", "mr-2"])
+                                                .text(title.as_str())
+                                            }))
+                                        } else {
+                                            Some(html!("div", {
+                                                .class(["w-32", "md:w-48", "lg:w-64", "xl:w-72", "h-6", "mb-2", "rounded", "bg-gray-200", "dark:bg-gray-800"])
+                                            }))
+                                        }
                                     }))
                                 }),
                                 html!("div", {
+                                    .child_signal(manga.loader.is_loading().map(|x| {
+                                        if x {
+                                            Some(html!("div", {
+                                                .class(["w-32", "md:w-48", "lg:w-64", "xl:w-72", "h-6", "mb-2", "rounded", "bg-gray-200", "dark:bg-gray-800"])
+                                            }))
+                                        } else {
+                                            None
+                                        }
+                                    }))
                                     .children_signal_vec(manga.author.signal_vec_cloned().map(|x| {
                                         html!("span", {
                                             .class(["md:text-lg", "sm:text-sm", "text-gray-900", "dark:text-gray-300", "mr-2"])
@@ -196,12 +214,18 @@ impl Manga {
                                     }))
                                 }),
                                 html!("div", {
-                                    .children(&mut [
-                                        html!("span", {
-                                            .class(["md:text-lg", "sm:text-sm", "text-gray-900", "dark:text-gray-300", "mr-2"])
-                                            .text_signal(manga.status.signal_cloned().map(|x| x.unwrap_or("".to_string())))
-                                        })
-                                    ])
+                                    .child_signal(manga.status.signal_cloned().map(|x|
+                                        if let Some(status) = x {
+                                            Some(html!("span", {
+                                                .class(["md:text-lg", "sm:text-sm", "text-gray-900", "dark:text-gray-300", "mr-2"])
+                                                .text(&status)
+                                            }))
+                                        } else {
+                                            Some(html!("div", {
+                                                .class(["w-32", "md:w-48", "lg:w-64", "xl:w-72", "h-6", "mb-2", "rounded", "bg-gray-200", "dark:bg-gray-800"])
+                                            }))
+                                        }
+                                    ))
                                 })
                             ])
                         })
@@ -222,43 +246,60 @@ impl Manga {
                 "mb-2",
                 "rounded"
             ])
+            .class_signal("animate-pulse", manga.loader.is_loading())
             .children(&mut [
-                html!("div", {
-                    .class("flex")
+                html!("button", {
+                    .class(["rounded", "p-2", "w-10", "h-10", "bg-white", "dark:bg-gray-900", "shadow", "dark:shadow-none", "text-gray-900", "dark:text-gray-100"])
+                    .visible_signal(manga.loader.is_loading().map(|x| !x))
                     .children(&mut [
-                        html!("button", {
-                            .class(["rounded", "p-2", "bg-white", "dark:bg-gray-900", "shadow", "dark:shadow-none", "text-gray-900", "dark:text-gray-100"])
+                        svg!("svg", {
+                            .attribute("xmlns", "http://www.w3.org/2000/svg")
+                            .attribute_signal("fill", manga.is_favorite.signal().map(|x| if x { "currentColor" } else { "none" }))
+                            .attribute("viewBox", "0 0 24 24")
+                            .attribute("stroke", "currentColor")
                             .children(&mut [
-                                svg!("svg", {
-                                    .attribute("xmlns", "http://www.w3.org/2000/svg")
-                                    .attribute_signal("fill", manga.is_favorite.signal().map(|x| if x { "currentColor" } else { "none" }))
-                                    .attribute("viewBox", "0 0 24 24")
-                                    .attribute("stroke", "currentColor")
-                                    .class(["w-6", "h-6"])
-                                    .children(&mut [
-                                        svg!("path", {
-                                            .attribute("stroke-linecap", "round")
-                                            .attribute("stroke-linejoin", "round")
-                                            .attribute("stroke-width", "1")
-                                            .attribute("d", "M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z")
-                                        })
-                                    ])
+                                svg!("path", {
+                                    .attribute("stroke-linecap", "round")
+                                    .attribute("stroke-linejoin", "round")
+                                    .attribute("stroke-width", "1")
+                                    .attribute("d", "M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z")
                                 })
                             ])
-                            .event(clone!(manga => move |_: events::Click| {
-                                Self::add_to_or_remove_from_library(manga.clone());
-                            }))
                         })
                     ])
+                    .event(clone!(manga => move |_: events::Click| {
+                        Self::add_to_or_remove_from_library(manga.clone());
+                    }))
                 }),
                 html!("span", {
                     .class(["md:text-xl", "sm:text-base", "font-bold", "text-gray-900", "dark:text-gray-300"])
                     .text("Description")
-                }),
-                html!("p", {
-                    .class(["break-normal", "md:text-base", "sm:text-xs", "text-gray-900", "dark:text-gray-300"])
-                    .text_signal(manga.description.signal_cloned().map(|x| x.unwrap_or("".to_string())))
-                }),
+                })
+            ])
+            .child_signal(manga.description.signal_cloned().map(|x| {
+                if let Some(description) = x {
+                    Some(html!("p", {
+                        .class(["break-normal", "md:text-base", "sm:text-xs", "text-gray-900", "dark:text-gray-300"])
+                        .text(&description)
+                    }))
+                } else {
+                    Some(html!("div", {
+                        .class(["flex", "flex-col"])
+                        .children(&mut [
+                            html!("div", {
+                                .class(["w-full", "h-6", "mb-2", "rounded", "bg-gray-200", "dark:bg-gray-800"])
+                            }),
+                            html!("div", {
+                                .class(["w-full", "h-6", "mb-2", "rounded", "bg-gray-200", "dark:bg-gray-800"])
+                            }),
+                            html!("div", {
+                                .class(["w-full", "h-6", "mb-2", "rounded", "bg-gray-200", "dark:bg-gray-800"])
+                            })
+                        ])
+                    }))
+                }
+            }))
+            .children(&mut [
                 html!("div", {
                     .class(["w-full", "flex", "flex-wrap"])
                     .children_signal_vec(manga.genre.signal_vec_cloned().map(|x| {
@@ -272,7 +313,7 @@ impl Manga {
         })
     }
 
-    pub fn render_chapters(manga: &Self) -> Dom {
+    pub fn render_chapters(manga: Rc<Self>) -> Dom {
         html!("div", {
             .attribute("id", "description")
             .class([
@@ -284,12 +325,33 @@ impl Manga {
             .children(&mut [
                 html!("div", {
                     .class(["flex", "flex-col", "w-full", "divide-y", "dark:divide-gray-800", "divide-gray-300"])
+                    .class_signal("animate-pulse", manga.loader.is_loading())
                     .children(&mut [
                         html!("span", {
                             .class(["md:text-xl", "sm:text-base", "font-bold", "text-gray-900", "dark:text-gray-300"])
                             .text("Chapters")
                         }),
                     ])
+                    .child_signal(manga.loader.is_loading().map(|x| {
+                        if x {
+                            Some(html!("div", {
+                                .class(["flex", "flex-col"])
+                                .children(&mut [
+                                    html!("div", {
+                                        .class(["w-full", "h-6", "my-2", "rounded", "bg-gray-200", "dark:bg-gray-800"])
+                                    }),
+                                    html!("div", {
+                                        .class(["w-full", "h-6", "mb-2", "rounded", "bg-gray-200", "dark:bg-gray-800"])
+                                    }),
+                                    html!("div", {
+                                        .class(["w-full", "h-6", "mb-2", "rounded", "bg-gray-200", "dark:bg-gray-800"])
+                                    })
+                                ])
+                            }))
+                        } else {
+                            None
+                        }
+                    }))
                     .children_signal_vec(manga.chapters.signal_vec_cloned().map(|chapter| {
                         link!(Route::Chapter(chapter.id).url(), {
                             .class(["flex", "inline-flex", "hover:bg-gray-200", "dark:hover:bg-gray-700", "p-2", "text-gray-900", "dark:text-gray-300"])
@@ -337,16 +399,15 @@ impl Manga {
         })
     }
 
-    pub fn render(manga_page: Rc<Self>, spinner: Rc<Spinner>) -> Dom {
-        Self::fetch_detail(manga_page.clone(), spinner.clone());
+    pub fn render(manga_page: Rc<Self>) -> Dom {
+        Self::fetch_detail(manga_page.clone());
         html!("div", {
             .class(["main", "w-full", "2xl:w-1/2", "mx-auto", "px-2", "flex", "flex-col"])
             .children(&mut [
-                Self::render_topbar(&manga_page),
-                Self::render_header(&manga_page),
+                Self::render_topbar(manga_page.clone()),
+                Self::render_header(manga_page.clone()),
                 Self::render_description(manga_page.clone()),
-                Self::render_chapters(&manga_page),
-                Spinner::render(&spinner)
+                Self::render_chapters(manga_page.clone())
             ])
         })
     }

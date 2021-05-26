@@ -1,0 +1,3 @@
+mutation UserRegister($username: String, $password: String) {
+  register(username: $username, password: $password)
+}

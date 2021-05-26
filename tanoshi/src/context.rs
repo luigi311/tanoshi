@@ -1,14 +1,20 @@
-use crate::catalogue::*;
+use crate::db::{MangaDatabase, UserDatabase};
 use crate::extension::Extensions;
-use crate::db::Db;
 
 pub struct GlobalContext {
-    pub db: Db,
+    pub userdb: UserDatabase,
+    pub secret: String,
+    pub mangadb: MangaDatabase,
     pub extensions: Extensions,
 }
 
 impl GlobalContext {
-    pub fn new(db: Db, extensions: Extensions) -> Self {
-        Self { db, extensions }
+    pub fn new(userdb: UserDatabase, mangadb: MangaDatabase, secret: String, extensions: Extensions) -> Self {
+        Self {
+            userdb,
+            mangadb,
+            secret,
+            extensions,
+        }
     }
 }

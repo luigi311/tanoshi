@@ -34,3 +34,5 @@ async-graphql-warp = "2.8.4"
 sqlx = { version = "0.5.2", features = [ "runtime-tokio-rustls", "macros", "sqlite", "chrono", "json", "migrate" ] }
 reqwest = "^0.11"
 futures = "^0.3"
+rust-argon2 = "0.8"
+async-trait = "0.1.50"

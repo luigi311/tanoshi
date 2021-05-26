@@ -1,0 +1,6 @@
+query FetchServerStatus {
+	serverStatus {
+    activated
+    version
+  }
+}

@@ -12,12 +12,12 @@ mod reader;
 mod settings;
 mod updates;
 mod utils;
+mod login;
 
 
 use wasm_bindgen::prelude::*;
 
 use app::App;
-use utils::{BODY};
 
 #[wasm_bindgen(start)]
 pub async fn main_js() -> Result<(), JsValue> {
@@ -25,7 +25,7 @@ pub async fn main_js() -> Result<(), JsValue> {
     console_error_panic_hook::set_once();
     wasm_logger::init(wasm_logger::Config::default());
 
-    BODY.with(|b| {
+    utils::BODY.with(|b| {
         b.class_list()
             .add_2("bg-gray-100", "dark:bg-black")
             .unwrap_throw()

@@ -45,6 +45,13 @@ type Manga {
 }
 
 type MutationRoot {
+  register(
+    # username
+    username: String!
+
+    # password
+    password: String!
+  ): Int!
   addToLibrary(
     # manga id
     mangaId: Int!
@@ -88,6 +95,14 @@ type PageInfo {
 }
 
 type QueryRoot {
+  serverStatus: Status!
+  login(
+    # username
+    username: String!
+
+    # password
+    password: String!
+  ): String!
   library: [Manga!]!
   recentUpdates(
     after: String
@@ -205,4 +220,9 @@ type Source {
   version: String!
   icon: String!
   needLogin: Boolean!
+}
+
+type Status {
+  activated: Boolean!
+  version: String!
 }

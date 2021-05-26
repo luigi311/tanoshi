@@ -102,7 +102,7 @@ impl Manga {
 
     async fn chapters(&self, ctx: &Context<'_>) -> Vec<Chapter> {
         let manga_id = self.id.clone();
-        let db = ctx.data_unchecked::<GlobalContext>().db.clone();
+        let db = ctx.data_unchecked::<GlobalContext>().mangadb.clone();
         match db.get_chapters_by_manga_id(manga_id).await {
             Ok(chapters) => chapters,
             Err(_) => {
@@ -142,7 +142,7 @@ impl Manga {
         ctx: &Context<'_>,
         #[graphql(desc = "chapter id")] id: i64,
     ) -> Option<Chapter> {
-        let db = ctx.data_unchecked::<GlobalContext>().db.clone();
+        let db = ctx.data_unchecked::<GlobalContext>().mangadb.clone();
         db.get_chapter_by_id(id).await
     }
 }
