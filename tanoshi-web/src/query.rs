@@ -308,3 +308,28 @@ pub async fn fetch_source(source_id: i64) -> Result<Option<fetch_source_detail::
     let response_body: Response<fetch_source_detail::ResponseData> = res.json().await?;
     Ok(response_body.data.unwrap_throw().source)
 }
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/schema.graphql",
+    query_path = "graphql/login.graphql",
+    response_derives = "Debug"
+)]
+pub struct UserLogin;
+
+pub async fn user_login(username: String, password: String) -> Result<String, Box<dyn Error>> {
+    let client = reqwest::Client::new();
+    let var = user_login::Variables {
+        username: Some(username),
+        password: Some(password),
+    };
+    let request_body = UserLogin::build_query(var);
+    let res = client
+        .post(&graphql_url())
+        .json(&request_body)
+        .send()
+        .await?;
+    
+    let response_body: Response<user_login::ResponseData> = res.json().await?;
+    Ok(response_body.data.unwrap_throw().login)
+}

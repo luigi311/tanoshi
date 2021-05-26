@@ -5,6 +5,7 @@ use futures_signals::signal::SignalExt;
 
 use crate::catalogue::Catalogue;
 use crate::library::Library;
+use crate::login::Login;
 use crate::manga::Manga;
 use crate::reader::Reader;
 use crate::{
@@ -38,6 +39,9 @@ impl App {
         html!("div", {
             .children_signal_vec(Route::signal().map(clone!(app => move |x| {
                 match x {
+                    Route::Login => vec![
+                        Login::render(Login::new())
+                    ],
                     Route::Library => vec![
                         Library::render(app.library_page.clone()),
                         Bottombar::render()
