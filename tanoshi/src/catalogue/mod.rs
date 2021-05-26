@@ -12,7 +12,7 @@ pub use page::Page;
 
 use crate::context::GlobalContext;
 
-use async_graphql::{Context, Enum, Object, Result};
+use async_graphql::{Context, Enum, Object};
 use futures::{stream, StreamExt};
 
 /// A type represent sort parameter for query manga from source, normalized across sources

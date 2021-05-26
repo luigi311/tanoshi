@@ -2,8 +2,7 @@ extern crate libloading as lib;
 extern crate pretty_env_logger;
 #[macro_use]
 extern crate log;
-#[macro_use]
-extern crate lazy_static;
+extern crate argon2;
 
 // mod auth;
 mod catalogue;
@@ -14,6 +13,7 @@ mod extension;
 mod library;
 mod proxy;
 mod schema;
+mod user;
 
 use anyhow::Result;
 use clap::Clap;
@@ -66,15 +66,26 @@ async fn main() -> Result<()> {
         EmptySubscription::default(),
     )
     //.extension(ApolloTracing)
-    .data(GlobalContext::new(userdb, mangadb, extensions))
+    .data(GlobalContext::new(userdb, mangadb, secret, extensions))
     .finish();
 
-    let graphql_post = async_graphql_warp::graphql(schema).and_then(
-        |(schema, request): (
-            Schema<QueryRoot, MutationRoot, EmptySubscription>,
-            async_graphql::Request,
-        )| async move { Ok::<_, Infallible>(Response::from(schema.execute(request).await)) },
-    );
+    let graphql_post = warp::header::optional::<String>("Authorization")
+        .and(async_graphql_warp::graphql(schema.clone()))
+        .and_then(
+            |token: Option<String>,
+             (schema, mut request): (
+                Schema<QueryRoot, MutationRoot, EmptySubscription>,
+                async_graphql::Request,
+            )| async move {
+                if let Some(token) = token {
+                    if let Some(token) = token.strip_prefix("Bearer ").map(|t| t.to_string()) {
+                        request = request.data(token);
+                    }
+                }
+                let resp = schema.execute(request).await;
+                Ok::<_, Infallible>(Response::from(resp))
+            },
+        );
 
     let graphql_playground = warp::path!("graphql").and(warp::get()).map(|| {
         HttpResponse::builder()
