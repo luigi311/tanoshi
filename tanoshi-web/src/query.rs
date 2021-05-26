@@ -331,5 +331,5 @@ pub async fn user_login(username: String, password: String) -> Result<String, Bo
         .await?;
     
     let response_body: Response<user_login::ResponseData> = res.json().await?;
-    Ok(response_body.data.unwrap_throw().login)
+    Ok(response_body.data.ok_or("no data")?.login)
 }

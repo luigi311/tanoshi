@@ -1,12 +1,13 @@
 use std::rc::Rc;
 
+use dominator::routing;
 use dominator::{Dom, clone, html};
 use futures_signals::signal::Mutable;
 use wasm_bindgen::UnwrapThrowExt;
 
 use crate::query::user_login;
 use crate::utils::AsyncLoader;
-use crate::common::events;
+use crate::common::{Route, events};
 use crate::utils::local_storage;
 
 pub struct Login {
@@ -28,9 +29,10 @@ impl Login {
         login.loader.load(clone!(login => async move {
             let username = login.username.get_cloned();
             let password = login.password.get_cloned();
-            let token = user_login(username, password).await.unwrap_throw();
-            
-            local_storage().set("token", &token).unwrap_throw();
+            if let Ok(token) = user_login(username, password).await {
+                local_storage().set("token", &token).unwrap_throw();
+                routing::go_to_url(&Route::Library.url());
+            }
         }));
     }
 
