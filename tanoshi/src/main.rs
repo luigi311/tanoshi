@@ -6,24 +6,24 @@ extern crate log;
 extern crate lazy_static;
 
 // mod auth;
-mod config;
-mod extension;
-mod proxy;
 mod catalogue;
+mod config;
 mod context;
 mod db;
-mod schema;
+mod extension;
 mod library;
+mod proxy;
+mod schema;
 
 use anyhow::Result;
 use clap::Clap;
 
 use crate::context::GlobalContext;
-use crate::schema::{QueryRoot, MutationRoot};
+use crate::schema::{MutationRoot, QueryRoot};
+use async_graphql::extensions::ApolloTracing;
 use async_graphql::http::{playground_source, GraphQLPlaygroundConfig};
 use async_graphql::{EmptyMutation, EmptySubscription, Schema};
 use async_graphql_warp::{BadRequest, Response};
-use async_graphql::extensions::ApolloTracing;
 use config::Config;
 use std::convert::Infallible;
 use warp::http::{Response as HttpResponse, StatusCode};
@@ -57,7 +57,8 @@ async fn main() -> Result<()> {
 
     // let routes = api.or(serve_static).with(warp::log("manga"));
     let pool = db::establish_connection(config.database_path).await;
-    let mangadb = db::MangaDatabase::new(pool);
+    let mangadb = db::MangaDatabase::new(pool.clone());
+    let userdb = db::UserDatabase::new(pool.clone());
 
     let schema = Schema::build(
         QueryRoot::default(),
@@ -65,7 +66,7 @@ async fn main() -> Result<()> {
         EmptySubscription::default(),
     )
     //.extension(ApolloTracing)
-    .data(GlobalContext::new(mangadb, extensions))
+    .data(GlobalContext::new(userdb, mangadb, extensions))
     .finish();
 
     let graphql_post = async_graphql_warp::graphql(schema).and_then(
@@ -97,7 +98,8 @@ async fn main() -> Result<()> {
                 "INTERNAL_SERVER_ERROR".to_string(),
                 StatusCode::INTERNAL_SERVER_ERROR,
             ))
-        }).with(cors);
+        })
+        .with(cors);
 
     warp::serve(routes).run(([0, 0, 0, 0], config.port)).await;
 
