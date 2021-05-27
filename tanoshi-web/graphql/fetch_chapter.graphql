@@ -7,9 +7,6 @@ query FetchChapter($chapterId:Int) {
       id
       title
     }
-    pages {
-       id
-       url
-    }
+    pages
   }
 }
