@@ -268,6 +268,10 @@ pub struct FetchRecentUpdates;
 pub async fn fetch_recent_updates(
     cursor: Option<String>,
 ) -> Result<fetch_recent_updates::FetchRecentUpdatesRecentUpdates, Box<dyn Error>> {
+    let token = local_storage()
+        .get("token")
+        .unwrap_throw()
+        .ok_or("no token")?;
     let client = reqwest::Client::new();
     let var = fetch_recent_updates::Variables {
         first: Some(20),
@@ -276,6 +280,7 @@ pub async fn fetch_recent_updates(
     let request_body = FetchRecentUpdates::build_query(var);
     let res = client
         .post(&graphql_url())
+        .header("Authorization", format!("Bearer {}", token))
         .json(&request_body)
         .send()
         .await?;

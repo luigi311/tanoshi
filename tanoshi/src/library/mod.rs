@@ -34,6 +34,7 @@ impl LibraryRoot {
         first: Option<i32>,
         last: Option<i32>,
     ) -> Result<Connection<String, RecentUpdate, EmptyFields, EmptyFields>> {
+        let user = user::get_claims(ctx).ok_or("no token")?;
         let db = ctx.data_unchecked::<GlobalContext>().mangadb.clone();
         query(
             after,
@@ -50,6 +51,7 @@ impl LibraryRoot {
 
                 let edges = if let Some(first) = first {
                     db.get_first_recent_updates(
+                        user.sub,
                         after_timestamp,
                         after_id,
                         before_timestamp,
@@ -59,6 +61,7 @@ impl LibraryRoot {
                     .await
                 } else if let Some(last) = last {
                     db.get_last_recent_updates(
+                        user.sub,
                         after_timestamp,
                         after_id,
                         before_timestamp,
@@ -67,8 +70,14 @@ impl LibraryRoot {
                     )
                     .await
                 } else {
-                    db.get_recent_updates(after_timestamp, after_id, before_timestamp, before_id)
-                        .await
+                    db.get_recent_updates(
+                        user.sub,
+                        after_timestamp,
+                        after_id,
+                        before_timestamp,
+                        before_id,
+                    )
+                    .await
                 };
                 let edges = edges.unwrap_or(vec![]);
 
@@ -77,12 +86,20 @@ impl LibraryRoot {
                 if edges.len() > 0 {
                     if let Some(e) = edges.first() {
                         has_previous_page = db
-                            .get_chapter_has_before_page(e.uploaded.timestamp(), e.chapter_id)
+                            .get_chapter_has_before_page(
+                                user.sub,
+                                e.uploaded.timestamp(),
+                                e.chapter_id,
+                            )
                             .await;
                     }
                     if let Some(e) = edges.last() {
                         has_next_page = db
-                            .get_chapter_has_next_page(e.uploaded.timestamp(), e.chapter_id)
+                            .get_chapter_has_next_page(
+                                user.sub,
+                                e.uploaded.timestamp(),
+                                e.chapter_id,
+                            )
                             .await;
                     }
                 }
