@@ -23,7 +23,7 @@ use crate::context::GlobalContext;
 use crate::schema::{MutationRoot, QueryRoot, TanoshiSchema};
 use async_graphql::extensions::ApolloTracing;
 use async_graphql::http::{playground_source, GraphQLPlaygroundConfig};
-use async_graphql::{EmptyMutation, EmptySubscription, Schema};
+use async_graphql::{EmptySubscription, Schema};
 use async_graphql_warp::{BadRequest, Response};
 use config::Config;
 use std::convert::Infallible;

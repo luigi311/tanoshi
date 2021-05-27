@@ -1,10 +1,8 @@
-use crate::catalogue::{Chapter, Manga};
+use crate::catalogue::Manga;
 use crate::context::GlobalContext;
 use crate::user;
 use async_graphql::connection::{query, Connection, Edge, EmptyFields};
-use async_graphql::{
-    Context, InputValueError, InputValueResult, Object, Result, Scalar, ScalarType, Value,
-};
+use async_graphql::{Context, Object, Result};
 use chrono::{Local, NaiveDateTime};
 
 mod library;
@@ -235,12 +233,14 @@ impl LibraryMutationRoot {
     async fn update_page_read_at(
         &self,
         ctx: &Context<'_>,
-        #[graphql(desc = "page id")] page_id: i64,
+        #[graphql(desc = "chapter id")] chapter_id: i64,
+        #[graphql(desc = "page")] page: i64,
     ) -> Result<u64> {
+        let user = user::get_claims(ctx).ok_or("no token")?;
         match ctx
             .data_unchecked::<GlobalContext>()
             .mangadb
-            .update_page_read_at(page_id)
+            .update_page_read_at(user.sub, chapter_id, page)
             .await
         {
             Ok(rows) => Ok(rows),

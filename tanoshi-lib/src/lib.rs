@@ -59,13 +59,6 @@ pub mod model {
         pub uploaded: chrono::NaiveDateTime,
     }
 
-    #[derive(Debug, Clone)]
-    pub struct Page {
-        pub source_id: i64,
-        pub rank: i64,
-        pub url: String,
-    }
-
     /// A type represent sort parameter for query manga from source, normalized across source
     #[derive(Debug, Clone, PartialEq)]
     pub enum SortByParam {
@@ -99,7 +92,7 @@ pub mod model {
 #[cfg(feature = "extensions")]
 pub mod extensions {
     use crate::model::{
-        Chapter, Manga, SortByParam, SortOrderParam, Source, SourceLogin, SourceLoginResult, Page
+        Chapter, Manga, SortByParam, SortOrderParam, Source, SourceLogin, SourceLoginResult
     };
     use anyhow::{anyhow, Result};
     use serde_yaml;
@@ -138,7 +131,7 @@ pub mod extensions {
         fn get_chapters(&self, path: &String) -> Result<Vec<Chapter>>;
 
         /// Returns list of pages from a chapter of a manga
-        fn get_pages(&self, path: &String) -> Result<Vec<Page>>;
+        fn get_pages(&self, path: &String) -> Result<Vec<String>>;
 
         /// Proxy image
         fn get_page(&self, url: &String) -> Result<Vec<u8>> {

@@ -7,7 +7,7 @@ use std::{
 };
 use tanoshi_lib::extensions::{Extension, PluginDeclaration};
 use tanoshi_lib::model::{
-    Chapter, Manga, SortByParam, SortOrderParam, Source, SourceLogin, SourceLoginResult, Page
+    Chapter, Manga, SortByParam, SortOrderParam, Source, SourceLogin, SourceLoginResult
 };
 use tokio::task::spawn_blocking;
 
@@ -49,7 +49,7 @@ impl ExtensionProxy {
         spawn_blocking(move || extension.get_chapters(&path)).await?
     }
 
-    pub async fn get_pages(&self, path: String) -> Result<Vec<Page>> {
+    pub async fn get_pages(&self, path: String) -> Result<Vec<String>> {
         let extension = self.extension.clone();
         spawn_blocking(move || extension.get_pages(&path)).await?
     }
