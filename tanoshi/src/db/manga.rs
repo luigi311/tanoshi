@@ -118,6 +118,7 @@ impl Db {
 
     pub async fn get_recent_updates(
         &self,
+        user_id: i64,
         after_timestamp: i64,
         after_id: i64,
         before_timestamp: i64,
@@ -126,20 +127,23 @@ impl Db {
         let mut stream = sqlx::query(
             r#"
         SELECT
-        manga.id,
-        chapter.id,
-        manga.title,
-        manga.cover_url,
-        chapter.title,
-        chapter.uploaded
+            manga.id,
+            chapter.id,
+            manga.title,
+            manga.cover_url,
+            chapter.title,
+            chapter.uploaded
         FROM chapter
         JOIN manga ON manga.id = chapter.manga_id
+        JOIN user_library ON 
+            user_library.manga_id = manga.id 
+            AND user_library.user_id = ?
         WHERE 
-        manga.is_favorite = true AND
-        (uploaded, chapter.id) < (datetime(?, 'unixepoch'), ?) AND
-        (uploaded, chapter.id) > (datetime(?, 'unixepoch'), ?)
+            (uploaded, chapter.id) < (datetime(?, 'unixepoch'), ?) AND
+            (uploaded, chapter.id) > (datetime(?, 'unixepoch'), ?)
         ORDER BY chapter.uploaded DESC, chapter.id DESC"#,
         )
+        .bind(user_id)
         .bind(after_timestamp)
         .bind(after_id)
         .bind(before_timestamp)
@@ -162,6 +166,7 @@ impl Db {
 
     pub async fn get_first_recent_updates(
         &self,
+        user_id: i64,
         after_timestamp: i64,
         after_id: i64,
         before_timestamp: i64,
@@ -171,21 +176,24 @@ impl Db {
         let mut stream = sqlx::query(
             r#"
         SELECT
-        manga.id,
-        chapter.id,
-        manga.title,
-        manga.cover_url,
-        chapter.title,
-        chapter.uploaded
+            manga.id,
+            chapter.id,
+            manga.title,
+            manga.cover_url,
+            chapter.title,
+            chapter.uploaded
         FROM chapter
         JOIN manga ON manga.id = chapter.manga_id
+        JOIN user_library ON 
+            user_library.manga_id = manga.id 
+            AND user_library.user_id = ?
         WHERE 
-        manga.is_favorite = true AND
-        (uploaded, chapter.id) < (datetime(?, 'unixepoch'), ?) AND
-        (uploaded, chapter.id) > (datetime(?, 'unixepoch'), ?)
+            (uploaded, chapter.id) < (datetime(?, 'unixepoch'), ?) AND
+            (uploaded, chapter.id) > (datetime(?, 'unixepoch'), ?)
         ORDER BY chapter.uploaded DESC, chapter.id DESC
         LIMIT ?"#,
         )
+        .bind(user_id)
         .bind(after_timestamp)
         .bind(after_id)
         .bind(before_timestamp)
@@ -209,6 +217,7 @@ impl Db {
 
     pub async fn get_last_recent_updates(
         &self,
+        user_id: i64,
         after_timestamp: i64,
         after_id: i64,
         before_timestamp: i64,
@@ -227,14 +236,17 @@ impl Db {
                 chapter.uploaded
             FROM chapter
             JOIN manga ON manga.id = chapter.manga_id
+            JOIN user_library ON 
+                user_library.manga_id = manga.id 
+                AND user_library.user_id = ?
             WHERE 
-                manga.is_favorite = true AND
                 (uploaded, chapter.id) < (datetime(?, 'unixepoch'), ?) AND
                 (uploaded, chapter.id) > (datetime(?, 'unixepoch'), ?)
             ORDER BY chapter.uploaded ASC, chapter.id ASC
             LIMIT ?) c
         ORDER BY c.uploaded DESC, c.id DESC"#,
         )
+        .bind(user_id)
         .bind(after_timestamp)
         .bind(after_id)
         .bind(before_timestamp)
@@ -256,7 +268,7 @@ impl Db {
         Ok(chapters)
     }
 
-    pub async fn get_chapter_has_next_page(&self, timestamp: i64, id: i64) -> bool {
+    pub async fn get_chapter_has_next_page(&self, user_id: i64, timestamp: i64, id: i64) -> bool {
         let stream = sqlx::query(
             r#"
             SELECT
@@ -264,11 +276,14 @@ impl Db {
                 chapter.uploaded
             FROM chapter
             JOIN manga ON manga.id = chapter.manga_id
+            JOIN user_library ON 
+                user_library.manga_id = manga.id 
+                AND user_library.user_id = ?
             WHERE 
-                manga.is_favorite = true AND
                 (uploaded, chapter.id) < (datetime(?, 'unixepoch'), ?)
             ORDER BY chapter.uploaded DESC, chapter.id DESC"#,
         )
+        .bind(user_id)
         .bind(timestamp)
         .bind(id)
         .fetch_one(&self.pool)
@@ -282,7 +297,7 @@ impl Db {
         count > 0
     }
 
-    pub async fn get_chapter_has_before_page(&self, timestamp: i64, id: i64) -> bool {
+    pub async fn get_chapter_has_before_page(&self, user_id: i64, timestamp: i64, id: i64) -> bool {
         let stream = sqlx::query(
             r#"
         SELECT
@@ -290,11 +305,14 @@ impl Db {
             chapter.uploaded
         FROM chapter
         JOIN manga ON manga.id = chapter.manga_id
+        JOIN user_library ON 
+            user_library.manga_id = manga.id 
+            AND user_library.user_id = ?
         WHERE 
-            manga.is_favorite = true AND
             (uploaded, chapter.id) > (datetime(?, 'unixepoch'), ?)
         ORDER BY chapter.uploaded DESC, chapter.id DESC"#,
         )
+        .bind(user_id)
         .bind(timestamp)
         .bind(id)
         .fetch_one(&self.pool)
