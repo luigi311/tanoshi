@@ -70,9 +70,15 @@ impl Db {
         }
     }
 
-    pub async fn get_library(&self) -> Result<Vec<Manga>> {
-        let mut stream =
-            sqlx::query(r#"SELECT * FROM manga WHERE is_favorite = true"#).fetch(&self.pool);
+    pub async fn get_library(&self, user_id: i64) -> Result<Vec<Manga>> {
+        let mut stream = sqlx::query(
+            r#"SELECT manga.* FROM manga
+                 JOIN user_library ON 
+                 manga.id = user_library.manga_id AND
+                  user_library.user_id = ?"#,
+        )
+        .bind(user_id)
+        .fetch(&self.pool);
 
         let mut mangas = vec![];
         while let Some(row) = stream.try_next().await? {
@@ -92,6 +98,22 @@ impl Db {
             });
         }
         Ok(mangas)
+    }
+
+    pub async fn get_user_library(&self, user_id: i64, manga_id: i64) -> Result<bool> {
+        let stream =
+            sqlx::query(r#"SELECT true FROM user_library WHERE user_id = ? AND manga_id = ?"#)
+                .bind(user_id)
+                .bind(manga_id)
+                .fetch_one(&self.pool)
+                .await
+                .ok();
+
+        if let Some(row) = stream {
+            Ok(row.get(0))
+        } else {
+            Ok(false)
+        }
     }
 
     pub async fn get_recent_updates(
@@ -825,9 +847,19 @@ impl Db {
         }
     }
 
-    pub async fn favorite_manga(&self, manga_id: i64, is_favorite: bool) -> Result<u64> {
-        sqlx::query("UPDATE manga SET is_favorite = ? WHERE id = ?")
-            .bind(is_favorite)
+    pub async fn insert_user_library(&self, user_id: i64, manga_id: i64) -> Result<u64> {
+        sqlx::query("INSERT INTO user_library (user_id, manga_id) VALUES (?, ?)")
+            .bind(user_id)
+            .bind(manga_id)
+            .execute(&self.pool)
+            .await
+            .map(|res| res.rows_affected())
+            .map_err(|e| anyhow::anyhow!(e))
+    }
+
+    pub async fn delete_user_library(&self, user_id: i64, manga_id: i64) -> Result<u64> {
+        sqlx::query("DELETE FROM user_library WHERE user_id = ? AND manga_id = ?")
+            .bind(user_id)
             .bind(manga_id)
             .execute(&self.pool)
             .await

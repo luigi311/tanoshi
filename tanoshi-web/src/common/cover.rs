@@ -14,13 +14,13 @@ pub struct Cover {
 }
 
 impl Cover {
-    pub fn new(id: i64, title: String, cover_url: String) -> Self {
+    pub fn new(id: i64, title: String, cover_url: String, is_favorite: bool) -> Self {
         let cover_url = proxied_image_url(&cover_url);
         Self {
             id,
             title,
             cover_url,
-            is_favorite: Mutable::new(false),
+            is_favorite: Mutable::new(is_favorite),
         }
     }
 
@@ -35,6 +35,7 @@ impl Cover {
             .class("rounded-md")
             .class("pb-7/5")
             .class("shadow")
+            .class_signal(["filter", "brightness-50"], self.is_favorite.signal())
             .children(&mut [
                 html!("img", {
                     .class("absolute")

@@ -1,5 +1,6 @@
 use crate::catalogue::{Chapter, Manga};
 use crate::context::GlobalContext;
+use crate::user;
 use async_graphql::connection::{query, Connection, Edge, EmptyFields};
 use async_graphql::{
     Context, InputValueError, InputValueResult, Object, Result, Scalar, ScalarType, Value,
@@ -14,10 +15,16 @@ pub struct LibraryRoot;
 
 #[Object]
 impl LibraryRoot {
-    async fn library(&self, ctx: &Context<'_>) -> Vec<Manga> {
-        match ctx.data_unchecked::<GlobalContext>().mangadb.get_library().await {
-            Ok(mangas) => mangas,
-            Err(_) => vec![],
+    async fn library(&self, ctx: &Context<'_>) -> Result<Vec<Manga>> {
+        let user = user::get_claims(ctx).ok_or("no token")?;
+        match ctx
+            .data_unchecked::<GlobalContext>()
+            .mangadb
+            .get_library(user.sub)
+            .await
+        {
+            Ok(manga) => Ok(manga),
+            Err(_) => Err("error get user libary".into()),
         }
     }
 
@@ -196,10 +203,11 @@ impl LibraryMutationRoot {
         ctx: &Context<'_>,
         #[graphql(desc = "manga id")] manga_id: i64,
     ) -> Result<u64> {
+        let user = user::get_claims(ctx).ok_or("no token")?;
         match ctx
             .data_unchecked::<GlobalContext>()
             .mangadb
-            .favorite_manga(manga_id, true)
+            .insert_user_library(user.sub, manga_id)
             .await
         {
             Ok(rows) => Ok(rows),
@@ -212,14 +220,15 @@ impl LibraryMutationRoot {
         ctx: &Context<'_>,
         #[graphql(desc = "manga id")] manga_id: i64,
     ) -> Result<u64> {
+        let user = user::get_claims(ctx).ok_or("no token")?;
         match ctx
             .data_unchecked::<GlobalContext>()
             .mangadb
-            .favorite_manga(manga_id, false)
+            .delete_user_library(user.sub, manga_id)
             .await
         {
             Ok(rows) => Ok(rows),
-            Err(err) => Err(format!("error add manga to library: {}", err).into()),
+            Err(err) => Err(format!("error delete manga from library: {}", err).into()),
         }
     }
 
