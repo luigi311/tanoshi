@@ -1,9 +1,9 @@
 use std::time::Duration;
 
 use super::Chapter;
-use crate::context::GlobalContext;
+use crate::{context::GlobalContext, user};
+use async_graphql::{Context, Object, Result};
 use futures::{stream, StreamExt};
-use async_graphql::{Context, Object};
 
 /// A type represent manga details, normalized across source
 #[derive(Debug)]
@@ -92,8 +92,18 @@ impl Manga {
         self.last_read_chapter
     }
 
-    async fn is_favorite(&self) -> bool {
-        self.is_favorite
+    async fn is_favorite(&self, ctx: &Context<'_>) -> Result<bool> {
+        let user = user::get_claims(ctx).ok_or("no token")?;
+        if let Ok(fav) = ctx
+            .data_unchecked::<GlobalContext>()
+            .mangadb
+            .get_user_library(user.sub, self.id)
+            .await
+        {
+            Ok(fav)
+        } else {
+            Err("error query".into())
+        }
     }
 
     async fn date_added(&self) -> chrono::NaiveDateTime {
@@ -106,7 +116,8 @@ impl Manga {
         match db.get_chapters_by_manga_id(manga_id).await {
             Ok(chapters) => chapters,
             Err(_) => {
-                let chapters = ctx.data_unchecked::<GlobalContext>()
+                let chapters = ctx
+                    .data_unchecked::<GlobalContext>()
                     .extensions
                     .get(self.source_id)
                     .unwrap()

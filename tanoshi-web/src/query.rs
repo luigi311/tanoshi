@@ -5,7 +5,7 @@ use web_sys::window;
 
 type NaiveDateTime = String;
 
-use crate::common::Cover;
+use crate::{common::Cover, utils::local_storage};
 
 fn graphql_url() -> String {
     [
@@ -37,6 +37,10 @@ pub async fn fetch_manga_from_source(
     sort_by: browse_source::SortByParam,
     sort_order: browse_source::SortOrderParam,
 ) -> Result<Vec<Cover>, Box<dyn Error>> {
+    let token = local_storage()
+        .get("token")
+        .unwrap_throw()
+        .ok_or("no token")?;
     let client = reqwest::Client::new();
     let var = browse_source::Variables {
         source_id: Some(source_id),
@@ -48,6 +52,7 @@ pub async fn fetch_manga_from_source(
     let request_body = BrowseSource::build_query(var);
     let res = client
         .post(&graphql_url())
+        .header("Authorization", format!("Bearer {}", token))
         .json(&request_body)
         .send()
         .await?;
@@ -56,7 +61,7 @@ pub async fn fetch_manga_from_source(
 
     let covers = list
         .iter()
-        .map(|item| Cover::new(item.id, item.title.clone(), item.cover_url.clone()))
+        .map(|item| Cover::new(item.id, item.title.clone(), item.cover_url.clone(), item.is_favorite))
         .collect();
     Ok(covers)
 }
@@ -70,11 +75,16 @@ pub async fn fetch_manga_from_source(
 pub struct BrowseFavorites;
 
 pub async fn fetch_manga_from_favorite() -> Result<Vec<Cover>, Box<dyn Error>> {
+    let token = local_storage()
+        .get("token")
+        .unwrap_throw()
+        .ok_or("no token")?;
     let client = reqwest::Client::new();
     let var = browse_favorites::Variables {};
     let request_body = BrowseFavorites::build_query(var);
     let res = client
         .post(&graphql_url())
+        .header("Authorization", format!("Bearer {}", token))
         .json(&request_body)
         .send()
         .await?;
@@ -83,7 +93,7 @@ pub async fn fetch_manga_from_favorite() -> Result<Vec<Cover>, Box<dyn Error>> {
 
     Ok(list
         .iter()
-        .map(|item| Cover::new(item.id, item.title.clone(), item.cover_url.clone()))
+        .map(|item| Cover::new(item.id, item.title.clone(), item.cover_url.clone(), false))
         .collect())
 }
 
@@ -98,11 +108,16 @@ pub struct FetchMangaDetail;
 pub async fn fetch_manga_detail(
     id: i64,
 ) -> Result<fetch_manga_detail::FetchMangaDetailManga, Box<dyn Error>> {
+    let token = local_storage()
+        .get("token")
+        .unwrap_throw()
+        .ok_or("no token")?;
     let client = reqwest::Client::new();
     let var = fetch_manga_detail::Variables { id: Some(id) };
     let request_body = FetchMangaDetail::build_query(var);
     let res = client
         .post(&graphql_url())
+        .header("Authorization", format!("Bearer {}", token))
         .json(&request_body)
         .send()
         .await?;
@@ -148,16 +163,24 @@ pub async fn fetch_chapter(
 pub struct AddToLibrary;
 
 pub async fn add_to_library(manga_id: i64) -> Result<(), Box<dyn Error>> {
+    let token = local_storage()
+        .get("token")
+        .unwrap_throw()
+        .ok_or("no token")?;
     let client = reqwest::Client::new();
     let var = add_to_library::Variables {
         manga_id: Some(manga_id),
     };
     let request_body = AddToLibrary::build_query(var);
-    let _ = client
+    let res = client
         .post(&graphql_url())
+        .header("Authorization", format!("Bearer {}", token))
         .json(&request_body)
         .send()
         .await?;
+
+    let response_body: Response<add_to_library::ResponseData> = res.json().await?;
+    let _ = response_body.data.ok_or("no data")?;
 
     Ok(())
 }
@@ -171,16 +194,24 @@ pub async fn add_to_library(manga_id: i64) -> Result<(), Box<dyn Error>> {
 pub struct DeleteFromLibrary;
 
 pub async fn delete_from_library(manga_id: i64) -> Result<(), Box<dyn Error>> {
+    let token = local_storage()
+        .get("token")
+        .unwrap_throw()
+        .ok_or("no token")?;
     let client = reqwest::Client::new();
     let var = delete_from_library::Variables {
         manga_id: Some(manga_id),
     };
     let request_body = DeleteFromLibrary::build_query(var);
-    let _ = client
+    let res = client
         .post(&graphql_url())
+        .header("Authorization", format!("Bearer {}", token))
         .json(&request_body)
         .send()
         .await?;
+
+    let response_body: Response<delete_from_library::ResponseData> = res.json().await?;
+    let _ = response_body.data.ok_or("no data")?;
 
     Ok(())
 }
@@ -216,7 +247,9 @@ pub async fn update_page_read_at(page_id: i64) -> Result<(), Box<dyn Error>> {
 )]
 pub struct FetchRecentUpdates;
 
-pub async fn fetch_recent_updates(cursor: Option<String>) -> Result<fetch_recent_updates::FetchRecentUpdatesRecentUpdates, Box<dyn Error>> {
+pub async fn fetch_recent_updates(
+    cursor: Option<String>,
+) -> Result<fetch_recent_updates::FetchRecentUpdatesRecentUpdates, Box<dyn Error>> {
     let client = reqwest::Client::new();
     let var = fetch_recent_updates::Variables {
         first: Some(20),
@@ -228,7 +261,7 @@ pub async fn fetch_recent_updates(cursor: Option<String>) -> Result<fetch_recent
         .json(&request_body)
         .send()
         .await?;
-    
+
     let response_body: Response<fetch_recent_updates::ResponseData> = res.json().await?;
     Ok(response_body.data.ok_or("no data")?.recent_updates)
 }
@@ -241,7 +274,9 @@ pub async fn fetch_recent_updates(cursor: Option<String>) -> Result<fetch_recent
 )]
 pub struct FetchHistories;
 
-pub async fn fetch_histories(cursor: Option<String>) -> Result<fetch_histories::FetchHistoriesRecentChapters, Box<dyn Error>> {
+pub async fn fetch_histories(
+    cursor: Option<String>,
+) -> Result<fetch_histories::FetchHistoriesRecentChapters, Box<dyn Error>> {
     let client = reqwest::Client::new();
     let var = fetch_histories::Variables {
         first: Some(20),
@@ -253,7 +288,7 @@ pub async fn fetch_histories(cursor: Option<String>) -> Result<fetch_histories::
         .json(&request_body)
         .send()
         .await?;
-    
+
     let response_body: Response<fetch_histories::ResponseData> = res.json().await?;
     Ok(response_body.data.ok_or("no data")?.recent_chapters)
 }
@@ -266,7 +301,8 @@ pub async fn fetch_histories(cursor: Option<String>) -> Result<fetch_histories::
 )]
 pub struct FetchSources;
 
-pub async fn fetch_sources() -> Result<std::vec::Vec<fetch_sources::FetchSourcesInstalledSources>, Box<dyn Error>> {
+pub async fn fetch_sources(
+) -> Result<std::vec::Vec<fetch_sources::FetchSourcesInstalledSources>, Box<dyn Error>> {
     let client = reqwest::Client::new();
     let var = fetch_sources::Variables {};
     let request_body = FetchSources::build_query(var);
@@ -275,7 +311,7 @@ pub async fn fetch_sources() -> Result<std::vec::Vec<fetch_sources::FetchSources
         .json(&request_body)
         .send()
         .await?;
-    
+
     let response_body: Response<fetch_sources::ResponseData> = res.json().await?;
     Ok(response_body.data.ok_or("no data")?.installed_sources)
 }
@@ -288,7 +324,9 @@ pub async fn fetch_sources() -> Result<std::vec::Vec<fetch_sources::FetchSources
 )]
 pub struct FetchSourceDetail;
 
-pub async fn fetch_source(source_id: i64) -> Result<Option<fetch_source_detail::FetchSourceDetailSource>, Box<dyn Error>> {
+pub async fn fetch_source(
+    source_id: i64,
+) -> Result<Option<fetch_source_detail::FetchSourceDetailSource>, Box<dyn Error>> {
     let client = reqwest::Client::new();
     let var = fetch_source_detail::Variables {
         source_id: Some(source_id),
@@ -299,7 +337,7 @@ pub async fn fetch_source(source_id: i64) -> Result<Option<fetch_source_detail::
         .json(&request_body)
         .send()
         .await?;
-    
+
     let response_body: Response<fetch_source_detail::ResponseData> = res.json().await?;
     Ok(response_body.data.ok_or("no data")?.source)
 }
@@ -324,7 +362,7 @@ pub async fn user_login(username: String, password: String) -> Result<String, Bo
         .json(&request_body)
         .send()
         .await?;
-    
+
     let response_body: Response<user_login::ResponseData> = res.json().await?;
     Ok(response_body.data.ok_or("no data")?.login)
 }
@@ -349,7 +387,7 @@ pub async fn user_register(username: String, password: String) -> Result<(), Box
         .json(&request_body)
         .send()
         .await?;
-    
+
     let response_body: Response<user_register::ResponseData> = res.json().await?;
     let user_id = response_body.data.ok_or("no data")?.register;
     Ok(())
@@ -363,7 +401,8 @@ pub async fn user_register(username: String, password: String) -> Result<(), Box
 )]
 pub struct FetchServerStatus;
 
-pub async fn server_status() -> Result<fetch_server_status::FetchServerStatusServerStatus, Box<dyn Error>> {
+pub async fn server_status(
+) -> Result<fetch_server_status::FetchServerStatusServerStatus, Box<dyn Error>> {
     let client = reqwest::Client::new();
     let var = fetch_server_status::Variables {};
     let request_body = FetchServerStatus::build_query(var);
@@ -372,7 +411,7 @@ pub async fn server_status() -> Result<fetch_server_status::FetchServerStatusSer
         .json(&request_body)
         .send()
         .await?;
-    
+
     let response_body: Response<fetch_server_status::ResponseData> = res.json().await?;
     Ok(response_body.data.ok_or("no data")?.server_status)
 }

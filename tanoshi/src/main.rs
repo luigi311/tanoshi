@@ -66,7 +66,7 @@ async fn main() -> Result<()> {
         MutationRoot::default(),
         EmptySubscription::default(),
     )
-    //.extension(ApolloTracing)
+    .extension(ApolloTracing)
     .data(GlobalContext::new(userdb, mangadb, secret, extensions))
     .finish();
 

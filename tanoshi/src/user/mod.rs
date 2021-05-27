@@ -1,5 +1,6 @@
 use crate::catalogue::{Chapter, Manga};
 use crate::context::GlobalContext;
+use crate::proxy::get_image;
 use async_graphql::connection::{query, Connection, Edge, EmptyFields};
 use async_graphql::{
     Context, InputValueError, InputValueResult, Object, Result, Scalar, ScalarType, Value,
@@ -15,11 +16,11 @@ use serde::{Deserialize, Serialize};
 
 /// Our claims struct, it needs to derive `Serialize` and/or `Deserialize`
 #[derive(Debug, Serialize, Deserialize)]
-struct Claims {
-    sub: i64,
-    username: String,
-    role: Role,
-    exp: usize,
+pub struct Claims {
+    pub sub: i64,
+    pub username: String,
+    pub role: Role,
+    pub exp: usize,
 }
 
 #[derive(Default)]
@@ -71,7 +72,7 @@ impl UserMutationRoot {
         #[graphql(desc = "password")] password: String,
     ) -> Result<i64> {
         let is_admin = check_is_admin(&ctx);
-        
+
         let userdb = &ctx.data_unchecked::<GlobalContext>().userdb;
 
         let user_count = userdb.get_users_count().await?;
@@ -106,26 +107,30 @@ impl UserMutationRoot {
     }
 }
 
-fn check_is_admin(ctx: &Context<'_>) -> bool {
+pub fn get_claims(ctx: &Context<'_>) -> Option<Claims> {
     let token = if let Some(token) = ctx.data_opt::<String>() {
         token
     } else {
-        return false;
+        return None;
     };
-    
+
     let secret = ctx.data_unchecked::<GlobalContext>().secret.clone();
-    let token_data = if let Ok(data) = jsonwebtoken::decode::<Claims>(
+    if let Ok(data) = jsonwebtoken::decode::<Claims>(
         token,
         &DecodingKey::from_secret(secret.as_bytes()),
         &Validation::default(),
     ) {
-        data
+        Some(data.claims)
     } else {
-        return false;
-    };
+        None
+    }
+}
 
-    if token_data.claims.role == Role::Admin {
-        return true;
+pub fn check_is_admin(ctx: &Context<'_>) -> bool {
+    if let Some(claims) = get_claims(ctx) {
+        if claims.role == Role::Admin {
+            return true;
+        }
     }
 
     return false;
