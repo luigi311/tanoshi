@@ -1,4 +1,5 @@
 use anyhow::{anyhow, Result};
+use bytes::Bytes;
 use lib::Library;
 use std::path::PathBuf;
 use std::{
@@ -66,22 +67,23 @@ impl ExtensionProxy {
 }
 
 pub struct Extensions {
+    path: String,
     extensions: HashMap<i64, ExtensionProxy>,
 }
 
 impl Extensions {
-    pub fn new() -> Extensions {
+    pub fn new(path: String) -> Extensions {
         Extensions {
+            path,
             extensions: HashMap::new(),
         }
     }
 
-    pub fn initialize<P: AsRef<std::path::Path>>(
+    pub fn initialize(
         &mut self,
-        path: P,
         config: BTreeMap<String, serde_yaml::Value>,
     ) -> Result<()> {
-        for entry in std::fs::read_dir(path.as_ref())?
+        for entry in std::fs::read_dir(&self.path)?
             .into_iter()
             .filter(move |path| {
                 if let Ok(p) = path {
@@ -170,6 +172,17 @@ impl Extensions {
         } else {
             Err(anyhow!("There is no extension {}", id))
         }
+    }
+
+    pub fn install(&mut self, path: String, bytes: &Bytes) -> Result<()> {
+        let plugin_path = std::path::Path::new(&self.path).join(path);
+        std::fs::write(&plugin_path, &bytes)?;
+
+        unsafe {
+            self.load(plugin_path.to_str().ok_or(anyhow!("no path"))?.to_string(), None)?;
+        }
+        
+        Ok(())
     }
 }
 

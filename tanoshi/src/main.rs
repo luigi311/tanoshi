@@ -46,9 +46,9 @@ async fn main() -> Result<()> {
     let config = Config::open(opts.config)?;
 
     let secret = config.secret;
-    let mut extensions = extension::Extensions::new();
+    let mut extensions = extension::Extensions::new(config.plugin_path.clone());
     if extensions
-        .initialize(config.plugin_path.clone(), config.plugin_config)
+        .initialize(config.plugin_config)
         .is_err()
     {
         log::error!("error initialize plugin");
