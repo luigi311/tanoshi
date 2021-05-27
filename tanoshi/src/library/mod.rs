@@ -1,10 +1,8 @@
-use crate::catalogue::{Chapter, Manga};
+use crate::catalogue::Manga;
 use crate::context::GlobalContext;
 use crate::user;
 use async_graphql::connection::{query, Connection, Edge, EmptyFields};
-use async_graphql::{
-    Context, InputValueError, InputValueResult, Object, Result, Scalar, ScalarType, Value,
-};
+use async_graphql::{Context, Object, Result};
 use chrono::{Local, NaiveDateTime};
 
 mod library;
@@ -109,6 +107,7 @@ impl LibraryRoot {
         first: Option<i32>,
         last: Option<i32>,
     ) -> Result<Connection<String, RecentChapter, EmptyFields, EmptyFields>> {
+        let user = user::get_claims(ctx).ok_or("no token")?;
         let db = ctx.data_unchecked::<GlobalContext>().mangadb.clone();
         query(
             after,
@@ -125,6 +124,7 @@ impl LibraryRoot {
 
                 let edges = if let Some(first) = first {
                     db.get_first_read_chapters(
+                        user.sub,
                         after_timestamp,
                         after_id,
                         before_timestamp,
@@ -134,6 +134,7 @@ impl LibraryRoot {
                     .await
                 } else if let Some(last) = last {
                     db.get_last_read_chapters(
+                        user.sub,
                         after_timestamp,
                         after_id,
                         before_timestamp,
@@ -152,12 +153,20 @@ impl LibraryRoot {
                 if edges.len() > 0 {
                     if let Some(e) = edges.first() {
                         has_previous_page = db
-                            .get_read_chapter_has_before_page(e.read_at.timestamp(), e.manga_id)
+                            .get_read_chapter_has_before_page(
+                                user.sub,
+                                e.read_at.timestamp(),
+                                e.manga_id,
+                            )
                             .await;
                     }
                     if let Some(e) = edges.last() {
                         has_next_page = db
-                            .get_read_chapter_has_next_page(e.read_at.timestamp(), e.manga_id)
+                            .get_read_chapter_has_next_page(
+                                user.sub,
+                                e.read_at.timestamp(),
+                                e.manga_id,
+                            )
                             .await;
                     }
                 }
@@ -235,12 +244,14 @@ impl LibraryMutationRoot {
     async fn update_page_read_at(
         &self,
         ctx: &Context<'_>,
-        #[graphql(desc = "page id")] page_id: i64,
+        #[graphql(desc = "chapter id")] chapter_id: i64,
+        #[graphql(desc = "page")] page: i64,
     ) -> Result<u64> {
+        let user = user::get_claims(ctx).ok_or("no token")?;
         match ctx
             .data_unchecked::<GlobalContext>()
             .mangadb
-            .update_page_read_at(page_id)
+            .update_page_read_at(user.sub, chapter_id, page)
             .await
         {
             Ok(rows) => Ok(rows),

@@ -16,12 +16,13 @@ type Chapter {
   readAt: NaiveDateTime
   uploaded: NaiveDateTime!
   dateAdded: NaiveDateTime!
+  lastPageRead: Int
   source: Source!
   manga: Manga!
   pages(
     # fetch from source
     fetch: Boolean! = false
-  ): [Page!]!
+  ): [String!]!
 }
 
 type Manga {
@@ -61,23 +62,15 @@ type MutationRoot {
     mangaId: Int!
   ): Int!
   updatePageReadAt(
-    # page id
-    pageId: Int!
+    # chapter id
+    chapterId: Int!
+
+    # page
+    page: Int!
   ): Int!
 }
 
 scalar NaiveDateTime
-
-type Page {
-  id: Int!
-  sourceId: Int!
-  mangaId: Int!
-  chapterId: Int!
-  rank: Int!
-  url: String!
-  readAt: NaiveDateTime
-  dateAdded: NaiveDateTime!
-}
 
 # Information about pagination in a connection
 type PageInfo {

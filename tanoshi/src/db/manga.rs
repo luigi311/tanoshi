@@ -1,4 +1,4 @@
-use crate::catalogue::{Chapter, Manga, Page};
+use crate::catalogue::{Chapter, Manga};
 use crate::library::{RecentChapter, RecentUpdate};
 use anyhow::{anyhow, Result};
 use sqlx::sqlite::SqlitePool;
@@ -342,18 +342,18 @@ impl Db {
             manga.title,
             manga.cover_url,
             chapter.title,
-            MAX(page.read_at) as read_at,
-            page.id
-        FROM page
-        JOIN chapter ON chapter.id = page.chapter_id
-        JOIN manga ON manga.id = page.manga_id
-        WHERE
-            page.read_at IS NOT NULL AND
-            page.manga_id NOT IN (?, ?) AND
-            page.read_at < datetime(?, 'unixepoch') AND
-            page.read_at > datetime(?, 'unixepoch')
-        GROUP BY page.manga_id
-        ORDER BY page.read_at DESC, manga.id DESC"#,
+            MAX(user_history.read_at) AS read_at,
+            user_history.last_page
+        FROM user_history
+        JOIN chapter ON chapter.id = user_history.chapter_id
+        JOIN manga ON manga.id = chapter.manga_id
+        WHERE 
+            user_history.user_id = ? AND
+            manga.id NOT IN (?, ?) AND
+            user_history.read_at < datetime(?, 'unixepoch') AND
+            user_history.read_at > datetime(?, 'unixepoch')
+        GROUP BY manga.id
+        ORDER BY user_history.read_at DESC, manga.id DESC"#,
         )
         .bind(after_id)
         .bind(before_id)
@@ -378,6 +378,7 @@ impl Db {
 
     pub async fn get_first_read_chapters(
         &self,
+        user_id: i64,
         after_timestamp: i64,
         after_id: i64,
         before_timestamp: i64,
@@ -399,20 +400,21 @@ impl Db {
             manga.title,
             manga.cover_url,
             chapter.title,
-            MAX(page.read_at) as read_at,
-            page.id
-        FROM page
-        JOIN chapter ON chapter.id = page.chapter_id
-        JOIN manga ON manga.id = page.manga_id
+            MAX(user_history.read_at) AS read_at,
+            user_history.last_page
+        FROM user_history
+        JOIN chapter ON chapter.id = user_history.chapter_id
+        JOIN manga ON manga.id = chapter.manga_id
         WHERE 
-            page.read_at IS NOT NULL AND
-            page.manga_id NOT IN (?, ?) AND
-            page.read_at < datetime(?, 'unixepoch') AND
-            page.read_at > datetime(?, 'unixepoch')
-        GROUP BY page.manga_id
-        ORDER BY page.read_at DESC, manga.id DESC
+            user_history.user_id = ? AND
+            manga.id NOT IN (?, ?) AND
+            user_history.read_at < datetime(?, 'unixepoch') AND
+            user_history.read_at > datetime(?, 'unixepoch')
+        GROUP BY manga.id
+        ORDER BY user_history.read_at DESC, manga.id DESC
         LIMIT ?"#,
         )
+        .bind(user_id)
         .bind(after_id)
         .bind(before_id)
         .bind(after_timestamp)
@@ -437,6 +439,7 @@ impl Db {
 
     pub async fn get_last_read_chapters(
         &self,
+        user_id: i64,
         after_timestamp: i64,
         after_id: i64,
         before_timestamp: i64,
@@ -446,27 +449,27 @@ impl Db {
         let mut stream = sqlx::query(
             r#"
         SELECT * FROM (
-            SELECT
+            SELECT 
                 manga.id,
                 chapter.id,
                 manga.title,
                 manga.cover_url,
                 chapter.title,
-                MAX(page.read_at) as read_at,
-                page.id
-            FROM page
-            JOIN chapter ON chapter.id = page.chapter_id
-            JOIN manga ON manga.id = page.manga_id
+                MAX(user_history.read_at) AS read_at,
+                user_history.last_page
+            FROM user_history
+            JOIN chapter ON chapter.id = user_history.chapter_id
+            JOIN manga ON manga.id = chapter.manga_id
             WHERE 
-                page.read_at IS NOT NULL AND
-                page.manga_id NOT IN (?, ?) AND
-                page.read_at < datetime(?, 'unixepoch') AND
-                page.read_at > datetime(?, 'unixepoch')
-            GROUP BY page.manga_id
-            ORDER BY page.read_at ASC, manga.id ASC
-            LIMIT ?) c
-        ORDER BY c.read_at DESC, c.id DESC"#,
+                user_history.user_id = ? AND
+                manga.id NOT IN (?, ?) AND
+                user_history.read_at < datetime(?, 'unixepoch') AND
+                user_history.read_at > datetime(?, 'unixepoch')
+            GROUP BY manga.id
+            ORDER BY user_history.read_at ASC, manga.id ASC
+            LIMIT ?) c ORDER BY c.read_at DESC, c.id DESC"#,
         )
+        .bind(user_id)
         .bind(after_id)
         .bind(before_id)
         .bind(after_timestamp)
@@ -489,22 +492,29 @@ impl Db {
         Ok(chapters)
     }
 
-    pub async fn get_read_chapter_has_next_page(&self, timestamp: i64, id: i64) -> bool {
+    pub async fn get_read_chapter_has_next_page(
+        &self,
+        user_id: i64,
+        timestamp: i64,
+        id: i64,
+    ) -> bool {
         let stream = sqlx::query(
             r#"
             SELECT COUNT(1) FROM (
 				SELECT
-                	page.id,
-                	MAX(page.read_at) as read_at
-            	FROM page
+                	user_history.last_page,
+                	MAX(user_history.read_at) as read_at
+            	FROM user_history
+            	JOIN chapter ON user_history.chapter_id = chapter.id
             	WHERE 
-                	page.read_at IS NOT NULL AND
-                	page.manga_id <> ? AND
-                	page.read_at < datetime(?, 'unixepoch')
-            	GROUP BY page.manga_id
-            	ORDER BY page.read_at DESC, manga.id DESC
+                user_history.user_id = ? AND
+                	chapter.manga_id <> ? AND
+                	user_history.read_at < datetime(?, 'unixepoch')
+            	GROUP BY chapter.manga_id
+            	ORDER BY user_history.read_at DESC, chapter.manga_id DESC
             )"#,
         )
+        .bind(user_id)
         .bind(id)
         .bind(timestamp)
         .fetch_one(&self.pool)
@@ -518,22 +528,29 @@ impl Db {
         count > 0
     }
 
-    pub async fn get_read_chapter_has_before_page(&self, timestamp: i64, id: i64) -> bool {
+    pub async fn get_read_chapter_has_before_page(
+        &self,
+        user_id: i64,
+        timestamp: i64,
+        id: i64,
+    ) -> bool {
         let stream = sqlx::query(
             r#"
             SELECT COUNT(1) FROM (
 				SELECT
-                	page.id,
-                	MAX(page.read_at) as read_at
-            	FROM page
+                	user_history.last_page,
+                	MAX(user_history.read_at) as read_at
+            	FROM user_history
+            	JOIN chapter ON user_history.chapter_id = chapter.id
             	WHERE 
-                	page.read_at IS NOT NULL AND
-                	page.manga_id <> ? AND
-                	page.read_at > datetime(?, 'unixepoch')
-            	GROUP BY page.manga_id
-            	ORDER BY page.read_at DESC, manga.id DESC
-            );"#,
+                    user_history.user_id = ? AND
+                	chapter.manga_id <> ? AND
+                	user_history.read_at > datetime(?, 'unixepoch')
+            	GROUP BY chapter.manga_id
+            	ORDER BY user_history.read_at DESC, chapter.manga_id DESC
+            )"#,
         )
+        .bind(user_id)
         .bind(id)
         .bind(timestamp)
         .fetch_one(&self.pool)
@@ -663,8 +680,10 @@ impl Db {
                 read_at: row.get(6),
                 uploaded: row.get(7),
                 date_added: row.get(8),
-                prev: row.get(9),
-                next: row.get(10),
+                pages: serde_json::from_str(row.get(9)).unwrap_or(vec![]),
+                prev: row.get(10),
+                next: row.get(11),
+                last_page_read: None,
             })
         } else {
             None
@@ -700,8 +719,10 @@ impl Db {
                 read_at: row.get(6),
                 uploaded: row.get(7),
                 date_added: row.get(8),
-                prev: row.get(9),
-                next: row.get(10),
+                pages: serde_json::from_str(row.get(9)).unwrap_or(vec![]),
+                prev: row.get(10),
+                next: row.get(11),
+                last_page_read: None,
             })
         } else {
             None
@@ -731,8 +752,10 @@ impl Db {
                 read_at: row.get(6),
                 uploaded: row.get(7),
                 date_added: row.get(8),
-                prev: row.get(9),
-                next: row.get(10),
+                pages: serde_json::from_str(row.get(9)).unwrap_or(vec![]),
+                prev: row.get(10),
+                next: row.get(11),
+                last_page_read: None,
             });
         }
         if chapters.len() == 0 {
@@ -771,80 +794,28 @@ impl Db {
         Ok(row_id)
     }
 
-    pub async fn get_page_by_source_url(&self, source_id: i64, url: &String) -> Option<Page> {
-        let stream = sqlx::query(r#"SELECT * FROM page WHERE source_id = ? AND url = ?"#)
-            .bind(source_id)
-            .bind(url)
-            .fetch_one(&self.pool)
-            .await
-            .ok();
-
-        if let Some(row) = stream {
-            Some(Page {
-                id: row.get(0),
-                source_id: row.get(1),
-                manga_id: row.get(2),
-                chapter_id: row.get(3),
-                rank: row.get(4),
-                url: row.get(5),
-                read_at: row.get(6),
-                date_added: row.get(7),
-            })
-        } else {
-            None
-        }
-    }
-
-    pub async fn insert_page(&self, page: &Page) -> Result<i64> {
+    pub async fn update_page_by_chapter_id(
+        &self,
+        chapter_id: i64,
+        pages: &Vec<String>,
+    ) -> Result<i64> {
         let row_id = sqlx::query(
-            r#"INSERT INTO page(
-                source_id,
-                manga_id,
-                chapter_id,
-                rank, 
-                url,
-                date_added
-            ) VALUES (?, ?, ?, ?, ?, ?)"#,
+            r#"UPDATE chapter
+            SET pages = ?,
+            date_added = ?
+            WHERE id = ?"#,
         )
-        .bind(page.source_id)
-        .bind(page.manga_id)
-        .bind(page.chapter_id)
-        .bind(page.rank)
-        .bind(&page.url)
+        .bind(serde_json::to_string(&pages)?)
         .bind(chrono::NaiveDateTime::from_timestamp(
             chrono::Local::now().timestamp(),
             0,
         ))
+        .bind(chapter_id)
         .execute(&self.pool)
         .await?
         .last_insert_rowid();
 
         Ok(row_id)
-    }
-
-    pub async fn get_pages_by_chapter_id(&self, chapter_id: i64) -> Result<Vec<Page>> {
-        let mut stream = sqlx::query(r#"SELECT * FROM page WHERE chapter_id = ?"#)
-            .bind(chapter_id)
-            .fetch(&self.pool);
-
-        let mut pages = vec![];
-        while let Some(row) = stream.try_next().await? {
-            pages.push(Page {
-                id: row.get(0),
-                source_id: row.get(1),
-                manga_id: row.get(2),
-                chapter_id: row.get(3),
-                rank: row.get(4),
-                url: row.get(5),
-                read_at: row.get(6),
-                date_added: row.get(7),
-            });
-        }
-        if pages.len() == 0 {
-            Err(anyhow::anyhow!("Pages not found"))
-        } else {
-            Ok(pages)
-        }
     }
 
     pub async fn insert_user_library(&self, user_id: i64, manga_id: i64) -> Result<u64> {
@@ -867,27 +838,68 @@ impl Db {
             .map_err(|e| anyhow::anyhow!(e))
     }
 
-    pub async fn update_page_read_at(&self, page_id: i64) -> Result<u64> {
-        let now = chrono::Local::now();
-        let mut tx = self.pool.begin().await.map_err(|e| anyhow::anyhow!(e))?;
-        sqlx::query("UPDATE page SET read_at = ? WHERE id = ?")
-            .bind(now)
-            .bind(page_id)
-            .execute(&mut tx)
-            .await
-            .map(|res| res.rows_affected())
-            .map_err(|e| anyhow::anyhow!(e))?;
-
+    pub async fn update_page_read_at(
+        &self,
+        user_id: i64,
+        chapter_id: i64,
+        page: i64,
+    ) -> Result<u64> {
         sqlx::query(
-            "UPDATE chapter SET read_at = ? WHERE id = (SELECT chapter_id FROM page WHERE id = ?)",
+            r#"INSERT INTO 
+            user_history(user_id, chapter_id, last_page, read_at) VALUES(?, ?, ?, ?)
+            ON CONFLICT(user_id, chapter_id) 
+            DO UPDATE SET 
+            last_page = excluded.last_page, 
+            read_at = excluded.read_at"#,
         )
-        .bind(now)
-        .bind(page_id)
-        .execute(&mut tx)
+        .bind(user_id)
+        .bind(chapter_id)
+        .bind(page)
+        .bind(chrono::Local::now())
+        .execute(&self.pool)
         .await
         .map(|res| res.rows_affected())
-        .map_err(|e| anyhow::anyhow!(e))?;
+        .map_err(|e| anyhow::anyhow!(e))
+    }
 
-        tx.commit().await.map(|_| 1).map_err(|e| anyhow::anyhow!(e))
+    pub async fn get_user_history_last_read(
+        &self,
+        user_id: i64,
+        chapter_id: i64,
+    ) -> Result<Option<i64>> {
+        let stream = sqlx::query(
+            r#"SELECT last_page FROM user_history WHERE user_id = ? AND chapter_id = ?"#,
+        )
+        .bind(user_id)
+        .bind(chapter_id)
+        .fetch_one(&self.pool)
+        .await
+        .ok();
+
+        if let Some(row) = stream {
+            Ok(Some(row.get::<i64, _>(0)))
+        } else {
+            Ok(None)
+        }
+    }
+
+    pub async fn get_user_history_read_at(
+        &self,
+        user_id: i64,
+        chapter_id: i64,
+    ) -> Result<Option<chrono::NaiveDateTime>> {
+        let stream =
+            sqlx::query(r#"SELECT read_at FROM user_history WHERE user_id = ? AND chapter_id = ?"#)
+                .bind(user_id)
+                .bind(chapter_id)
+                .fetch_one(&self.pool)
+                .await
+                .ok();
+
+        if let Some(row) = stream {
+            Ok(Some(row.get::<chrono::NaiveDateTime, _>(0)))
+        } else {
+            Ok(None)
+        }
     }
 }

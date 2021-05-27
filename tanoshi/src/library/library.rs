@@ -1,4 +1,4 @@
-use async_graphql::{Context, Object, Result};
+use async_graphql::Object;
 use chrono::NaiveDateTime;
 
 pub struct RecentChapter {

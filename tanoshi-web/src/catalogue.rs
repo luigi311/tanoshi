@@ -1,11 +1,8 @@
-use std::cell::Cell;
 use std::rc::Rc;
 
-use dominator::{clone, events, html, link, text_signal, Dom};
-use futures::future::{ready, Future};
-use futures_signals::signal::{Mutable, Signal, SignalExt};
-use futures_signals::signal_vec::{MutableVec, SignalVec, SignalVecExt};
-use serde::{Deserialize, Serialize};
+use dominator::{clone, events, html, link, Dom};
+use futures_signals::signal::{Mutable, SignalExt};
+use futures_signals::signal_vec::{MutableVec, SignalVecExt};
 use wasm_bindgen::prelude::*;
 
 use crate::{

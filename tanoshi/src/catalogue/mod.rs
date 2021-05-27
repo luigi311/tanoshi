@@ -7,9 +7,6 @@ pub use manga::Manga;
 mod chapter;
 pub use chapter::Chapter;
 
-mod page;
-pub use page::Page;
-
 use crate::context::GlobalContext;
 
 use async_graphql::{Context, Enum, Object};

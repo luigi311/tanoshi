@@ -1,7 +1,6 @@
-use super::{Manga, Page, Source};
-use crate::context::GlobalContext;
-use futures::{stream, StreamExt};
-use async_graphql::{Context, Object, Result, Schema, Subscription, ID};
+use super::{Manga, Source};
+use crate::{context::GlobalContext, user};
+use async_graphql::{Context, Object, Result};
 use chrono::NaiveDateTime;
 
 /// A type represent chapter, normalized across source
@@ -17,6 +16,8 @@ pub struct Chapter {
     pub read_at: Option<chrono::NaiveDateTime>,
     pub uploaded: chrono::NaiveDateTime,
     pub date_added: chrono::NaiveDateTime,
+    pub last_page_read: Option<i64>,
+    pub pages: Vec<String>,
 }
 
 impl From<tanoshi_lib::model::Chapter> for Chapter {
@@ -33,6 +34,8 @@ impl From<tanoshi_lib::model::Chapter> for Chapter {
             read_at: None,
             uploaded: ch.uploaded,
             date_added: chrono::NaiveDateTime::from_timestamp(chrono::Local::now().timestamp(), 0),
+            last_page_read: None,
+            pages: vec![],
         }
     }
 }
@@ -63,8 +66,15 @@ impl Chapter {
         self.next
     }
 
-    async fn read_at(&self) -> Option<chrono::NaiveDateTime> {
-        self.read_at
+    async fn read_at(&self, ctx: &Context<'_>) -> Result<Option<chrono::NaiveDateTime>> {
+        let user = user::get_claims(ctx).ok_or("no token")?;
+        let read_at = ctx
+            .data_unchecked::<GlobalContext>()
+            .mangadb
+            .get_user_history_read_at(user.sub, self.id)
+            .await?;
+
+        Ok(read_at)
     }
 
     async fn uploaded(&self) -> NaiveDateTime {
@@ -73,6 +83,17 @@ impl Chapter {
 
     async fn date_added(&self) -> chrono::NaiveDateTime {
         self.date_added
+    }
+
+    async fn last_page_read(&self, ctx: &Context<'_>) -> Result<Option<i64>> {
+        let user = user::get_claims(ctx).ok_or("no token")?;
+        let last_page = ctx
+            .data_unchecked::<GlobalContext>()
+            .mangadb
+            .get_user_history_last_read(user.sub, self.id)
+            .await?;
+
+        Ok(last_page)
     }
 
     async fn source(&self, ctx: &Context<'_>) -> Source {
@@ -86,7 +107,7 @@ impl Chapter {
             name: ext.detail().name.clone(),
             version: ext.detail().version.clone(),
             icon: ext.detail().icon.clone(),
-            need_login: ext.detail().need_login
+            need_login: ext.detail().need_login,
         }
     }
 
@@ -102,47 +123,37 @@ impl Chapter {
         &self,
         ctx: &Context<'_>,
         #[graphql(desc = "fetch from source", default = false)] fetch: bool,
-    ) -> Vec<Page> {
-        let source_id = self.source_id.clone();
-        let manga_id = self.manga_id.clone();
-        let chapter_id = self.id.clone();
-        let db = ctx.data_unchecked::<GlobalContext>().mangadb.clone();
-
-        let mut result = if !fetch {
-            db.get_pages_by_chapter_id(chapter_id).await
-        } else {
-            fetch_pages(
-                ctx.data_unchecked::<GlobalContext>(),
-                self.path.clone(),
-                source_id,
-                manga_id,
-                chapter_id,
-            )
-            .await
-        };
-        if let Err(_) = result {
-            result = fetch_pages(
-                ctx.data_unchecked::<GlobalContext>(),
-                self.path.clone(),
-                source_id,
-                manga_id,
-                chapter_id,
-            )
-            .await;
+    ) -> Result<Vec<String>> {
+        info!("pages: {}, fetch: {}", self.pages.len(), fetch);
+        if !self.pages.is_empty() && !fetch {
+            return Ok(self.pages.clone());
         }
-        result.unwrap_or(vec![])
+
+        let pages = fetch_pages(
+            ctx,
+            self.path.clone(),
+            self.source_id.clone(),
+            self.id.clone(),
+        )
+        .await?;
+
+        ctx.data_unchecked::<GlobalContext>()
+        .mangadb
+        .update_page_by_chapter_id(self.id, &pages)
+        .await?;
+
+        Ok(pages)
     }
 }
 
 async fn fetch_pages(
-    ctx: &GlobalContext,
+    ctx: &Context<'_>,
     path: String,
     source_id: i64,
-    manga_id: i64,
     chapter_id: i64,
-) -> anyhow::Result<Vec<Page>> {
-    let db = ctx.mangadb.clone();
+) -> anyhow::Result<Vec<String>> {
     let pages = ctx
+        .data_unchecked::<GlobalContext>()
         .extensions
         .get(source_id)
         .unwrap()
@@ -152,24 +163,6 @@ async fn fetch_pages(
             log::error!("{} for {}", e, (&chapter_id).clone());
             vec![]
         });
-    let page_stream = stream::iter(pages);
-    let page_stream = page_stream.then(|page| async {
-        match db
-            .get_page_by_source_url((&source_id).clone(), &page.url)
-            .await
-        {
-            Some(page) => page,
-            None => {
-                let mut page: Page = page.into();
-                page.source_id = (&source_id).clone();
-                page.manga_id = (&manga_id).clone();
-                page.chapter_id = (&chapter_id).clone();
-                let id = db.insert_page(&page).await.unwrap_or(0);
-                page.id = id;
-                page
-            }
-        }
-    });
 
-    Ok(page_stream.collect().await)
+    Ok(pages)
 }

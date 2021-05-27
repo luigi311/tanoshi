@@ -61,7 +61,14 @@ pub async fn fetch_manga_from_source(
 
     let covers = list
         .iter()
-        .map(|item| Cover::new(item.id, item.title.clone(), item.cover_url.clone(), item.is_favorite))
+        .map(|item| {
+            Cover::new(
+                item.id,
+                item.title.clone(),
+                item.cover_url.clone(),
+                item.is_favorite,
+            )
+        })
         .collect();
     Ok(covers)
 }
@@ -138,6 +145,10 @@ pub struct FetchChapter;
 pub async fn fetch_chapter(
     chapter_id: i64,
 ) -> Result<fetch_chapter::FetchChapterChapter, Box<dyn Error>> {
+    let token = local_storage()
+        .get("token")
+        .unwrap_throw()
+        .ok_or("no token")?;
     let client = reqwest::Client::new();
     let var = fetch_chapter::Variables {
         chapter_id: Some(chapter_id),
@@ -145,6 +156,7 @@ pub async fn fetch_chapter(
     let request_body = FetchChapter::build_query(var);
     let res = client
         .post(&graphql_url())
+        .header("Authorization", format!("Bearer {}", token))
         .json(&request_body)
         .send()
         .await?;
@@ -224,14 +236,20 @@ pub async fn delete_from_library(manga_id: i64) -> Result<(), Box<dyn Error>> {
 )]
 pub struct UpdatePageReadAt;
 
-pub async fn update_page_read_at(page_id: i64) -> Result<(), Box<dyn Error>> {
+pub async fn update_page_read_at(chapter_id: i64, page: i64) -> Result<(), Box<dyn Error>> {
+    let token = local_storage()
+        .get("token")
+        .unwrap_throw()
+        .ok_or("no token")?;
     let client = reqwest::Client::new();
     let var = update_page_read_at::Variables {
-        page_id: Some(page_id),
+        chapter_id: Some(chapter_id),
+        page: Some(page),
     };
     let request_body = UpdatePageReadAt::build_query(var);
     let _ = client
         .post(&graphql_url())
+        .header("Authorization", format!("Bearer {}", token))
         .json(&request_body)
         .send()
         .await?;
@@ -277,6 +295,10 @@ pub struct FetchHistories;
 pub async fn fetch_histories(
     cursor: Option<String>,
 ) -> Result<fetch_histories::FetchHistoriesRecentChapters, Box<dyn Error>> {
+    let token = local_storage()
+        .get("token")
+        .unwrap_throw()
+        .ok_or("no token")?;
     let client = reqwest::Client::new();
     let var = fetch_histories::Variables {
         first: Some(20),
@@ -285,6 +307,7 @@ pub async fn fetch_histories(
     let request_body = FetchHistories::build_query(var);
     let res = client
         .post(&graphql_url())
+        .header("Authorization", format!("Bearer {}", token))
         .json(&request_body)
         .send()
         .await?;

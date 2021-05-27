@@ -1,11 +1,5 @@
-use crate::catalogue::{Chapter, Manga};
 use crate::context::GlobalContext;
-use crate::proxy::get_image;
-use async_graphql::connection::{query, Connection, Edge, EmptyFields};
-use async_graphql::{
-    Context, InputValueError, InputValueResult, Object, Result, Scalar, ScalarType, Value,
-};
-use chrono::{Local, NaiveDateTime};
+use async_graphql::{Context, Object, Result};
 use rand::RngCore;
 
 mod user;

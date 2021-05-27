@@ -24,7 +24,7 @@ pub struct Reader {
     next_chapter: Mutable<Option<i64>>,
     prev_chapter: Mutable<Option<i64>>,
     current_page: Mutable<usize>,
-    pages: MutableVec<Page>,
+    pages: MutableVec<String>,
     pages_len: Mutable<usize>,
     reader_settings: Rc<ReaderSettings>,
     is_bar_visible: Mutable<bool>,
@@ -59,8 +59,8 @@ impl Reader {
                     reader.chapter_title.set(result.title);
                     reader.next_chapter.set(result.next);
                     reader.prev_chapter.set(result.prev);
-                    reader.pages.lock_mut().replace_cloned(result.pages.iter().map(|page| Page{id: page.id, url: page.url.clone()}).collect());
                     reader.pages_len.set_neq(result.pages.len());
+                    reader.pages.lock_mut().replace_cloned(result.pages);
 
 
                     reader.reader_settings.load_manga_reader_setting(result.manga.id);
@@ -74,9 +74,9 @@ impl Reader {
         }));
     }
 
-    pub fn update_page_read(app: Rc<App>, page_id: i64) {
+    pub fn update_page_read(app: Rc<App>, chapter_id: i64, page: i64) {
         app.loader.load(async move {
-            match update_page_read_at(page_id).await {
+            match update_page_read_at(chapter_id, page).await {
                 Ok(_) => {},
                 Err(err) => {
                     log::error!("{}", err);
@@ -101,7 +101,6 @@ impl Reader {
                 "z-40",
                 "bg-gray-800",
                 "content-end",
-                "opacity-75",
                 "pt-safe-top",
                 "pb-2",
                 "text-gray-50"
@@ -291,7 +290,7 @@ impl Reader {
                     .class("my-1")
                     .class("mx-auto")
                     .attribute("id", index.get().unwrap().to_string().as_str())
-                    .attribute("src", &proxied_image_url(&page.url))
+                    .attribute("src", &proxied_image_url(&page))
                     .event(|_: events::Error| {
                         log::error!("error loading image");
                     })
@@ -312,7 +311,7 @@ impl Reader {
                 }
                 reader.current_page.set_if(page_no as usize, |before, after| {
                     if *before != *after {
-                        Self::update_page_read(app.clone(), reader.pages.lock_ref().get(*after).unwrap().id);
+                        Self::update_page_read(app.clone(), reader.chapter_id, *reader.current_page.lock_ref() as i64);
                         true
                     } else {
                         false
@@ -341,9 +340,11 @@ impl Reader {
                         Direction::RightToLeft => false,
                     }))
                     .event(clone!(reader, app => move |_: events::Click| {
-                        reader.current_page.set_if(reader.current_page.get() + 1, |_, after| {
-                            if *after < reader.pages.lock_ref().len()  {
-                                Self::update_page_read(app.clone(), reader.pages.lock_ref().get(*after).unwrap().id);
+                        let current_page = reader.current_page.get();
+                        let chapter_id = reader.chapter_id;
+                        reader.current_page.set_if(current_page + 1, |_, after| {
+                            if *after < reader.pages_len.get()  {
+                                Self::update_page_read(app.clone(), chapter_id, current_page as i64);
                                 true
                             } else {
                                 false
@@ -380,9 +381,11 @@ impl Reader {
                         Direction::RightToLeft => true,
                     }))
                     .event(clone!(reader, app => move |_: events::Click| {
-                        reader.current_page.set_if(reader.current_page.get().checked_sub(1).unwrap_or(0), |before, after| {
+                        let current_page = reader.current_page.get();
+                        let chapter_id = reader.chapter_id;
+                        reader.current_page.set_if(current_page.checked_sub(1).unwrap_or(0), |before, after| {
                             if *before != *after  {
-                                Self::update_page_read(app.clone(), reader.pages.lock_ref().get(*after).unwrap().id);
+                                Self::update_page_read(app.clone(), chapter_id, current_page as i64);
                                 true
                             } else {
                                 false
@@ -398,7 +401,7 @@ impl Reader {
                                 "h-screen"
                             ])
                             .visible_signal(reader.current_page.signal_cloned().map(move |x| x == index.get().unwrap_or(0)))
-                            .attribute("src", &proxied_image_url(&page.url))
+                            .attribute("src", &proxied_image_url(&page))
                             .event(|_: events::Error| {
                                 log::error!("error loading image");
                             })
@@ -430,7 +433,7 @@ impl Reader {
                     .event(clone!(reader, app => move |_: events::Click| {
                         reader.current_page.set_if(reader.current_page.get() + 2, |before, after| {
                             if *after < reader.pages.lock_ref().len() {
-                                Self::update_page_read(app.clone(), reader.pages.lock_ref().get(*before).unwrap().id);
+                                Self::update_page_read(app.clone(), reader.chapter_id, *reader.current_page.lock_ref() as i64);
                                 true
                             } else {
                                 false
@@ -470,7 +473,7 @@ impl Reader {
                     .event(clone!(reader, app => move |_: events::Click| {
                         reader.current_page.set_if(reader.current_page.get().checked_sub(2).unwrap_or(0), |before, after| {
                             if *before != *after {
-                                Self::update_page_read(app.clone(), reader.pages.lock_ref().get(*before).unwrap().id);
+                                Self::update_page_read(app.clone(), reader.chapter_id, *reader.current_page.lock_ref() as i64);
                                 true
                             } else {
                                 false
@@ -497,7 +500,7 @@ impl Reader {
                         html!("img", {
                             .class(["object-contain", "h-screen"])
                             .visible_signal(reader.current_page.signal_cloned().map(move |x| x == index.get().unwrap_or(0) || x + 1 == index.get().unwrap_or(0)))
-                            .attribute("src", &proxied_image_url(&page.url))
+                            .attribute("src", &proxied_image_url(&page))
                             .event(|_: events::Error| {
                                 log::error!("error loading image");
                             })
