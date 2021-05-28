@@ -188,7 +188,7 @@ impl Extensions {
 
 pub struct PluginRegistrar {
     extensions: HashMap<i64, ExtensionProxy>,
-    lib: Arc<Library>,
+    lib: Arc<Library>
 }
 
 impl PluginRegistrar {
