@@ -9,7 +9,7 @@ pub use chapter::Chapter;
 
 use crate::context::GlobalContext;
 
-use async_graphql::{Context, Enum, Object};
+use async_graphql::{Context, Enum, Object, Result};
 use futures::{stream, StreamExt};
 
 /// A type represent sort parameter for query manga from source, normalized across sources
@@ -44,7 +44,7 @@ impl CatalogueRoot {
         #[graphql(desc = "page")] page: Option<i32>,
         #[graphql(desc = "sort by")] sort_by: Option<SortByParam>,
         #[graphql(desc = "sort order")] sort_order: Option<SortOrderParam>,
-    ) -> Vec<Manga> {
+    ) -> Result<Vec<Manga>> {
         let sort_by = sort_by.map(|s| s.into());
         let sort_order = sort_order.map(|s| s.into());
         let db = ctx.data_unchecked::<GlobalContext>().mangadb.clone();
@@ -52,10 +52,9 @@ impl CatalogueRoot {
             .data_unchecked::<GlobalContext>()
             .extensions
             .get(source_id)
-            .unwrap()
+            .ok_or("no source")?
             .get_mangas(keyword, genres, page, sort_by, sort_order, None)
-            .await
-            .unwrap();
+            .await?;
         let mangas_stream = stream::iter(mangas).then(|m| async {
             match db.get_manga_by_source_path(source_id, &m.path).await {
                 Some(manga) => {
@@ -70,14 +69,14 @@ impl CatalogueRoot {
                 }
             }
         });
-        mangas_stream.collect().await
+        Ok(mangas_stream.collect().await)
     }
 
     async fn manga(
         &self,
         ctx: &Context<'_>,
         #[graphql(desc = "manga id")] id: i64,
-    ) -> Option<Manga> {
+    ) -> Result<Option<Manga>> {
         let db = ctx.data_unchecked::<GlobalContext>().mangadb.clone();
         if let Some(mut manga) = db.get_manga_by_id(id).await {
             if manga.incomplete() {
@@ -85,12 +84,10 @@ impl CatalogueRoot {
                     .data_unchecked::<GlobalContext>()
                     .extensions
                     .get(manga.source_id)
-                    .unwrap()
+                    .ok_or("no source")?
                     .get_manga_info(manga.path.clone())
-                    .await
-                    .ok()
-                    .map(|m| m.into())
-                    .unwrap();
+                    .await?
+                    .into();
 
                 if m.description.is_some() {
                     manga.description = m.description;
@@ -103,9 +100,9 @@ impl CatalogueRoot {
                 }
                 db.update_manga_info(&manga).await.unwrap();
             }
-            Some(manga)
+            Ok(Some(manga))
         } else {
-            None
+            Ok(None)
         }
     }
 
