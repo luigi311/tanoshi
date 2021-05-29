@@ -8,7 +8,7 @@ use std::{
 };
 use tanoshi_lib::extensions::{Extension, PluginDeclaration};
 use tanoshi_lib::model::{
-    Chapter, Manga, SortByParam, SortOrderParam, Source, SourceLogin, SourceLoginResult
+    Chapter, Manga, SortByParam, SortOrderParam, Source, SourceLogin, SourceLoginResult,
 };
 use tokio::task::spawn_blocking;
 
@@ -18,12 +18,12 @@ pub struct ExtensionProxy {
     lib: Arc<Library>,
 }
 
-impl ExtensionProxy {
-    pub fn detail(&self) -> Source {
+impl Extension for ExtensionProxy {
+    fn detail(&self) -> Source {
         self.extension.detail()
     }
 
-    pub async fn get_mangas(
+    fn get_mangas(
         &self,
         keyword: Option<String>,
         genres: Option<Vec<String>>,
@@ -33,36 +33,32 @@ impl ExtensionProxy {
         auth: Option<String>,
     ) -> Result<Vec<Manga>> {
         let extension = self.extension.clone();
-        spawn_blocking(move || {
-            extension
-                .get_mangas(keyword, genres, page, sort_by, sort_order, auth)
-        })
-        .await?
+        extension.get_mangas(keyword, genres, page, sort_by, sort_order, auth)
     }
 
-    pub async fn get_manga_info(&self, path: String) -> Result<Manga> {
+    fn get_manga_info(&self, path: &String) -> Result<Manga> {
         let extension = self.extension.clone();
-        spawn_blocking(move || extension.get_manga_info(&path)).await?
+        extension.get_manga_info(path)
     }
 
-    pub async fn get_chapters(&self, path: String) -> Result<Vec<Chapter>> {
+    fn get_chapters(&self, path: &String) -> Result<Vec<Chapter>> {
         let extension = self.extension.clone();
-        spawn_blocking(move || extension.get_chapters(&path)).await?
+        extension.get_chapters(path)
     }
 
-    pub async fn get_pages(&self, path: String) -> Result<Vec<String>> {
+    fn get_pages(&self, path: &String) -> Result<Vec<String>> {
         let extension = self.extension.clone();
-        spawn_blocking(move || extension.get_pages(&path)).await?
+        extension.get_pages(path)
     }
 
-    pub async fn get_page(&self, url: String) -> Result<Vec<u8>> {
+    fn get_page(&self, url: &String) -> Result<Vec<u8>> {
         let extension = self.extension.clone();
-        spawn_blocking(move || extension.get_page(&url)).await?
+        extension.get_page(url)
     }
 
-    pub async fn login(&self, login_info: SourceLogin) -> Result<SourceLoginResult> {
+    fn login(&self, login_info: SourceLogin) -> Result<SourceLoginResult> {
         let extension = self.extension.clone();
-        spawn_blocking(move || extension.login(login_info)).await?
+        extension.login(login_info)
     }
 }
 
@@ -79,10 +75,7 @@ impl Extensions {
         }
     }
 
-    pub fn initialize(
-        &mut self,
-        config: BTreeMap<String, serde_yaml::Value>,
-    ) -> Result<()> {
+    pub fn initialize(&mut self, configs: BTreeMap<String, serde_yaml::Value>) -> Result<()> {
         for entry in std::fs::read_dir(&self.path)?
             .into_iter()
             .filter(move |path| {
@@ -110,7 +103,7 @@ impl Extensions {
                 .replace("lib", "");
             info!("load plugin from {:?}", path.clone());
             unsafe {
-                if let Err(e) = self.load(path.to_str().unwrap().to_string(), config.get(&name)) {
+                if let Err(e) = self.load(path.to_str().unwrap().to_string(), configs.get(&name)) {
                     error!("Error load from {:?}: {:?}", path.clone(), e);
                 }
             }
@@ -179,16 +172,19 @@ impl Extensions {
         std::fs::write(&plugin_path, &bytes)?;
 
         unsafe {
-            self.load(plugin_path.to_str().ok_or(anyhow!("no path"))?.to_string(), None)?;
+            self.load(
+                plugin_path.to_str().ok_or(anyhow!("no path"))?.to_string(),
+                None,
+            )?;
         }
-        
+
         Ok(())
     }
 }
 
 pub struct PluginRegistrar {
     extensions: HashMap<i64, ExtensionProxy>,
-    lib: Arc<Library>
+    lib: Arc<Library>,
 }
 
 impl PluginRegistrar {

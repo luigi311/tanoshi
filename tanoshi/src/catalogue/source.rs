@@ -1,6 +1,7 @@
 use crate::context::GlobalContext;
 use async_graphql::{Context, Object, Result, SimpleObject};
 use serde::Deserialize;
+use tanoshi_lib::extensions::Extension;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct SourceIndex {
@@ -50,12 +51,13 @@ pub struct SourceRoot;
 
 #[Object]
 impl SourceRoot {
-    async fn installed_sources(&self, ctx: &Context<'_>) -> Vec<Source> {
-        let exts = ctx
-            .data_unchecked::<GlobalContext>()
-            .extensions
-            .extentions();
-        exts.iter().map(|(_, ext)| ext.detail().into()).collect()
+    async fn installed_sources(&self, ctx: &Context<'_>) -> Result<Vec<Source>> {
+        let extensions = ctx.data::<GlobalContext>()?.extensions.read()?;
+        Ok(extensions
+            .extentions()
+            .iter()
+            .map(|(_, ext)| ext.detail().into())
+            .collect())
     }
 
     async fn available_sources(&self, ctx: &Context<'_>) -> Result<Vec<Source>> {
@@ -64,10 +66,8 @@ impl SourceRoot {
             std::env::consts::OS
         );
         let source_indexes = reqwest::get(url).await?.json::<Vec<SourceIndex>>().await?;
-        let exts = ctx
-            .data_unchecked::<GlobalContext>()
-            .extensions
-            .extentions();
+        let extensions = ctx.data::<GlobalContext>()?.extensions.read()?;
+        let exts = extensions.extentions();
         let mut sources: Vec<Source> = vec![];
         for index in source_indexes {
             if exts.get(&index.id).is_none() {
@@ -77,12 +77,12 @@ impl SourceRoot {
         Ok(sources)
     }
 
-    async fn source(&self, ctx: &Context<'_>, source_id: i64) -> Option<Source> {
-        let exts = ctx
-            .data_unchecked::<GlobalContext>()
-            .extensions
-            .extentions();
-        exts.get(&source_id).map(|ext| ext.detail().into())
+    async fn source(&self, ctx: &Context<'_>, source_id: i64) -> Result<Option<Source>> {
+        let exts = ctx.data::<GlobalContext>()?.extensions.read()?;
+        Ok(exts
+            .extentions()
+            .get(&source_id)
+            .map(|ext| ext.detail().into()))
     }
 }
 
@@ -97,10 +97,10 @@ impl SourceMutationRoot {
             std::env::consts::OS
         );
 
-        let exts = &ctx.data_unchecked::<GlobalContext>().extensions;
-        if exts.extentions().get(&source_id).is_some() {
-            return Err("source installed, use updateSource to update".into());
-        }
+        // let exts = &ctx.data::<GlobalContext>()?.extensions.read()?;
+        // if exts.extentions().get(&source_id).is_some() {
+        //     return Err("source installed, use updateSource to update".into());
+        // }
 
         let source_indexes = reqwest::get(url).await?.json::<Vec<SourceIndex>>().await?;
         let mut source: Option<SourceIndex> = None;

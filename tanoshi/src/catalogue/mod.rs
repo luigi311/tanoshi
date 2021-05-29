@@ -10,7 +10,7 @@ pub use chapter::Chapter;
 use crate::context::GlobalContext;
 
 use async_graphql::{Context, Enum, Object, Result};
-use futures::{stream, StreamExt};
+use tanoshi_lib::extensions::Extension;
 
 /// A type represent sort parameter for query manga from source, normalized across sources
 #[derive(Enum, Copy, Clone, Eq, PartialEq)]
@@ -47,29 +47,31 @@ impl CatalogueRoot {
     ) -> Result<Vec<Manga>> {
         let sort_by = sort_by.map(|s| s.into());
         let sort_order = sort_order.map(|s| s.into());
-        let db = ctx.data_unchecked::<GlobalContext>().mangadb.clone();
-        let mangas = ctx
-            .data_unchecked::<GlobalContext>()
-            .extensions
+
+        let ctx = ctx.data::<GlobalContext>()?;
+        let fetched_manga = {
+            let extensions = ctx.extensions.read()?;
+            extensions
             .get(source_id)
             .ok_or("no source")?
-            .get_mangas(keyword, genres, page, sort_by, sort_order, None)
-            .await?;
-        let mangas_stream = stream::iter(mangas).then(|m| async {
-            match db.get_manga_by_source_path(source_id, &m.path).await {
-                Some(manga) => {
-                    info!("found {} {}", manga.id, manga.is_favorite);
-                    manga
-                }
-                None => {
-                    let mut manga: Manga = m.into();
-                    let manga_id = db.insert_manga(&manga).await.unwrap();
-                    manga.id = manga_id;
-                    manga
-                }
-            }
-        });
-        Ok(mangas_stream.collect().await)
+            .get_mangas(keyword, genres, page, sort_by, sort_order, None)?
+        };
+
+        let db = ctx.mangadb.clone();
+        let mut manga = vec![];
+        for m in fetched_manga {
+            let item = if let Some(item) = db.get_manga_by_source_path(source_id, &m.path).await {
+                info!("found {} {}", item.id, item.is_favorite);
+                item
+            } else {
+                let mut item: Manga = m.into();
+                let manga_id = db.insert_manga(&item).await?;
+                item.id = manga_id;
+                item
+            };
+            manga.push(item);
+        }
+        Ok(manga)
     }
 
     async fn manga(
@@ -77,17 +79,18 @@ impl CatalogueRoot {
         ctx: &Context<'_>,
         #[graphql(desc = "manga id")] id: i64,
     ) -> Result<Option<Manga>> {
-        let db = ctx.data_unchecked::<GlobalContext>().mangadb.clone();
+        let ctx = ctx.data::<GlobalContext>()?;
+        let db = ctx.mangadb.clone();
         if let Some(mut manga) = db.get_manga_by_id(id).await {
             if manga.incomplete() {
-                let m: Manga = ctx
-                    .data_unchecked::<GlobalContext>()
-                    .extensions
+                let m: Manga = {
+                    let extensions = ctx.extensions.read()?;
+                    extensions
                     .get(manga.source_id)
                     .ok_or("no source")?
-                    .get_manga_info(manga.path.clone())
-                    .await?
-                    .into();
+                    .get_manga_info(&manga.path)?
+                    .into()
+                };
 
                 if m.description.is_some() {
                     manga.description = m.description;
@@ -98,7 +101,7 @@ impl CatalogueRoot {
                 if m.author.len() > 0 {
                     manga.author = m.author;
                 }
-                db.update_manga_info(&manga).await.unwrap();
+                db.update_manga_info(&manga).await?;
             }
             Ok(Some(manga))
         } else {
