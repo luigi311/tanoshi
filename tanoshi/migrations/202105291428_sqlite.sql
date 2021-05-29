@@ -1,3 +1,29 @@
+CREATE TABLE manga (
+    id INTEGER PRIMARY KEY,
+    source_id INTEGER NOT NULL,
+    title TEXT NOT NULL,
+    author TEXT,
+    genre TEXT,
+    status TEXT,
+    description TEXT,
+    path TEXT NOT NULL,
+    cover_url TEXT NOT NULL,
+    date_added TIMESTAMP NOT NULL,
+    UNIQUE (source_id, path)
+);
+CREATE TABLE chapter (
+    id INTEGER PRIMARY KEY,
+    source_id INTEGER NOT NULL,
+    manga_id INTEGER NOT NULL,
+    title TEXT,
+    path TEXT NOT NULL,
+    number FLOAT NOT NULL,
+    scanlator TEXT DEFAULT '',
+    uploaded TIMESTAMP NOT NULL,
+    date_added TIMESTAMP NOT NULL,
+    pages JSON DEFAULT '[]',
+    UNIQUE (source_id, path)
+);
 CREATE TABLE "user" (
     id INTEGER PRIMARY KEY,
     username VARCHAR(255) UNIQUE,

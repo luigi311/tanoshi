@@ -61,7 +61,6 @@ impl CatalogueRoot {
         let mut manga = vec![];
         for m in fetched_manga {
             let item = if let Some(item) = db.get_manga_by_source_path(source_id, &m.path).await {
-                info!("found {} {}", item.id, item.is_favorite);
                 item
             } else {
                 let mut item: Manga = m.into();
