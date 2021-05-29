@@ -419,6 +419,31 @@ pub async fn install_source(
     Ok(response_body.data.ok_or("no data")?.install_source)
 }
 
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/schema.graphql",
+    query_path = "graphql/update_source.graphql",
+    response_derives = "Debug"
+)]
+pub struct UpdateSource;
+
+pub async fn update_source(
+    source_id: i64,
+) -> Result<i64, Box<dyn Error>> {
+    let client = reqwest::Client::new();
+    let var = update_source::Variables {
+        source_id: Some(source_id),
+    };
+    let request_body = UpdateSource::build_query(var);
+    let res = client
+        .post(&graphql_url())
+        .json(&request_body)
+        .send()
+        .await?;
+
+    let response_body: Response<update_source::ResponseData> = res.json().await?;
+    Ok(response_body.data.ok_or("no data")?.update_source)
+}
 
 #[derive(GraphQLQuery)]
 #[graphql(

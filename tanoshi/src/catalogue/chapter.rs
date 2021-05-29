@@ -97,18 +97,6 @@ impl Chapter {
         Ok(last_page)
     }
 
-    async fn source(&self, ctx: &Context<'_>) -> Result<Source> {
-        let extensions = ctx.data::<GlobalContext>()?.extensions.read()?;
-        let ext = extensions.get(self.source_id).ok_or("no source")?;
-        Ok(Source {
-            id: ext.detail().id,
-            name: ext.detail().name.clone(),
-            version: ext.detail().version.clone(),
-            icon: ext.detail().icon.clone(),
-            need_login: ext.detail().need_login,
-        })
-    }
-
     async fn manga(&self, ctx: &Context<'_>) -> Manga {
         ctx.data_unchecked::<GlobalContext>()
             .mangadb

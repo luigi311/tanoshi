@@ -5,7 +5,7 @@ use crate::{
     common::SettingCategory,
     common::{events, ReaderSettings, Route},
 };
-use dominator::{Dom, clone, html, link, routing};
+use dominator::{clone, html, link, routing, Dom};
 use futures_signals::{
     signal::{Mutable, SignalExt},
     signal_vec::MutableVec,
@@ -21,6 +21,7 @@ pub struct Source {
     version: String,
     icon: String,
     need_login: bool,
+    has_update: bool,
 }
 
 pub struct Settings {
@@ -38,7 +39,7 @@ impl Settings {
             installed_sources: MutableVec::new(),
             available_sources: MutableVec::new(),
             reader_settings: ReaderSettings::new(true, false),
-            loader: AsyncLoader::new()
+            loader: AsyncLoader::new(),
         });
     }
 
@@ -52,6 +53,7 @@ impl Settings {
                         version: s.version.clone(),
                         icon: s.icon.clone(),
                         need_login: s.need_login,
+                        has_update: s.has_update,
                     }).collect());
 
                     settings.available_sources.lock_mut().replace_cloned(result.available_sources.iter().map(|s| Source {
@@ -60,6 +62,7 @@ impl Settings {
                         version: s.version.clone(),
                         icon: s.icon.clone(),
                         need_login: s.need_login,
+                        has_update: s.has_update,
                     }).collect());
                 },
                 Err(err) => {
@@ -87,6 +90,7 @@ impl Settings {
                         version: s.version.clone(),
                         icon: s.icon.clone(),
                         need_login: s.need_login,
+                        has_update: s.has_update,
                     }).collect());
 
                     settings.available_sources.lock_mut().replace_cloned(result.available_sources.iter().map(|s| Source {
@@ -95,6 +99,44 @@ impl Settings {
                         version: s.version.clone(),
                         icon: s.icon.clone(),
                         need_login: s.need_login,
+                        has_update: s.has_update,
+                    }).collect());
+                },
+                Err(err) => {
+                    log::error!("{}", err);
+                }
+            }
+        }));
+    }
+
+    fn update_source(settings: Rc<Self>, id: i64) {
+        settings.loader.load(clone!(settings => async move {
+            match query::update_source(id).await {
+                Ok(_) => {},
+                Err(err) => {
+                    log::error!("{}", err);
+                    return;
+                }
+            }
+
+            match query::fetch_all_sources().await {
+                Ok(result) => {
+                    settings.installed_sources.lock_mut().replace_cloned(result.installed_sources.iter().map(|s| Source {
+                        id: s.id,
+                        name: s.name.clone(),
+                        version: s.version.clone(),
+                        icon: s.icon.clone(),
+                        need_login: s.need_login,
+                        has_update: s.has_update,
+                    }).collect());
+
+                    settings.available_sources.lock_mut().replace_cloned(result.available_sources.iter().map(|s| Source {
+                        id: s.id,
+                        name: s.name.clone(),
+                        version: s.version.clone(),
+                        icon: s.icon.clone(),
+                        need_login: s.need_login,
+                        has_update: s.has_update,
                     }).collect());
                 },
                 Err(err) => {
@@ -253,10 +295,12 @@ impl Settings {
                         "dark:divide-gray-800",
                         "px-2"
                     ])
-                    .children_signal_vec(settings.installed_sources.signal_vec_cloned().map(|x|
+                    .children_signal_vec(settings.installed_sources.signal_vec_cloned().map(clone!(settings => move |x|
                         html!("div", {
                             .class([
-                                "p-2"
+                                "p-2",
+                                "flex",
+                                "justify-between"
                             ])
                             .children(&mut [
                                 link!(Route::Settings(SettingCategory::Source(x.id)).url(), {
@@ -290,10 +334,20 @@ impl Settings {
                                             ])
                                         })
                                     ])
-                                })
+                                }),
+                                if x.has_update {
+                                    html!("button", {
+                                        .text("Update")
+                                        .event(clone!(settings => move |_: events::Click| {
+                                            Self::update_source(settings.clone(), x.id);
+                                        }))
+                                    })
+                                } else {
+                                    html!("div", {})
+                                }
                             ])
                         })
-                    ))
+                    )))
                 }),
                 html!("h1", {
                     .class([
@@ -319,51 +373,48 @@ impl Settings {
                     .children_signal_vec(settings.available_sources.signal_vec_cloned().map(clone!(settings => move |x|
                         html!("div", {
                             .class([
-                                "p-2"
+                                "p-2",
+                                "flex", 
+                                "justify-between"
                             ])
                             .children(&mut [
                                 html!("div", {
-                                    .class(["flex", "justify-between"])
+                                    .class("flex")
                                     .children(&mut [
+                                        html!("img", {
+                                            .class([
+                                                "w-10",
+                                                "h-10",
+                                                "mr-2"
+                                            ])
+                                            .attribute("src", &["data:image/png;base64,", &x.icon].join(" "))
+                                        }),
                                         html!("div", {
-                                            .class("flex")
                                             .children(&mut [
-                                                html!("img", {
+                                                html!("div", {
                                                     .class([
-                                                        "w-10",
-                                                        "h-10",
-                                                        "mr-2"
+                                                        "text-gray-900",
+                                                        "dark:text-gray-50",
                                                     ])
-                                                    .attribute("src", &["data:image/png;base64,", &x.icon].join(" "))
+                                                    .text(&x.name)
                                                 }),
                                                 html!("div", {
-                                                    .children(&mut [
-                                                        html!("div", {
-                                                            .class([
-                                                                "text-gray-900",
-                                                                "dark:text-gray-50",
-                                                            ])
-                                                            .text(&x.name)
-                                                        }),
-                                                        html!("div", {
-                                                            .class([
-                                                                "text-gray-800",
-                                                                "dark:text-gray-200",
-                                                                "text-sm"
-                                                            ])
-                                                            .text(&x.version)
-                                                        })
+                                                    .class([
+                                                        "text-gray-800",
+                                                        "dark:text-gray-200",
+                                                        "text-sm"
                                                     ])
-                                                }),
+                                                    .text(&x.version)
+                                                })
                                             ])
                                         }),
-                                        html!("button", {
-                                            .text("Install")
-                                            .event(clone!(settings => move |_: events::Click| {
-                                                Self::install_source(settings.clone(), x.id);
-                                            }))
-                                        })
                                     ])
+                                }),
+                                html!("button", {
+                                    .text("Install")
+                                    .event(clone!(settings => move |_: events::Click| {
+                                        Self::install_source(settings.clone(), x.id);
+                                    }))
                                 })
                             ])
                         })
@@ -447,9 +498,7 @@ impl Settings {
         match category {
             SettingCategory::None => {}
             SettingCategory::Reader => {}
-            SettingCategory::Source(_) => {
-                Self::fetch_sources(settings.clone())
-            }
+            SettingCategory::Source(_) => Self::fetch_sources(settings.clone()),
         }
         html!("div", {
             .class([

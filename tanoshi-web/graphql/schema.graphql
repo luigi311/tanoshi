@@ -17,7 +17,6 @@ type Chapter {
   uploaded: NaiveDateTime!
   dateAdded: NaiveDateTime!
   lastPageRead: Int
-  source: Source!
   manga: Manga!
   pages(
     # fetch from source
@@ -217,6 +216,7 @@ type Source {
   version: String!
   icon: String!
   needLogin: Boolean!
+  hasUpdate: Boolean!
 }
 
 type Status {

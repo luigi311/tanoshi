@@ -1,7 +1,81 @@
+use std::fmt::Display;
+
 use crate::context::GlobalContext;
 use async_graphql::{Context, Object, Result, SimpleObject};
+use lazy_static::__Deref;
 use serde::Deserialize;
 use tanoshi_lib::extensions::Extension;
+
+#[derive(Debug, Eq, PartialEq)]
+pub struct Version {
+    pub major: i64,
+    pub minor: i64,
+    pub patch: i64,
+}
+
+impl Version {
+    pub fn new(v: String) -> Version {
+        let split = v.split(".").into_iter().collect::<Vec<&str>>();
+        match split.len() {
+            0 => Version {
+                major: 0,
+                minor: 0,
+                patch: 0,
+            },
+            1 => Version {
+                major: split[0].parse().unwrap_or(0),
+                minor: 0,
+                patch: 0,
+            },
+            2 => Version {
+                major: split[0].parse().unwrap_or(0),
+                minor: split[1].parse().unwrap_or(0),
+                patch: 0,
+            },
+            _ => Version {
+                major: split[0].parse().unwrap_or(0),
+                minor: split[1].parse().unwrap_or(0),
+                patch: split[2].parse().unwrap_or(0),
+            },
+        }
+    }
+}
+
+impl From<String> for Version {
+    fn from(v: String) -> Self {
+        Version::new(v)
+    }
+}
+
+impl Display for Version {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!("{}.{}.{}", self.major, self.minor, self.patch))
+    }
+}
+
+impl PartialOrd for Version {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        if let Some(ord) = self.major.partial_cmp(&other.major) {
+            match ord {
+                std::cmp::Ordering::Equal => {}
+                _ => {
+                    return Some(ord);
+                }
+            }
+        } 
+        
+        if let Some(ord) = self.minor.partial_cmp(&other.minor) {
+            match ord {
+                std::cmp::Ordering::Equal => {}
+                _ => {
+                    return Some(ord);
+                }
+            }
+        } 
+
+        self.patch.partial_cmp(&other.patch)
+    }
+}
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct SourceIndex {
@@ -21,6 +95,7 @@ impl Into<Source> for SourceIndex {
             version: self.version.clone(),
             icon: "".to_string(),
             need_login: false,
+            has_update: false,
         }
     }
 }
@@ -32,6 +107,7 @@ pub struct Source {
     pub version: String,
     pub icon: String,
     pub need_login: bool,
+    pub has_update: bool,
 }
 
 impl From<tanoshi_lib::model::Source> for Source {
@@ -42,6 +118,7 @@ impl From<tanoshi_lib::model::Source> for Source {
             version: s.version,
             icon: s.icon,
             need_login: s.need_login,
+            has_update: false,
         }
     }
 }
@@ -52,12 +129,25 @@ pub struct SourceRoot;
 #[Object]
 impl SourceRoot {
     async fn installed_sources(&self, ctx: &Context<'_>) -> Result<Vec<Source>> {
+        let url = format!(
+            "https://raw.githubusercontent.com/faldez/tanoshi-extension-dev/repo-{}/index.json",
+            std::env::consts::OS
+        );
+        let source_indexes = reqwest::get(url).await?.json::<Vec<SourceIndex>>().await?;
+
         let extensions = ctx.data::<GlobalContext>()?.extensions.read()?;
-        Ok(extensions
-            .extentions()
-            .iter()
-            .map(|(_, ext)| ext.detail().into())
-            .collect())
+        let exts = extensions.extentions();
+
+        let mut sources: Vec<Source> = vec![];
+        for index in source_indexes {
+            if let Some(s) = exts.get(&index.id) {
+                let mut source: Source = s.detail().into();
+                source.has_update =  Version::new(index.version) > Version::new(source.version.clone());
+                sources.push(source);
+            }
+        }
+
+        Ok(sources)
     }
 
     async fn available_sources(&self, ctx: &Context<'_>) -> Result<Vec<Source>> {
@@ -68,6 +158,7 @@ impl SourceRoot {
         let source_indexes = reqwest::get(url).await?.json::<Vec<SourceIndex>>().await?;
         let extensions = ctx.data::<GlobalContext>()?.extensions.read()?;
         let exts = extensions.extentions();
+
         let mut sources: Vec<Source> = vec![];
         for index in source_indexes {
             if exts.get(&index.id).is_none() {

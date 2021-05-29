@@ -5,6 +5,7 @@ query FetchAllSources{
     version
     icon
     needLogin
+    hasUpdate
   }
 
   availableSources {
@@ -13,5 +14,6 @@ query FetchAllSources{
     version
     icon
     needLogin
+    hasUpdate
   }
 }
