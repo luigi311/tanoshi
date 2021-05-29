@@ -1,7 +1,7 @@
 use anyhow::{anyhow, Result};
 use bytes::Bytes;
 use lib::Library;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::{
     collections::{BTreeMap, HashMap},
     sync::Arc,
@@ -10,7 +10,6 @@ use tanoshi_lib::extensions::{Extension, PluginDeclaration};
 use tanoshi_lib::model::{
     Chapter, Manga, SortByParam, SortOrderParam, Source, SourceLogin, SourceLoginResult,
 };
-use tokio::task::spawn_blocking;
 
 pub struct ExtensionProxy {
     extension: Arc<Box<dyn Extension>>,
@@ -75,6 +74,14 @@ impl Extensions {
         }
     }
 
+    pub fn get(&self, id: i64) -> Option<&ExtensionProxy> {
+        self.extensions.get(&id)
+    }
+
+    pub fn extentions(&self) -> &HashMap<i64, ExtensionProxy> {
+        &self.extensions
+    }
+
     pub fn initialize(&mut self, configs: BTreeMap<String, serde_yaml::Value>) -> Result<()> {
         for entry in std::fs::read_dir(&self.path)?
             .into_iter()
@@ -111,14 +118,6 @@ impl Extensions {
         Ok(())
     }
 
-    pub fn get(&self, id: i64) -> Option<&ExtensionProxy> {
-        self.extensions.get(&id)
-    }
-
-    pub fn extentions(&self) -> &HashMap<i64, ExtensionProxy> {
-        &self.extensions
-    }
-
     pub unsafe fn load(
         &mut self,
         library_path: String,
@@ -146,9 +145,30 @@ impl Extensions {
         if decl.rustc_version != tanoshi_lib::RUSTC_VERSION
             || decl.core_version != tanoshi_lib::CORE_VERSION
         {
-            return Err(anyhow!("Version mismatch: extension.rustc_version={}, extension.core_version={}, tanoshi_lib.rustc_version={}, tanoshi_lib::core_version={}", 
-                decl.rustc_version , decl.core_version, tanoshi_lib::RUSTC_VERSION, tanoshi_lib::CORE_VERSION)
-            );
+            let mut error_message = "Version mismatch:".to_string();
+            if decl.rustc_version != tanoshi_lib::RUSTC_VERSION {
+                error_message.push_str(
+                    format!(
+                        " {}.rustc_version={} != tanoshi_lib.rustc_version={}",
+                        decl.name,
+                        decl.rustc_version,
+                        tanoshi_lib::RUSTC_VERSION
+                    )
+                    .as_str(),
+                )
+            }
+            if decl.core_version != tanoshi_lib::CORE_VERSION {
+                error_message.push_str(
+                    format!(
+                        " {}.core_version={} != tanoshi_lib.core_version={}",
+                        decl.name,
+                        decl.core_version,
+                        tanoshi_lib::CORE_VERSION
+                    )
+                    .as_str(),
+                )
+            }
+            return Err(anyhow!(error_message));
         }
 
         let mut registrar = PluginRegistrar::new(Arc::clone(&library));
@@ -159,16 +179,30 @@ impl Extensions {
         Ok(())
     }
 
-    pub fn remove(&mut self, id: i64) -> Result<()> {
-        if self.extensions.remove(&id).is_some() {
-            Ok(())
+    fn get_plugin_path(&self, id: i64) -> Result<PathBuf> {
+        let ext = if cfg!(target_os = "windows") {
+            "dll"
+        } else if cfg!(target_os = "macos") {
+            "dylib"
+        } else if cfg!(target_os = "linux") {
+            "so"
         } else {
-            Err(anyhow!("There is no extension {}", id))
-        }
+            return Err(anyhow!("os not supported"));
+        };
+        
+        let path = Path::new(&self.path).join(format!("{}.{}", id, ext));
+        Ok(path)
     }
 
-    pub fn install(&mut self, path: String, bytes: &Bytes) -> Result<()> {
-        let plugin_path = std::path::Path::new(&self.path).join(path);
+    pub fn remove(&mut self, id: i64) -> Result<()> {
+        self.extensions.remove(&id).ok_or(anyhow!("no source"))?;
+        let plugin_path = self.get_plugin_path(id)?;
+        std::fs::remove_file(plugin_path).map_err(|e| anyhow!("failed to remove extension: {}", e))
+    }
+
+    pub fn install(&mut self, id: i64, bytes: &Bytes) -> Result<()> {
+        let plugin_path = self.get_plugin_path(id)?;
+        info!("Install plugin to {:?}", plugin_path);
         std::fs::write(&plugin_path, &bytes)?;
 
         unsafe {
@@ -197,7 +231,7 @@ impl PluginRegistrar {
 }
 
 impl tanoshi_lib::extensions::PluginRegistrar for PluginRegistrar {
-    fn register_function(&mut self, name: &str, extension: Box<dyn Extension>) {
+    fn register_function(&mut self, _name: &str, extension: Box<dyn Extension>) {
         let proxy = ExtensionProxy {
             extension: Arc::new(extension),
             lib: Arc::clone(&self.lib),

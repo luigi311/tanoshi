@@ -1,5 +1,5 @@
 mod source;
-pub use source::{Source, SourceRoot};
+pub use source::{Source, SourceRoot, SourceMutationRoot};
 
 mod manga;
 pub use manga::Manga;
