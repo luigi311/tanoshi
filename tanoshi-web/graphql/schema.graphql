@@ -46,6 +46,9 @@ type Manga {
 }
 
 type MutationRoot {
+  installSource(sourceId: Int!): Int!
+  uninstallSource(sourceId: Int!): Int!
+  updateSource(sourceId: Int!): Int!
   register(
     # username
     username: String!
@@ -137,6 +140,7 @@ type QueryRoot {
     id: Int!
   ): Chapter
   installedSources: [Source!]!
+  availableSources: [Source!]!
   source(sourceId: Int!): Source
 }
 

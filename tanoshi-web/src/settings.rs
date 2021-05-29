@@ -1,4 +1,5 @@
-use crate::{query::fetch_sources};
+use crate::query;
+use crate::utils::AsyncLoader;
 use crate::{
     app::App,
     common::SettingCategory,
@@ -24,33 +25,94 @@ pub struct Source {
 
 pub struct Settings {
     page: Mutable<SettingCategory>,
-    sources: MutableVec<Source>,
+    installed_sources: MutableVec<Source>,
+    available_sources: MutableVec<Source>,
     reader_settings: Rc<ReaderSettings>,
+    loader: AsyncLoader,
 }
 
 impl Settings {
     pub fn new() -> Rc<Self> {
         return Rc::new(Settings {
             page: Mutable::new(SettingCategory::None),
-            sources: MutableVec::new(),
+            installed_sources: MutableVec::new(),
+            available_sources: MutableVec::new(),
             reader_settings: ReaderSettings::new(true, false),
+            loader: AsyncLoader::new()
         });
     }
 
-    pub fn fetch_sources(settings: Rc<Self>, app: Rc<App>) {
-        app.loader.load(clone!(settings => async move {
-            match fetch_sources().await {
+    fn fetch_sources(settings: Rc<Self>) {
+        settings.loader.load(clone!(settings => async move {
+            match query::fetch_all_sources().await {
                 Ok(result) => {
-                    settings.sources.lock_mut().replace_cloned(result.iter().map(|s| Source {
+                    settings.installed_sources.lock_mut().replace_cloned(result.installed_sources.iter().map(|s| Source {
                         id: s.id,
                         name: s.name.clone(),
                         version: s.version.clone(),
                         icon: s.icon.clone(),
                         need_login: s.need_login,
-                    }).collect()
-                )},
+                    }).collect());
+
+                    settings.available_sources.lock_mut().replace_cloned(result.available_sources.iter().map(|s| Source {
+                        id: s.id,
+                        name: s.name.clone(),
+                        version: s.version.clone(),
+                        icon: s.icon.clone(),
+                        need_login: s.need_login,
+                    }).collect());
+                },
                 Err(err) => {
                     log::error!("{}", err);
+                }
+            }
+        }));
+    }
+
+    fn install_source(settings: Rc<Self>, id: i64) {
+        settings.loader.load(clone!(settings => async move {
+            match query::install_source(id).await {
+                Ok(_) => {},
+                Err(err) => {
+                    log::error!("{}", err);
+                    return;
+                }
+            }
+
+            match query::fetch_all_sources().await {
+                Ok(result) => {
+                    settings.installed_sources.lock_mut().replace_cloned(result.installed_sources.iter().map(|s| Source {
+                        id: s.id,
+                        name: s.name.clone(),
+                        version: s.version.clone(),
+                        icon: s.icon.clone(),
+                        need_login: s.need_login,
+                    }).collect());
+
+                    settings.available_sources.lock_mut().replace_cloned(result.available_sources.iter().map(|s| Source {
+                        id: s.id,
+                        name: s.name.clone(),
+                        version: s.version.clone(),
+                        icon: s.icon.clone(),
+                        need_login: s.need_login,
+                    }).collect());
+                },
+                Err(err) => {
+                    log::error!("{}", err);
+                }
+            }
+        }));
+    }
+
+    fn uninstall_source(settings: Rc<Self>, id: i64) {
+        settings.loader.load(clone!(settings => async move {
+            match query::uninstall_source(id).await {
+                Ok(_) => {
+                    routing::go_to_url(&Route::Settings(SettingCategory::Source(0)).url());
+                },
+                Err(err) => {
+                    log::error!("{}", err);
+                    return;
                 }
             }
         }));
@@ -163,83 +225,160 @@ impl Settings {
         })
     }
 
+    fn render_source_list(settings: Rc<Self>) -> Dom {
+        html!("div", {
+            .class([
+                "w-full",
+                "mx-auto"
+            ])
+            .children(&mut [
+                html!("h1", {
+                    .class([
+                        "text-gray-900",
+                        "dark:text-gray-100",
+                        "hidden",
+                        "xl:block"
+                    ])
+                    .text("Installed")
+                }),
+                html!("div", {
+                    .class([
+                        "rounded",
+                        "bg-white",
+                        "dark:bg-gray-900",
+                        "shadow",
+                        "dark:shadow-none",
+                        "divide-y",
+                        "divide-gray-200",
+                        "dark:divide-gray-800",
+                        "px-2"
+                    ])
+                    .children_signal_vec(settings.installed_sources.signal_vec_cloned().map(|x|
+                        html!("div", {
+                            .class([
+                                "p-2"
+                            ])
+                            .children(&mut [
+                                link!(Route::Settings(SettingCategory::Source(x.id)).url(), {
+                                    .class("flex")
+                                    .children(&mut [
+                                        html!("img", {
+                                            .class([
+                                                "w-10",
+                                                "h-10",
+                                                "mr-2"
+                                            ])
+                                            .attribute("src", &["data:image/png;base64,", &x.icon].join(" "))
+                                        }),
+                                        html!("div", {
+                                            .children(&mut [
+                                                html!("div", {
+                                                    .class([
+                                                        "text-gray-900",
+                                                        "dark:text-gray-50",
+                                                    ])
+                                                    .text(&x.name)
+                                                }),
+                                                html!("div", {
+                                                    .class([
+                                                        "text-gray-800",
+                                                        "dark:text-gray-200",
+                                                        "text-sm"
+                                                    ])
+                                                    .text(&x.version)
+                                                })
+                                            ])
+                                        })
+                                    ])
+                                })
+                            ])
+                        })
+                    ))
+                }),
+                html!("h1", {
+                    .class([
+                        "text-gray-900",
+                        "dark:text-gray-100",
+                        "hidden",
+                        "xl:block"
+                    ])
+                    .text("Available")
+                }),
+                html!("div", {
+                    .class([
+                        "rounded",
+                        "bg-white",
+                        "dark:bg-gray-900",
+                        "shadow",
+                        "dark:shadow-none",
+                        "divide-y",
+                        "divide-gray-200",
+                        "dark:divide-gray-800",
+                        "px-2"
+                    ])
+                    .children_signal_vec(settings.available_sources.signal_vec_cloned().map(clone!(settings => move |x|
+                        html!("div", {
+                            .class([
+                                "p-2"
+                            ])
+                            .children(&mut [
+                                html!("div", {
+                                    .class(["flex", "justify-between"])
+                                    .children(&mut [
+                                        html!("div", {
+                                            .class("flex")
+                                            .children(&mut [
+                                                html!("img", {
+                                                    .class([
+                                                        "w-10",
+                                                        "h-10",
+                                                        "mr-2"
+                                                    ])
+                                                    .attribute("src", &["data:image/png;base64,", &x.icon].join(" "))
+                                                }),
+                                                html!("div", {
+                                                    .children(&mut [
+                                                        html!("div", {
+                                                            .class([
+                                                                "text-gray-900",
+                                                                "dark:text-gray-50",
+                                                            ])
+                                                            .text(&x.name)
+                                                        }),
+                                                        html!("div", {
+                                                            .class([
+                                                                "text-gray-800",
+                                                                "dark:text-gray-200",
+                                                                "text-sm"
+                                                            ])
+                                                            .text(&x.version)
+                                                        })
+                                                    ])
+                                                }),
+                                            ])
+                                        }),
+                                        html!("button", {
+                                            .text("Install")
+                                            .event(clone!(settings => move |_: events::Click| {
+                                                Self::install_source(settings.clone(), x.id);
+                                            }))
+                                        })
+                                    ])
+                                })
+                            ])
+                        })
+                    )))
+                })
+            ])
+        })
+    }
+
     pub fn render_source_settings(settings: Rc<Self>, source_id: i64) -> Dom {
         if source_id == 0 {
-            html!("div", {
-                .class([
-                    "w-full",
-                    "mx-auto"
-                ])
-                .children(&mut [
-                    html!("h1", {
-                        .class([
-                            "text-gray-900",
-                            "dark:text-gray-100",
-                            "hidden",
-                            "xl:block",
-                            "text-lg"
-                        ])
-                        .text("Source")
-                    }),
-                    html!("div", {
-                        .class([
-                            "rounded",
-                            "bg-white",
-                            "dark:bg-gray-900",
-                            "shadow",
-                            "dark:shadow-none",
-                            "divide-y",
-                            "divide-gray-200",
-                            "dark:divide-gray-800",
-                            "px-2"
-                        ])
-                        .children_signal_vec(settings.sources.signal_vec_cloned().map(|x|
-                            html!("div", {
-                                .class([
-                                    "p-2"
-                                ])
-                                .children(&mut [
-                                    link!(Route::Settings(SettingCategory::Source(x.id)).url(), {
-                                        .class("flex")
-                                        .children(&mut [
-                                            html!("img", {
-                                                .class([
-                                                    "w-10",
-                                                    "h-10",
-                                                    "mr-2"
-                                                ])
-                                                .attribute("src", &["data:image/png;base64,", &x.icon].join(" "))
-                                            }),
-                                            html!("div", {
-                                                .children(&mut [
-                                                    html!("div", {
-                                                        .class([
-                                                            "text-gray-900",
-                                                            "dark:text-gray-50",
-                                                        ])
-                                                        .text(&x.name)
-                                                    }),
-                                                    html!("div", {
-                                                        .class([
-                                                            "text-gray-800",
-                                                            "dark:text-gray-200",
-                                                            "text-sm"
-                                                        ])
-                                                        .text(&x.version)
-                                                    })
-                                                ])
-                                            })
-                                        ])
-                                    })
-                                ])
-                            })
-                        ))
-                    })
-                ])
-            })
+            Self::render_source_list(settings.clone())
         } else {
             let source = {
-                let sources = settings.sources.lock_ref();
+                let sources = settings.installed_sources.lock_ref();
                 sources
                     .iter()
                     .find(|s| (*s).id == source_id)
@@ -292,6 +431,9 @@ impl Settings {
                                     "mx-auto"
                                 ])
                                 .text("Uninstall")
+                                .event(clone!(settings => move |_: events::Click| {
+                                    Self::uninstall_source(settings.clone(), source_id);
+                                }))
                             })
                         ])
                     })
@@ -300,15 +442,13 @@ impl Settings {
         }
     }
 
-    pub fn render(settings: Rc<Self>, app: Rc<App>, category: SettingCategory) -> Dom {
+    pub fn render(settings: Rc<Self>, category: SettingCategory) -> Dom {
         settings.page.set(category.clone());
         match category {
             SettingCategory::None => {}
             SettingCategory::Reader => {}
             SettingCategory::Source(_) => {
-                if settings.sources.lock_ref().is_empty() {
-                    Self::fetch_sources(settings.clone(), app.clone())
-                }
+                Self::fetch_sources(settings.clone())
             }
         }
         html!("div", {
