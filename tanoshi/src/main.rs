@@ -5,6 +5,7 @@ extern crate log;
 extern crate argon2;
 
 // mod auth;
+mod assets;
 mod catalogue;
 mod config;
 mod context;
@@ -13,8 +14,8 @@ mod extension;
 mod library;
 mod proxy;
 mod schema;
-mod user;
 mod status;
+mod user;
 
 use anyhow::Result;
 use clap::Clap;
@@ -47,10 +48,7 @@ async fn main() -> Result<()> {
 
     let secret = config.secret;
     let mut extensions = extension::Extensions::new(config.plugin_path.clone());
-    if extensions
-        .initialize(config.plugin_config)
-        .is_err()
-    {
+    if extensions.initialize(config.plugin_config).is_err() {
         log::error!("error initialize plugin");
     }
 
@@ -74,10 +72,7 @@ async fn main() -> Result<()> {
         .and(async_graphql_warp::graphql(schema.clone()))
         .and_then(
             |token: Option<String>,
-             (schema, mut request): (
-                TanoshiSchema,
-                async_graphql::Request,
-            )| async move {
+             (schema, mut request): (TanoshiSchema, async_graphql::Request)| async move {
                 if let Some(token) = token {
                     if let Some(token) = token.strip_prefix("Bearer ").map(|t| t.to_string()) {
                         request = request.data(token);
@@ -88,15 +83,18 @@ async fn main() -> Result<()> {
             },
         );
 
-    let graphql_playground = warp::path!("graphql").and(warp::get()).map(|| {
-        HttpResponse::builder()
-            .header("content-type", "text/html")
-            .body(playground_source(GraphQLPlaygroundConfig::new("/graphql")))
-    });
+    // let graphql_playground = warp::path!("graphql").and(warp::get()).map(|| {
+    //     HttpResponse::builder()
+    //         .header("content-type", "text/html")
+    //         .body(playground_source(GraphQLPlaygroundConfig::new("/graphql")))
+    // });
+
+    let static_files = assets::filter::static_files();
 
     let cors = warp::cors().allow_any_origin().allow_method("POST");
     let routes = proxy::proxy()
-        .or(graphql_playground)
+        // .or(graphql_playground)
+        .or(static_files)
         .or(graphql_post)
         .recover(|err: Rejection| async move {
             if let Some(BadRequest(err)) = err.find() {
