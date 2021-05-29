@@ -243,7 +243,7 @@ impl SourceMutationRoot {
         }
 
         let url = format!(
-            "https://raw.githubusercontent.com/faldez/tanoshi-extension-dev/repo-{}/index.json",
+            "https://raw.githubusercontent.com/faldez/tanoshi-extensions/repo-{}/index.json",
             std::env::consts::OS
         );
 
@@ -264,7 +264,7 @@ impl SourceMutationRoot {
         }
 
         let url = format!(
-            "https://raw.githubusercontent.com/faldez/tanoshi-extension-dev/repo-{}/{}",
+            "https://raw.githubusercontent.com/faldez/tanoshi-extensions/repo-{}/{}",
             std::env::consts::OS,
             source.path,
         );
