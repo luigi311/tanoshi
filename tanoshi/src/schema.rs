@@ -1,4 +1,4 @@
-use crate::catalogue::{CatalogueRoot, SourceRoot};
+use crate::catalogue::{CatalogueRoot, SourceRoot, SourceMutationRoot};
 use crate::library::{LibraryRoot, LibraryMutationRoot};
 use crate::status::StatusRoot;
 use crate::user::{UserRoot, UserMutationRoot};
@@ -12,4 +12,4 @@ pub type TanoshiSchema = Schema<QueryRoot, MutationRoot, EmptySubscription>;
 pub struct QueryRoot(SourceRoot, CatalogueRoot, LibraryRoot, UserRoot, StatusRoot);
 
 #[derive(MergedObject, Default)]
-pub struct MutationRoot(LibraryMutationRoot, UserMutationRoot);
+pub struct MutationRoot(LibraryMutationRoot, UserMutationRoot, SourceMutationRoot);

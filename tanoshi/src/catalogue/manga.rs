@@ -4,6 +4,7 @@ use super::Chapter;
 use crate::{context::GlobalContext, user};
 use async_graphql::{Context, Object, Result};
 use futures::{stream, StreamExt};
+use tanoshi_lib::extensions::Extension;
 
 /// A type represent manga details, normalized across source
 #[derive(Debug)]
@@ -110,20 +111,20 @@ impl Manga {
         self.date_added
     }
 
-    async fn chapters(&self, ctx: &Context<'_>) -> Vec<Chapter> {
+    async fn chapters(&self, ctx: &Context<'_>) -> Result<Vec<Chapter>> {
         let manga_id = self.id.clone();
-        let db = ctx.data_unchecked::<GlobalContext>().mangadb.clone();
+        let ctx = ctx.data::<GlobalContext>()?;
+        let db = ctx.mangadb.clone();
         match db.get_chapters_by_manga_id(manga_id).await {
-            Ok(chapters) => chapters,
+            Ok(chapters) => Ok(chapters),
             Err(_) => {
-                let chapters = ctx
-                    .data_unchecked::<GlobalContext>()
-                    .extensions
-                    .get(self.source_id)
-                    .unwrap()
-                    .get_chapters(self.path.clone())
-                    .await
-                    .unwrap();
+                let chapters = {
+                    let extensions = ctx.extensions.read()?;
+                    extensions
+                        .get(self.source_id)
+                        .ok_or("no source")?
+                        .get_chapters(&self.path)?
+                };
 
                 let chapter_stream = stream::iter(chapters);
                 let chapter_stream = chapter_stream.then(|chapter| async {
@@ -143,7 +144,7 @@ impl Manga {
                         }
                     }
                 });
-                chapter_stream.collect().await
+                Ok(chapter_stream.collect().await)
             }
         }
     }

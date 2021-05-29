@@ -1,15 +1,15 @@
 use anyhow::{anyhow, Result};
+use bytes::Bytes;
 use lib::Library;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::{
     collections::{BTreeMap, HashMap},
     sync::Arc,
 };
 use tanoshi_lib::extensions::{Extension, PluginDeclaration};
 use tanoshi_lib::model::{
-    Chapter, Manga, SortByParam, SortOrderParam, Source, SourceLogin, SourceLoginResult
+    Chapter, Manga, SortByParam, SortOrderParam, Source, SourceLogin, SourceLoginResult,
 };
-use tokio::task::spawn_blocking;
 
 pub struct ExtensionProxy {
     extension: Arc<Box<dyn Extension>>,
@@ -17,12 +17,12 @@ pub struct ExtensionProxy {
     lib: Arc<Library>,
 }
 
-impl ExtensionProxy {
-    pub fn detail(&self) -> Source {
+impl Extension for ExtensionProxy {
+    fn detail(&self) -> Source {
         self.extension.detail()
     }
 
-    pub async fn get_mangas(
+    fn get_mangas(
         &self,
         keyword: Option<String>,
         genres: Option<Vec<String>>,
@@ -32,56 +32,58 @@ impl ExtensionProxy {
         auth: Option<String>,
     ) -> Result<Vec<Manga>> {
         let extension = self.extension.clone();
-        spawn_blocking(move || {
-            extension
-                .get_mangas(keyword, genres, page, sort_by, sort_order, auth)
-        })
-        .await?
+        extension.get_mangas(keyword, genres, page, sort_by, sort_order, auth)
     }
 
-    pub async fn get_manga_info(&self, path: String) -> Result<Manga> {
+    fn get_manga_info(&self, path: &String) -> Result<Manga> {
         let extension = self.extension.clone();
-        spawn_blocking(move || extension.get_manga_info(&path)).await?
+        extension.get_manga_info(path)
     }
 
-    pub async fn get_chapters(&self, path: String) -> Result<Vec<Chapter>> {
+    fn get_chapters(&self, path: &String) -> Result<Vec<Chapter>> {
         let extension = self.extension.clone();
-        spawn_blocking(move || extension.get_chapters(&path)).await?
+        extension.get_chapters(path)
     }
 
-    pub async fn get_pages(&self, path: String) -> Result<Vec<String>> {
+    fn get_pages(&self, path: &String) -> Result<Vec<String>> {
         let extension = self.extension.clone();
-        spawn_blocking(move || extension.get_pages(&path)).await?
+        extension.get_pages(path)
     }
 
-    pub async fn get_page(&self, url: String) -> Result<Vec<u8>> {
+    fn get_page(&self, url: &String) -> Result<Vec<u8>> {
         let extension = self.extension.clone();
-        spawn_blocking(move || extension.get_page(&url)).await?
+        extension.get_page(url)
     }
 
-    pub async fn login(&self, login_info: SourceLogin) -> Result<SourceLoginResult> {
+    fn login(&self, login_info: SourceLogin) -> Result<SourceLoginResult> {
         let extension = self.extension.clone();
-        spawn_blocking(move || extension.login(login_info)).await?
+        extension.login(login_info)
     }
 }
 
 pub struct Extensions {
+    path: String,
     extensions: HashMap<i64, ExtensionProxy>,
 }
 
 impl Extensions {
-    pub fn new() -> Extensions {
+    pub fn new(path: String) -> Extensions {
         Extensions {
+            path,
             extensions: HashMap::new(),
         }
     }
 
-    pub fn initialize<P: AsRef<std::path::Path>>(
-        &mut self,
-        path: P,
-        config: BTreeMap<String, serde_yaml::Value>,
-    ) -> Result<()> {
-        for entry in std::fs::read_dir(path.as_ref())?
+    pub fn get(&self, id: i64) -> Option<&ExtensionProxy> {
+        self.extensions.get(&id)
+    }
+
+    pub fn extentions(&self) -> &HashMap<i64, ExtensionProxy> {
+        &self.extensions
+    }
+
+    pub fn initialize(&mut self, configs: BTreeMap<String, serde_yaml::Value>) -> Result<()> {
+        for entry in std::fs::read_dir(&self.path)?
             .into_iter()
             .filter(move |path| {
                 if let Ok(p) = path {
@@ -108,20 +110,12 @@ impl Extensions {
                 .replace("lib", "");
             info!("load plugin from {:?}", path.clone());
             unsafe {
-                if let Err(e) = self.load(path.to_str().unwrap().to_string(), config.get(&name)) {
+                if let Err(e) = self.load(path.to_str().unwrap().to_string(), configs.get(&name)) {
                     error!("Error load from {:?}: {:?}", path.clone(), e);
                 }
             }
         }
         Ok(())
-    }
-
-    pub fn get(&self, id: i64) -> Option<&ExtensionProxy> {
-        self.extensions.get(&id)
-    }
-
-    pub fn extentions(&self) -> &HashMap<i64, ExtensionProxy> {
-        &self.extensions
     }
 
     pub unsafe fn load(
@@ -151,9 +145,30 @@ impl Extensions {
         if decl.rustc_version != tanoshi_lib::RUSTC_VERSION
             || decl.core_version != tanoshi_lib::CORE_VERSION
         {
-            return Err(anyhow!("Version mismatch: extension.rustc_version={}, extension.core_version={}, tanoshi_lib.rustc_version={}, tanoshi_lib::core_version={}", 
-                decl.rustc_version , decl.core_version, tanoshi_lib::RUSTC_VERSION, tanoshi_lib::CORE_VERSION)
-            );
+            let mut error_message = "Version mismatch:".to_string();
+            if decl.rustc_version != tanoshi_lib::RUSTC_VERSION {
+                error_message.push_str(
+                    format!(
+                        " {}.rustc_version={} != tanoshi_lib.rustc_version={}",
+                        decl.name,
+                        decl.rustc_version,
+                        tanoshi_lib::RUSTC_VERSION
+                    )
+                    .as_str(),
+                )
+            }
+            if decl.core_version != tanoshi_lib::CORE_VERSION {
+                error_message.push_str(
+                    format!(
+                        " {}.core_version={} != tanoshi_lib.core_version={}",
+                        decl.name,
+                        decl.core_version,
+                        tanoshi_lib::CORE_VERSION
+                    )
+                    .as_str(),
+                )
+            }
+            return Err(anyhow!(error_message));
         }
 
         let mut registrar = PluginRegistrar::new(Arc::clone(&library));
@@ -164,12 +179,40 @@ impl Extensions {
         Ok(())
     }
 
-    pub fn remove(&mut self, id: i64) -> Result<()> {
-        if self.extensions.remove(&id).is_some() {
-            Ok(())
+    fn get_plugin_path(&self, id: i64) -> Result<PathBuf> {
+        let ext = if cfg!(target_os = "windows") {
+            "dll"
+        } else if cfg!(target_os = "macos") {
+            "dylib"
+        } else if cfg!(target_os = "linux") {
+            "so"
         } else {
-            Err(anyhow!("There is no extension {}", id))
+            return Err(anyhow!("os not supported"));
+        };
+        
+        let path = Path::new(&self.path).join(format!("{}.{}", id, ext));
+        Ok(path)
+    }
+
+    pub fn remove(&mut self, id: i64) -> Result<()> {
+        self.extensions.remove(&id).ok_or(anyhow!("no source"))?;
+        let plugin_path = self.get_plugin_path(id)?;
+        std::fs::remove_file(plugin_path).map_err(|e| anyhow!("failed to remove extension: {}", e))
+    }
+
+    pub fn install(&mut self, id: i64, bytes: &Bytes) -> Result<()> {
+        let plugin_path = self.get_plugin_path(id)?;
+        info!("Install plugin to {:?}", plugin_path);
+        std::fs::write(&plugin_path, &bytes)?;
+
+        unsafe {
+            self.load(
+                plugin_path.to_str().ok_or(anyhow!("no path"))?.to_string(),
+                None,
+            )?;
         }
+
+        Ok(())
     }
 }
 
@@ -188,7 +231,7 @@ impl PluginRegistrar {
 }
 
 impl tanoshi_lib::extensions::PluginRegistrar for PluginRegistrar {
-    fn register_function(&mut self, name: &str, extension: Box<dyn Extension>) {
+    fn register_function(&mut self, _name: &str, extension: Box<dyn Extension>) {
         let proxy = ExtensionProxy {
             extension: Arc::new(extension),
             lib: Arc::clone(&self.lib),

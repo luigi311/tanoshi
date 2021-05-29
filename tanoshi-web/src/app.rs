@@ -73,7 +73,7 @@ impl App {
                         Bottombar::render()
                     ],
                     Route::Settings(category) => vec![
-                        Settings::render(app.settings_page.clone(), app.clone(), category),
+                        Settings::render(app.settings_page.clone(), category),
                         Bottombar::render()
                     ],
                     Route::NotFound => vec![

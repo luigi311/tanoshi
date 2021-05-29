@@ -347,6 +347,29 @@ pub async fn fetch_sources(
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "graphql/schema.graphql",
+    query_path = "graphql/fetch_all_sources.graphql",
+    response_derives = "Debug"
+)]
+pub struct FetchAllSources;
+
+pub async fn fetch_all_sources(
+) -> Result<fetch_all_sources::ResponseData, Box<dyn Error>> {
+    let client = reqwest::Client::new();
+    let var = fetch_all_sources::Variables {};
+    let request_body = FetchAllSources::build_query(var);
+    let res = client
+        .post(&graphql_url())
+        .json(&request_body)
+        .send()
+        .await?;
+
+    let response_body: Response<fetch_all_sources::ResponseData> = res.json().await?;
+    Ok(response_body.data.ok_or("no data")?)
+}
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/schema.graphql",
     query_path = "graphql/fetch_source.graphql",
     response_derives = "Debug"
 )]
@@ -368,6 +391,84 @@ pub async fn fetch_source(
 
     let response_body: Response<fetch_source_detail::ResponseData> = res.json().await?;
     Ok(response_body.data.ok_or("no data")?.source)
+}
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/schema.graphql",
+    query_path = "graphql/install_source.graphql",
+    response_derives = "Debug"
+)]
+pub struct InstallSource;
+
+pub async fn install_source(
+    source_id: i64,
+) -> Result<i64, Box<dyn Error>> {
+    let client = reqwest::Client::new();
+    let var = install_source::Variables {
+        source_id: Some(source_id),
+    };
+    let request_body = InstallSource::build_query(var);
+    let res = client
+        .post(&graphql_url())
+        .json(&request_body)
+        .send()
+        .await?;
+
+    let response_body: Response<install_source::ResponseData> = res.json().await?;
+    Ok(response_body.data.ok_or("no data")?.install_source)
+}
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/schema.graphql",
+    query_path = "graphql/update_source.graphql",
+    response_derives = "Debug"
+)]
+pub struct UpdateSource;
+
+pub async fn update_source(
+    source_id: i64,
+) -> Result<i64, Box<dyn Error>> {
+    let client = reqwest::Client::new();
+    let var = update_source::Variables {
+        source_id: Some(source_id),
+    };
+    let request_body = UpdateSource::build_query(var);
+    let res = client
+        .post(&graphql_url())
+        .json(&request_body)
+        .send()
+        .await?;
+
+    let response_body: Response<update_source::ResponseData> = res.json().await?;
+    Ok(response_body.data.ok_or("no data")?.update_source)
+}
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/schema.graphql",
+    query_path = "graphql/uninstall_source.graphql",
+    response_derives = "Debug"
+)]
+pub struct UninstallSource;
+
+pub async fn uninstall_source(
+    source_id: i64,
+) -> Result<i64, Box<dyn Error>> {
+    let client = reqwest::Client::new();
+    let var = uninstall_source::Variables {
+        source_id: Some(source_id),
+    };
+    let request_body = UninstallSource::build_query(var);
+    let res = client
+        .post(&graphql_url())
+        .json(&request_body)
+        .send()
+        .await?;
+
+    let response_body: Response<uninstall_source::ResponseData> = res.json().await?;
+    Ok(response_body.data.ok_or("no data")?.uninstall_source)
 }
 
 #[derive(GraphQLQuery)]
