@@ -11,10 +11,10 @@ pub struct Chapter {
     pub manga_id: i64,
     pub title: String,
     pub path: String,
-    pub rank: i64,
+    pub number: f64,
+    pub scanlator: String,
     pub prev: Option<i64>,
     pub next: Option<i64>,
-    pub read_at: Option<chrono::NaiveDateTime>,
     pub uploaded: chrono::NaiveDateTime,
     pub date_added: chrono::NaiveDateTime,
     pub last_page_read: Option<i64>,
@@ -29,10 +29,10 @@ impl From<tanoshi_lib::model::Chapter> for Chapter {
             manga_id: 0,
             title: ch.title,
             path: ch.path,
-            rank: ch.rank,
+            number: ch.number,
+            scanlator: ch.scanlator,
             prev: None,
             next: None,
-            read_at: None,
             uploaded: ch.uploaded,
             date_added: chrono::NaiveDateTime::from_timestamp(chrono::Local::now().timestamp(), 0),
             last_page_read: None,
@@ -55,8 +55,12 @@ impl Chapter {
         self.path.clone()
     }
 
-    async fn rank(&self) -> i64 {
-        self.rank
+    async fn number(&self) -> f64 {
+        self.number
+    }
+
+    async fn scanlator(&self) -> String {
+        self.scanlator.clone()
     }
 
     async fn prev(&self) -> Option<i64> {

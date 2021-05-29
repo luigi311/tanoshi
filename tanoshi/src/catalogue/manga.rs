@@ -18,8 +18,6 @@ pub struct Manga {
     pub description: Option<String>,
     pub path: String,
     pub cover_url: String,
-    pub last_read_chapter: Option<i32>,
-    pub is_favorite: bool,
     pub date_added: chrono::NaiveDateTime,
 }
 
@@ -44,8 +42,6 @@ impl From<tanoshi_lib::model::Manga> for Manga {
             description: m.description.clone(),
             path: m.path.clone(),
             cover_url: m.cover_url.clone(),
-            last_read_chapter: None,
-            is_favorite: false,
             date_added: chrono::NaiveDateTime::from_timestamp(0, 0),
         }
     }
@@ -87,10 +83,6 @@ impl Manga {
 
     async fn cover_url(&self) -> String {
         self.cover_url.as_str().to_string()
-    }
-
-    async fn last_read_chapter(&self) -> Option<i32> {
-        self.last_read_chapter
     }
 
     async fn is_favorite(&self, ctx: &Context<'_>) -> Result<bool> {

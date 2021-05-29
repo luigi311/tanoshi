@@ -8,6 +8,8 @@ pub static RUSTC_VERSION: &str = env!("RUSTC_VERSION");
 /// This module contains model used in extensions and rest api
 #[cfg(feature = "model")]
 pub mod model {
+    use core::f64;
+
     /// Model to login to source that require login, like mangadex to search
     #[derive(Debug, Clone, Default)]
     pub struct SourceLogin {
@@ -55,7 +57,8 @@ pub mod model {
         pub source_id: i64,
         pub title: String,
         pub path: String,
-        pub rank: i64,
+        pub number: f64,
+        pub scanlator: String,
         pub uploaded: chrono::NaiveDateTime,
     }
 

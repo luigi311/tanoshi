@@ -33,9 +33,7 @@ impl Db {
                 description: row.get(6),
                 path: row.get(7),
                 cover_url: row.get(8),
-                is_favorite: row.get(9),
-                last_read_chapter: row.get(10),
-                date_added: row.get(11),
+                date_added: row.get(9),
             })
         } else {
             None
@@ -61,9 +59,7 @@ impl Db {
                 description: row.get(6),
                 path: row.get(7),
                 cover_url: row.get(8),
-                is_favorite: row.get(9),
-                last_read_chapter: row.get(10),
-                date_added: row.get(11),
+                date_added: row.get(9),
             })
         } else {
             None
@@ -92,9 +88,7 @@ impl Db {
                 description: row.get(6),
                 path: row.get(7),
                 cover_url: row.get(8),
-                last_read_chapter: row.get(9),
-                is_favorite: row.get(10),
-                date_added: row.get(11),
+                date_added: row.get(9),
             });
         }
         Ok(mangas)
@@ -678,8 +672,8 @@ impl Db {
         let stream = sqlx::query(
             r#"
             SELECT *, 
-            (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.rank = chapter.rank - 1) prev,
-            (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.rank = chapter.rank + 1) next 
+            (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number < chapter.number ORDER BY c.number ASC LIMIT 1) prev,
+            (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number > chapter.number ORDER BY c.number ASC LIMIT 1) next 
             FROM chapter WHERE id = ?"#,
         )
         .bind(id)
@@ -694,8 +688,8 @@ impl Db {
                 manga_id: row.get(2),
                 title: row.get(3),
                 path: row.get(4),
-                rank: row.get(5),
-                read_at: row.get(6),
+                number: row.get(5),
+                scanlator: row.get(6),
                 uploaded: row.get(7),
                 date_added: row.get(8),
                 pages: serde_json::from_str(row.get(9)).unwrap_or(vec![]),
@@ -716,8 +710,8 @@ impl Db {
         let stream = sqlx::query(
             r#"
             SELECT *,
-            (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.rank = chapter.rank - 1) prev,
-            (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.rank = chapter.rank + 1) next 
+            (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number < chapter.number ORDER BY c.number ASC LIMIT 1) prev,
+            (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number > chapter.number ORDER BY c.number ASC LIMIT 1) next 
             FROM chapter WHERE source_id = ? AND path = ?"#,
         )
         .bind(source_id)
@@ -733,8 +727,8 @@ impl Db {
                 manga_id: row.get(2),
                 title: row.get(3),
                 path: row.get(4),
-                rank: row.get(5),
-                read_at: row.get(6),
+                number: row.get(5),
+                scanlator: row.get(6),
                 uploaded: row.get(7),
                 date_added: row.get(8),
                 pages: serde_json::from_str(row.get(9)).unwrap_or(vec![]),
@@ -751,9 +745,9 @@ impl Db {
         let mut stream = sqlx::query(
             r#"
             SELECT *,
-            (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.rank = chapter.rank - 1) prev,
-            (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.rank = chapter.rank + 1) next 
-            FROM chapter WHERE manga_id = ? ORDER BY rank DESC"#
+            (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number < chapter.number ORDER BY c.number ASC LIMIT 1) prev,
+            (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number > chapter.number ORDER BY c.number ASC LIMIT 1) next 
+            FROM chapter WHERE manga_id = ? ORDER BY number DESC"#
         )
         .bind(manga_id)
         .fetch(&self.pool);
@@ -766,8 +760,8 @@ impl Db {
                 manga_id: row.get(2),
                 title: row.get(3),
                 path: row.get(4),
-                rank: row.get(5),
-                read_at: row.get(6),
+                number: row.get(5),
+                scanlator: row.get(6),
                 uploaded: row.get(7),
                 date_added: row.get(8),
                 pages: serde_json::from_str(row.get(9)).unwrap_or(vec![]),
@@ -790,16 +784,18 @@ impl Db {
                 manga_id,
                 title, 
                 path, 
-                rank, 
+                number,
+                scanlator,
                 uploaded, 
                 date_added
-            ) VALUES (?, ?, ?, ?, ?, ?, ?)"#,
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"#,
         )
         .bind(chapter.source_id)
         .bind(chapter.manga_id)
         .bind(&chapter.title)
         .bind(&chapter.path)
-        .bind(chapter.rank)
+        .bind(chapter.number)
+        .bind(&chapter.scanlator)
         .bind(chapter.uploaded)
         .bind(chrono::NaiveDateTime::from_timestamp(
             chrono::Local::now().timestamp(),
