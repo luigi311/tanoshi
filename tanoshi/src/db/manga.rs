@@ -672,7 +672,7 @@ impl Db {
         let stream = sqlx::query(
             r#"
             SELECT *, 
-            (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number < chapter.number ORDER BY c.number ASC LIMIT 1) prev,
+            (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number < chapter.number ORDER BY c.number DESC LIMIT 1) prev,
             (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number > chapter.number ORDER BY c.number ASC LIMIT 1) next 
             FROM chapter WHERE id = ?"#,
         )
@@ -710,7 +710,7 @@ impl Db {
         let stream = sqlx::query(
             r#"
             SELECT *,
-            (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number < chapter.number ORDER BY c.number ASC LIMIT 1) prev,
+            (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number < chapter.number ORDER BY c.number DESC LIMIT 1) prev,
             (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number > chapter.number ORDER BY c.number ASC LIMIT 1) next 
             FROM chapter WHERE source_id = ? AND path = ?"#,
         )
@@ -745,7 +745,7 @@ impl Db {
         let mut stream = sqlx::query(
             r#"
             SELECT *,
-            (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number < chapter.number ORDER BY c.number ASC LIMIT 1) prev,
+            (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number < chapter.number ORDER BY c.number DESC LIMIT 1) prev,
             (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number > chapter.number ORDER BY c.number ASC LIMIT 1) next 
             FROM chapter WHERE manga_id = ? ORDER BY number DESC"#
         )

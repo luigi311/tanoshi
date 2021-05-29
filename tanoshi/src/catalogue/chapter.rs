@@ -1,4 +1,4 @@
-use super::{Manga, Source};
+use super::Manga;
 use crate::{context::GlobalContext, user};
 use async_graphql::{Context, Object, Result};
 use chrono::NaiveDateTime;
