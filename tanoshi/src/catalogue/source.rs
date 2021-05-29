@@ -1,8 +1,7 @@
 use std::fmt::Display;
 
-use crate::context::GlobalContext;
+use crate::{context::GlobalContext, user};
 use async_graphql::{Context, Object, Result, SimpleObject};
-use lazy_static::__Deref;
 use serde::Deserialize;
 use tanoshi_lib::extensions::Extension;
 
@@ -183,6 +182,10 @@ pub struct SourceMutationRoot;
 #[Object]
 impl SourceMutationRoot {
     async fn install_source(&self, ctx: &Context<'_>, source_id: i64) -> Result<i64> {
+        if !user::check_is_admin(ctx) {
+            return Err("Forbidden".into());
+        }
+
         let ctx = ctx.data::<GlobalContext>()?;
         {
             let extensions = ctx.extensions.read()?;
@@ -216,6 +219,10 @@ impl SourceMutationRoot {
     }
 
     async fn uninstall_source(&self, ctx: &Context<'_>, source_id: i64) -> Result<i64> {
+        if !user::check_is_admin(ctx) {
+            return Err("Forbidden".into());
+        }
+        
         let ctx = ctx.data::<GlobalContext>()?;
         let mut extensions = ctx.extensions.write()?;
 
@@ -225,6 +232,10 @@ impl SourceMutationRoot {
     }
 
     async fn update_source(&self, ctx: &Context<'_>, source_id: i64) -> Result<i64> {
+        if !user::check_is_admin(ctx) {
+            return Err("Forbidden".into());
+        }
+        
         let ctx = ctx.data::<GlobalContext>()?;
         {
             let extensions = ctx.extensions.read()?;
