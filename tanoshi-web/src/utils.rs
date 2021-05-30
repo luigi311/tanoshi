@@ -5,16 +5,17 @@ use futures_signals::signal::{Mutable, Signal};
 use wasm_bindgen_futures::spawn_local;
 
 use wasm_bindgen::prelude::*;
-use web_sys::{Document, HtmlElement, Storage, Window};
+use web_sys::{Document, History, HtmlElement, Storage, Window};
 
 thread_local! {
     pub static WINDOW: Window = web_sys::window().unwrap_throw();
     pub static DOCUMENT: Document = WINDOW.with(|w| w.document().unwrap_throw());
     pub static BODY: HtmlElement = DOCUMENT.with(|d| d.body().unwrap_throw());
     pub static LOCAL_STORAGE: Storage = WINDOW.with(|w| w.local_storage().unwrap_throw().unwrap_throw());
+    pub static HISTORY: History = WINDOW.with(|w| w.history().unwrap_throw());
 }
 
-struct AsyncState {
+pub struct AsyncState {
     id: usize,
     handle: AbortHandle,
 }
@@ -89,6 +90,22 @@ pub fn proxied_image_url(image_url: &str) -> String {
     url
 }
 
+pub fn window() -> Window {
+    WINDOW.with(|s| s.clone())
+}
+
 pub fn local_storage() -> Storage {
     LOCAL_STORAGE.with(|s| s.clone())
+}
+
+pub fn history() -> History {
+    HISTORY.with(|h| h.clone())
+}
+
+pub fn document() -> Document {
+    DOCUMENT.with(|d| d.clone())
+}
+
+pub fn body() -> HtmlElement {
+    BODY.with(|d| d.clone())
 }
