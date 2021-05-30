@@ -2498,7 +2498,7 @@ dependencies = [
  "serde_json",
  "serde_yaml",
  "sqlx",
- "tanoshi-lib",
+ "tanoshi-lib 0.22.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "tokio",
  "tokio-stream",
  "warp",
@@ -2507,6 +2507,21 @@ dependencies = [
 [[package]]
 name = "tanoshi-lib"
 version = "0.22.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "dirs",
+ "rustc_version",
+ "serde",
+ "serde_yaml",
+ "ureq",
+]
+
+[[package]]
+name = "tanoshi-lib"
+version = "0.22.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8488f91920ac8ec69c4394016da8c25681da3e69ea6df1b8f3c733eca0ddf446"
 dependencies = [
  "anyhow",
  "chrono",
