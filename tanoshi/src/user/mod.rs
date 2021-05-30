@@ -22,7 +22,7 @@ pub struct UserRoot;
 
 #[Object]
 impl UserRoot {
-    pub async fn login(
+    async fn login(
         &self,
         ctx: &Context<'_>,
         #[graphql(desc = "username")] username: String,
@@ -34,11 +34,12 @@ impl UserRoot {
             .get_user_by_username(username)
             .await?;
 
+        info!("user: {}", user.username);
         if !argon2::verify_encoded(&user.password, password.as_bytes())? {
             return Err("Wrong username or password".into());
         }
 
-        let secret = ctx.data_unchecked::<GlobalContext>().secret.clone();
+        let secret = ctx.data::<GlobalContext>()?.secret.clone();
         let token = jsonwebtoken::encode(
             &Header::default(),
             &Claims {
@@ -52,6 +53,28 @@ impl UserRoot {
 
         Ok(token)
     }
+
+    async fn users(&self, ctx: &Context<'_>) -> Result<Vec<User>> {
+        let is_admin = check_is_admin(&ctx);
+        if !is_admin {
+            return Err("Forbidden".into());
+        };
+
+        let users = ctx.data::<GlobalContext>()?.userdb.get_users().await?;
+
+        Ok(users)
+    }
+
+    async fn me(&self, ctx: &Context<'_>) -> Result<User> {
+        let user = get_claims(ctx).ok_or("no token")?;
+        let user = ctx
+            .data::<GlobalContext>()?
+            .userdb
+            .get_user_by_id(user.sub)
+            .await?;
+
+        Ok(user)
+    }
 }
 
 #[derive(Default)]
@@ -59,11 +82,12 @@ pub struct UserMutationRoot;
 
 #[Object]
 impl UserMutationRoot {
-    pub async fn register(
+    async fn register(
         &self,
         ctx: &Context<'_>,
         #[graphql(desc = "username")] username: String,
         #[graphql(desc = "password")] password: String,
+        #[graphql(desc = "role")] role: Role,
     ) -> Result<i64> {
         let is_admin = check_is_admin(&ctx);
 
@@ -85,7 +109,7 @@ impl UserMutationRoot {
         let role = if user_count == 0 {
             Role::Admin
         } else {
-            Role::Reader
+            role
         };
 
         let user = User {

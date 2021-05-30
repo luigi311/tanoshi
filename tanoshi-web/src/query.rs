@@ -499,20 +499,81 @@ pub async fn user_login(username: String, password: String) -> Result<String, Bo
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "graphql/schema.graphql",
+    query_path = "graphql/fetch_users.graphql",
+    response_derives = "Debug"
+)]
+pub struct FetchUserList;
+
+pub async fn fetch_users() -> Result<Vec<fetch_user_list::FetchUserListUsers>, Box<dyn Error>> {
+    let token = local_storage()
+        .get("token")
+        .unwrap_throw()
+        .ok_or("no token")?;
+    let client = reqwest::Client::new();
+    let var = fetch_user_list::Variables {};
+    let request_body = FetchUserList::build_query(var);
+    let res = client
+        .post(&graphql_url())
+        .header("Authorization", format!("Bearer {}", token))
+        .json(&request_body)
+        .send()
+        .await?;
+
+    let response_body: Response<fetch_user_list::ResponseData> = res.json().await?;
+    Ok(response_body.data.ok_or("no data")?.users)
+}
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/schema.graphql",
+    query_path = "graphql/fetch_me.graphql",
+    response_derives = "Debug"
+)]
+pub struct FetchMe;
+
+pub async fn fetch_me() -> Result<fetch_me::FetchMeMe, Box<dyn Error>> {
+    let token = local_storage()
+        .get("token")
+        .unwrap_throw()
+        .ok_or("no token")?;
+    let client = reqwest::Client::new();
+    let var = fetch_me::Variables {};
+    let request_body = FetchMe::build_query(var);
+    let res = client
+        .post(&graphql_url())
+        .header("Authorization", format!("Bearer {}", token))
+        .json(&request_body)
+        .send()
+        .await?;
+
+    let response_body: Response<fetch_me::ResponseData> = res.json().await?;
+    Ok(response_body.data.ok_or("no data")?.me)
+}
+
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/schema.graphql",
     query_path = "graphql/register.graphql",
     response_derives = "Debug"
 )]
 pub struct UserRegister;
 
-pub async fn user_register(username: String, password: String) -> Result<(), Box<dyn Error>> {
+pub async fn user_register(username: String, password: String, role: user_register::Role) -> Result<(), Box<dyn Error>> {
+    let token = local_storage()
+        .get("token")
+        .unwrap_throw()
+        .ok_or("no token")?;
     let client = reqwest::Client::new();
     let var = user_register::Variables {
         username: Some(username),
         password: Some(password),
+        role: Some(role),
     };
     let request_body = UserRegister::build_query(var);
     let res = client
         .post(&graphql_url())
+        .header("Authorization", format!("Bearer {}", token))
         .json(&request_body)
         .send()
         .await?;

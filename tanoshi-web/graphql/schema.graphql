@@ -10,7 +10,8 @@ type Chapter {
   id: Int!
   title: String!
   path: String!
-  rank: Int!
+  number: Float!
+  scanlator: String!
   prev: Int
   next: Int
   readAt: NaiveDateTime
@@ -34,7 +35,6 @@ type Manga {
   description: String
   path: String!
   coverUrl: String!
-  lastReadChapter: Int
   isFavorite: Boolean!
   dateAdded: NaiveDateTime!
   chapters: [Chapter!]!
@@ -54,6 +54,9 @@ type MutationRoot {
 
     # password
     password: String!
+
+    # role
+    role: Role!
   ): Int!
   addToLibrary(
     # manga id
@@ -98,6 +101,8 @@ type QueryRoot {
     # password
     password: String!
   ): String!
+  users: [User!]!
+  me: User!
   library: [Manga!]!
   recentUpdates(
     after: String
@@ -196,6 +201,11 @@ type RecentUpdateEdge {
   cursor: String!
 }
 
+enum Role {
+  READER
+  ADMIN
+}
+
 # A type represent sort parameter for query manga from source, normalized across sources
 enum SortByParam {
   LAST_UPDATED
@@ -222,4 +232,10 @@ type Source {
 type Status {
   activated: Boolean!
   version: String!
+}
+
+type User {
+  id: Int!
+  username: String!
+  role: Role!
 }

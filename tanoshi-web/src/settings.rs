@@ -1,9 +1,11 @@
+use crate::common::Login;
+use crate::common::Role;
+use crate::common::Source;
+use crate::common::User;
 use crate::query;
 use crate::utils::AsyncLoader;
 use crate::{
-    app::App,
-    common::SettingCategory,
-    common::{events, ReaderSettings, Route},
+    common::{events, ReaderSettings, Route, SettingCategory},
 };
 use dominator::{clone, html, link, routing, Dom};
 use futures_signals::{
@@ -14,20 +16,14 @@ use futures_signals::{
 use std::rc::Rc;
 use web_sys::window;
 
-#[derive(Debug, Clone)]
-pub struct Source {
-    id: i64,
-    name: String,
-    version: String,
-    icon: String,
-    need_login: bool,
-    has_update: bool,
-}
-
 pub struct Settings {
     page: Mutable<SettingCategory>,
     installed_sources: MutableVec<Source>,
     available_sources: MutableVec<Source>,
+    me: Mutable<Option<User>>,
+    users: MutableVec<User>,
+    is_create_user: Mutable<bool>,
+    login: Rc<Login>,
     reader_settings: Rc<ReaderSettings>,
     loader: AsyncLoader,
 }
@@ -38,6 +34,10 @@ impl Settings {
             page: Mutable::new(SettingCategory::None),
             installed_sources: MutableVec::new(),
             available_sources: MutableVec::new(),
+            me: Mutable::new(None),
+            users: MutableVec::new(),
+            is_create_user: Mutable::new(false),
+            login: Login::new(),
             reader_settings: ReaderSettings::new(true, false),
             loader: AsyncLoader::new(),
         });
@@ -63,7 +63,47 @@ impl Settings {
                         icon: s.icon.clone(),
                         need_login: s.need_login,
                         has_update: s.has_update,
+                    }).collect());                    
+                },
+                Err(err) => {
+                    log::error!("{}", err);
+                }
+            }
+        }));
+    }
+
+    fn fetch_user_list(settings: Rc<Self>) {
+        settings.loader.load(clone!(settings => async move {
+            match query::fetch_users().await {
+                Ok(result) => {
+                    settings.users.lock_mut().replace_cloned(result.iter().map(|u| User{
+                        id: u.id,
+                        username: u.username.clone(),
+                        role: match u.role {
+                            query::fetch_user_list::Role::ADMIN => Role::Admin,
+                            _ => Role::Reader,
+                        }
                     }).collect());
+                },
+                Err(err) => {
+                    log::error!("{}", err);
+                }
+            }
+        }));
+    }
+
+    fn fetch_me(settings: Rc<Self>) {
+        settings.loader.load(clone!(settings => async move {
+            match query::fetch_me().await {
+                Ok(result) => {
+                    settings.me.set(Some(User{
+                        id: result.id,
+                        username: result.username,
+                        role: match result.role {
+                            query::fetch_me::Role::ADMIN => Role::Admin,
+                            _ => Role::Reader,
+                        }
+                    }))
                 },
                 Err(err) => {
                     log::error!("{}", err);
@@ -205,6 +245,8 @@ impl Settings {
                             SettingCategory::None => "Settings",
                             SettingCategory::Reader => "Reader",
                             SettingCategory::Source(_) => "Sources",
+                            SettingCategory::Users => "Users",
+                            SettingCategory::User => "User",
                         }
                     ))
                 }),
@@ -213,6 +255,14 @@ impl Settings {
                         match page {
                             SettingCategory::Reader => {
                                 Some(ReaderSettings::render_apply_button(settings.reader_settings.clone()))
+                            }
+                            SettingCategory::Users => {
+                                Some(html!("button", {
+                                    .text("Create User")
+                                    .event(clone!(settings => move |_: events::Click| {
+                                        settings.is_create_user.set_neq(true);
+                                    }))
+                                }))
                             }
                             _ => {
                                 Some(
@@ -228,7 +278,7 @@ impl Settings {
         })
     }
 
-    pub fn render_general_categories(settings: Rc<Self>) -> Dom {
+    pub fn render_categories(settings: Rc<Self>) -> Dom {
         html!("div", {
             .class([
                 "w-full",
@@ -264,6 +314,23 @@ impl Settings {
                     .text("Source")
                 })
             ])
+            .child_signal(settings.me.signal_cloned().map(|me| {
+                if let Some(me) = me {
+                    if me.role == Role::Admin {
+                        Some(link!(Route::Settings(SettingCategory::Users).url(), {
+                            .class([
+                                "p-2",
+                                "text-left"
+                            ])
+                            .text("Users")
+                        }))
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            }))
         })
     }
 
@@ -374,7 +441,7 @@ impl Settings {
                         html!("div", {
                             .class([
                                 "p-2",
-                                "flex", 
+                                "flex",
                                 "justify-between"
                             ])
                             .children(&mut [
@@ -493,12 +560,80 @@ impl Settings {
         }
     }
 
+    pub fn render_users_management(settings: Rc<Self>) -> Dom {
+        html!("div", {
+            .class([
+                "rounded",
+                "bg-white",
+                "dark:bg-gray-900",
+                "shadow",
+                "dark:shadow-none",
+                "divide-y",
+                "divide-gray-200",
+                "dark:divide-gray-800",
+                "px-2"
+            ])
+            .future(settings.login.loader.is_loading().for_each(clone!(settings => move |x| {
+                settings.is_create_user.set_neq(x);
+
+                async {}
+            })))
+            .visible_signal(settings.me.signal_cloned().map(|me| {
+                if let Some(me) = me {
+                    if me.role == Role::Admin {
+                        true
+                    } else {
+                        false
+                    }
+                } else {
+                    false
+                }
+            }))
+            .children_signal_vec(settings.users.signal_vec_cloned().map(clone!(settings => move |x|
+                html!("div", {
+                    .class([
+                        "p-2",
+                        "flex",
+                        "justify-between"
+                    ])
+                    .children(&mut [
+                        html!("span", {
+                            .text(&x.username)
+                        }),
+                        html!("span", {
+                            .text(format!("{:?}", x.role).as_str())
+                        })
+                    ])
+                })
+            )))
+            .child_signal(settings.is_create_user.signal().map(clone!(settings => move |x| {
+                if x {
+                    Some(html!("div", {
+                        .class([
+                            "fixed",
+                            "inset-0",
+                            "z-40",
+                            "flex",
+                            "items-center",
+                        ])
+                        .children(&mut [
+                            Login::render(settings.login.clone())
+                        ])
+                    }))
+                } else {
+                    None
+                }
+            })))
+        })
+    }
+
     pub fn render(settings: Rc<Self>, category: SettingCategory) -> Dom {
+        Self::fetch_me(settings.clone());
         settings.page.set(category.clone());
         match category {
-            SettingCategory::None => {}
-            SettingCategory::Reader => {}
             SettingCategory::Source(_) => Self::fetch_sources(settings.clone()),
+            SettingCategory::Users => Self::fetch_user_list(settings.clone()),
+            _ => {}
         }
         html!("div", {
             .class([
@@ -517,9 +652,11 @@ impl Settings {
                     ])
                     .child_signal(settings.page.signal_cloned().map(clone!(settings => move |x|
                         match x {
-                            SettingCategory::None => Some(Self::render_general_categories(settings.clone())),
+                            SettingCategory::None => Some(Self::render_categories(settings.clone())),
                             SettingCategory::Reader => Some(ReaderSettings::render(settings.reader_settings.clone())),
                             SettingCategory::Source(source_id) => Some(Self::render_source_settings(settings.clone(), source_id)),
+                            SettingCategory::Users => Some(Self::render_users_management(settings.clone())),
+                            SettingCategory::User => None,
                         }
                     )))
                 })

@@ -83,17 +83,17 @@ async fn main() -> Result<()> {
             },
         );
 
-    // let graphql_playground = warp::path!("graphql").and(warp::get()).map(|| {
-    //     HttpResponse::builder()
-    //         .header("content-type", "text/html")
-    //         .body(playground_source(GraphQLPlaygroundConfig::new("/graphql")))
-    // });
+    let graphql_playground = warp::path!("graphql").and(warp::get()).map(|| {
+        HttpResponse::builder()
+            .header("content-type", "text/html")
+            .body(playground_source(GraphQLPlaygroundConfig::new("/graphql")))
+    });
 
     let static_files = assets::filter::static_files();
 
     let cors = warp::cors().allow_any_origin().allow_method("POST");
     let routes = proxy::proxy()
-        // .or(graphql_playground)
+        .or(graphql_playground)
         .or(static_files)
         .or(graphql_post)
         .recover(|err: Rejection| async move {

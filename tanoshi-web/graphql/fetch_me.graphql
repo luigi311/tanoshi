@@ -1,0 +1,7 @@
+query FetchMe {
+  me {
+    id
+    username
+    role
+  }
+}

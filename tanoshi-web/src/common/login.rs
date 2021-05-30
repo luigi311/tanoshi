@@ -7,21 +7,18 @@ use futures_signals::signal::SignalExt;
 use wasm_bindgen::UnwrapThrowExt;
 
 use crate::common::{events, Route};
-use crate::query::{server_status, user_login, user_register};
+use crate::query::{user_login, user_register};
 use crate::utils::local_storage;
 use crate::utils::AsyncLoader;
 
-#[derive(Debug, Clone)]
-struct ServerStatus {
-    activated: bool,
-    version: String,
-}
+use super::Role;
+
 
 pub struct Login {
     username: Mutable<String>,
     password: Mutable<String>,
-    server_status: Mutable<Option<ServerStatus>>,
-    loader: AsyncLoader,
+    role: Mutable<Role>,
+    pub loader: AsyncLoader,
 }
 
 impl Login {
@@ -29,85 +26,42 @@ impl Login {
         Rc::new(Self {
             username: Mutable::new("".to_string()),
             password: Mutable::new("".to_string()),
-            server_status: Mutable::new(None),
+            role: Mutable::new(Role::Reader),
             loader: AsyncLoader::new(),
         })
     }
 
-    pub fn login(login: Rc<Self>) {
+    fn register(login: Rc<Self>) {
         login.loader.load(clone!(login => async move {
             let username = login.username.get_cloned();
             let password = login.password.get_cloned();
-            if let Ok(token) = user_login(username, password).await {
-                local_storage().set("token", &token).unwrap_throw();
-                routing::go_to_url(&Route::Library.url());
-            }
-        }));
-    }
-
-    pub fn register(login: Rc<Self>) {
-        login.loader.load(clone!(login => async move {
-            let username = login.username.get_cloned();
-            let password = login.password.get_cloned();
-            if user_register(username, password, user_register::Role::ADMIN).await.is_ok() {
+            let role = match login.role.get_cloned() {
+                Role::Reader => user_register::Role::READER,
+                Role::Admin => user_register::Role::ADMIN,
+            };
+            if user_register(username, password, role).await.is_ok() {
                 login.username.set("".to_string());
                 login.password.set("".to_string());
-                Self::fetch_server_status(login.clone());
-            }
-        }));
-    }
-
-    pub fn fetch_server_status(login: Rc<Self>) {
-        login.loader.load(clone!(login => async move {
-            if let Ok(server_status) = server_status().await {
-                login.server_status.set(Some(ServerStatus{
-                    activated: server_status.activated,
-                    version: server_status.version,
-                }));
             }
         }));
     }
 
     pub fn render(login: Rc<Self>) -> Dom {
-        Self::fetch_server_status(login.clone());
-
         html!("div", {
             .class([
                 "flex",
                 "flex-col",
                 "max-w-lg",
                 "mx-auto",
-                "mt-safe-top"
+                "mt-safe-top",
+                "bg-white",
+                "dark:bg-gray-800",
+                "shadow",
+                "dark:shadow-none",
+                "rounded",
+                "p-2"
             ])
             .children(&mut [
-                html!("img", {
-                    .class([
-                        "w-32",
-                        "h-32",
-                        "mx-auto",
-                        "rounded"
-                    ])
-                    .attribute("src", "/icons/512.png")
-                }),
-                html!("div", {
-                    .class([
-                        "text-black",
-                        "dark:text-white",
-                        "bg-accent",
-                        "rounded",
-                        "m-2",
-                        "px-2",
-                        "py-1"
-                    ])
-                    .visible_signal(login.server_status.signal_cloned().map(|x| {
-                        if let Some(status) = x {
-                            !status.activated
-                        } else { 
-                            false
-                        }
-                    }))
-                    .text("Server is not activated, activate by create an account")
-                }),
                 html!("input", {
                     .class([
                         "m-2",
@@ -145,33 +99,45 @@ impl Login {
                     }))
                 }),
                 html!("div", {
+                    .children(&mut [
+                        html!("div", {
+                            .class([
+                                "w-full",
+                                "bg-gray-200",
+                                "dark:bg-gray-700",
+                                "rounded",
+                                "p-1"
+                            ])
+                            .children(&mut [
+                                html!("button", {
+                                    .class("w-1/2")
+                                    .class_signal(["bg-gray-50", "dark:bg-gray-600", "rounded", "shadow"], login.role.signal_cloned().map(|x| match x {
+                                        Role::Reader => true,
+                                        Role::Admin => false,
+                                    }))
+                                    .text("Reader")
+                                    .event(clone!(login => move |_: events::Click| login.role.set_neq(Role::Reader)))
+                                }),
+                                html!("button", {
+                                    .class("w-1/2")
+                                    .class_signal(["bg-gray-50", "dark:bg-gray-600", "rounded", "shadow"], login.role.signal_cloned().map(|x| match x {
+                                        Role::Reader => false,
+                                        Role::Admin => true,
+                                    }))
+                                    .text("Admin")
+                                    .event(clone!(login => move |_: events::Click| login.role.set_neq(Role::Admin)))
+                                }),
+                            ])
+                        })
+                    ])
+                }),
+                html!("div", {
                     .class([
                         "flex",
                         "justify-end",
                         "m-2"
                     ])
                     .children(&mut [
-                        html!("button", {
-                            .class([
-                                "mx-2",
-                                "outline-none",
-                                "hover:underline",
-                                "active:underline",
-                                "text-black",
-                                "dark:text-white"
-                            ])
-                            .visible_signal(login.server_status.signal_cloned().map(|x| {
-                                if let Some(status) = x {
-                                    !status.activated
-                                } else { 
-                                    false
-                                }
-                            }))
-                            .text("Create Account")
-                            .event(clone!(login => move |_: events::Click| {
-                                Self::register(login.clone());
-                            }))
-                        }),
                         html!("button", {
                             .class([
                                 "bg-accent",
@@ -183,9 +149,9 @@ impl Login {
                                 "py-1",
                                 "rounded"
                             ])
-                            .text("Login")
+                            .text("Create")
                             .event(clone!(login => move |_: events::Click| {
-                                Self::login(login.clone());
+                                Self::register(login.clone());
                             }))
                         })
                     ])

@@ -2,7 +2,6 @@ use crate::user::User;
 use anyhow::{anyhow, Result};
 use sqlx::sqlite::SqlitePool;
 use sqlx::Row;
-use sqlx::sqlite::SqliteRow;
 use tokio_stream::StreamExt;
 
 #[derive(Debug, Clone)]
@@ -32,6 +31,22 @@ impl Db {
         .last_insert_rowid();
 
         Ok(row_id)
+    }
+
+    pub async fn get_users(&self) -> Result<Vec<User>> {
+        let mut stream = sqlx::query(r#"SELECT * FROM user"#).fetch(&self.pool);
+
+        let mut users = vec![];
+        while let Some(row) = stream.try_next().await? {
+            users.push(User {
+                id: row.get(0),
+                username: row.get(1),
+                password: row.get(2),
+                role: row.get::<u8, _>(3).into(),
+            })
+        }
+
+        Ok(users)
     }
 
     pub async fn get_users_count(&self) -> Result<i64> {
