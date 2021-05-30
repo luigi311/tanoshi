@@ -1,22 +1,20 @@
 use std::rc::Rc;
 
+use dominator::{Dom, clone, html, with_node};
 use dominator::{routing, text_signal};
-use dominator::{clone, html, Dom};
 use futures_signals::signal::Mutable;
+use web_sys::HtmlInputElement;
 use futures_signals::signal::SignalExt;
 use wasm_bindgen::UnwrapThrowExt;
 
-use crate::common::{Route, SettingCategory, events};
-use crate::query::{user_login, user_register};
+use crate::common::{events, Route, SettingCategory};
+use crate::query;
 use crate::utils::AsyncLoader;
-
-use super::Role;
-
 
 pub struct Login {
     username: Mutable<String>,
     password: Mutable<String>,
-    role: Mutable<Role>,
+    is_admin: Mutable<bool>,
     pub loader: AsyncLoader,
 }
 
@@ -25,7 +23,7 @@ impl Login {
         Rc::new(Self {
             username: Mutable::new("".to_string()),
             password: Mutable::new("".to_string()),
-            role: Mutable::new(Role::Reader),
+            is_admin: Mutable::new(false),
             loader: AsyncLoader::new(),
         })
     }
@@ -34,11 +32,8 @@ impl Login {
         login.loader.load(clone!(login => async move {
             let username = login.username.get_cloned();
             let password = login.password.get_cloned();
-            let role = match login.role.get_cloned() {
-                Role::Reader => user_register::Role::READER,
-                Role::Admin => user_register::Role::ADMIN,
-            };
-            if user_register(username, password, role).await.is_ok() {
+            let is_admin = login.is_admin.get();
+            if query::user_register(username, password, is_admin).await.is_ok() {
                 login.username.set("".to_string());
                 login.password.set("".to_string());
 
@@ -100,36 +95,24 @@ impl Login {
                     }))
                 }),
                 html!("div", {
+                    .class([
+                        "flex",
+                        "items-center",
+                        "p-2"
+                    ])
                     .children(&mut [
+                        html!("input" => HtmlInputElement, {
+                            .attribute("type", "checkbox")
+                            .with_node!(element => {
+                                .event(clone!(login => move |_: events::Change| {
+                                    login.is_admin.set_neq(element.checked());
+                                }))
+                            })
+                        }),
                         html!("div", {
-                            .class([
-                                "w-full",
-                                "bg-gray-200",
-                                "dark:bg-gray-700",
-                                "rounded",
-                                "p-1"
-                            ])
-                            .children(&mut [
-                                html!("button", {
-                                    .class("w-1/2")
-                                    .class_signal(["bg-gray-50", "dark:bg-gray-600", "rounded", "shadow"], login.role.signal_cloned().map(|x| match x {
-                                        Role::Reader => true,
-                                        Role::Admin => false,
-                                    }))
-                                    .text("Reader")
-                                    .event(clone!(login => move |_: events::Click| login.role.set_neq(Role::Reader)))
-                                }),
-                                html!("button", {
-                                    .class("w-1/2")
-                                    .class_signal(["bg-gray-50", "dark:bg-gray-600", "rounded", "shadow"], login.role.signal_cloned().map(|x| match x {
-                                        Role::Reader => false,
-                                        Role::Admin => true,
-                                    }))
-                                    .text("Admin")
-                                    .event(clone!(login => move |_: events::Click| login.role.set_neq(Role::Admin)))
-                                }),
-                            ])
-                        })
+                            .class("mx-2")
+                            .text("Admin")
+                        }),
                     ])
                 }),
                 html!("div", {

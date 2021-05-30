@@ -1,12 +1,7 @@
-use crate::common::Login;
-use crate::common::Profile;
-use crate::common::Role;
-use crate::common::Source;
-use crate::common::User;
-use crate::query;
-use crate::utils::AsyncLoader;
 use crate::{
-    common::{events, ReaderSettings, Route, SettingCategory},
+    query,
+    common::{events, ReaderSettings, Route, SettingCategory, Login, Profile, Source, User},
+    utils::AsyncLoader
 };
 use dominator::svg;
 use dominator::{clone, html, link, routing, Dom};
@@ -77,10 +72,7 @@ impl Settings {
                     settings.users.lock_mut().replace_cloned(result.iter().map(|u| User{
                         id: u.id,
                         username: u.username.clone(),
-                        role: match u.role {
-                            query::fetch_user_list::Role::ADMIN => Role::Admin,
-                            _ => Role::Reader,
-                        }
+                        is_admin: u.is_admin,
                     }).collect());
                 },
                 Err(err) => {
@@ -97,10 +89,7 @@ impl Settings {
                     settings.me.set(Some(User{
                         id: result.id,
                         username: result.username,
-                        role: match result.role {
-                            query::fetch_me::Role::ADMIN => Role::Admin,
-                            _ => Role::Reader,
-                        }
+                        is_admin: result.is_admin,
                     }))
                 },
                 Err(err) => {
@@ -312,7 +301,7 @@ impl Settings {
             ])
             .child_signal(settings.me.signal_cloned().map(|me| {
                 if let Some(me) = me {
-                    if me.role == Role::Admin {
+                    if me.is_admin {
                         Some(link!(Route::Settings(SettingCategory::Users).url(), {
                             .class([
                                 "p-2",
@@ -567,7 +556,7 @@ impl Settings {
             ])
             .visible_signal(settings.me.signal_cloned().map(|me| {
                 if let Some(me) = me {
-                    if me.role == Role::Admin {
+                    if me.is_admin {
                         true
                     } else {
                         false
@@ -588,7 +577,7 @@ impl Settings {
                             .text(&x.username)
                         }),
                         html!("span", {
-                            .text(format!("{:?}", x.role).as_str())
+                            .text(format!("{}", if x.is_admin { "Admin" } else { "" }).as_str())
                         })
                     ])
                 })
@@ -651,7 +640,7 @@ impl Settings {
                                     }),
                                     html!("span", {
                                         .class("text-sm")
-                                        .text(format!("{:?}", me.role).as_str())
+                                        .text(format!("{}", if me.is_admin { "Admin" } else { "" }).as_str())
                                     })
                                 ])
                             }))

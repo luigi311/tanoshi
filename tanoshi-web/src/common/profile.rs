@@ -11,8 +11,6 @@ use crate::common::{events, Route, SettingCategory};
 use crate::query;
 use crate::utils::AsyncLoader;
 
-use super::Role;
-
 pub struct Profile {
     old_password: Mutable<String>,
     new_password: Mutable<String>,

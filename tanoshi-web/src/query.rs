@@ -352,8 +352,7 @@ pub async fn fetch_sources(
 )]
 pub struct FetchAllSources;
 
-pub async fn fetch_all_sources(
-) -> Result<fetch_all_sources::ResponseData, Box<dyn Error>> {
+pub async fn fetch_all_sources() -> Result<fetch_all_sources::ResponseData, Box<dyn Error>> {
     let client = reqwest::Client::new();
     let var = fetch_all_sources::Variables {};
     let request_body = FetchAllSources::build_query(var);
@@ -401,9 +400,7 @@ pub async fn fetch_source(
 )]
 pub struct InstallSource;
 
-pub async fn install_source(
-    source_id: i64,
-) -> Result<i64, Box<dyn Error>> {
+pub async fn install_source(source_id: i64) -> Result<i64, Box<dyn Error>> {
     let client = reqwest::Client::new();
     let var = install_source::Variables {
         source_id: Some(source_id),
@@ -427,9 +424,7 @@ pub async fn install_source(
 )]
 pub struct UpdateSource;
 
-pub async fn update_source(
-    source_id: i64,
-) -> Result<i64, Box<dyn Error>> {
+pub async fn update_source(source_id: i64) -> Result<i64, Box<dyn Error>> {
     let client = reqwest::Client::new();
     let var = update_source::Variables {
         source_id: Some(source_id),
@@ -453,9 +448,7 @@ pub async fn update_source(
 )]
 pub struct UninstallSource;
 
-pub async fn uninstall_source(
-    source_id: i64,
-) -> Result<i64, Box<dyn Error>> {
+pub async fn uninstall_source(source_id: i64) -> Result<i64, Box<dyn Error>> {
     let client = reqwest::Client::new();
     let var = uninstall_source::Variables {
         source_id: Some(source_id),
@@ -550,7 +543,6 @@ pub async fn fetch_me() -> Result<fetch_me::FetchMeMe, Box<dyn Error>> {
     Ok(response_body.data.ok_or("no data")?.me)
 }
 
-
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "graphql/schema.graphql",
@@ -559,24 +551,24 @@ pub async fn fetch_me() -> Result<fetch_me::FetchMeMe, Box<dyn Error>> {
 )]
 pub struct UserRegister;
 
-pub async fn user_register(username: String, password: String, role: user_register::Role) -> Result<(), Box<dyn Error>> {
-    let token = local_storage()
-        .get("token")
-        .unwrap_throw()
-        .ok_or("no token")?;
+pub async fn user_register(
+    username: String,
+    password: String,
+    is_admin: bool,
+) -> Result<(), Box<dyn Error>> {
+    let token = local_storage().get("token").unwrap_throw();
     let client = reqwest::Client::new();
     let var = user_register::Variables {
         username: Some(username),
         password: Some(password),
-        role: Some(role),
+        is_admin: Some(is_admin),
     };
     let request_body = UserRegister::build_query(var);
-    let res = client
-        .post(&graphql_url())
-        .header("Authorization", format!("Bearer {}", token))
-        .json(&request_body)
-        .send()
-        .await?;
+    let mut req = client.post(&graphql_url());
+    if let Some(token) = token {
+        req = req.header("Authorization", format!("Bearer {}", token));
+    }
+    let res = req.json(&request_body).send().await?;
 
     let response_body: Response<user_register::ResponseData> = res.json().await?;
     let _ = response_body.data.ok_or("no data")?.register;
@@ -591,7 +583,10 @@ pub async fn user_register(username: String, password: String, role: user_regist
 )]
 pub struct ChangeUserPassword;
 
-pub async fn change_password(old_password: String, new_password: String) -> Result<(), Box<dyn Error>> {
+pub async fn change_password(
+    old_password: String,
+    new_password: String,
+) -> Result<(), Box<dyn Error>> {
     let token = local_storage()
         .get("token")
         .unwrap_throw()
@@ -612,7 +607,11 @@ pub async fn change_password(old_password: String, new_password: String) -> Resu
     let response_body: Response<change_user_password::ResponseData> = res.json().await?;
     match response_body.errors {
         Some(errors) => {
-            let e = errors.iter().map(|e| e.to_string()).collect::<Vec<String>>().join(";");
+            let e = errors
+                .iter()
+                .map(|e| e.to_string())
+                .collect::<Vec<String>>()
+                .join(";");
             return Err(e.into());
         }
         None => {}

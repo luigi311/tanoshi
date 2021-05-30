@@ -56,7 +56,7 @@ type MutationRoot {
     password: String!
 
     # role
-    role: Role!
+    isAdmin: Boolean! = false
   ): Int!
   changePassword(
     # old password
@@ -208,11 +208,6 @@ type RecentUpdateEdge {
   cursor: String!
 }
 
-enum Role {
-  READER
-  ADMIN
-}
-
 # A type represent sort parameter for query manga from source, normalized across sources
 enum SortByParam {
   LAST_UPDATED
@@ -244,5 +239,5 @@ type Status {
 type User {
   id: Int!
   username: String!
-  role: Role!
+  isAdmin: Boolean!
 }

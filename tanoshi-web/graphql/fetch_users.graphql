@@ -2,6 +2,6 @@ query FetchUserList {
   users {
     id
     username
-    role
+    isAdmin
   }
 }

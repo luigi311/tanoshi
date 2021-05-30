@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
-use dominator::{routing, text_signal};
 use dominator::{clone, html, Dom};
+use dominator::{routing, text_signal};
 use futures_signals::signal::Mutable;
 use futures_signals::signal::SignalExt;
 use wasm_bindgen::UnwrapThrowExt;
@@ -49,10 +49,15 @@ impl Login {
         login.loader.load(clone!(login => async move {
             let username = login.username.get_cloned();
             let password = login.password.get_cloned();
-            if user_register(username, password, user_register::Role::ADMIN).await.is_ok() {
-                login.username.set("".to_string());
-                login.password.set("".to_string());
-                Self::fetch_server_status(login.clone());
+            match user_register(username, password, true).await {
+                Ok(_) => {
+                    login.username.set("".to_string());
+                    login.password.set("".to_string());
+                    Self::fetch_server_status(login.clone());
+                }
+                Err(e) => {
+                    error!("error: {:?}", e);
+                }
             }
         }));
     }
@@ -91,8 +96,7 @@ impl Login {
                 }),
                 html!("div", {
                     .class([
-                        "text-black",
-                        "dark:text-white",
+                        "text-white",
                         "bg-accent",
                         "rounded",
                         "m-2",
@@ -102,7 +106,7 @@ impl Login {
                     .visible_signal(login.server_status.signal_cloned().map(|x| {
                         if let Some(status) = x {
                             !status.activated
-                        } else { 
+                        } else {
                             false
                         }
                     }))
@@ -163,7 +167,7 @@ impl Login {
                             .visible_signal(login.server_status.signal_cloned().map(|x| {
                                 if let Some(status) = x {
                                     !status.activated
-                                } else { 
+                                } else {
                                     false
                                 }
                             }))

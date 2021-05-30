@@ -8,15 +8,9 @@ pub struct Source {
     pub has_update: bool,
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub enum Role {
-    Reader,
-    Admin,
-}
-
 #[derive(Debug, Clone)]
 pub struct User {
     pub id: i64,
     pub username: String,
-    pub role: Role,
+    pub is_admin: bool,
 }
