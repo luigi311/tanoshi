@@ -401,6 +401,10 @@ pub async fn fetch_source(
 pub struct InstallSource;
 
 pub async fn install_source(source_id: i64) -> Result<i64, Box<dyn Error>> {
+    let token = local_storage()
+        .get("token")
+        .unwrap_throw()
+        .ok_or("no token")?;
     let client = reqwest::Client::new();
     let var = install_source::Variables {
         source_id: Some(source_id),
@@ -408,6 +412,7 @@ pub async fn install_source(source_id: i64) -> Result<i64, Box<dyn Error>> {
     let request_body = InstallSource::build_query(var);
     let res = client
         .post(&graphql_url())
+        .header("Authorization", format!("Bearer {}", token))
         .json(&request_body)
         .send()
         .await?;
@@ -425,6 +430,10 @@ pub async fn install_source(source_id: i64) -> Result<i64, Box<dyn Error>> {
 pub struct UpdateSource;
 
 pub async fn update_source(source_id: i64) -> Result<i64, Box<dyn Error>> {
+    let token = local_storage()
+        .get("token")
+        .unwrap_throw()
+        .ok_or("no token")?;
     let client = reqwest::Client::new();
     let var = update_source::Variables {
         source_id: Some(source_id),
@@ -432,6 +441,7 @@ pub async fn update_source(source_id: i64) -> Result<i64, Box<dyn Error>> {
     let request_body = UpdateSource::build_query(var);
     let res = client
         .post(&graphql_url())
+        .header("Authorization", format!("Bearer {}", token))
         .json(&request_body)
         .send()
         .await?;
