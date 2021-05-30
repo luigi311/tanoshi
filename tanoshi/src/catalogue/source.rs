@@ -129,7 +129,7 @@ pub struct SourceRoot;
 impl SourceRoot {
     async fn installed_sources(&self, ctx: &Context<'_>) -> Result<Vec<Source>> {
         let url = format!(
-            "https://raw.githubusercontent.com/faldez/tanoshi-extension-dev/repo-{}/index.json",
+            "https://raw.githubusercontent.com/faldez/tanoshi-extensions/repo-{}/index.json",
             std::env::consts::OS
         );
         let source_indexes = reqwest::get(url).await?.json::<Vec<SourceIndex>>().await?;
@@ -151,7 +151,7 @@ impl SourceRoot {
 
     async fn available_sources(&self, ctx: &Context<'_>) -> Result<Vec<Source>> {
         let url = format!(
-            "https://raw.githubusercontent.com/faldez/tanoshi-extension-dev/repo-{}/index.json",
+            "https://raw.githubusercontent.com/faldez/tanoshi-extensions/repo-{}/index.json",
             std::env::consts::OS
         );
         let source_indexes = reqwest::get(url).await?.json::<Vec<SourceIndex>>().await?;
@@ -195,7 +195,7 @@ impl SourceMutationRoot {
         }
 
         let url = format!(
-            "https://raw.githubusercontent.com/faldez/tanoshi-extension-dev/repo-{}/index.json",
+            "https://raw.githubusercontent.com/faldez/tanoshi-extensions/repo-{}/index.json",
             std::env::consts::OS
         );
 
@@ -207,7 +207,7 @@ impl SourceMutationRoot {
             .clone();
 
         let url = format!(
-            "https://raw.githubusercontent.com/faldez/tanoshi-extension-dev/repo-{}/{}",
+            "https://raw.githubusercontent.com/faldez/tanoshi-extensions/repo-{}/{}",
             std::env::consts::OS,
             source.path,
         );
