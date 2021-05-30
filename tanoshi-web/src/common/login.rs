@@ -6,9 +6,8 @@ use futures_signals::signal::Mutable;
 use futures_signals::signal::SignalExt;
 use wasm_bindgen::UnwrapThrowExt;
 
-use crate::common::{events, Route};
+use crate::common::{Route, SettingCategory, events};
 use crate::query::{user_login, user_register};
-use crate::utils::local_storage;
 use crate::utils::AsyncLoader;
 
 use super::Role;
@@ -42,6 +41,8 @@ impl Login {
             if user_register(username, password, role).await.is_ok() {
                 login.username.set("".to_string());
                 login.password.set("".to_string());
+
+                routing::go_to_url(Route::Settings(SettingCategory::Users).url().as_str());
             }
         }));
     }

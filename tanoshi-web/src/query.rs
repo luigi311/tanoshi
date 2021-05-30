@@ -579,7 +579,46 @@ pub async fn user_register(username: String, password: String, role: user_regist
         .await?;
 
     let response_body: Response<user_register::ResponseData> = res.json().await?;
-    let user_id = response_body.data.ok_or("no data")?.register;
+    let _ = response_body.data.ok_or("no data")?.register;
+    Ok(())
+}
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/schema.graphql",
+    query_path = "graphql/change_password.graphql",
+    response_derives = "Debug"
+)]
+pub struct ChangeUserPassword;
+
+pub async fn change_password(old_password: String, new_password: String) -> Result<(), Box<dyn Error>> {
+    let token = local_storage()
+        .get("token")
+        .unwrap_throw()
+        .ok_or("no token")?;
+    let client = reqwest::Client::new();
+    let var = change_user_password::Variables {
+        old_password: Some(old_password),
+        new_password: Some(new_password),
+    };
+    let request_body = ChangeUserPassword::build_query(var);
+    let res = client
+        .post(&graphql_url())
+        .header("Authorization", format!("Bearer {}", token))
+        .json(&request_body)
+        .send()
+        .await?;
+
+    let response_body: Response<change_user_password::ResponseData> = res.json().await?;
+    match response_body.errors {
+        Some(errors) => {
+            let e = errors.iter().map(|e| e.to_string()).collect::<Vec<String>>().join(";");
+            return Err(e.into());
+        }
+        None => {}
+    }
+
+    let _ = response_body.data.ok_or("no data")?.change_password;
     Ok(())
 }
 

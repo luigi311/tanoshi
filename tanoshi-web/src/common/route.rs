@@ -3,14 +3,13 @@ use web_sys::Url;
 use futures_signals::signal::{Signal, SignalExt};
 use dominator::routing;
 
-use crate::utils::local_storage;
-
 #[derive(Debug, Clone)]
 pub enum SettingCategory {
     None,
     Reader,
     Source(i64),
     Users,
+    CreateUser,
     User,
 }
 
@@ -83,6 +82,12 @@ impl Route {
                         _ => Route::NotFound
                     }
                 },
+                ["settings", "users", cat] => {
+                    match *cat {
+                        "create" => Route::Settings(SettingCategory::CreateUser),
+                        _ => Route::NotFound
+                    }
+                },
                 ["settings", "sources", id] => {
                     if let Ok(id) = id.parse() {
                         Route::Settings(SettingCategory::Source(id))
@@ -116,6 +121,7 @@ impl Route {
             Route::Settings(SettingCategory::Reader) => "/settings/reader".to_string(),
             Route::Settings(SettingCategory::Source(source_id)) => if *source_id > 0 {format!("/settings/sources/{}", source_id)} else {"/settings/sources".to_string()},
             Route::Settings(SettingCategory::Users) => "/settings/users".to_string(),
+            Route::Settings(SettingCategory::CreateUser) => "/settings/users/create".to_string(),
             Route::Settings(SettingCategory::User) => "/settings/user".to_string(),
             Route::NotFound => "/notfound".to_string()
         }

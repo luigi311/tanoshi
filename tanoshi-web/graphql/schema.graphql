@@ -58,6 +58,13 @@ type MutationRoot {
     # role
     role: Role!
   ): Int!
+  changePassword(
+    # old password
+    oldPassword: String!
+
+    # new password
+    newPassword: String!
+  ): Int!
   addToLibrary(
     # manga id
     mangaId: Int!

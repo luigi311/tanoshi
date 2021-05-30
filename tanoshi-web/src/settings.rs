@@ -1,4 +1,5 @@
 use crate::common::Login;
+use crate::common::Profile;
 use crate::common::Role;
 use crate::common::Source;
 use crate::common::User;
@@ -7,6 +8,7 @@ use crate::utils::AsyncLoader;
 use crate::{
     common::{events, ReaderSettings, Route, SettingCategory},
 };
+use dominator::svg;
 use dominator::{clone, html, link, routing, Dom};
 use futures_signals::{
     signal::{Mutable, SignalExt},
@@ -22,8 +24,6 @@ pub struct Settings {
     available_sources: MutableVec<Source>,
     me: Mutable<Option<User>>,
     users: MutableVec<User>,
-    is_create_user: Mutable<bool>,
-    login: Rc<Login>,
     reader_settings: Rc<ReaderSettings>,
     loader: AsyncLoader,
 }
@@ -36,8 +36,6 @@ impl Settings {
             available_sources: MutableVec::new(),
             me: Mutable::new(None),
             users: MutableVec::new(),
-            is_create_user: Mutable::new(false),
-            login: Login::new(),
             reader_settings: ReaderSettings::new(true, false),
             loader: AsyncLoader::new(),
         });
@@ -187,7 +185,7 @@ impl Settings {
     }
 
     fn uninstall_source(settings: Rc<Self>, id: i64) {
-        settings.loader.load(clone!(settings => async move {
+        settings.loader.load(async move {
             match query::uninstall_source(id).await {
                 Ok(_) => {
                     routing::go_to_url(&Route::Settings(SettingCategory::Source(0)).url());
@@ -197,7 +195,7 @@ impl Settings {
                     return;
                 }
             }
-        }));
+        });
     }
 
     pub fn render_topbar(settings: Rc<Self>) -> Dom {
@@ -246,6 +244,7 @@ impl Settings {
                             SettingCategory::Reader => "Reader",
                             SettingCategory::Source(_) => "Sources",
                             SettingCategory::Users => "Users",
+                            SettingCategory::CreateUser => "Create User",
                             SettingCategory::User => "User",
                         }
                     ))
@@ -257,11 +256,8 @@ impl Settings {
                                 Some(ReaderSettings::render_apply_button(settings.reader_settings.clone()))
                             }
                             SettingCategory::Users => {
-                                Some(html!("button", {
+                                Some(link!(Route::Settings(SettingCategory::CreateUser).url(), {
                                     .text("Create User")
-                                    .event(clone!(settings => move |_: events::Click| {
-                                        settings.is_create_user.set_neq(true);
-                                    }))
                                 }))
                             }
                             _ => {
@@ -345,8 +341,6 @@ impl Settings {
                     .class([
                         "text-gray-900",
                         "dark:text-gray-100",
-                        "hidden",
-                        "xl:block"
                     ])
                     .text("Installed")
                 }),
@@ -420,8 +414,6 @@ impl Settings {
                     .class([
                         "text-gray-900",
                         "dark:text-gray-100",
-                        "hidden",
-                        "xl:block"
                     ])
                     .text("Available")
                 }),
@@ -573,11 +565,6 @@ impl Settings {
                 "dark:divide-gray-800",
                 "px-2"
             ])
-            .future(settings.login.loader.is_loading().for_each(clone!(settings => move |x| {
-                settings.is_create_user.set_neq(x);
-
-                async {}
-            })))
             .visible_signal(settings.me.signal_cloned().map(|me| {
                 if let Some(me) = me {
                     if me.role == Role::Admin {
@@ -589,7 +576,7 @@ impl Settings {
                     false
                 }
             }))
-            .children_signal_vec(settings.users.signal_vec_cloned().map(clone!(settings => move |x|
+            .children_signal_vec(settings.users.signal_vec_cloned().map(|x|
                 html!("div", {
                     .class([
                         "p-2",
@@ -605,25 +592,91 @@ impl Settings {
                         })
                     ])
                 })
-            )))
-            .child_signal(settings.is_create_user.signal().map(clone!(settings => move |x| {
-                if x {
-                    Some(html!("div", {
-                        .class([
-                            "fixed",
-                            "inset-0",
-                            "z-40",
-                            "flex",
-                            "items-center",
-                        ])
-                        .children(&mut [
-                            Login::render(settings.login.clone())
-                        ])
+            ))
+        })
+    }
+
+    pub fn render_user(settings: Rc<Self>) -> Dom {
+        link!(Route::Settings(SettingCategory::User).url(), {
+            .class([
+                "rounded",
+                "bg-white",
+                "dark:bg-gray-900",
+                "shadow",
+                "dark:shadow-none",
+                "p-2",
+                "flex",
+                "mb-2",
+                "items-center",
+                "justify-between"
+            ])
+            .children(&mut [
+                svg!("svg", {
+                    .attribute("xmlns", "http://www.w3.org/2000/svg")
+                    .attribute("viewBox", "0 0 24 24")
+                    .attribute("stroke", "currentColor")
+                    .attribute("fill", "none")
+                    .class([
+                        "w-12",
+                        "h-12", 
+                        "rounded-full",
+                        "bg-gray-100",
+                        "p-2",
+                        "mr-2"
+                    ])
+                    .children(&mut [
+                        svg!("path", {
+                            .attribute("stroke-linecap", "round")
+                            .attribute("stroke-linejoin", "round")
+                            .attribute("stroke-width", "1")
+                            .class("heroicon-ui")
+                            .attribute("d", "M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z")
+                        })
+                    ])
+                }),
+                html!("div", {
+                    .class([
+                        "w-full"
+                    ])
+                    .child_signal(settings.me.signal_cloned().map(|me| {
+                        if let Some(me) = me {
+                            Some(html!("div", {
+                                .class([
+                                    "flex",
+                                    "flex-col"
+                                ])
+                                .children(&mut [
+                                    html!("span",{
+                                        .text(&me.username)
+                                    }),
+                                    html!("span", {
+                                        .class("text-sm")
+                                        .text(format!("{:?}", me.role).as_str())
+                                    })
+                                ])
+                            }))
+                        } else {
+                            None
+                        }
                     }))
-                } else {
-                    None
-                }
-            })))
+                }),
+                svg!("svg", {
+                    .attribute("xmlns", "http://www.w3.org/2000/svg")
+                    .attribute("fill", "none")
+                    .attribute("viewBox", "0 0 24 24")
+                    .attribute("stroke", "currentColor")
+                    .class("w-6")
+                    .class("h-6")
+                    .children(&mut [
+                        svg!("path", {
+                            .attribute("stroke-linecap", "round")
+                            .attribute("stroke-linejoin", "round")
+                            .attribute("stroke-width", "2")
+                            .attribute("d", "M9 5l7 7-7 7")
+                        })
+                    ])
+                })
+            ])
         })
     }
 
@@ -652,11 +705,17 @@ impl Settings {
                     ])
                     .child_signal(settings.page.signal_cloned().map(clone!(settings => move |x|
                         match x {
-                            SettingCategory::None => Some(Self::render_categories(settings.clone())),
+                            SettingCategory::None => Some(html!("div", {
+                                .children(&mut [
+                                    Self::render_user(settings.clone()),
+                                    Self::render_categories(settings.clone())
+                                ])
+                            })),
                             SettingCategory::Reader => Some(ReaderSettings::render(settings.reader_settings.clone())),
                             SettingCategory::Source(source_id) => Some(Self::render_source_settings(settings.clone(), source_id)),
                             SettingCategory::Users => Some(Self::render_users_management(settings.clone())),
-                            SettingCategory::User => None,
+                            SettingCategory::User => Some(Profile::render(Profile::new())),
+                            SettingCategory::CreateUser => Some(Login::render(Login::new())),
                         }
                     )))
                 })

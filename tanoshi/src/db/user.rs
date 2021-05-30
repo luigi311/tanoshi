@@ -33,6 +33,21 @@ impl Db {
         Ok(row_id)
     }
 
+    pub async fn update_password(&self, id: i64, password: String) -> Result<u64> {
+        let row_id = sqlx::query(
+            r#"UPDATE user
+                SET password = ?
+                WHERE id = ?"#,
+        )
+        .bind(&password)
+        .bind(id)
+        .execute(&self.pool)
+        .await?
+        .rows_affected();
+
+        Ok(row_id)
+    }
+
     pub async fn get_users(&self) -> Result<Vec<User>> {
         let mut stream = sqlx::query(r#"SELECT * FROM user"#).fetch(&self.pool);
 

@@ -20,3 +20,6 @@ pub use login::Login;
 
 mod model;
 pub use model::*;
+
+mod profile;
+pub use profile::Profile;
