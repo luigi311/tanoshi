@@ -2472,7 +2472,7 @@ dependencies = [
 
 [[package]]
 name = "tanoshi"
-version = "0.22.0"
+version = "0.22.1"
 dependencies = [
  "anyhow",
  "async-graphql",
@@ -2519,7 +2519,7 @@ dependencies = [
 
 [[package]]
 name = "tanoshi-web"
-version = "0.22.0"
+version = "0.22.1"
 dependencies = [
  "chrono",
  "console_error_panic_hook",

@@ -32,7 +32,7 @@ use warp::http::{Response as HttpResponse, StatusCode};
 use warp::{Filter, Rejection};
 
 #[derive(Clap)]
-#[clap(version = "0.22.0")]
+#[clap(version = "0.22.1")]
 struct Opts {
     /// Path to config file
     #[clap(long)]
