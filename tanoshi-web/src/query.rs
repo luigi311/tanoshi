@@ -352,8 +352,7 @@ pub async fn fetch_sources(
 )]
 pub struct FetchAllSources;
 
-pub async fn fetch_all_sources(
-) -> Result<fetch_all_sources::ResponseData, Box<dyn Error>> {
+pub async fn fetch_all_sources() -> Result<fetch_all_sources::ResponseData, Box<dyn Error>> {
     let client = reqwest::Client::new();
     let var = fetch_all_sources::Variables {};
     let request_body = FetchAllSources::build_query(var);
@@ -401,9 +400,7 @@ pub async fn fetch_source(
 )]
 pub struct InstallSource;
 
-pub async fn install_source(
-    source_id: i64,
-) -> Result<i64, Box<dyn Error>> {
+pub async fn install_source(source_id: i64) -> Result<i64, Box<dyn Error>> {
     let client = reqwest::Client::new();
     let var = install_source::Variables {
         source_id: Some(source_id),
@@ -427,9 +424,7 @@ pub async fn install_source(
 )]
 pub struct UpdateSource;
 
-pub async fn update_source(
-    source_id: i64,
-) -> Result<i64, Box<dyn Error>> {
+pub async fn update_source(source_id: i64) -> Result<i64, Box<dyn Error>> {
     let client = reqwest::Client::new();
     let var = update_source::Variables {
         source_id: Some(source_id),
@@ -453,9 +448,7 @@ pub async fn update_source(
 )]
 pub struct UninstallSource;
 
-pub async fn uninstall_source(
-    source_id: i64,
-) -> Result<i64, Box<dyn Error>> {
+pub async fn uninstall_source(source_id: i64) -> Result<i64, Box<dyn Error>> {
     let client = reqwest::Client::new();
     let var = uninstall_source::Variables {
         source_id: Some(source_id),
@@ -499,26 +492,132 @@ pub async fn user_login(username: String, password: String) -> Result<String, Bo
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "graphql/schema.graphql",
+    query_path = "graphql/fetch_users.graphql",
+    response_derives = "Debug"
+)]
+pub struct FetchUserList;
+
+pub async fn fetch_users() -> Result<Vec<fetch_user_list::FetchUserListUsers>, Box<dyn Error>> {
+    let token = local_storage()
+        .get("token")
+        .unwrap_throw()
+        .ok_or("no token")?;
+    let client = reqwest::Client::new();
+    let var = fetch_user_list::Variables {};
+    let request_body = FetchUserList::build_query(var);
+    let res = client
+        .post(&graphql_url())
+        .header("Authorization", format!("Bearer {}", token))
+        .json(&request_body)
+        .send()
+        .await?;
+
+    let response_body: Response<fetch_user_list::ResponseData> = res.json().await?;
+    Ok(response_body.data.ok_or("no data")?.users)
+}
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/schema.graphql",
+    query_path = "graphql/fetch_me.graphql",
+    response_derives = "Debug"
+)]
+pub struct FetchMe;
+
+pub async fn fetch_me() -> Result<fetch_me::FetchMeMe, Box<dyn Error>> {
+    let token = local_storage()
+        .get("token")
+        .unwrap_throw()
+        .ok_or("no token")?;
+    let client = reqwest::Client::new();
+    let var = fetch_me::Variables {};
+    let request_body = FetchMe::build_query(var);
+    let res = client
+        .post(&graphql_url())
+        .header("Authorization", format!("Bearer {}", token))
+        .json(&request_body)
+        .send()
+        .await?;
+
+    let response_body: Response<fetch_me::ResponseData> = res.json().await?;
+    Ok(response_body.data.ok_or("no data")?.me)
+}
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/schema.graphql",
     query_path = "graphql/register.graphql",
     response_derives = "Debug"
 )]
 pub struct UserRegister;
 
-pub async fn user_register(username: String, password: String) -> Result<(), Box<dyn Error>> {
+pub async fn user_register(
+    username: String,
+    password: String,
+    is_admin: bool,
+) -> Result<(), Box<dyn Error>> {
+    let token = local_storage().get("token").unwrap_throw();
     let client = reqwest::Client::new();
     let var = user_register::Variables {
         username: Some(username),
         password: Some(password),
+        is_admin: Some(is_admin),
     };
     let request_body = UserRegister::build_query(var);
+    let mut req = client.post(&graphql_url());
+    if let Some(token) = token {
+        req = req.header("Authorization", format!("Bearer {}", token));
+    }
+    let res = req.json(&request_body).send().await?;
+
+    let response_body: Response<user_register::ResponseData> = res.json().await?;
+    let _ = response_body.data.ok_or("no data")?.register;
+    Ok(())
+}
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/schema.graphql",
+    query_path = "graphql/change_password.graphql",
+    response_derives = "Debug"
+)]
+pub struct ChangeUserPassword;
+
+pub async fn change_password(
+    old_password: String,
+    new_password: String,
+) -> Result<(), Box<dyn Error>> {
+    let token = local_storage()
+        .get("token")
+        .unwrap_throw()
+        .ok_or("no token")?;
+    let client = reqwest::Client::new();
+    let var = change_user_password::Variables {
+        old_password: Some(old_password),
+        new_password: Some(new_password),
+    };
+    let request_body = ChangeUserPassword::build_query(var);
     let res = client
         .post(&graphql_url())
+        .header("Authorization", format!("Bearer {}", token))
         .json(&request_body)
         .send()
         .await?;
 
-    let response_body: Response<user_register::ResponseData> = res.json().await?;
-    let user_id = response_body.data.ok_or("no data")?.register;
+    let response_body: Response<change_user_password::ResponseData> = res.json().await?;
+    match response_body.errors {
+        Some(errors) => {
+            let e = errors
+                .iter()
+                .map(|e| e.to_string())
+                .collect::<Vec<String>>()
+                .join(";");
+            return Err(e.into());
+        }
+        None => {}
+    }
+
+    let _ = response_body.data.ok_or("no data")?.change_password;
     Ok(())
 }
 

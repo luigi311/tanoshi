@@ -1,0 +1,7 @@
+query FetchUserList {
+  users {
+    id
+    username
+    isAdmin
+  }
+}

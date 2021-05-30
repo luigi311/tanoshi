@@ -2,7 +2,6 @@ use crate::user::User;
 use anyhow::{anyhow, Result};
 use sqlx::sqlite::SqlitePool;
 use sqlx::Row;
-use sqlx::sqlite::SqliteRow;
 use tokio_stream::StreamExt;
 
 #[derive(Debug, Clone)]
@@ -16,22 +15,67 @@ impl Db {
     }
 
     pub async fn insert_user(&self, user: User) -> Result<i64> {
-        let role: u8 = user.role.into();
         let row_id = sqlx::query(
             r#"INSERT INTO user(
                 username,
                 password,
-                role
+                is_admin
             ) VALUES (?, ?, ?)"#,
         )
         .bind(&user.username)
         .bind(&user.password)
-        .bind(role)
+        .bind(user.is_admin)
         .execute(&self.pool)
         .await?
         .last_insert_rowid();
 
         Ok(row_id)
+    }
+
+    pub async fn update_password(&self, id: i64, password: String) -> Result<u64> {
+        let row_id = sqlx::query(
+            r#"UPDATE user
+                SET password = ?
+                WHERE id = ?"#,
+        )
+        .bind(&password)
+        .bind(id)
+        .execute(&self.pool)
+        .await?
+        .rows_affected();
+
+        Ok(row_id)
+    }
+
+    pub async fn update_user_is_admin(&self, id: i64, is_admin: bool) -> Result<u64> {
+        let row_id = sqlx::query(
+            r#"UPDATE user
+                SET is_admin = ?
+                WHERE id = ?"#,
+        )
+        .bind(&is_admin)
+        .bind(id)
+        .execute(&self.pool)
+        .await?
+        .rows_affected();
+
+        Ok(row_id)
+    }
+
+    pub async fn get_users(&self) -> Result<Vec<User>> {
+        let mut stream = sqlx::query(r#"SELECT * FROM user"#).fetch(&self.pool);
+
+        let mut users = vec![];
+        while let Some(row) = stream.try_next().await? {
+            users.push(User {
+                id: row.get(0),
+                username: row.get(1),
+                password: row.get(2),
+                is_admin: row.get(3),
+            })
+        }
+
+        Ok(users)
     }
 
     pub async fn get_users_count(&self) -> Result<i64> {
@@ -59,7 +103,7 @@ impl Db {
                 id: row.get(0),
                 username: row.get(1),
                 password: row.get(2),
-                role: row.get::<u8, _>(3).into(),
+                is_admin: row.get(3),
             })
         } else {
             Err(anyhow!("Not found"))
@@ -78,7 +122,7 @@ impl Db {
                 id: row.get(0),
                 username: row.get(1),
                 password: row.get(2),
-                role: row.get::<u8, _>(3).into(),
+                is_admin: row.get(3),
             })
         } else {
             Err(anyhow!("Not found"))

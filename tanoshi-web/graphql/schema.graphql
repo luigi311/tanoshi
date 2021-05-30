@@ -10,7 +10,8 @@ type Chapter {
   id: Int!
   title: String!
   path: String!
-  rank: Int!
+  number: Float!
+  scanlator: String!
   prev: Int
   next: Int
   readAt: NaiveDateTime
@@ -34,7 +35,6 @@ type Manga {
   description: String
   path: String!
   coverUrl: String!
-  lastReadChapter: Int
   isFavorite: Boolean!
   dateAdded: NaiveDateTime!
   chapters: [Chapter!]!
@@ -54,6 +54,16 @@ type MutationRoot {
 
     # password
     password: String!
+
+    # role
+    isAdmin: Boolean! = false
+  ): Int!
+  changePassword(
+    # old password
+    oldPassword: String!
+
+    # new password
+    newPassword: String!
   ): Int!
   addToLibrary(
     # manga id
@@ -98,6 +108,8 @@ type QueryRoot {
     # password
     password: String!
   ): String!
+  users: [User!]!
+  me: User!
   library: [Manga!]!
   recentUpdates(
     after: String
@@ -222,4 +234,10 @@ type Source {
 type Status {
   activated: Boolean!
   version: String!
+}
+
+type User {
+  id: Int!
+  username: String!
+  isAdmin: Boolean!
 }
