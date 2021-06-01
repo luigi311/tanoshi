@@ -2,6 +2,8 @@ query BrowseFavorites {
   library {
     id
     title
+    sourceId
+    path
     coverUrl
   }
 }

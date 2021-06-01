@@ -59,7 +59,10 @@ impl App {
                         Bottombar::render()
                     ],
                     Route::Manga(manga_id) => vec![
-                        Manga::render(Manga::new(manga_id)),
+                        Manga::render(Manga::new(manga_id, 0, "".to_string())),
+                    ],
+                    Route::MangaBySourcePath(source_id, path) => vec![
+                        Manga::render(Manga::new(0, source_id, path)),
                     ],
                     Route::Chapter(chapter_id) => vec![
                         Reader::render(Reader::new(chapter_id)),

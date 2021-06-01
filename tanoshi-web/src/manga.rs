@@ -1,4 +1,4 @@
-use crate::query::{add_to_library, delete_from_library, fetch_manga_detail};
+use crate::query;
 use crate::utils::{proxied_image_url, AsyncLoader};
 use crate::{
     app::App,
@@ -24,7 +24,9 @@ struct Chapter {
 }
 
 pub struct Manga {
-    pub id: i64,
+    pub id: Mutable<i64>,
+    pub source_id: Mutable<i64>,
+    pub path: Mutable<String>,
     title: Mutable<Option<String>>,
     author: MutableVec<String>,
     genre: MutableVec<String>,
@@ -37,9 +39,11 @@ pub struct Manga {
 }
 
 impl Manga {
-    pub fn new(id: i64) -> Rc<Self> {
+    pub fn new(id: i64, source_id: i64, path: String) -> Rc<Self> {
         Rc::new(Self {
-            id,
+            id: Mutable::new(id),
+            source_id: Mutable::new(source_id),
+            path: Mutable::new(path),
             title: Mutable::new(None),
             author: MutableVec::new(),
             genre: MutableVec::new(),
@@ -54,14 +58,40 @@ impl Manga {
 
     pub fn fetch_detail(manga: Rc<Self>) {
         manga.loader.load(clone!(manga => async move {
-            match fetch_manga_detail(manga.id).await {
+            match query::fetch_manga_detail(manga.id.get()).await {
                 Ok(result) => {
-                    manga.title.lock_mut().replace(result.title);
+                    manga.title.set_neq(Some(result.title));
                     manga.author.lock_mut().replace_cloned(result.author);
                     manga.genre.lock_mut().replace_cloned(result.genre);
-                    manga.cover_url.lock_mut().replace(result.cover_url);
-                    manga.description.lock_mut().replace(result.description.unwrap_throw());
-                    manga.status.lock_mut().replace(result.status.unwrap_throw());
+                    manga.cover_url.set_neq(Some(result.cover_url));
+                    manga.description.set_neq(result.description);
+                    manga.status.set_neq(result.status);
+                    manga.is_favorite.set_neq(result.is_favorite);
+                    manga.chapters.lock_mut().replace_cloned(result.chapters.iter().map(|chapter| Chapter{
+                        id: chapter.id,
+                        title: chapter.title.clone(),
+                        uploaded: NaiveDateTime::parse_from_str(&chapter.uploaded, "%Y-%m-%d %H:%M:%S").unwrap_throw(),
+                        read_at: Mutable::new(chapter.read_at.as_ref().map(|time| NaiveDateTime::parse_from_str(&time, "%Y-%m-%d %H:%M:%S").unwrap_throw())),
+                    }).collect());
+                },
+                Err(err) => {
+                    log::error!("{}", err);
+                }
+            }
+        }));
+    }
+
+    pub fn fetch_detail_by_source_path(manga: Rc<Self>) {
+        manga.loader.load(clone!(manga => async move {
+            match query::fetch_manga_by_source_path(manga.source_id.get(), manga.path.get_cloned()).await {
+                Ok(result) => {
+                    manga.id.set_neq(result.id);
+                    manga.title.set_neq(Some(result.title));
+                    manga.author.lock_mut().replace_cloned(result.author);
+                    manga.genre.lock_mut().replace_cloned(result.genre);
+                    manga.cover_url.set_neq(Some(result.cover_url));
+                    manga.description.set_neq(result.description);
+                    manga.status.set_neq(result.status);
                     manga.is_favorite.set_neq(result.is_favorite);
                     manga.chapters.lock_mut().replace_cloned(result.chapters.iter().map(|chapter| Chapter{
                         id: chapter.id,
@@ -78,9 +108,12 @@ impl Manga {
     }
 
     pub fn add_to_or_remove_from_library(manga: Rc<Self>) {
+        if manga.id.get() == 0 {
+            return;
+        }
         manga.loader.load(clone!(manga => async move {
             if manga.is_favorite.get() {
-                match delete_from_library(manga.id).await {
+                match query::delete_from_library(manga.id.get()).await {
                     Ok(_) => {
                         manga.is_favorite.set_neq(false);
                     },
@@ -89,7 +122,7 @@ impl Manga {
                     }
                 }
             } else {
-                match add_to_library(manga.id).await {
+                match query::add_to_library(manga.id.get()).await {
                     Ok(_) => {
                         manga.is_favorite.set_neq(true);
                     },
@@ -400,7 +433,12 @@ impl Manga {
     }
 
     pub fn render(manga_page: Rc<Self>) -> Dom {
-        Self::fetch_detail(manga_page.clone());
+        if manga_page.id.get() != 0 {
+            Self::fetch_detail(manga_page.clone());
+        } else if manga_page.source_id.get() != 0 && manga_page.path.get_cloned() != "" {
+            Self::fetch_detail_by_source_path(manga_page.clone());
+        }
+
         html!("div", {
             .class(["main", "w-full", "2xl:w-1/2", "mx-auto", "px-2", "flex", "flex-col"])
             .children(&mut [

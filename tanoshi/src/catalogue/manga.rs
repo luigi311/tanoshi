@@ -21,12 +21,9 @@ pub struct Manga {
     pub date_added: chrono::NaiveDateTime,
 }
 
-impl Manga {
-    pub fn incomplete(&self) -> bool {
-        self.status.is_none()
-            || self.description.is_none()
-            || self.author.is_empty()
-            || self.genre.is_empty()
+impl From<&tanoshi_lib::model::Manga> for Manga {
+    fn from(m: &tanoshi_lib::model::Manga) -> Self {
+        m.clone().into()
     }
 }
 
@@ -35,13 +32,13 @@ impl From<tanoshi_lib::model::Manga> for Manga {
         Self {
             id: 0,
             source_id: m.source_id,
-            title: m.title.clone(),
-            author: m.author.clone(),
-            genre: m.genre.clone(),
-            status: m.status.clone(),
-            description: m.description.clone(),
-            path: m.path.clone(),
-            cover_url: m.cover_url.clone(),
+            title: m.title,
+            author: m.author,
+            genre: m.genre,
+            status: m.status,
+            description: m.description,
+            path: m.path,
+            cover_url: m.cover_url,
             date_added: chrono::NaiveDateTime::from_timestamp(0, 0),
         }
     }

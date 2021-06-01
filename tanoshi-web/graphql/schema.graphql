@@ -142,6 +142,13 @@ type QueryRoot {
     # sort order
     sortOrder: SortOrderParam
   ): [Manga!]!
+  mangaBySourcePath(
+    # source id
+    sourceId: Int!
+
+    # path to manga in source
+    path: String!
+  ): Manga
   manga(
     # manga id
     id: Int!

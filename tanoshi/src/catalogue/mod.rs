@@ -9,6 +9,7 @@ pub use chapter::Chapter;
 
 use crate::context::GlobalContext;
 
+use rayon::prelude::*;
 use async_graphql::{Context, Enum, Object, Result};
 use tanoshi_lib::extensions::Extension;
 
@@ -55,22 +56,39 @@ impl CatalogueRoot {
             .get(source_id)
             .ok_or("no source")?
             .get_mangas(keyword, genres, page, sort_by, sort_order, None)?
+            .par_iter()
+            .map(|m| Manga::from(m))
+            .collect()
         };
 
+        Ok(fetched_manga)
+    }
+
+    async fn manga_by_source_path(
+        &self,
+        ctx: &Context<'_>,
+        #[graphql(desc = "source id")] source_id: i64,
+        #[graphql(desc = "path to manga in source")] path: String,
+    ) -> Result<Option<Manga>> {
+        let ctx = ctx.data::<GlobalContext>()?;
+
         let db = ctx.mangadb.clone();
-        let mut manga = vec![];
-        for m in fetched_manga {
-            let item = if let Some(item) = db.get_manga_by_source_path(source_id, &m.path).await {
-                item
-            } else {
-                let mut item: Manga = m.into();
-                let manga_id = db.insert_manga(&item).await?;
-                item.id = manga_id;
-                item
+        if let Some(manga) = db.get_manga_by_source_path(source_id, &path).await {
+            Ok(Some(manga))
+        } else {
+            let mut m: Manga = {
+                let extensions = ctx.extensions.read()?;
+                extensions
+                .get(source_id)
+                .ok_or("no source")?
+                .get_manga_info(&path)?
+                .into()
             };
-            manga.push(item);
+
+            m.id = db.insert_manga(&m).await?;
+
+            Ok(Some(m))
         }
-        Ok(manga)
     }
 
     async fn manga(
@@ -79,33 +97,7 @@ impl CatalogueRoot {
         #[graphql(desc = "manga id")] id: i64,
     ) -> Result<Option<Manga>> {
         let ctx = ctx.data::<GlobalContext>()?;
-        let db = ctx.mangadb.clone();
-        if let Some(mut manga) = db.get_manga_by_id(id).await {
-            if manga.incomplete() {
-                let m: Manga = {
-                    let extensions = ctx.extensions.read()?;
-                    extensions
-                    .get(manga.source_id)
-                    .ok_or("no source")?
-                    .get_manga_info(&manga.path)?
-                    .into()
-                };
-
-                if m.description.is_some() {
-                    manga.description = m.description;
-                }
-                if m.genre.len() > 0 {
-                    manga.genre = m.genre;
-                }
-                if m.author.len() > 0 {
-                    manga.author = m.author;
-                }
-                db.update_manga_info(&manga).await?;
-            }
-            Ok(Some(manga))
-        } else {
-            Ok(None)
-        }
+        Ok(ctx.mangadb.get_manga_by_id(id).await)
     }
 
     async fn chapter(

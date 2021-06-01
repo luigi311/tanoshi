@@ -110,19 +110,26 @@ impl Catalogue {
     pub fn fetch_mangas(catalogue: Rc<Self>) {
         catalogue.spinner.set_active(true);
         catalogue.loader.load(clone!(catalogue => async move {
-            let covers = fetch_manga_from_source(*catalogue.source_id.lock_ref(), catalogue.page.get(), Some(catalogue.keyword.get_cloned()), catalogue.sort_by.get_cloned(), catalogue.sort_order.get_cloned()).await.unwrap_throw();
-            let mut cover_list = catalogue.cover_list.lock_mut();
-            if catalogue.page.get() == 1 {
-                cover_list.replace_cloned(covers);
-            } else if catalogue.page.get() > 0 {
-                cover_list.extend(covers);
+            match fetch_manga_from_source(*catalogue.source_id.lock_ref(), catalogue.page.get(), Some(catalogue.keyword.get_cloned()), catalogue.sort_by.get_cloned(), catalogue.sort_order.get_cloned()).await {
+                Ok(covers) => {
+                    let mut cover_list = catalogue.cover_list.lock_mut();
+                    if catalogue.page.get() == 1 {
+                        cover_list.replace_cloned(covers);
+                    } else if catalogue.page.get() > 0 {
+                        cover_list.extend(covers);
+                    }
+
+                    local_storage().set("catalogue_keyword", &catalogue.keyword.lock_ref()).unwrap_throw();
+                    local_storage().set("catalogue_page", &catalogue.page.lock_ref().to_string()).unwrap_throw();
+                    local_storage().set("catalogue_sort_by", &serde_json::to_string(&*catalogue.sort_by.lock_ref()).unwrap_throw()).unwrap_throw();
+                    local_storage().set("catalogue_sort_order", &serde_json::to_string(&*catalogue.sort_order.lock_ref()).unwrap_throw()).unwrap_throw();
+                    local_storage().set("catalogue_is_search", &serde_json::to_string(&*catalogue.is_search.lock_ref()).unwrap_throw()).unwrap_throw();
+                    local_storage().set("catalogue_cover_list", serde_json::to_string(&*cover_list).unwrap_or("".to_string()).as_str()).unwrap_throw();
+                }
+                Err(e) => {
+                    error!("error fetch manga: {:?}", e);
+                }
             }
-            local_storage().set("catalogue_keyword", &catalogue.keyword.lock_ref()).unwrap_throw();
-            local_storage().set("catalogue_page", &catalogue.page.lock_ref().to_string()).unwrap_throw();
-            local_storage().set("catalogue_sort_by", &serde_json::to_string(&*catalogue.sort_by.lock_ref()).unwrap_throw()).unwrap_throw();
-            local_storage().set("catalogue_sort_order", &serde_json::to_string(&*catalogue.sort_order.lock_ref()).unwrap_throw()).unwrap_throw();
-            local_storage().set("catalogue_is_search", &serde_json::to_string(&*catalogue.is_search.lock_ref()).unwrap_throw()).unwrap_throw();
-            local_storage().set("catalogue_cover_list", serde_json::to_string(&*cover_list).unwrap_or("".to_string()).as_str()).unwrap_throw();
             
             catalogue.spinner.set_active(false);
         }));
@@ -168,16 +175,15 @@ impl Catalogue {
                 "text-gray-50",
                 "pt-safe-top"
             ])
-            .child_signal(catalogue.is_search.signal().map(clone!(catalogue => move |is_search| {
+            .child_signal(catalogue.is_search.signal().map(|is_search| {
                 if is_search {
                     None
                 } else {
                     Some(html!("button", {
-                        .class_signal("invisible", catalogue.source_id.signal().map(|id| id == 0))
                         .text("Filter")
                     }))
                 }
-            })))
+            }))
             .child_signal(catalogue.is_search.signal().map(clone!(catalogue => move |is_search| {
                 if is_search {
                     Some(html!("input", {
@@ -227,7 +233,6 @@ impl Catalogue {
                 } else {
                     Some(html!("button", {
                         .text("Search")
-                        .class_signal("invisible", catalogue.source_id.signal().map(|id| id == 0))
                         .event(clone!(catalogue => move |_: events::Click| {
                             catalogue.is_search.set_neq(true);
                         }))

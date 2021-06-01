@@ -64,6 +64,8 @@ pub async fn fetch_manga_from_source(
         .map(|item| {
             Cover::new(
                 item.id,
+                item.source_id,
+                item.path.clone(),
                 item.title.clone(),
                 item.cover_url.clone(),
                 item.is_favorite,
@@ -100,8 +102,55 @@ pub async fn fetch_manga_from_favorite() -> Result<Vec<Cover>, Box<dyn Error>> {
 
     Ok(list
         .iter()
-        .map(|item| Cover::new(item.id, item.title.clone(), item.cover_url.clone(), false))
+        .map(|item| {
+            Cover::new(
+                item.id,
+                item.source_id,
+                item.path.clone(),
+                item.title.clone(),
+                item.cover_url.clone(),
+                false,
+            )
+        })
         .collect())
+}
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/schema.graphql",
+    query_path = "graphql/fetch_manga_by_source_path.graphql",
+    response_derives = "Debug"
+)]
+pub struct FetchMangaBySourcePath;
+
+pub async fn fetch_manga_by_source_path(
+    source_id: i64,
+    path: String,
+) -> Result<fetch_manga_by_source_path::FetchMangaBySourcePathMangaBySourcePath, Box<dyn Error>> {
+    let token = local_storage()
+        .get("token")
+        .unwrap_throw()
+        .ok_or("no token")?;
+    let client = reqwest::Client::new();
+    let var = fetch_manga_by_source_path::Variables {
+        source_id: Some(source_id),
+        path: Some(path),
+    };
+    let request_body = FetchMangaBySourcePath::build_query(var);
+    let res = client
+        .post(&graphql_url())
+        .header("Authorization", format!("Bearer {}", token))
+        .json(&request_body)
+        .send()
+        .await?;
+    let response_body: Response<fetch_manga_by_source_path::ResponseData> = res.json().await?;
+    let manga = response_body
+        .data
+        .ok_or("no data")?
+        .manga_by_source_path
+        .unwrap_throw();
+
+    Ok(manga)
 }
 
 #[derive(GraphQLQuery)]

@@ -36,3 +36,4 @@ reqwest = {version =  "^0.11", features = ["json", "rustls"]}
 futures = "^0.3"
 rust-argon2 = "0.8"
 async-trait = "0.1.50"
+rayon = "1.5"

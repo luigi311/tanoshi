@@ -1,0 +1,18 @@
+query FetchMangaBySourcePath($sourceId: Int, $path: String) {
+  mangaBySourcePath(sourceId: $sourceId, path: $path) {
+    id
+    title
+    author
+    genre
+    coverUrl
+    description
+    status
+    isFavorite
+    chapters {
+      id
+      title
+      uploaded
+      readAt
+    }
+  }
+}
