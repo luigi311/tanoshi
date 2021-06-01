@@ -2,6 +2,7 @@ use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
 use std::collections::BTreeMap;
 use std::iter;
+use std::path::PathBuf;
 
 #[derive(serde::Deserialize, serde::Serialize, Debug)]
 pub struct Config {
@@ -66,15 +67,20 @@ fn default_plugin_path() -> String {
 }
 
 impl Config {
-    pub fn open<P: AsRef<std::path::Path>>(path: Option<P>) -> Result<Config, anyhow::Error> {
-        match path {
-            Some(path) => {
-                let file = std::fs::File::open(path)?;
+    pub fn open(path: Option<String>) -> Result<Config, anyhow::Error> {
+        let config_path = match path {
+            Some(p) => PathBuf::from(p),
+            None => dirs::home_dir().expect("should be home dir, or define path").join(".tanoshi").join("config.yml")
+        };
+
+        match std::fs::File::open(config_path.clone()) {
+            Ok(file) => {
+                info!("Open config from {:?}", config_path);
                 serde_yaml::from_reader(file).map_err(Self::map_yaml_error)
             }
-            None => {
+            Err(_) => {
                 let config = Self::default();
-                let path = dirs::home_dir().unwrap().join(".tanoshi");
+                let path = dirs::home_dir().expect("should be home dir, or define path").join(".tanoshi");
                 let _ = std::fs::create_dir_all(path.clone());
                 let path = path.join("config.yml");
                 let _ = std::fs::write(&path, serde_yaml::to_string(&config).unwrap());
