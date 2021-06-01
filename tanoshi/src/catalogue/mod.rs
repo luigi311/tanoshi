@@ -1,5 +1,5 @@
 mod source;
-pub use source::{Source, SourceRoot, SourceMutationRoot};
+pub use source::{Source, SourceMutationRoot, SourceRoot};
 
 mod manga;
 pub use manga::Manga;
@@ -9,8 +9,8 @@ pub use chapter::Chapter;
 
 use crate::context::GlobalContext;
 
-use rayon::prelude::*;
 use async_graphql::{Context, Enum, Object, Result};
+use rayon::prelude::*;
 use tanoshi_lib::extensions::Extension;
 
 /// A type represent sort parameter for query manga from source, normalized across sources
@@ -53,12 +53,12 @@ impl CatalogueRoot {
         let fetched_manga = {
             let extensions = ctx.extensions.read()?;
             extensions
-            .get(source_id)
-            .ok_or("no source")?
-            .get_mangas(keyword, genres, page, sort_by, sort_order, None)?
-            .par_iter()
-            .map(|m| Manga::from(m))
-            .collect()
+                .get(source_id)
+                .ok_or("no source")?
+                .get_mangas(keyword, genres, page, sort_by, sort_order, None)?
+                .par_iter()
+                .map(|m| Manga::from(m))
+                .collect()
         };
 
         Ok(fetched_manga)
@@ -79,10 +79,10 @@ impl CatalogueRoot {
             let mut m: Manga = {
                 let extensions = ctx.extensions.read()?;
                 extensions
-                .get(source_id)
-                .ok_or("no source")?
-                .get_manga_info(&path)?
-                .into()
+                    .get(source_id)
+                    .ok_or("no source")?
+                    .get_manga_info(&path)?
+                    .into()
             };
 
             m.id = db.insert_manga(&m).await?;
@@ -95,9 +95,31 @@ impl CatalogueRoot {
         &self,
         ctx: &Context<'_>,
         #[graphql(desc = "manga id")] id: i64,
+        #[graphql(desc = "refresh data from source", default = false)] refresh: bool,
     ) -> Result<Option<Manga>> {
         let ctx = ctx.data::<GlobalContext>()?;
-        Ok(ctx.mangadb.get_manga_by_id(id).await)
+        let db = ctx.mangadb.clone();
+        if let Some(manga) = db.get_manga_by_id(id).await {
+            if refresh {
+                let mut m: Manga = {
+                    let extensions = ctx.extensions.read()?;
+                    extensions
+                        .get(manga.source_id)
+                        .ok_or("no source")?
+                        .get_manga_info(&manga.path)?
+                        .into()
+                };
+
+                m.id = id;
+                db.insert_manga(&m).await?;
+
+                Ok(Some(m))
+            } else {
+                Ok(Some(manga))
+            }
+        } else {
+            Ok(None)
+        }
     }
 
     async fn chapter(

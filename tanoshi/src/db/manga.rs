@@ -577,8 +577,8 @@ impl Db {
     }
 
     pub async fn insert_manga(&self, manga: &Manga) -> Result<i64> {
-        let row_id = sqlx::query(
-            r#"INSERT INTO manga(
+        let row_id = sqlx::query(r#"
+            INSERT INTO manga(
                 source_id, 
                 title, 
                 author, 
@@ -588,8 +588,17 @@ impl Db {
                 path, 
                 cover_url, 
                 date_added
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"#,
-        )
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(source_id, path)
+            DO UPDATE SET
+                title=excluded.title,
+                author=excluded.author,
+                genre=excluded.genre,
+                status=excluded.status,
+                description=excluded.description,
+                date_added=excluded.date_added,
+                cover_url=excluded.cover_url
+        "#)
         .bind(manga.source_id)
         .bind(&manga.title)
         .bind(serde_json::to_string(&manga.author).unwrap_or("[]".to_string()))
@@ -806,6 +815,50 @@ impl Db {
         .last_insert_rowid();
 
         Ok(row_id)
+    }
+
+    pub async fn insert_chapters(&self, chapters: &Vec<Chapter>) -> Result<()> {
+        if chapters.len() == 0 {
+            return Err(anyhow!("no chapters to insert"));
+        }
+        let mut query_str = r#"INSERT OR IGNORE INTO chapter(
+            source_id,
+            manga_id,
+            title, 
+            path, 
+            number,
+            scanlator,
+            uploaded, 
+            date_added
+        ) VALUES "#
+            .to_string();
+
+        let mut values = vec![];
+        for _ in chapters {
+            values.push("(?, ?, ?, ?, ?, ?, ?, ?)");
+        }
+
+        query_str.push_str(values.join(",").as_str());
+        let mut query = sqlx::query(&query_str);
+
+        for chapter in chapters {
+            query = query
+                .bind(chapter.source_id)
+                .bind(chapter.manga_id)
+                .bind(&chapter.title)
+                .bind(&chapter.path)
+                .bind(chapter.number)
+                .bind(&chapter.scanlator)
+                .bind(chapter.uploaded)
+                .bind(chrono::NaiveDateTime::from_timestamp(
+                    chrono::Local::now().timestamp(),
+                    0,
+                ));
+        }
+        
+        query.execute(&self.pool).await?;
+
+        Ok(())
     }
 
     pub async fn update_page_by_chapter_id(

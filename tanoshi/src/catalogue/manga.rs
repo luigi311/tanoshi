@@ -100,42 +100,39 @@ impl Manga {
         self.date_added
     }
 
-    async fn chapters(&self, ctx: &Context<'_>) -> Result<Vec<Chapter>> {
+    async fn chapters(
+        &self,
+        ctx: &Context<'_>,
+        #[graphql(desc = "refresh data from source", default = false)] refresh: bool,
+    ) -> Result<Vec<Chapter>> {
         let manga_id = self.id.clone();
         let ctx = ctx.data::<GlobalContext>()?;
         let db = ctx.mangadb.clone();
-        match db.get_chapters_by_manga_id(manga_id).await {
-            Ok(chapters) => Ok(chapters),
-            Err(_) => {
-                let chapters = {
-                    let extensions = ctx.extensions.read()?;
-                    extensions
-                        .get(self.source_id)
-                        .ok_or("no source")?
-                        .get_chapters(&self.path)?
-                };
 
-                let chapter_stream = stream::iter(chapters);
-                let chapter_stream = chapter_stream.then(|chapter| async {
-                    match db
-                        .get_chapter_by_source_path(chapter.source_id, &chapter.path)
-                        .await
-                    {
-                        Some(ch) => ch,
-                        None => {
-                            let mut ch: Chapter = chapter.into();
-                            ch.manga_id = (&manga_id).clone();
-                            let id = db.insert_chapter(&ch).await.unwrap();
-                            ch.id = id;
-
-                            tokio::time::sleep(Duration::from_millis(1)).await;
-                            return ch;
-                        }
-                    }
-                });
-                Ok(chapter_stream.collect().await)
+        if !refresh {
+            if let Ok(chapters) = db.get_chapters_by_manga_id(manga_id).await {
+                return Ok(chapters);
             }
         }
+
+        let chapters: Vec<Chapter> = {
+            let extensions = ctx.extensions.read()?;
+            extensions
+                .get(self.source_id)
+                .ok_or("no source")?
+                .get_chapters(&self.path)?
+                .into_iter()
+                .map(|c| {
+                    let mut c: Chapter = c.into();
+                    c.manga_id = self.id;
+                    c
+                })
+                .collect()
+        };
+
+        db.insert_chapters(&chapters).await?;
+
+        Ok(db.get_chapters_by_manga_id(manga_id).await?)
     }
 
     async fn chapter(
