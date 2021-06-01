@@ -3,7 +3,7 @@
 |![Build](https://github.com/faldez/tanoshi/workflows/Build/badge.svg)|![Release Stats](https://img.shields.io/github/downloads/faldez/tanoshi/total)|![Release](https://img.shields.io/github/v/release/faldez/tanoshi)|
 
 # ![icon](tanoshi-web/static/icons/tanoshi.png) Tanoshi
-Selfhosted web manga reader with extension model.
+Selfhosted web manga reader with extensions.
 
 ### Mobile
 ![mobile](screenshots/mobile-1.png)

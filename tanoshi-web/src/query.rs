@@ -163,13 +163,17 @@ pub struct FetchMangaDetail;
 
 pub async fn fetch_manga_detail(
     id: i64,
+    refresh: bool,
 ) -> Result<fetch_manga_detail::FetchMangaDetailManga, Box<dyn Error>> {
     let token = local_storage()
         .get("token")
         .unwrap_throw()
         .ok_or("no token")?;
     let client = reqwest::Client::new();
-    let var = fetch_manga_detail::Variables { id: Some(id) };
+    let var = fetch_manga_detail::Variables {
+        id: Some(id),
+        refresh: Some(refresh),
+    };
     let request_body = FetchMangaDetail::build_query(var);
     let res = client
         .post(&graphql_url())

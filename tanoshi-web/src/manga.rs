@@ -56,9 +56,9 @@ impl Manga {
         })
     }
 
-    pub fn fetch_detail(manga: Rc<Self>) {
+    pub fn fetch_detail(manga: Rc<Self>, refresh: bool) {
         manga.loader.load(clone!(manga => async move {
-            match query::fetch_manga_detail(manga.id.get()).await {
+            match query::fetch_manga_detail(manga.id.get(), refresh).await {
                 Ok(result) => {
                     manga.title.set_neq(Some(result.title));
                     manga.author.lock_mut().replace_cloned(result.author);
@@ -173,8 +173,20 @@ impl Manga {
                 }),
                 html!("button", {
                     .text("Refresh")
-                    .event(|_: events::Click| {
-                    })
+                    .event(clone!(manga => move |_: events::Click| {
+                        if manga.id.get() != 0 {
+                            manga.title.set_neq(None);
+                            manga.author.lock_mut().clear();
+                            manga.genre.lock_mut().clear();
+                            manga.cover_url.set_neq(None);
+                            manga.description.set_neq(None);
+                            manga.status.set_neq(None);
+                            manga.is_favorite.set_neq(false);
+                            manga.chapters.lock_mut().clear();
+
+                            Self::fetch_detail(manga.clone(), true);
+                        }
+                    }))
                 }),
             ])
         })
@@ -283,7 +295,6 @@ impl Manga {
             .children(&mut [
                 html!("button", {
                     .class(["rounded", "p-2", "w-10", "h-10", "bg-white", "dark:bg-gray-900", "shadow", "dark:shadow-none", "text-gray-900", "dark:text-gray-100"])
-                    .visible_signal(manga.loader.is_loading().map(|x| !x))
                     .children(&mut [
                         svg!("svg", {
                             .attribute("xmlns", "http://www.w3.org/2000/svg")
@@ -434,7 +445,7 @@ impl Manga {
 
     pub fn render(manga_page: Rc<Self>) -> Dom {
         if manga_page.id.get() != 0 {
-            Self::fetch_detail(manga_page.clone());
+            Self::fetch_detail(manga_page.clone(), false);
         } else if manga_page.source_id.get() != 0 && manga_page.path.get_cloned() != "" {
             Self::fetch_detail_by_source_path(manga_page.clone());
         }

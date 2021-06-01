@@ -1,5 +1,5 @@
-query FetchMangaDetail($id: Int) {
-  manga(id: $id) {
+query FetchMangaDetail($id: Int, $refresh: Boolean) {
+  manga(id: $id, refresh: $refresh) {
     id
     title
     author
@@ -8,11 +8,12 @@ query FetchMangaDetail($id: Int) {
     description
     status
     isFavorite
-    chapters {
+    chapters(refresh: $refresh) {
       id
       title
       uploaded
       readAt
+      lastPageRead
     }
   }
 }
