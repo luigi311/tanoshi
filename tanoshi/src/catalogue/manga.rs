@@ -84,12 +84,21 @@ impl Manga {
 
     async fn is_favorite(&self, ctx: &Context<'_>) -> Result<bool> {
         let user = user::get_claims(ctx).ok_or("no token")?;
-        if let Ok(fav) = ctx
-            .data_unchecked::<GlobalContext>()
-            .mangadb
-            .get_user_library(user.sub, self.id)
-            .await
-        {
+        let mangadb = &ctx.data_unchecked::<GlobalContext>().mangadb;
+
+        let mut id = self.id;
+        if id == 0 {
+            if let Some(manga) = mangadb
+                .get_manga_by_source_path(self.source_id, &self.path)
+                .await
+            {
+                id = manga.id;
+            } else {
+                return Ok(false);
+            }
+        }
+
+        if let Ok(fav) = mangadb.get_user_library(user.sub, id).await {
             Ok(fav)
         } else {
             Err("error query".into())
