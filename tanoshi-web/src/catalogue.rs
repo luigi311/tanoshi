@@ -5,6 +5,7 @@ use futures_signals::signal::{Mutable, SignalExt};
 use futures_signals::signal_vec::{MutableVec, SignalVecExt};
 use wasm_bindgen::prelude::*;
 
+use crate::utils::proxied_image_url;
 use crate::{
     common::Route,
     query::{
@@ -167,15 +168,16 @@ impl Catalogue {
                 "text-gray-50",
                 "pt-safe-top"
             ])
-            .child_signal(catalogue.is_search.signal().map(|is_search| {
+            .child_signal(catalogue.is_search.signal().map(clone!(catalogue => move |is_search| {
                 if is_search {
                     None
                 } else {
                     Some(html!("button", {
+                        .class_signal("invisible", catalogue.source_id.signal().map(|id| id == 0))
                         .text("Filter")
                     }))
                 }
-            }))
+            })))
             .child_signal(catalogue.is_search.signal().map(clone!(catalogue => move |is_search| {
                 if is_search {
                     Some(html!("input", {
@@ -225,6 +227,7 @@ impl Catalogue {
                 } else {
                     Some(html!("button", {
                         .text("Search")
+                        .class_signal("invisible", catalogue.source_id.signal().map(|id| id == 0))
                         .event(clone!(catalogue => move |_: events::Click| {
                             catalogue.is_search.set_neq(true);
                         }))
@@ -359,9 +362,19 @@ impl Catalogue {
                             "p-2"
                         ])
                         .children(&mut [
-                            link!(Route::Catalogue{id: source.id, latest: false}.url(), {
-                                .class("flex-grow")
-                                .text(&source.name)
+                            html!("div", {
+                                .class("flex")
+                                .children(&mut [
+                                    html!("img", {
+                                        .class(["h-6", "w-6", "mr-2"])
+                                        .class_signal("invisible", Mutable::new(source.icon.clone()).signal_cloned().map(|icon| icon.is_empty()))
+                                        .attribute("src", &proxied_image_url(&source.icon))
+                                    }),
+                                    link!(Route::Catalogue{id: source.id, latest: false}.url(), {
+                                        .class("flex-grow")
+                                        .text(&source.name)
+                                    }),
+                                ])
                             }),
                             link!(Route::Catalogue{id: source.id, latest: true}.url(), {
                                 .class("flex-grow-0")
