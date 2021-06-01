@@ -87,8 +87,7 @@ impl Reader {
                 "flex",
                 "justify-between",
                 "items-center",
-                "animated",
-                "slideInDown",
+                "animate__animated",
                 "faster",
                 "block",
                 "fixed",
@@ -101,7 +100,8 @@ impl Reader {
                 "pb-2",
                 "text-gray-50"
             ])
-            .visible_signal(reader.is_bar_visible.signal_cloned())
+            .class_signal("animate__slideInDown", reader.is_bar_visible.signal())
+            .class_signal("animate__slideOutUp", reader.is_bar_visible.signal().map(|x| !x))
             .children(&mut [
                 html!("button", {
                     .class("mx-2")
@@ -185,8 +185,7 @@ impl Reader {
                 "flex",
                 "justify-between",
                 "items-center",
-                "animated",
-                "slideInDown",
+                "animate__animated",
                 "faster",
                 "block",
                 "fixed",
@@ -200,7 +199,8 @@ impl Reader {
                 "pb-safe-bottom",
                 "text-gray-50"
             ])
-            .visible_signal(reader.is_bar_visible.signal_cloned())
+            .class_signal("animate__slideInUp", reader.is_bar_visible.signal())
+            .class_signal("animate__slideOutDown", reader.is_bar_visible.signal().map(|x| !x))
             .child_signal(reader.prev_chapter.signal().map(clone!(reader => move |prev_chapter| {
                 match prev_chapter {
                     Some(prev) => Some(html!("button", {
@@ -216,7 +216,7 @@ impl Reader {
                                         .attribute("stroke-linecap", "round")
                                         .attribute("stroke-linejoin", "round")
                                         .attribute("stroke-width", "2")
-                                        .attribute("d", "M15 19l-7-7 7-7")
+                                        .attribute("d", "M11 17l-5-5m0 0l5-5m-5 5h12")
                                     })
                                 ])
                             })
@@ -259,7 +259,7 @@ impl Reader {
                                         .attribute("stroke-linecap", "round")
                                         .attribute("stroke-linejoin", "round")
                                         .attribute("stroke-width", "2")
-                                        .attribute("d", "M9 5l7 7-7 7")
+                                        .attribute("d", "M13 7l5 5m0 0l-5 5m5-5H6")
                                     })
                                 ])
                             })
@@ -328,7 +328,7 @@ impl Reader {
         html!("div", {
             .class([
                 "flex",
-                "items-center"
+                "items-center",
             ])
             .children_signal_vec(reader.pages.signal_vec_cloned().enumerate().map(clone!(reader => move |(index, page)|
                 html!("img", {
@@ -376,7 +376,7 @@ impl Reader {
             .children_signal_vec(reader.pages.signal_vec_cloned().enumerate().map(clone!(reader => move |(index, page)|
                 html!("img", {
                     .class([
-                        "mx-auto"
+                        "mx-auto",
                     ])
                     .attribute("id", format!("page-{}", index.get().unwrap_or(0)).as_str())
                     .class_signal("max-w-none", reader.reader_settings.fit.signal().map(|x| match x {
