@@ -570,7 +570,9 @@ impl Settings {
                     .class([
                         "p-2",
                         "flex",
-                        "justify-between"
+                        "justify-between",
+                        "text-black",
+                        "dark:text-white",
                     ])
                     .children(&mut [
                         html!("span", {
@@ -611,7 +613,8 @@ impl Settings {
                         "rounded-full",
                         "bg-gray-100",
                         "p-2",
-                        "mr-2"
+                        "mr-2",
+                        "flex-shrink-0"
                     ])
                     .children(&mut [
                         svg!("path", {
@@ -632,7 +635,9 @@ impl Settings {
                             Some(html!("div", {
                                 .class([
                                     "flex",
-                                    "flex-col"
+                                    "flex-col",
+                                    "text-black",
+                                    "dark:text-white",
                                 ])
                                 .children(&mut [
                                     html!("span",{
@@ -654,8 +659,12 @@ impl Settings {
                     .attribute("fill", "none")
                     .attribute("viewBox", "0 0 24 24")
                     .attribute("stroke", "currentColor")
-                    .class("w-6")
-                    .class("h-6")
+                    .class([
+                        "w-6",
+                        "h-6",
+                        "text-gray-900",
+                        "dark:text-gray-50"
+                    ])
                     .children(&mut [
                         svg!("path", {
                             .attribute("stroke-linecap", "round")

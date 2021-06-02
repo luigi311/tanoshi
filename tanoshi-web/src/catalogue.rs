@@ -367,16 +367,18 @@ impl Catalogue {
                             "p-2"
                         ])
                         .children(&mut [
-                            html!("div", {
-                                .class("flex")
+                            link!(Route::Catalogue{id: source.id, latest: false}.url(), {
+                                .class([
+                                    "flex",
+                                    "flex-grow",
+                                ])
                                 .children(&mut [
                                     html!("img", {
                                         .class(["h-6", "w-6", "mr-2"])
                                         .class_signal("invisible", Mutable::new(source.icon.clone()).signal_cloned().map(|icon| icon.is_empty()))
                                         .attribute("src", &proxied_image_url(&source.icon))
                                     }),
-                                    link!(Route::Catalogue{id: source.id, latest: false}.url(), {
-                                        .class("flex-grow")
+                                    html!("div", {
                                         .text(&source.name)
                                     }),
                                 ])
