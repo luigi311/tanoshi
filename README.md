@@ -46,7 +46,7 @@ You can download individual plugins and store in on your selected `plugins_path`
 Or you can install from web and restart tanoshi afterward.
 
 ### Account
-Tanoshi will create default account with username: `admin` and password: `admin`. You can change the password or create new account after login. Default password for new account is `tanoshi123` which you can change after login to the account.
+On first run, tanoshi will ask you create account, then you can you the account created to login. First user will always be admin, and can create new user
 
 ## Usage
 ### CLI
