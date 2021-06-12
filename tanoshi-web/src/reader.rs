@@ -19,7 +19,9 @@ pub struct Reader {
     chapter_title: Mutable<String>,
     next_chapter: Mutable<Option<i64>>,
     prev_chapter: Mutable<Option<i64>>,
+    prev_page: Mutable<Option<usize>>,
     current_page: Mutable<usize>,
+    next_page: Mutable<Option<usize>>,
     pages: MutableVec<String>,
     pages_len: Mutable<usize>,
     reader_settings: Rc<ReaderSettings>,
@@ -36,7 +38,9 @@ impl Reader {
             chapter_title: Mutable::new("".to_string()),
             next_chapter: Mutable::new(None),
             prev_chapter: Mutable::new(None),
+            prev_page: Mutable::new(None),
             current_page: Mutable::new(0),
+            next_page: Mutable::new(None),
             pages: MutableVec::new(),
             pages_len: Mutable::new(0),
             reader_settings: ReaderSettings::new(false, true),
@@ -351,7 +355,14 @@ impl Reader {
                         crate::common::Fit::Width => false,
                         _ => true
                     }))
-                    .visible_signal(reader.current_page.signal_cloned().map(move |x| x == index.get().unwrap_or(0)))
+                    .visible_signal(reader.current_page.signal_cloned().map(clone!(reader => move |x| {
+                        reader.prev_page.set_neq(x.checked_sub(1));
+                        if x + 1 < reader.pages_len.get() {
+                            reader.next_page.set_neq(Some(x + 1));
+                        }
+
+                        x == index.get().unwrap_or(0)
+                    })))
                     .attribute("src", &proxied_image_url(&page))
                     .event(|_: events::Error| {
                         log::error!("error loading image");
@@ -363,6 +374,7 @@ impl Reader {
 
     pub fn render_double(reader: Rc<Self>) -> Dom {
         html!("div", {
+            .attribute("id", "page-list")
             .class([
                 "w-screen",
                 "h-screen",
@@ -374,9 +386,9 @@ impl Reader {
                 Direction::RightToLeft => true,
             }))
             .children_signal_vec(reader.pages.signal_vec_cloned().enumerate().map(clone!(reader => move |(index, page)|
-                html!("img", {
+                html!("img" => HtmlImageElement, {
                     .class([
-                        "mx-auto",
+                        "mx-auto"
                     ])
                     .attribute("id", format!("page-{}", index.get().unwrap_or(0)).as_str())
                     .class_signal("max-w-none", reader.reader_settings.fit.signal().map(|x| match x {
@@ -387,26 +399,65 @@ impl Reader {
                         crate::common::Fit::All => true,
                         _ => false,
                     }))
-                    .class_signal("w-1/2", reader.reader_settings.fit.signal().map(|x| match x {
-                        crate::common::Fit::Height => false,
-                        _ => true
-                    }))
                     .class_signal("h-full", reader.reader_settings.fit.signal().map(|x| match x {
                         crate::common::Fit::Width => false,
                         _ => true
                     }))
-                    .visible_signal(reader.current_page.signal_cloned().map(move |x| {
-                        let mut visible = false;
-                        if let Some(i) = index.get() {
-                            if x == i ||  x + 1 == i {
-                                visible = true;
-                            }
-                        }    
-                        visible
-                    }))
                     .attribute("src", &proxied_image_url(&page))
                     .event(|_: events::Error| {
                         log::error!("error loading image");
+                    })
+                    .with_node!(img => {
+                        .class_signal("w-1/2", reader.current_page.signal_cloned().map(clone!(reader, index, img => move |current_page| {
+                            if index.get().unwrap() == current_page && img.natural_width() > img.natural_height
+                            () {
+                                false
+                            } else {
+                                match reader.reader_settings.fit.get() {
+                                    crate::common::Fit::Height => false,
+                                    _ => true
+                                }
+                            }
+                        })))
+                        .class_signal("hidden", reader.current_page.signal_cloned().map(clone!(reader, index, img => move |current_page| {
+                            let mut hidden = true;
+                            if index.get().unwrap() == current_page {
+                                hidden = false;
+                                if current_page > 0 {
+                                    let prev_img = document().get_element_by_id(format!("page-{}", current_page - 1).as_str()).unwrap().dyn_into::<web_sys::HtmlImageElement>().unwrap();
+                                    let sub = if prev_img.natural_width() > prev_img.natural_height() || current_page == 1 {
+                                        1
+                                    } else {
+                                        2
+                                    };
+                                    reader.prev_page.set_neq(current_page.checked_sub(sub));
+                                }
+                            } else if index.get().unwrap() == current_page + 1 {
+                                let prev_img = document().get_element_by_id(format!("page-{}", current_page).as_str()).unwrap().dyn_into::<web_sys::HtmlImageElement>().unwrap();
+                                if img.natural_width() < img.natural_height() && prev_img.natural_width() < prev_img.natural_height() {
+                                    hidden = false;
+                                    if current_page + 2 < reader.pages_len.get() {
+                                        reader.next_page.set_neq(Some(current_page + 2));
+                                    } else {
+                                        reader.next_page.set_neq(None);
+                                    }
+                                } else {
+                                    if current_page + 1 < reader.pages_len.get() {
+                                        reader.next_page.set_neq(Some(current_page + 1));
+                                    } else {
+                                        reader.next_page.set_neq(None);
+                                    }
+                                }
+                            }
+                            
+                            hidden
+                        })))
+                        .event(clone!(reader, index => move |_: events::Load| {
+                            let current_page = reader.current_page.get();
+                            if index.get().unwrap() == current_page + 1 {
+                                reader.current_page.replace(current_page);
+                            }
+                        }))
                     })
                 })
             )))
@@ -435,18 +486,9 @@ impl Reader {
                     ])
                     .attribute("id", "next")
                     .event(clone!(reader => move |_: events::Click| {
-                        let current_page = reader.current_page.get();
-                        let add = match reader.reader_settings.display_mode.get() {
-                            DisplayMode::Single => 1,
-                            DisplayMode::Double => 2,
-                        };
-                        reader.current_page.set_if(current_page + add, |_, after| {
-                            if *after < reader.pages_len.get()  {
-                                true
-                            } else {
-                                false
-                            }
-                        });
+                        if let Some(next_page) = reader.next_page.get() {
+                            reader.current_page.set_neq(next_page);
+                        }
                     }))
                 }),
                 html!("div", {
@@ -466,18 +508,9 @@ impl Reader {
                     ])
                     .attribute("id", "prev")
                     .event(clone!(reader => move |_: events::Click| {
-                        let current_page = reader.current_page.get();
-                        let sub = match reader.reader_settings.display_mode.get() {
-                            DisplayMode::Single => 1,
-                            DisplayMode::Double => 2,
-                        };
-                        reader.current_page.set_if(current_page.checked_sub(sub).unwrap_or(0), |before, after| {
-                            if *before != *after  {
-                                true
-                            } else {
-                                false
-                            }
-                        })
+                        if let Some(prev_page) = reader.prev_page.get() {
+                            reader.current_page.set_neq(prev_page);
+                        }
                     }))
                 })
             ])
