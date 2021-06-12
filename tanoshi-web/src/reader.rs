@@ -97,7 +97,7 @@ impl Reader {
                 "fixed",
                 "inset-x-0",
                 "top-0",
-                "z-40",
+                "z-50",
                 "bg-gray-800",
                 "content-end",
                 "pt-safe-top",

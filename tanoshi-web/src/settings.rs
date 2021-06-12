@@ -193,14 +193,13 @@ impl Settings {
                 "pl-2",
                 "pr-2",
                 "pb-2",
-                "flex",
-                "justify-between",
+                "grid",
+                "grid-cols-3",
                 "fixed",
                 "left-0",
-                "xl:left-48",
                 "right-0",
                 "top-0",
-                "z-40",
+                "z-50",
                 "bg-accent",
                 "dark:bg-gray-900",
                 "border-b",
@@ -211,11 +210,43 @@ impl Settings {
             ])
             .children(&mut [
                 html!("button", {
-                    .class([
-                        "block",
-                        "xl:hidden"
-                    ])
-                    .text("Close")
+                    .class_signal("invisible", settings.page.signal_cloned().map(|x|
+                        match x {
+                            SettingCategory::None => true,
+                            _ => false
+                        }
+                    ))
+                    .child_signal(settings.page.signal_cloned().map(|x|
+                        match x {
+                            SettingCategory::None => None,
+                            _ => Some(html!("div", {
+                                .class([
+                                    "flex",
+                                    "items-center"
+                                ])
+                                .children(&mut [
+                                    svg!("svg", {
+                                        .attribute("xmlns", "http://www.w3.org/2000/svg")
+                                        .attribute("fill", "none")
+                                        .attribute("viewBox", "0 0 24 24")
+                                        .attribute("stroke", "currentColor")
+                                        .class(["w-6", "h-6"])
+                                        .children(&mut [
+                                            svg!("path", {
+                                                .attribute("stroke-linecap", "round")
+                                                .attribute("stroke-linejoin", "round")
+                                                .attribute("stroke-width", "2")
+                                                .attribute("d", "M15 19l-7-7 7-7")
+                                            })
+                                        ])
+                                    }),
+                                    html!("span", {
+                                        .text("Settings")
+                                    })
+                                ])
+                            }))
+                        }
+                    ))
                     .event(|_: events::Click| {
                         let history = window().unwrap().history().unwrap();
                         if history.length().unwrap() > 1 {
@@ -239,6 +270,7 @@ impl Settings {
                     ))
                 }),
                 html!("div", {
+                    .class("justify-self-end")
                     .child_signal(settings.page.signal_cloned().map(move |page| {
                         match page {
                             SettingCategory::Reader => {
@@ -250,11 +282,7 @@ impl Settings {
                                 }))
                             }
                             _ => {
-                                Some(
-                                    html!("span", {
-                                        .class("text-gray-300")
-                                        .text("")
-                                    }))
+                                None
                             }
                         }
                     }))
@@ -362,7 +390,7 @@ impl Settings {
                                                 "h-10",
                                                 "mr-2"
                                             ])
-                                            .attribute("src", &["data:image/png;base64,", &x.icon].join(" "))
+                                            .attribute("src", &x.icon)
                                         }),
                                         html!("div", {
                                             .children(&mut [

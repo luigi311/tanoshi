@@ -1,11 +1,9 @@
 use std::rc::Rc;
 
-use dominator::{routing, text_signal};
+use dominator::routing;
 use dominator::{clone, html, Dom};
 use futures_signals::signal::Mutable;
 use futures_signals::signal::SignalExt;
-use wasm_bindgen::UnwrapThrowExt;
-use web_sys::console::info;
 
 use crate::common::{events, Route, SettingCategory};
 use crate::query;
@@ -50,18 +48,16 @@ impl Profile {
                 "flex-col",
                 "max-w-lg",
                 "mx-auto",
-                "mt-safe-top",
                 "bg-white",
                 "dark:bg-gray-800",
                 "shadow",
                 "dark:shadow-none",
-                "rounded",
-                "p-2"
+                "rounded"
             ])
             .children(&mut [
                 html!("input", {
                     .class([
-                        "m-2",
+                        "m-2",  
                         "p-1",
                         "outline-none",
                         "rounded",
@@ -92,7 +88,7 @@ impl Profile {
                     ])
                     .text("Password do not match")
                 }),
-                
+
                 html!("span", {
                     .visible_signal(profile.new_password.signal_cloned().map(|x| {
                         if x.len() < 8 {
@@ -169,7 +165,8 @@ impl Profile {
                             .class([
                                 "bg-accent",
                                 "active:bg-accent-lighter",
-                                "hover:bg-accent-lighter",
+                                "hover:shadow-lg",
+                                "dark:hover:bg-accent-lighter",
                                 "outline-none",
                                 "text-white",
                                 "px-2",

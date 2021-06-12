@@ -1,12 +1,12 @@
 use crate::query;
-use crate::utils::{proxied_image_url, AsyncLoader};
+use crate::utils::{AsyncLoader, local_storage, proxied_image_url};
 use crate::{
     app::App,
     common::{Route, Spinner},
 };
 use chrono::NaiveDateTime;
 use dominator::{clone, events, html, link, routing, svg, Dom};
-use futures_signals::signal::SignalExt;
+use futures_signals::signal::{Signal, SignalExt};
 use futures_signals::{
     signal::Mutable,
     signal_vec::{MutableVec, SignalVecExt},
@@ -146,7 +146,7 @@ impl Manga {
                 "fixed",
                 "right-0",
                 "top-0",
-                "z-40",
+                "z-50",
                 "bg-accent",
                 "dark:bg-gray-900",
                 "border-b",
@@ -157,15 +157,48 @@ impl Manga {
             ])
             .children(&mut [
                 html!("button", {
-                    .text("Close")
-                    .event(|_: events::Click| {
-                        let history = window().unwrap().history().unwrap();
-                        if history.length().unwrap() > 1 {
-                            let _ = history.back();
-                        } else {
-                            routing::go_to_url("/");
+                    .class([
+                        "flex",
+                        "items-center"
+                    ])
+                    .children(&mut [
+                        svg!("svg", {
+                            .attribute("xmlns", "http://www.w3.org/2000/svg")
+                            .attribute("fill", "none")
+                            .attribute("viewBox", "0 0 24 24")
+                            .attribute("stroke", "currentColor")
+                            .class(["w-6", "h-6"])
+                            .children(&mut [
+                                svg!("path", {
+                                    .attribute("stroke-linecap", "round")
+                                    .attribute("stroke-linejoin", "round")
+                                    .attribute("stroke-width", "2")
+                                    .attribute("d", "M15 19l-7-7 7-7")
+                                })
+                            ])
+                        }),
+                    ])
+                    .child_signal(manga.source_id.signal().map(|source_id|
+                        match source_id {
+                            0 => Some(html!("span", {
+                                .text("Library")
+                                .event(|_: events::Click| {
+                                    routing::go_to_url("/");
+                                })
+                            })),
+                            _ => Some(html!("span", {
+                                .text("Catalogue")
+                                .event(|_: events::Click| {
+                                    let history = window().unwrap().history().unwrap();
+                                    if history.length().unwrap() > 1 {
+                                        let _ = history.back();
+                                    } else {
+                                        routing::go_to_url("/");
+                                    }
+                                })
+                            })),
                         }
-                    })
+                    ))
                 }),
                 html!("span", {
                     .class(["text-gray-300", "truncate", "mx-auto", "px-2"])
