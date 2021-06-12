@@ -69,7 +69,7 @@ fn default_plugin_path() -> String {
 impl Config {
     pub fn open(path: Option<String>) -> Result<Config, anyhow::Error> {
         let config_path = match path {
-            Some(p) => PathBuf::from(p),
+            Some(p) => PathBuf::from(p.clone()),
             None => dirs::home_dir().expect("should be home dir, or define path").join(".tanoshi").join("config.yml")
         };
 
@@ -80,11 +80,9 @@ impl Config {
             }
             Err(_) => {
                 let config = Self::default();
-                let path = dirs::home_dir().expect("should be home dir, or define path").join(".tanoshi");
-                let _ = std::fs::create_dir_all(path.clone());
-                let path = path.join("config.yml");
-                let _ = std::fs::write(&path, serde_yaml::to_string(&config).unwrap());
-                info!("Write default config at {:?}", path);
+                let _ = std::fs::create_dir_all(config_path.parent().expect("should have parent"));
+                let _ = std::fs::write(&config_path, serde_yaml::to_string(&config).unwrap());
+                info!("Write default config at {:?}", config_path);
                 Ok(config)
             }
         }

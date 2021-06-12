@@ -14,9 +14,11 @@ module.exports = (env, argv) => {
         new HtmlWebpackPlugin({
             template: 'static/index.html'
         }),
-        new CopyWebpackPlugin([
-            { from: 'static', to: distPath }
-        ]),
+        new CopyWebpackPlugin({
+            patterns: [
+                { from: 'static', to: distPath }
+            ]
+        }),
         new WasmPackPlugin({
             crateDirectory: ".",
             extraArgs: "--no-typescript",

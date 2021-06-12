@@ -83,6 +83,13 @@ impl Extensions {
     }
 
     pub fn initialize(&mut self, configs: BTreeMap<String, serde_yaml::Value>) -> Result<()> {
+        match std::fs::read_dir(&self.path) {
+            Ok(_) => {},
+            Err(_) => {
+                let _ = std::fs::create_dir_all(&self.path);
+            }
+        }
+
         for entry in std::fs::read_dir(&self.path)?
             .into_iter()
             .filter(move |path| {
