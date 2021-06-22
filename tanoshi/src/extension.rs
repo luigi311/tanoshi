@@ -1,8 +1,10 @@
 use std::{collections::HashMap, error::Error, path::PathBuf};
 use tanoshi_lib::prelude::Param;
 use tokio::sync::mpsc::UnboundedReceiver;
-use wasmer::{Module, Store};
+use wasmer::{Instance, Module, Store};
 use wasmer_wasi::{Pipe, WasiEnv, WasiState};
+
+use crate::catalogue::Source;
 
 pub enum Command {
     Load(i64),
@@ -32,7 +34,7 @@ pub async fn extension_thread(
                 Command::Load(source_id) => {
                     let input = Pipe::new();
                     let output = Pipe::new();
-                    let mut wasi_env = WasiState::new("hello")
+                    let mut wasi_env = WasiState::new("tanoshi")
                         .stdin(Box::new(input))
                         .stdout(Box::new(output))
                         .finalize()
@@ -42,8 +44,17 @@ pub async fn extension_thread(
 
                     let wasm_bytes = std::fs::read(extension_path).unwrap();
                     let module = Module::new(&store, wasm_bytes).unwrap();
-                    let mut env = Env { wasi_env };
-                    
+                    let env = Env { wasi_env };
+
+                    let import_object = wasi_env.import_object(&module).unwrap();
+                    let instance = Instance::new(&module, &import_object).unwrap();
+
+                    let detail = instance.exports.get_function("detail").unwrap();
+                    detail.call(&[]).unwrap();
+                    let object_str = wasi_read(&wasi_env);
+                    let source: Source = ron::from_str(&object_str).unwrap();
+
+                    print!("source: {:?}", source);
                 }
                 Command::Unload(source_id) => todo!(),
                 Command::GetMangaList { source_id, param } => todo!(),
@@ -53,6 +64,14 @@ pub async fn extension_thread(
             }
         }
     }
+}
+
+fn wasi_read(wasi_env: &WasiEnv) -> String {
+    let state = wasi_env.state();
+    let wasm_stdout = state.fs.stdout_mut().unwrap().as_mut().unwrap();
+    let mut buf = String::new();
+    wasm_stdout.read_to_string(&buf);
+    buf
 }
 
 fn load(extension_path: String, config: Option<&serde_yaml::Value>) -> Result<(), Box<dyn Error>> {

@@ -106,3 +106,25 @@ pub struct Response {
     pub body: String,
     pub status: i32,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExtensionResult<T> {
+    pub data: Option<T>,
+    pub error: Option<String>
+}
+
+impl<T> ExtensionResult<T> {
+    pub fn ok(data: T) -> Self {
+        Self {
+            data: Some(data),
+            error: None
+        }
+    }
+    
+    pub fn err(msg: &str) -> Self {
+        Self {
+            data: None,
+            error: Some(msg.to_string())
+        }
+    }
+}

@@ -2867,6 +2867,7 @@ dependencies = [
  "rand 0.8.3",
  "rayon",
  "reqwest",
+ "ron",
  "rust-argon2",
  "rust-embed",
  "serde",

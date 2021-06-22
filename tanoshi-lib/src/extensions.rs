@@ -1,6 +1,4 @@
-use std::error::Error;
-
-use crate::data::{Chapter, Manga, Param, Source};
+use crate::{data::{Chapter, Manga, Param, Source}, prelude::ExtensionResult};
 
 /// `Extension` trait is an implementation for building extensions
 pub trait Extension: Send + Sync {
@@ -18,16 +16,16 @@ pub trait Extension: Send + Sync {
     /// * `sort_by` - Sort results by SortByParam
     /// * `sort_order` - Sort ascending or descending
     /// * `auth` - If source need login to search, this param used to provide credentials
-    fn get_manga_list(&self, param: Param) -> Result<Vec<Manga>, Box<dyn Error>>;
+    fn get_manga_list(&self, param: Param) -> ExtensionResult<Vec<Manga>>;
 
     /// Returns detail of manga
-    fn get_manga_info(&self, path: &String) -> Result<Manga, Box<dyn Error>>;
+    fn get_manga_info(&self, path: String) -> ExtensionResult<Manga>;
 
     /// Returns list of chapters of a manga
-    fn get_chapters(&self, path: &String) -> Result<Vec<Chapter>, Box<dyn Error>>;
+    fn get_chapters(&self, path: String) -> ExtensionResult<Vec<Chapter>>;
 
     /// Returns list of pages from a chapter of a manga
-    fn get_pages(&self, path: &String) -> Result<Vec<String>, Box<dyn Error>>;
+    fn get_pages(&self, path: String) -> ExtensionResult<Vec<String>>;
 
     // /// Proxy image
     // fn get_page(&self, url: &String) -> Result<Vec<u8>, Box<dyn Error>> {
