@@ -61,8 +61,8 @@ impl PartialOrd for Version {
                     return Some(ord);
                 }
             }
-        } 
-        
+        }
+
         if let Some(ord) = self.minor.partial_cmp(&other.minor) {
             match ord {
                 std::cmp::Ordering::Equal => {}
@@ -70,7 +70,7 @@ impl PartialOrd for Version {
                     return Some(ord);
                 }
             }
-        } 
+        }
 
         self.patch.partial_cmp(&other.patch)
     }
@@ -109,8 +109,8 @@ pub struct Source {
     pub has_update: bool,
 }
 
-impl From<tanoshi_lib::model::Source> for Source {
-    fn from(s: tanoshi_lib::model::Source) -> Self {
+impl From<tanoshi_lib::data::Source> for Source {
+    fn from(s: tanoshi_lib::data::Source) -> Self {
         Self {
             id: s.id,
             name: s.name,
@@ -134,14 +134,14 @@ impl SourceRoot {
         );
         let source_indexes = reqwest::get(url).await?.json::<Vec<SourceIndex>>().await?;
 
-        let extensions = ctx.data::<GlobalContext>()?.extensions.read()?;
-        let exts = extensions.extentions();
+        let extensions = ctx.data::<GlobalContext>()?.extensions.clone();
 
         let mut sources: Vec<Source> = vec![];
         for index in source_indexes {
-            if let Some(s) = exts.get(&index.id) {
-                let mut source: Source = s.detail().into();
-                source.has_update =  Version::new(index.version) > Version::new(source.version.clone());
+            if extensions.exist(index.id).await? {
+                let mut source: Source = extensions.detail(index.id).await?.into();
+                source.has_update =
+                    Version::new(index.version) > Version::new(source.version.clone());
                 sources.push(source);
             }
         }
@@ -155,24 +155,20 @@ impl SourceRoot {
             std::env::consts::OS
         );
         let source_indexes = reqwest::get(url).await?.json::<Vec<SourceIndex>>().await?;
-        let extensions = ctx.data::<GlobalContext>()?.extensions.read()?;
-        let exts = extensions.extentions();
+        let extensions = ctx.data::<GlobalContext>()?.extensions.clone();
 
         let mut sources: Vec<Source> = vec![];
         for index in source_indexes {
-            if exts.get(&index.id).is_none() {
+            if extensions.exist(index.id).await? {
                 sources.push(index.into());
             }
         }
         Ok(sources)
     }
 
-    async fn source(&self, ctx: &Context<'_>, source_id: i64) -> Result<Option<Source>> {
-        let exts = ctx.data::<GlobalContext>()?.extensions.read()?;
-        Ok(exts
-            .extentions()
-            .get(&source_id)
-            .map(|ext| ext.detail().into()))
+    async fn source(&self, ctx: &Context<'_>, source_id: i64) -> Result<Source> {
+        let exts = ctx.data::<GlobalContext>()?.extensions.clone();
+        Ok(exts.detail(source_id).await?.into())
     }
 }
 
@@ -187,11 +183,9 @@ impl SourceMutationRoot {
         }
 
         let ctx = ctx.data::<GlobalContext>()?;
-        {
-            let extensions = ctx.extensions.read()?;
-            if extensions.extentions().get(&source_id).is_some() {
-                return Err("source installed, use updateSource to update".into());
-            }
+        let extensions = ctx.extensions.clone();
+        if extensions.exist(source_id).await? {
+            return Err("source installed, use updateSource to update".into());
         }
 
         let url = format!(
@@ -211,9 +205,9 @@ impl SourceMutationRoot {
             std::env::consts::OS,
             source.path,
         );
+
         let raw = reqwest::get(url).await?.bytes().await?;
-        let mut extensions = ctx.extensions.write()?;
-        extensions.install(source.id, &raw)?;
+        extensions.install(source.name, &raw).await;
 
         Ok(source.id)
     }
@@ -222,11 +216,11 @@ impl SourceMutationRoot {
         if !user::check_is_admin(ctx) {
             return Err("Forbidden".into());
         }
-        
-        let ctx = ctx.data::<GlobalContext>()?;
-        let mut extensions = ctx.extensions.write()?;
 
-        extensions.remove(source_id)?;
+        let ctx = ctx.data::<GlobalContext>()?;
+        let extensions = ctx.extensions.clone();
+
+        extensions.unload(source_id).await;
 
         Ok(source_id)
     }
@@ -235,12 +229,10 @@ impl SourceMutationRoot {
         if !user::check_is_admin(ctx) {
             return Err("Forbidden".into());
         }
-        
+
         let ctx = ctx.data::<GlobalContext>()?;
-        {
-            let extensions = ctx.extensions.read()?;
-            extensions.extentions().get(&source_id).ok_or("no source")?;
-        }
+        let extensions = ctx.extensions.clone();
+        extensions.exist(source_id).await?;
 
         let url = format!(
             "https://raw.githubusercontent.com/faldez/tanoshi-extensions/repo-{}/index.json",
@@ -254,13 +246,8 @@ impl SourceMutationRoot {
             .ok_or("source not found")?
             .clone();
 
-        {
-            let extensions = ctx.extensions.read()?;
-            let ext = extensions.extentions().get(&source_id).ok_or("no source")?;
-
-            if ext.detail().version == source.version {
-                return Err("No new version".into());
-            }
+        if extensions.detail(source_id).await?.version == source.version {
+            return Err("No new version".into());
         }
 
         let url = format!(
@@ -269,10 +256,9 @@ impl SourceMutationRoot {
             source.path,
         );
         let raw = reqwest::get(url).await?.bytes().await?;
-        let mut extensions = ctx.extensions.write()?;
 
-        extensions.remove(source_id)?;
-        extensions.install(source.id, &raw)?;
+        extensions.unload(source_id).await;
+        extensions.install(source.name, &raw).await;
 
         Ok(source_id)
     }

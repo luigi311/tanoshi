@@ -1,22 +1,20 @@
-use std::sync::{Arc, RwLock};
-
 use crate::db::{MangaDatabase, UserDatabase};
-use crate::extension::Extensions;
+use crate::extension::ExtensionBus;
 
 pub struct GlobalContext {
     pub userdb: UserDatabase,
     pub secret: String,
     pub mangadb: MangaDatabase,
-    pub extensions: Arc<RwLock<Extensions>>,
+    pub extensions: ExtensionBus,
 }
 
 impl GlobalContext {
-    pub fn new(userdb: UserDatabase, mangadb: MangaDatabase, secret: String, extensions: Extensions) -> Self {
+    pub fn new(userdb: UserDatabase, mangadb: MangaDatabase, secret: String, extensions: ExtensionBus) -> Self {
         Self {
             userdb,
             mangadb,
             secret,
-            extensions: Arc::new(RwLock::new(extensions)),
+            extensions,
         }
     }
 }

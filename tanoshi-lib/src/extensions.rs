@@ -1,4 +1,4 @@
-use crate::{data::{Chapter, Manga, Param, Source}, prelude::ExtensionResult};
+use crate::data::{Chapter, Manga, Param, Source, ExtensionResult};
 
 /// `Extension` trait is an implementation for building extensions
 pub trait Extension: Send + Sync {

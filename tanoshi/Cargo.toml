@@ -17,7 +17,7 @@ serde_yaml = "0.8"
 warp = { version="0.3.1", features=["compression", "tls"] }
 rand = { version="^0.8" }
 log = { version="*" }
-pretty_env_logger = { version="0.4" }
+env_logger = "0.8.4"
 jsonwebtoken = { version="7" }
 chrono = { version="0.4", features=["serde"] }
 anyhow = "1"
@@ -41,8 +41,7 @@ sqlx = { version="0.5.2", features=[
     "migrate",
 ] }
 reqwest = { version="^0.11", features=["json", "rustls"] }
+ureq = { version = "2", features = ["json"] }
 futures = "^0.3"
 rust-argon2 = "0.8"
-async-trait = "0.1.50"
-rayon = "1.5"
 ron = "0.6.4"
