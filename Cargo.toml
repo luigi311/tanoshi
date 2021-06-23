@@ -3,5 +3,6 @@ members = [
     "tanoshi", 
     "tanoshi-lib", 
     "tanoshi-util", 
+    "tanoshi-cli", 
     "tanoshi-web"]
 default-members = ["tanoshi"]

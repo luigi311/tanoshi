@@ -128,10 +128,7 @@ pub struct SourceRoot;
 #[Object]
 impl SourceRoot {
     async fn installed_sources(&self, ctx: &Context<'_>) -> Result<Vec<Source>> {
-        let url = format!(
-            "https://raw.githubusercontent.com/faldez/tanoshi-extensions/repo-{}/index.json",
-            std::env::consts::OS
-        );
+        let url = "https://raw.githubusercontent.com/faldez/tanoshi-extensions/repo/index.json".to_string();
         let source_indexes = reqwest::get(url).await?.json::<Vec<SourceIndex>>().await?;
 
         let extensions = ctx.data::<GlobalContext>()?.extensions.clone();
@@ -150,10 +147,7 @@ impl SourceRoot {
     }
 
     async fn available_sources(&self, ctx: &Context<'_>) -> Result<Vec<Source>> {
-        let url = format!(
-            "https://raw.githubusercontent.com/faldez/tanoshi-extensions/repo-{}/index.json",
-            std::env::consts::OS
-        );
+        let url = "https://raw.githubusercontent.com/faldez/tanoshi-extensions/repo/index.json".to_string();
         let source_indexes = reqwest::get(url).await?.json::<Vec<SourceIndex>>().await?;
         let extensions = ctx.data::<GlobalContext>()?.extensions.clone();
 
@@ -188,11 +182,7 @@ impl SourceMutationRoot {
             return Err("source installed, use updateSource to update".into());
         }
 
-        let url = format!(
-            "https://raw.githubusercontent.com/faldez/tanoshi-extensions/repo-{}/index.json",
-            std::env::consts::OS
-        );
-
+        let url = "https://raw.githubusercontent.com/faldez/tanoshi-extensions/repo/index.json".to_string();
         let source_indexes = reqwest::get(url).await?.json::<Vec<SourceIndex>>().await?;
         let source: SourceIndex = source_indexes
             .iter()
@@ -201,8 +191,7 @@ impl SourceMutationRoot {
             .clone();
 
         let url = format!(
-            "https://raw.githubusercontent.com/faldez/tanoshi-extensions/repo-{}/{}",
-            std::env::consts::OS,
+            "https://raw.githubusercontent.com/faldez/tanoshi-extensions/repo/{}",
             source.path,
         );
 
@@ -234,10 +223,7 @@ impl SourceMutationRoot {
         let extensions = ctx.extensions.clone();
         extensions.exist(source_id).await?;
 
-        let url = format!(
-            "https://raw.githubusercontent.com/faldez/tanoshi-extensions/repo-{}/index.json",
-            std::env::consts::OS
-        );
+        let url = "https://raw.githubusercontent.com/faldez/tanoshi-extensions/repo/index.json".to_string();
 
         let source_indexes = reqwest::get(url).await?.json::<Vec<SourceIndex>>().await?;
         let source: SourceIndex = source_indexes
@@ -251,8 +237,7 @@ impl SourceMutationRoot {
         }
 
         let url = format!(
-            "https://raw.githubusercontent.com/faldez/tanoshi-extensions/repo-{}/{}",
-            std::env::consts::OS,
+            "https://raw.githubusercontent.com/faldez/tanoshi-extensions/repo/{}",
             source.path,
         );
         let raw = reqwest::get(url).await?.bytes().await?;

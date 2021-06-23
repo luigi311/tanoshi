@@ -1,149 +1,195 @@
-use anyhow::{anyhow, Result};
-use lib::Library;
-use tanoshi_lib::model::{SortByParam, SortOrderParam};
-use std::{collections::HashMap, sync::Arc};
-use tanoshi_lib::extensions::{Extension, PluginDeclaration};
-use tanoshi_lib::model::{Chapter, Manga, Source, SourceLogin, SourceLoginResult};
+use serde::{de::DeserializeOwned, Serialize};
+use std::{collections::HashMap, error::Error, path::PathBuf};
+use tanoshi_lib::prelude::{Chapter, Extension, Manga, Param, Request, Response, Source};
+use wasmer::{imports, ChainableNamedResolver, Function, Instance, Module, Store, WasmerEnv};
+use wasmer_wasi::{Pipe, WasiEnv, WasiState};
+
+#[derive(WasmerEnv, Clone)]
+struct ExtensionEnv {
+    wasi_env: WasiEnv,
+}
 
 pub struct ExtensionProxy {
-    extension: Box<dyn Extension>,
-    _lib: Arc<Library>,
+    instance: Instance,
+    path: String,
+    env: ExtensionEnv,
+}
+
+impl ExtensionProxy {
+    pub fn load(store: &Store, path: String) -> Self {
+        let input = Pipe::new();
+        let output = Pipe::new();
+        let mut wasi_env = WasiState::new("tanoshi")
+            .stdin(Box::new(input))
+            .stdout(Box::new(output))
+            .finalize()
+            .unwrap();
+
+        let extension_path = PathBuf::from(path.clone());
+
+        let wasm_bytes = std::fs::read(extension_path).unwrap();
+        let module = Module::new(&store, wasm_bytes).unwrap();
+
+        let import_object = wasi_env.import_object(&module).unwrap();
+
+        let env = ExtensionEnv { wasi_env };
+
+        let tanoshi = imports! {
+            "tanoshi" => {
+                "host_http_request" => Function::new_native_with_env(&store, env.clone(), host_http_request)
+            }
+        };
+
+        let instance = Instance::new(&module, &tanoshi.chain_back(import_object)).unwrap();
+
+        ExtensionProxy {
+            instance,
+            path,
+            env,
+        }
+    }
+
+    fn call<T>(&self, name: &str) -> T
+    where
+        T: DeserializeOwned,
+    {
+        let res = self.instance.exports.get_function(name).unwrap();
+        res.call(&[]).unwrap();
+        let object_str = wasi_read(&self.env);
+        ron::from_str(&object_str).unwrap()
+    }
+
+    fn call_with_args<T>(&self, name: &str, param: &impl Serialize) -> T
+    where
+        T: DeserializeOwned,
+    {
+        let res = self.instance.exports.get_function(name).unwrap();
+        wasi_write(&self.env, &param);
+        res.call(&[]).unwrap();
+        let object_str = wasi_read(&self.env);
+        ron::from_str(&object_str).unwrap()
+    }
 }
 
 impl Extension for ExtensionProxy {
     fn detail(&self) -> Source {
-        self.extension.detail()
+        self.call("detail")
     }
 
-    fn get_mangas(
-        &self,
-        keyword: Option<String>,
-        genres: Option<Vec<String>>,
-        page: Option<i32>,
-        sort_by: Option<SortByParam>,
-        sort_order: Option<SortOrderParam>,
-        auth: Option<String>,
-    ) -> Result<Vec<Manga>> {
-        self.extension.get_mangas(keyword, genres, page, sort_by, sort_order, auth)
+    fn get_manga_list(&self, param: Param) -> tanoshi_lib::prelude::ExtensionResult<Vec<Manga>> {
+        self.call_with_args("get_manga_list", &param)
     }
 
-    fn get_manga_info(&self, path: &String) -> Result<Manga> {
-        self.extension.get_manga_info(path)
+    fn get_manga_info(&self, path: String) -> tanoshi_lib::prelude::ExtensionResult<Manga> {
+        self.call_with_args("get_manga_info", &path)
     }
 
-    fn get_chapters(&self, path: &String) -> Result<Vec<Chapter>> {
-        self.extension.get_chapters(path)
+    fn get_chapters(&self, path: String) -> tanoshi_lib::prelude::ExtensionResult<Vec<Chapter>> {
+        self.call_with_args("get_chapters", &path)
     }
 
-    fn get_pages(&self, path: &String) -> Result<Vec<String>> {
-        self.extension.get_pages(path)
-    }
-
-    fn get_page(&self, path: &String) -> Result<Vec<u8>> {
-        self.extension.get_page(path)
-    }
-
-    fn login(&self, login_info: SourceLogin) -> Result<SourceLoginResult> {
-        self.extension.login(login_info)
+    fn get_pages(&self, path: String) -> tanoshi_lib::prelude::ExtensionResult<Vec<String>> {
+        self.call_with_args("get_pages", &path)
     }
 }
 
-pub struct Extensions {
-    extensions: HashMap<String, ExtensionProxy>,
-    libraries: Vec<Arc<Library>>,
-}
+pub fn load(extention_dir_path: String) -> HashMap<i64, ExtensionProxy> {
+    let mut extension_map = HashMap::new();
 
-impl Extensions {
-    pub fn new() -> Extensions {
-        Extensions {
-            extensions: HashMap::new(),
-            libraries: vec![],
+    let store = Store::default();
+
+    match std::fs::read_dir(extention_dir_path.clone()) {
+        Ok(_) => {}
+        Err(_) => {
+            let _ = std::fs::create_dir_all(extention_dir_path.clone());
         }
     }
 
-    pub fn extensions(&self) -> &HashMap<String, ExtensionProxy> {
-        &self.extensions
-    }
-
-    /* pub fn get(&self, name: &String) -> Option<&ExtensionProxy> {
-        self.extensions.get(name)
-    } */
-
-    pub unsafe fn load(
-        &mut self,
-        library_path: String,
-        config: Option<&serde_yaml::Value>,
-    ) -> Result<crate::Source> {
-        let library = Arc::new(Library::new(&library_path)?);
-
-        let decl = library
-            .get::<*mut PluginDeclaration>(b"plugin_declaration\0")?
-            .read();
-
-        if decl.rustc_version != tanoshi_lib::RUSTC_VERSION
-            || decl.core_version != tanoshi_lib::CORE_VERSION
-        {
-            return Err(anyhow!("Version mismatch"));
-        }
-
-        let ext = if cfg!(target_os = "windows") {
-            "dll"
-        } else if cfg!(target_os = "macos") {
-            "dylib"
-        } else if cfg!(target_os = "linux") {
-            "so"
-        } else {
-            return Err(anyhow!("os not supported"));
-        };
-
-        let mut registrar = PluginRegistrar::new(Arc::clone(&library));
-        (decl.register)(&mut registrar, config);
-
-        self.extensions.extend(registrar.extensions);
-        self.libraries.push(library);
-
-        let detail = self.extensions().get(decl.name).unwrap().detail();
-        
-        let new_filename = format!("{}-v{}.{}", &decl.name, detail.version, ext);
-        let mut new_path = format!("repo-{}/library/{}", std::env::consts::OS, new_filename);
-        if cfg!(target_os = "windows") {
-            new_path = new_path.replace("/", "\\");
-        }
-        let _ = std::fs::copy(library_path, &new_path);
-
-        let path = format!("library/{}", &new_filename);
-        Ok(crate::Source {
-            id: detail.id,
-            name: decl.name.to_string(),
-            path: path.to_string(),
-            rustc_version: decl.rustc_version.to_string(),
-            core_version: decl.core_version.to_string(),
-            version: detail.version,
+    for entry in std::fs::read_dir(extention_dir_path.clone())
+        .unwrap()
+        .into_iter()
+        .filter(move |path| {
+            if let Ok(p) = path {
+                let ext = p
+                    .clone()
+                    .path()
+                    .extension()
+                    .unwrap_or("".as_ref())
+                    .to_owned();
+                if ext == "wasm" {
+                    return true;
+                }
+            }
+            return false;
         })
+    {
+        let entry = entry.unwrap();
+        let path = entry.path().to_str().unwrap().to_string();
+        let file_name = entry.path().file_name().unwrap().to_str().unwrap().to_string();
+        let new_path = format!("repo/library/{}", file_name);
+
+        let _ = std::fs::copy(path, &new_path);
+
+        info!("load plugin from {:?}", new_path.clone());
+        let proxy = ExtensionProxy::load(&store, new_path.clone());
+        let source = proxy.detail();
+        info!("loaded: {:?}", source);
+
+        extension_map.insert(source.id, proxy);
     }
+
+    extension_map
 }
 
-pub struct PluginRegistrar {
-    extensions: HashMap<String, ExtensionProxy>,
-    lib: Arc<Library>,
+fn wasi_read(env: &ExtensionEnv) -> String {
+    let mut state = env.wasi_env.state();
+    let wasm_stdout = state.fs.stdout_mut().unwrap().as_mut().unwrap();
+    let mut buf = String::new();
+    wasm_stdout.read_to_string(&mut buf).unwrap();
+    buf
 }
 
-impl PluginRegistrar {
-    fn new(lib: Arc<Library>) -> PluginRegistrar {
-        PluginRegistrar {
-            lib,
-            extensions: HashMap::default(),
+fn wasi_write(env: &ExtensionEnv, param: &impl Serialize) {
+    let mut state = env.wasi_env.state();
+    let wasm_stdout = state.fs.stdin_mut().unwrap().as_mut().unwrap();
+
+    let buf = ron::to_string(param).unwrap();
+    wasm_stdout.write_all(&mut buf.as_bytes()).unwrap()
+}
+
+fn host_http_request(env: &ExtensionEnv) {
+    let http_req_str = wasi_read(env);
+    let http_req = ron::from_str::<Request>(&http_req_str).unwrap();
+
+    let mut req = ureq::get(&http_req.url);
+    if let Some(headers) = http_req.headers {
+        for (name, values) in headers {
+            for value in values {
+                req = req.set(&name, &value);
+            }
         }
     }
-}
+    let res = req.call().unwrap();
 
-impl tanoshi_lib::extensions::PluginRegistrar for PluginRegistrar {
-    fn register_function(&mut self, name: &str, extension: Box<dyn Extension>) {
-        let proxy = ExtensionProxy {
-            extension,
-            _lib: Arc::clone(&self.lib),
-        };
-
-        self.extensions.insert(name.to_string(), proxy);
+    let mut headers: HashMap<String, Vec<String>> = HashMap::new();
+    for name in res.headers_names() {
+        if let Some(header_value) = res.header(&name) {
+            if let Some(header) = headers.get_mut(&name) {
+                header.push(header_value.to_string());
+            } else {
+                headers.insert(name, vec![header_value.to_string()]);
+            }
+        }
     }
+
+    let status = res.status() as i32;
+    let body = res.into_string().unwrap();
+
+    let http_res = Response {
+        headers,
+        body,
+        status,
+    };
+
+    wasi_write(env, &http_res);
 }
