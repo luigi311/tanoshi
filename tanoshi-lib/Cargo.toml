@@ -4,27 +4,14 @@ version = "0.22.0"
 authors = ["Muhammad Fadhlika <fadhlika@gmail.com>"]
 edition = "2018"
 description = "Tanoshi library"
-repository= "https://github.com/faldez/tanoshi"
+repository= "https://github.com/faldez/tanoshi/tanoshi-lib"
 license = "MIT"
 readme = "README.md"
 exclude = [
     ".github/*"
 ]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-[features]
-default = ["model", "extensions"]
-model = []
-rest = ["model"]
-extensions = ["model"]
-
 [dependencies]
 serde = {version = "1.0", features = ["derive"]}
-anyhow = "1"
+ron = "0.6.4"
 chrono = { version = "0.4", features = ["serde"] }
-serde_yaml = "0.8"
-dirs = "3"
-ureq = "2"
-
-[build-dependencies]
-rustc_version = "0.3.3"

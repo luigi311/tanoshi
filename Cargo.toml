@@ -1,7 +1,7 @@
 [workspace]
 members = [
-    "tanoshi",
-    "tanoshi-web",
-    "tanoshi-lib"
-]
+    "tanoshi", 
+    "tanoshi-lib", 
+    "tanoshi-util", 
+    "tanoshi-web"]
 default-members = ["tanoshi"]

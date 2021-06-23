@@ -1,8 +1,6 @@
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
-use std::collections::BTreeMap;
-use std::iter;
-use std::path::PathBuf;
+use std::{collections::BTreeMap, iter, path::PathBuf};
 
 #[derive(serde::Deserialize, serde::Serialize, Debug)]
 pub struct Config {
@@ -70,7 +68,10 @@ impl Config {
     pub fn open(path: Option<String>) -> Result<Config, anyhow::Error> {
         let config_path = match path {
             Some(p) => PathBuf::from(p.clone()),
-            None => dirs::home_dir().expect("should be home dir, or define path").join(".tanoshi").join("config.yml")
+            None => dirs::home_dir()
+                .expect("should be home dir, or define path")
+                .join(".tanoshi")
+                .join("config.yml"),
         };
 
         match std::fs::File::open(config_path.clone()) {

@@ -21,8 +21,8 @@ pub struct Chapter {
     pub pages: Vec<String>,
 }
 
-impl From<tanoshi_lib::model::Chapter> for Chapter {
-    fn from(ch: tanoshi_lib::model::Chapter) -> Self {
+impl From<tanoshi_lib::data::Chapter> for Chapter {
+    fn from(ch: tanoshi_lib::data::Chapter) -> Self {
         Self {
             id: 0,
             source_id: ch.source_id,
@@ -120,11 +120,10 @@ impl Chapter {
         }
 
         let pages = {
-            let extensions = ctx.data::<GlobalContext>()?.extensions.read()?;
+            let extensions = ctx.data::<GlobalContext>()?.extensions.clone();
             extensions
-                .get(self.source_id)
-                .ok_or("no source")?
-                .get_pages(&self.path)?
+                .get_pages(self.source_id, self.path.clone())
+                .await?
         };
 
         ctx.data::<GlobalContext>()?

@@ -1,10 +1,7 @@
-extern crate libloading as lib;
-extern crate pretty_env_logger;
 #[macro_use]
 extern crate log;
 extern crate argon2;
 
-// mod auth;
 mod assets;
 mod catalogue;
 mod config;
@@ -17,19 +14,26 @@ mod schema;
 mod status;
 mod user;
 
+use crate::{
+    config::Config,
+    context::GlobalContext,
+    extension::ExtensionBus,
+    schema::{MutationRoot, QueryRoot, TanoshiSchema},
+};
 use anyhow::Result;
 use clap::Clap;
 
-use crate::context::GlobalContext;
-use crate::schema::{MutationRoot, QueryRoot, TanoshiSchema};
-use async_graphql::extensions::ApolloTracing;
-use async_graphql::http::{playground_source, GraphQLPlaygroundConfig};
-use async_graphql::{EmptySubscription, Schema};
+use async_graphql::{
+    extensions::ApolloTracing,
+    http::{playground_source, GraphQLPlaygroundConfig},
+    EmptySubscription, Schema,
+};
 use async_graphql_warp::{BadRequest, Response};
-use config::Config;
 use std::convert::Infallible;
-use warp::http::{Response as HttpResponse, StatusCode};
-use warp::{Filter, Rejection};
+use warp::{
+    http::{Response as HttpResponse, StatusCode},
+    Filter, Rejection,
+};
 
 #[derive(Clap)]
 #[clap(version = "0.22.4")]
@@ -41,31 +45,31 @@ struct Opts {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    pretty_env_logger::init();
+    env_logger::init();
 
     let opts: Opts = Opts::parse();
-    let config = Config::open(opts.config)?;
+    let config = config::Config::open(opts.config)?;
 
-    let secret = config.secret;
-    let mut extensions = extension::Extensions::new(config.plugin_path.clone());
-    if extensions.initialize(config.plugin_config).is_err() {
-        log::error!("error initialize plugin");
-    }
+    let (_, extension_tx) = extension::start();
+    extension::load(config.plugin_path.clone(), extension_tx.clone()).await;
 
-    // let serve_static = filters::static_files::static_files();
-
-    // let routes = api.or(serve_static).with(warp::log("manga"));
     let pool = db::establish_connection(config.database_path).await;
     let mangadb = db::MangaDatabase::new(pool.clone());
     let userdb = db::UserDatabase::new(pool.clone());
 
+    let extension_bus = ExtensionBus::new(config.plugin_path, extension_tx);
     let schema: TanoshiSchema = Schema::build(
         QueryRoot::default(),
         MutationRoot::default(),
         EmptySubscription::default(),
     )
     .extension(ApolloTracing)
-    .data(GlobalContext::new(userdb, mangadb, secret, extensions))
+    .data(GlobalContext::new(
+        userdb,
+        mangadb,
+        config.secret,
+        extension_bus,
+    ))
     .finish();
 
     let graphql_post = warp::header::optional::<String>("Authorization")

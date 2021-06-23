@@ -21,14 +21,14 @@ pub struct Manga {
     pub date_added: chrono::NaiveDateTime,
 }
 
-impl From<&tanoshi_lib::model::Manga> for Manga {
-    fn from(m: &tanoshi_lib::model::Manga) -> Self {
+impl From<&tanoshi_lib::data::Manga> for Manga {
+    fn from(m: &tanoshi_lib::data::Manga) -> Self {
         m.clone().into()
     }
 }
 
-impl From<tanoshi_lib::model::Manga> for Manga {
-    fn from(m: tanoshi_lib::model::Manga) -> Self {
+impl From<tanoshi_lib::data::Manga> for Manga {
+    fn from(m: tanoshi_lib::data::Manga) -> Self {
         Self {
             id: 0,
             source_id: m.source_id,
@@ -125,11 +125,10 @@ impl Manga {
         }
 
         let chapters: Vec<Chapter> = {
-            let extensions = ctx.extensions.read()?;
+            let extensions = ctx.extensions.clone();
             extensions
-                .get(self.source_id)
-                .ok_or("no source")?
-                .get_chapters(&self.path)?
+                .get_chapters(self.source_id, self.path.clone())
+                .await?
                 .into_iter()
                 .map(|c| {
                     let mut c: Chapter = c.into();

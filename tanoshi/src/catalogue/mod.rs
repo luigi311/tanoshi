@@ -10,12 +10,11 @@ pub use chapter::Chapter;
 use crate::context::GlobalContext;
 
 use async_graphql::{Context, Enum, Object, Result};
-use rayon::prelude::*;
-use tanoshi_lib::extensions::Extension;
+use tanoshi_lib::{extensions::Extension, prelude::Param};
 
 /// A type represent sort parameter for query manga from source, normalized across sources
 #[derive(Enum, Copy, Clone, Eq, PartialEq)]
-#[graphql(remote = "tanoshi_lib::model::SortByParam")]
+#[graphql(remote = "tanoshi_lib::data::SortByParam")]
 pub enum SortByParam {
     LastUpdated,
     Title,
@@ -25,7 +24,7 @@ pub enum SortByParam {
 
 /// A type represent order parameter for query manga from source, normalized across sources
 #[derive(Enum, Copy, Clone, Eq, PartialEq)]
-#[graphql(remote = "tanoshi_lib::model::SortOrderParam")]
+#[graphql(remote = "tanoshi_lib::data::SortOrderParam")]
 pub enum SortOrderParam {
     Asc,
     Desc,
@@ -51,12 +50,21 @@ impl CatalogueRoot {
 
         let ctx = ctx.data::<GlobalContext>()?;
         let fetched_manga = {
-            let extensions = ctx.extensions.read()?;
+            let extensions = ctx.extensions.clone();
             extensions
-                .get(source_id)
-                .ok_or("no source")?
-                .get_mangas(keyword, genres, page, sort_by, sort_order, None)?
-                .par_iter()
+                .get_manga_list(
+                    source_id,
+                    Param {
+                        keyword,
+                        genres,
+                        page,
+                        sort_by,
+                        sort_order,
+                        auth: None,
+                    },
+                )
+                .await?
+                .iter()
                 .map(|m| Manga::from(m))
                 .collect()
         };
@@ -77,12 +85,8 @@ impl CatalogueRoot {
             Ok(Some(manga))
         } else {
             let mut m: Manga = {
-                let extensions = ctx.extensions.read()?;
-                extensions
-                    .get(source_id)
-                    .ok_or("no source")?
-                    .get_manga_info(&path)?
-                    .into()
+                let extensions = ctx.extensions.clone();
+                extensions.get_manga_info(source_id, path).await?.into()
             };
 
             m.id = db.insert_manga(&m).await?;
@@ -102,11 +106,10 @@ impl CatalogueRoot {
         if let Some(manga) = db.get_manga_by_id(id).await {
             if refresh {
                 let mut m: Manga = {
-                    let extensions = ctx.extensions.read()?;
+                    let extensions = ctx.extensions.clone();
                     extensions
-                        .get(manga.source_id)
-                        .ok_or("no source")?
-                        .get_manga_info(&manga.path)?
+                        .get_manga_info(manga.source_id, manga.path)
+                        .await?
                         .into()
                 };
 
