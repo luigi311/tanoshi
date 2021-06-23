@@ -131,6 +131,39 @@ struct ExtensionProxy {
 }
 
 impl ExtensionProxy {
+    pub fn load(store: &Store, path: String) -> Self {
+        let input = Pipe::new();
+        let output = Pipe::new();
+        let mut wasi_env = WasiState::new("tanoshi")
+            .stdin(Box::new(input))
+            .stdout(Box::new(output))
+            .finalize()
+            .unwrap();
+
+        let extension_path = PathBuf::from(path.clone());
+
+        let wasm_bytes = std::fs::read(extension_path).unwrap();
+        let module = Module::new(&store, wasm_bytes).unwrap();
+
+        let import_object = wasi_env.import_object(&module).unwrap();
+
+        let env = ExtensionEnv { wasi_env };
+
+        let tanoshi = imports! {
+            "tanoshi" => {
+                "host_http_request" => Function::new_native_with_env(&store, env.clone(), host_http_request)
+            }
+        };
+
+        let instance = Instance::new(&module, &tanoshi.chain_back(import_object)).unwrap();
+
+        ExtensionProxy {
+            instance,
+            path,
+            env,
+        }
+    }
+
     fn call<T>(&self, name: &str) -> T
     where
         T: DeserializeOwned,
@@ -228,37 +261,7 @@ async fn extension_thread(extension_receiver: UnboundedReceiver<Command>) {
         if let Some(cmd) = cmd {
             match cmd {
                 Command::Load(path) => {
-                    let input = Pipe::new();
-                    let output = Pipe::new();
-                    let mut wasi_env = WasiState::new("tanoshi")
-                        .stdin(Box::new(input))
-                        .stdout(Box::new(output))
-                        .finalize()
-                        .unwrap();
-
-                    let extension_path = PathBuf::from(path.clone());
-
-                    let wasm_bytes = std::fs::read(extension_path).unwrap();
-                    let module = Module::new(&store, wasm_bytes).unwrap();
-
-                    let import_object = wasi_env.import_object(&module).unwrap();
-
-                    let env = ExtensionEnv { wasi_env };
-
-                    let tanoshi = imports! {
-                        "tanoshi" => {
-                            "host_http_request" => Function::new_native_with_env(&store, env.clone(), host_http_request)
-                        }
-                    };
-
-                    let instance =
-                        Instance::new(&module, &tanoshi.chain_back(import_object)).unwrap();
-
-                    let proxy = ExtensionProxy {
-                        instance,
-                        path,
-                        env,
-                    };
+                    let proxy = ExtensionProxy::load(&store, path);
                     let source = proxy.detail();
                     info!("loaded: {:?}", source);
 
