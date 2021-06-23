@@ -81,8 +81,6 @@ pub struct SourceIndex {
     pub id: i64,
     pub name: String,
     pub path: String,
-    pub rustc_version: String,
-    pub core_version: String,
     pub version: String,
 }
 
