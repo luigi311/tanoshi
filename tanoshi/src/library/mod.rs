@@ -13,17 +13,25 @@ pub struct LibraryRoot;
 
 #[Object]
 impl LibraryRoot {
-    async fn library(&self, ctx: &Context<'_>) -> Result<Vec<Manga>> {
+    async fn library(
+        &self,
+        ctx: &Context<'_>,
+        #[graphql(desc = "refresh data from source", default = false)] refresh: bool,
+    ) -> Result<Vec<Manga>> {
         let user = user::get_claims(ctx).ok_or("no token")?;
-        match ctx
-            .data_unchecked::<GlobalContext>()
-            .mangadb
-            .get_library(user.sub)
-            .await
-        {
-            Ok(manga) => Ok(manga),
-            Err(_) => Err("error get user libary".into()),
+        let ctx = ctx.data_unchecked::<GlobalContext>();
+        let manga = ctx.mangadb.get_library(user.sub).await?;
+
+        if refresh {
+            for m in manga.iter() {
+                ctx.extensions
+                    .clone()
+                    .get_chapters(m.source_id, m.path.clone())
+                    .await?;
+            }
         }
+
+        Ok(manga)
     }
 
     async fn recent_updates(

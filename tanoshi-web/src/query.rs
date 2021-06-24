@@ -83,13 +83,15 @@ pub async fn fetch_manga_from_source(
 )]
 pub struct BrowseFavorites;
 
-pub async fn fetch_manga_from_favorite() -> Result<Vec<Cover>, Box<dyn Error>> {
+pub async fn fetch_manga_from_favorite(refresh: bool) -> Result<Vec<Cover>, Box<dyn Error>> {
     let token = local_storage()
         .get("token")
         .unwrap_throw()
         .ok_or("no token")?;
     let client = reqwest::Client::new();
-    let var = browse_favorites::Variables {};
+    let var = browse_favorites::Variables {
+        refresh: Some(refresh),
+    };
     let request_body = BrowseFavorites::build_query(var);
     let res = client
         .post(&graphql_url())
@@ -429,7 +431,7 @@ pub struct FetchSourceDetail;
 
 pub async fn fetch_source(
     source_id: i64,
-) -> Result<Option<fetch_source_detail::FetchSourceDetailSource>, Box<dyn Error>> {
+) -> Result<fetch_source_detail::FetchSourceDetailSource, Box<dyn Error>> {
     let client = reqwest::Client::new();
     let var = fetch_source_detail::Variables {
         source_id: Some(source_id),

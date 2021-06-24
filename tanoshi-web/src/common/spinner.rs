@@ -16,6 +16,13 @@ impl Spinner {
         })
     }
 
+    pub fn new_with_fullscreen(fullscreen: bool) -> Rc<Self> {
+        Rc::new(Self {
+            active: Mutable::new(false),
+            fullscreen: Mutable::new(fullscreen),
+        })
+    }
+
     pub fn set_active(&self, active: bool) {
         self.active.set_neq(active);
     }
@@ -42,7 +49,7 @@ impl Spinner {
                 "bg-opacity-50",
                 "z-10",
                 "justify-center",
-            ], spinner.fullscreen.signal_cloned().map(|x| x))
+            ], spinner.fullscreen.signal_cloned())
             .class_signal([
                 "w-full",
                 "block",

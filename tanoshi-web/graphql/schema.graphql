@@ -113,7 +113,10 @@ type QueryRoot {
   ): String!
   users: [User!]!
   me: User!
-  library: [Manga!]!
+  library(
+    # refresh data from source
+    refresh: Boolean! = false
+  ): [Manga!]!
   recentUpdates(
     after: String
     before: String
@@ -165,7 +168,7 @@ type QueryRoot {
   ): Chapter
   installedSources: [Source!]!
   availableSources: [Source!]!
-  source(sourceId: Int!): Source
+  source(sourceId: Int!): Source!
 }
 
 type RecentChapter {

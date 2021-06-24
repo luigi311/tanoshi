@@ -267,7 +267,9 @@ async fn extension_thread(extension_receiver: UnboundedReceiver<Command>) {
 
                     extension_map.insert(source.id, proxy);
                 }
-                Command::Unload(source_id) => todo!(),
+                Command::Unload(source_id) => {
+                    extension_map.remove(&source_id);
+                }
                 Command::Exist(source_id, tx) => {
                     let exist = extension_map.get(&source_id).is_some();
                     tx.send(exist).unwrap();

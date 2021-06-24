@@ -1,5 +1,5 @@
-query BrowseFavorites {
-  library {
+query BrowseFavorites($refresh: Boolean) {
+  library(refresh: $refresh) {
     id
     title
     sourceId

@@ -4,11 +4,10 @@ use dominator::{clone, html, Dom};
 use futures_signals::signal_vec::{MutableVec, SignalVecExt};
 use wasm_bindgen::prelude::*;
 
-use crate::query::fetch_manga_from_favorite;
-use crate::utils::AsyncLoader;
 use crate::{
-    app::App,
     common::{events, Cover, Spinner},
+    query,
+    utils::AsyncLoader,
 };
 
 pub struct Library {
@@ -21,12 +20,22 @@ impl Library {
     pub fn new() -> Rc<Self> {
         Rc::new(Library {
             loader: AsyncLoader::new(),
-            spinner: Spinner::new(),
+            spinner: Spinner::new_with_fullscreen(true),
             cover_list: MutableVec::new(),
         })
     }
 
-    pub fn render_topbar(spinner: Rc<Spinner>) -> Dom {
+    pub fn fetch_libraries(library: Rc<Self>, refresh: bool) {
+        library.spinner.set_active(true);
+        library.loader.load(clone!(library => async move {
+            let covers = query::fetch_manga_from_favorite(refresh).await.unwrap_throw();
+            let mut cover_list = library.cover_list.lock_mut();
+            cover_list.replace_cloned(covers);
+            library.spinner.set_active(false);
+        }));
+    }
+
+    pub fn render_topbar(library: Rc<Self>) -> Dom {
         html!("div", {
             .class([
                 "pl-2",
@@ -57,8 +66,8 @@ impl Library {
                 }),
                 html!("button", {
                     .text("Refresh")
-                    .event(clone!(spinner => move |_: events::Click| {
-                        // spinner.set_active(true);
+                    .event(clone!(library => move |_: events::Click| {
+                        Self::fetch_libraries(library.clone(), true);
                     }))
                 })
             ])
@@ -84,20 +93,14 @@ impl Library {
     }
 
     pub fn render(library: Rc<Self>) -> Dom {
-        library.spinner.set_active(true);
-        library.loader.load(clone!(library => async move {
-            let covers = fetch_manga_from_favorite().await.unwrap_throw();
-            let mut cover_list = library.cover_list.lock_mut();
-            cover_list.replace_cloned(covers);
-            library.spinner.set_active(false);
-        }));
-        
+        Self::fetch_libraries(library.clone(), false);
+
         html!("div", {
             .class([
                 "main",
             ])
             .children(&mut [
-                Self::render_topbar(library.spinner.clone()),
+                Self::render_topbar(library.clone()),
                 Self::render_main(&library),
                 Spinner::render(&library.spinner)
             ])
