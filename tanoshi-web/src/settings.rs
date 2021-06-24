@@ -463,7 +463,7 @@ impl Settings {
                                                 "h-10",
                                                 "mr-2"
                                             ])
-                                            .attribute("src", &["data:image/png;base64,", &x.icon].join(" "))
+                                            .attribute("src", &x.icon)
                                         }),
                                         html!("div", {
                                             .children(&mut [
@@ -532,7 +532,7 @@ impl Settings {
                                     "w-12",
                                     "h-12"
                                 ])
-                                .attribute("src", &["data:image/png;base64,", &source.icon].join(" "))
+                                .attribute("src", &source.icon)
                             }),
                             html!("div", {
                                 .text(&source.name)
