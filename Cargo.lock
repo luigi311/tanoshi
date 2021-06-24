@@ -2856,6 +2856,7 @@ dependencies = [
  "ureq",
  "warp",
  "wasmer",
+ "wasmer-compiler-cranelift",
  "wasmer-wasi",
 ]
 

@@ -9,7 +9,10 @@ use tokio::{
     },
     task::JoinHandle,
 };
-use wasmer::{imports, ChainableNamedResolver, Function, Instance, Module, Store, WasmerEnv};
+use wasmer::{
+    imports, ChainableNamedResolver, Function, Instance, Module, Store, Universal, WasmerEnv,
+};
+use wasmer_compiler_cranelift::Cranelift;
 use wasmer_wasi::{Pipe, WasiEnv, WasiState};
 
 #[derive(Debug)]
@@ -32,14 +35,21 @@ pub struct ExtensionBus {
 
 impl ExtensionBus {
     pub fn new(extension_dir_path: String, tx: UnboundedSender<Command>) -> Self {
-        Self { extension_dir_path, tx }
+        Self {
+            extension_dir_path,
+            tx,
+        }
     }
 
     pub async fn install(&self, name: String, contents: &Bytes) {
-        let path = PathBuf::from(self.extension_dir_path.clone()).join(name).with_extension("wasm");
+        let path = PathBuf::from(self.extension_dir_path.clone())
+            .join(name)
+            .with_extension("wasm");
         std::fs::write(path.clone(), contents).unwrap();
 
-        self.tx.send(Command::Load(path.to_str().unwrap().to_string())).unwrap();
+        self.tx
+            .send(Command::Load(path.to_str().unwrap().to_string()))
+            .unwrap();
     }
 
     pub async fn unload(&self, source_id: i64) {
@@ -254,7 +264,9 @@ async fn extension_thread(extension_receiver: UnboundedReceiver<Command>) {
     let mut recv = extension_receiver;
     let mut extension_map = HashMap::new();
 
-    let store = Store::default();
+    let compiler = Cranelift::default();
+    let engine = Universal::new(compiler).engine();
+    let store = Store::new(&engine);
 
     loop {
         let cmd = recv.recv().await;

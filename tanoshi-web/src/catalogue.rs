@@ -367,14 +367,14 @@ impl Catalogue {
                         .class([
                             "w-full",
                             "flex",
-                            "justify-between",
-                            "p-2"
+                            "justify-between"
                         ])
                         .children(&mut [
                             link!(Route::Catalogue{id: source.id, latest: false}.url(), {
                                 .class([
                                     "flex",
                                     "flex-grow",
+                                    "p-2"
                                 ])
                                 .children(&mut [
                                     html!("img", {
@@ -388,7 +388,11 @@ impl Catalogue {
                                 ])
                             }),
                             link!(Route::Catalogue{id: source.id, latest: true}.url(), {
-                                .class("flex-grow-0")
+                                .class([
+                                    "flex-grow-0", 
+                                    "mx-4",
+                                    "p-2"
+                                ])
                                 .text("latest")
                             }),
                         ])

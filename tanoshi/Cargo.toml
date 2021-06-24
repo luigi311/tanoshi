@@ -23,6 +23,7 @@ chrono = { version="0.4", features=["serde"] }
 anyhow = "1"
 wasmer = "2.0.0"
 wasmer-wasi = "2.0.0"
+wasmer-compiler-cranelift = "2.0.0"
 rust-embed = { version="5.9", features=["interpolate-folder-path"] }
 mime_guess = "2"
 clap = "3.0.0-beta.1"
