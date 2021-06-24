@@ -90,7 +90,7 @@ impl Updates {
                 html!("span", {
                     .class([
                         "mx-auto",
-                        "text-gray-300"
+                        "text-gray-50"
                     ])
                     .text("Updates")
                 })
@@ -175,7 +175,8 @@ impl Updates {
                             .class([
                                 "w-full",
                                 "text-gray-900",
-                                "dark:text-gray-50"
+                                "dark:text-gray-50",
+                                "focus:outline-none"
                             ])
                             .class_signal("disabled", updates.is_entries_empty.signal())
                             .text_signal(updates.is_entries_empty.signal().map(|x| 

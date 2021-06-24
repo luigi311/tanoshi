@@ -210,6 +210,7 @@ impl Settings {
             ])
             .children(&mut [
                 html!("button", {
+                    .class("focus:outline-none")
                     .class_signal("invisible", settings.page.signal_cloned().map(|x|
                         match x {
                             SettingCategory::None => true,
@@ -257,7 +258,7 @@ impl Settings {
                     })
                 }),
                 html!("span", {
-                    .class(["text-gray-300", "truncate", "mx-auto"])
+                    .class(["text-gray-50", "truncate", "mx-auto"])
                     .text_signal(settings.page.signal_cloned().map(|x|
                         match x {
                             SettingCategory::None => "Settings",
@@ -415,6 +416,7 @@ impl Settings {
                                 }),
                                 if x.has_update {
                                     html!("button", {
+                                        .class("focus:outline-none")
                                         .text("Update")
                                         .event(clone!(settings => move |_: events::Click| {
                                             Self::update_source(settings.clone(), x.id);
@@ -487,6 +489,7 @@ impl Settings {
                                     ])
                                 }),
                                 html!("button", {
+                                    .class("focus:outline-none")
                                     .text("Install")
                                     .event(clone!(settings => move |_: events::Click| {
                                         Self::install_source(settings.clone(), x.id);
@@ -549,7 +552,8 @@ impl Settings {
                             "dark:bg-gray-900",
                             "text-red",
                             "w-full",
-                            "p-2"
+                            "p-2",
+                            "focus:outline-none"
                         ])
                         .children(&mut [
                             html!("span", {

@@ -92,7 +92,7 @@ impl Histories {
                 html!("span", {
                     .class([
                         "mx-auto",
-                        "text-gray-300"
+                        "text-gray-50"
                     ])
                     .text("Histories")
                 })
@@ -178,7 +178,8 @@ impl Histories {
                             .class([
                                 "w-full",
                                 "text-gray-900",
-                                "dark:text-gray-50"
+                                "dark:text-gray-50",
+                                "focus:outline-none"
                             ])
                             .class_signal("disabled", histories.is_entries_empty.signal())
                             .text_signal(histories.is_entries_empty.signal().map(|x| 

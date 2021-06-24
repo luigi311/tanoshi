@@ -59,7 +59,7 @@ impl Profile {
                     .class([
                         "m-2",  
                         "p-1",
-                        "outline-none",
+                        "focus:outline-none",
                         "rounded",
                         "bg-white",
                         "dark:bg-gray-900",
@@ -108,7 +108,7 @@ impl Profile {
                     .class([
                         "m-2",
                         "p-1",
-                        "outline-none",
+                        "focus:outline-none",
                         "rounded",
                         "bg-white",
                         "dark:bg-gray-900",
@@ -133,7 +133,7 @@ impl Profile {
                     .class([
                         "m-2",
                         "p-1",
-                        "outline-none",
+                        "focus:outline-none",
                         "rounded",
                         "bg-white",
                         "dark:bg-gray-900",
@@ -167,11 +167,12 @@ impl Profile {
                                 "active:bg-accent-lighter",
                                 "hover:shadow-lg",
                                 "dark:hover:bg-accent-lighter",
-                                "outline-none",
+                                "focus:outline-none",
                                 "text-white",
                                 "px-2",
                                 "py-1",
-                                "rounded"
+                                "rounded",
+                                "focus:outline-none"
                             ])
                             .attribute_signal("disabled", profile.confirm_password.signal_cloned().map(clone!(profile => move |x| {
                                 if x != profile.new_password.get_cloned() || x.len() < 8 {

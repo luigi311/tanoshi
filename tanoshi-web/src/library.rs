@@ -58,13 +58,18 @@ impl Library {
             ])
             .children(&mut [
                 html!("button", {
+                    .class("focus:outline-none")
                     .text("Filter")
                 }),
                 html!("span", {
-                    .class("text-gray-300")
+                    .class([
+                        "text-gray-50",
+                        "focus:outline-none"
+                    ])
                     .text("Library")
                 }),
                 html!("button", {
+                    .class("focus:outline-none")
                     .text("Refresh")
                     .event(clone!(library => move |_: events::Click| {
                         Self::fetch_libraries(library.clone(), true);

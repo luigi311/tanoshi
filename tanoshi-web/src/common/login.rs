@@ -62,7 +62,7 @@ impl Login {
                     .class([
                         "m-2",
                         "p-1",
-                        "outline-none",
+                        "focus:outline-none",
                         "rounded",
                         "bg-white",
                         "dark:bg-gray-900",
@@ -80,7 +80,7 @@ impl Login {
                     .class([
                         "m-2",
                         "p-1",
-                        "outline-none",
+                        "focus:outline-none",
                         "rounded",
                         "bg-white",
                         "dark:bg-gray-900",
@@ -127,11 +127,12 @@ impl Login {
                                 "bg-accent",
                                 "active:bg-accent-lighter",
                                 "hover:bg-accent-lighter",
-                                "outline-none",
+                                "focus:outline-none",
                                 "text-white",
                                 "px-2",
                                 "py-1",
-                                "rounded"
+                                "rounded",
+                                "focus:outline-none"
                             ])
                             .text("Create")
                             .event(clone!(login => move |_: events::Click| {

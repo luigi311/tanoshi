@@ -159,7 +159,8 @@ impl Manga {
                 html!("button", {
                     .class([
                         "flex",
-                        "items-center"
+                        "items-center",
+                        "focus:outline-none"
                     ])
                     .children(&mut [
                         svg!("svg", {
@@ -201,10 +202,11 @@ impl Manga {
                     ))
                 }),
                 html!("span", {
-                    .class(["text-gray-300", "truncate", "mx-auto", "px-2"])
+                    .class(["text-gray-50", "truncate", "mx-auto", "px-2"])
                     .text_signal(manga.title.signal_cloned().map(|x| x.unwrap_or("".to_string())))
                 }),
                 html!("button", {
+                    .class("focus:outline-none")
                     .text("Refresh")
                     .event(clone!(manga => move |_: events::Click| {
                         if manga.id.get() != 0 {
@@ -327,7 +329,19 @@ impl Manga {
             .class_signal("animate-pulse", manga.loader.is_loading())
             .children(&mut [
                 html!("button", {
-                    .class(["rounded", "p-2", "w-10", "h-10", "bg-white", "dark:bg-gray-900", "shadow", "dark:shadow-none", "text-gray-900", "dark:text-gray-100"])
+                    .class([
+                        "rounded", 
+                        "p-2", 
+                        "w-10", 
+                        "h-10", 
+                        "bg-white", 
+                        "dark:bg-gray-900", 
+                        "shadow", 
+                        "dark:shadow-none", 
+                        "text-gray-900", 
+                        "dark:text-gray-100",
+                        "focus:outline-none"
+                    ])
                     .children(&mut [
                         svg!("svg", {
                             .attribute("xmlns", "http://www.w3.org/2000/svg")

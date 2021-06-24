@@ -179,6 +179,7 @@ impl Catalogue {
                     None
                 } else {
                     Some(html!("button", {
+                        .class("focus:outline-none")
                         .text("Filter")
                     }))
                 }
@@ -187,7 +188,7 @@ impl Catalogue {
                 if is_search {
                     Some(html!("input", {
                         .class([
-                            "outline-none",
+                            "focus:outline-none",
                             "w-full",
                             "px-2",
                             "mr-2",
@@ -218,6 +219,7 @@ impl Catalogue {
             .child_signal(catalogue.is_search.signal().map(clone!(catalogue => move |is_search| {
                 if is_search {
                     Some(html!("button", {
+                        .class("focus:outline-none")
                         .text("Cancel")
                         .event(clone!(catalogue => move |_: events::Click| {
                             catalogue.is_search.set_neq(false);
@@ -231,6 +233,7 @@ impl Catalogue {
                     }))
                 } else {
                     Some(html!("button", {
+                        .class("focus:outline-none")
                         .text("Search")
                         .event(clone!(catalogue => move |_: events::Click| {
                             catalogue.is_search.set_neq(true);
@@ -258,7 +261,7 @@ impl Catalogue {
                     .class([
                         "border",
                         "rounded",
-                        "outline-none",
+                        "focus:outline-none",
                         "w-full",
                         "mr-2",
                         "p-1"
@@ -279,6 +282,7 @@ impl Catalogue {
                     }))
                 }),
                 html!("button", {
+                    .class("focus:outline-none")
                     .text("Cancel")
                     .event(clone!(catalogue => move |_: events::Click| {
                         catalogue.is_search.set_neq(false);
@@ -325,7 +329,8 @@ impl Catalogue {
                             .class([
                                 "w-full",
                                 "text-gray-900",
-                                "dark:text-gray-50"
+                                "dark:text-gray-50",
+                                "focus:outline-none"
                             ])
                             .text("Load More")
                             .event(clone!(catalogue => move |_: events::Click| {

@@ -108,7 +108,10 @@ impl Reader {
             .class_signal("animate__slideOutUp", reader.is_bar_visible.signal().map(|x| !x))
             .children(&mut [
                 html!("button", {
-                    .class("mx-2")
+                    .class([
+                        "mx-2",
+                        "focus:outline-none"
+                    ])
                     .children(&mut [
                         svg!("svg", {
                             .attribute("xmlns", "http://www.w3.org/2000/svg")
@@ -148,7 +151,10 @@ impl Reader {
                     ])
                 }),
                 html!("button", {
-                    .class("mx-2")
+                    .class([
+                        "mx-2",
+                        "focus:outline-none"
+                    ])
                     .children(&mut [
                         svg!("svg", {
                             .attribute("xmlns", "http://www.w3.org/2000/svg")
@@ -208,6 +214,7 @@ impl Reader {
             .child_signal(reader.prev_chapter.signal().map(clone!(reader => move |prev_chapter| {
                 match prev_chapter {
                     Some(prev) => Some(html!("button", {
+                        .class("focus:outline-none")
                         .children(&mut [
                             svg!("svg", {
                                 .attribute("xmlns", "http://www.w3.org/2000/svg")
@@ -250,6 +257,7 @@ impl Reader {
             .child_signal(reader.next_chapter.signal().map(clone!(reader => move |next_chapter| {
                 match next_chapter {
                     Some(next) => Some(html!("button", {
+                        .class("focus:outline-none")
                         .children(&mut [
                             svg!("svg", {
                                 

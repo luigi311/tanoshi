@@ -116,7 +116,7 @@ impl Login {
                     .class([
                         "m-2",
                         "p-1",
-                        "outline-none",
+                        "focus:outline-none",
                         "rounded",
                         "bg-white",
                         "dark:bg-gray-900",
@@ -134,7 +134,7 @@ impl Login {
                     .class([
                         "m-2",
                         "p-1",
-                        "outline-none",
+                        "focus:outline-none",
                         "rounded",
                         "bg-white",
                         "dark:bg-gray-900",
@@ -158,11 +158,12 @@ impl Login {
                         html!("button", {
                             .class([
                                 "mx-2",
-                                "outline-none",
+                                "focus:outline-none",
                                 "hover:underline",
                                 "active:underline",
                                 "text-black",
-                                "dark:text-white"
+                                "dark:text-white",
+                                "focus:outline-none"
                             ])
                             .visible_signal(login.server_status.signal_cloned().map(|x| {
                                 if let Some(status) = x {
@@ -181,11 +182,12 @@ impl Login {
                                 "bg-accent",
                                 "active:bg-accent-lighter",
                                 "hover:bg-accent-lighter",
-                                "outline-none",
+                                "focus:outline-none",
                                 "text-white",
                                 "px-2",
                                 "py-1",
-                                "rounded"
+                                "rounded",
+                                "focus:outline-none"
                             ])
                             .text("Login")
                             .event(clone!(login => move |_: events::Click| {
