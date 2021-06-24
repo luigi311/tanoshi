@@ -82,6 +82,7 @@ pub struct SourceIndex {
     pub name: String,
     pub path: String,
     pub version: String,
+    pub icon: String,
 }
 
 impl Into<Source> for SourceIndex {
@@ -90,7 +91,7 @@ impl Into<Source> for SourceIndex {
             id: self.id,
             name: self.name.clone(),
             version: self.version.clone(),
-            icon: "".to_string(),
+            icon: self.icon,
             need_login: false,
             has_update: false,
         }
