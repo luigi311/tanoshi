@@ -20,7 +20,6 @@ use crate::{
     extension::ExtensionBus,
     schema::{MutationRoot, QueryRoot, TanoshiSchema},
 };
-use anyhow::Result;
 use clap::Clap;
 
 use async_graphql::{
@@ -44,11 +43,11 @@ struct Opts {
 }
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
 
     let opts: Opts = Opts::parse();
-    let config = config::Config::open(opts.config)?;
+    let config = Config::open(opts.config)?;
 
     let (_, extension_tx) = extension::start();
     extension::load(config.plugin_path.clone(), extension_tx.clone()).await;
