@@ -37,14 +37,6 @@ fn default_update_interval() -> u64 {
     1
 }
 
-fn default_database_path() -> String {
-    let path = dirs::home_dir().unwrap().join(".tanoshi");
-    if !path.exists() {
-        let _ = std::fs::create_dir_all(&path);
-    }
-    path.join("tanoshi.db").to_str().unwrap().to_string()
-}
-
 fn default_secret() -> String {
     let mut rng = thread_rng();
     let chars = iter::repeat(())
@@ -52,14 +44,6 @@ fn default_secret() -> String {
         .take(16)
         .collect();
     String::from_utf8(chars).unwrap()
-}
-
-fn default_plugin_path() -> String {
-    let path = dirs::home_dir().unwrap().join(".tanoshi").join("plugins");
-    if !path.exists() {
-        let _ = std::fs::create_dir_all(&path);
-    }
-    path.to_str().unwrap().to_string()
 }
 
 impl Config {

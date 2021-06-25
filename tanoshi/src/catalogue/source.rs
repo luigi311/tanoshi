@@ -3,7 +3,6 @@ use std::fmt::Display;
 use crate::{context::GlobalContext, user};
 use async_graphql::{Context, Object, Result, SimpleObject};
 use serde::Deserialize;
-use tanoshi_lib::extensions::Extension;
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct Version {
@@ -195,7 +194,7 @@ impl SourceMutationRoot {
         );
 
         let raw = reqwest::get(url).await?.bytes().await?;
-        extensions.install(source.name, &raw).await;
+        extensions.install(source.name, &raw).await?;
 
         Ok(source.id)
     }
@@ -208,7 +207,7 @@ impl SourceMutationRoot {
         let ctx = ctx.data::<GlobalContext>()?;
         let extensions = ctx.extensions.clone();
 
-        extensions.unload(source_id).await;
+        extensions.unload(source_id).await?;
 
         Ok(source_id)
     }
@@ -241,8 +240,8 @@ impl SourceMutationRoot {
         );
         let raw = reqwest::get(url).await?.bytes().await?;
 
-        extensions.unload(source_id).await;
-        extensions.install(source.name, &raw).await;
+        extensions.unload(source_id).await?;
+        extensions.install(source.name, &raw).await?;
 
         Ok(source_id)
     }

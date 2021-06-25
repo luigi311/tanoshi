@@ -2,7 +2,6 @@ use super::Manga;
 use crate::{context::GlobalContext, user};
 use async_graphql::{Context, Object, Result};
 use chrono::NaiveDateTime;
-use tanoshi_lib::extensions::Extension;
 
 /// A type represent chapter, normalized across source
 pub struct Chapter {

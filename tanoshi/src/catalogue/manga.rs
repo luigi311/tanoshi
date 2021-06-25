@@ -1,10 +1,6 @@
-use std::time::Duration;
-
 use super::Chapter;
 use crate::{context::GlobalContext, user};
 use async_graphql::{Context, Object, Result};
-use futures::{stream, StreamExt};
-use tanoshi_lib::extensions::Extension;
 
 /// A type represent manga details, normalized across source
 #[derive(Debug)]

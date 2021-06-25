@@ -10,7 +10,7 @@ pub use chapter::Chapter;
 use crate::context::GlobalContext;
 
 use async_graphql::{Context, Enum, Object, Result};
-use tanoshi_lib::{extensions::Extension, prelude::Param};
+use tanoshi_lib::prelude::Param;
 
 /// A type represent sort parameter for query manga from source, normalized across sources
 #[derive(Enum, Copy, Clone, Eq, PartialEq)]

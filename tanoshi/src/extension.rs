@@ -1,13 +1,16 @@
 use bytes::Bytes;
 use serde::{de::DeserializeOwned, Serialize};
-use std::{collections::HashMap, error::Error, path::PathBuf};
-use tanoshi_lib::prelude::{Chapter, Extension, Manga, Param, Request, Response, Source};
+use std::{collections::HashMap, path::PathBuf, time::Duration};
+use tanoshi_lib::prelude::{
+    Chapter, Extension, ExtensionResult, Manga, Param, Request, Response, Source,
+};
 use tokio::{
     sync::{
         mpsc::{UnboundedReceiver, UnboundedSender},
         oneshot::Sender,
     },
     task::JoinHandle,
+    time::timeout,
 };
 use wasmer::{
     imports, ChainableNamedResolver, Function, Instance, Module, Store, Universal, WasmerEnv,
@@ -41,34 +44,38 @@ impl ExtensionBus {
         }
     }
 
-    pub async fn install(&self, name: String, contents: &Bytes) {
+    pub async fn install(
+        &self,
+        name: String,
+        contents: &Bytes,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         let path = PathBuf::from(self.extension_dir_path.clone())
             .join(name)
             .with_extension("wasm");
-        std::fs::write(path.clone(), contents).unwrap();
+        std::fs::write(path.clone(), contents)?;
 
-        self.tx
-            .send(Command::Load(path.to_str().unwrap().to_string()))
-            .unwrap();
+        Ok(self.tx.send(Command::Load(
+            path.to_str().ok_or("path can't to string")?.to_string(),
+        ))?)
     }
 
-    pub async fn unload(&self, source_id: i64) {
-        self.tx.send(Command::Unload(source_id)).unwrap()
+    pub async fn unload(&self, source_id: i64) -> Result<(), Box<dyn std::error::Error>> {
+        Ok(self.tx.send(Command::Unload(source_id))?)
     }
 
     pub async fn exist(&self, source_id: i64) -> Result<bool, Box<dyn std::error::Error>> {
         let (tx, rx) = tokio::sync::oneshot::channel();
-        self.tx.send(Command::Exist(source_id, tx)).unwrap();
+        self.tx.send(Command::Exist(source_id, tx))?;
 
-        let exist = rx.await?;
+        let exist = timeout(Duration::from_secs(30), rx).await??;
         Ok(exist)
     }
 
     pub async fn detail(&self, source_id: i64) -> Result<Source, Box<dyn std::error::Error>> {
         let (tx, rx) = tokio::sync::oneshot::channel();
-        self.tx.send(Command::Detail(source_id, tx)).unwrap();
+        self.tx.send(Command::Detail(source_id, tx))?;
 
-        let source = rx.await?;
+        let source = timeout(Duration::from_secs(30), rx).await??;
         Ok(source)
     }
 
@@ -78,11 +85,9 @@ impl ExtensionBus {
         param: Param,
     ) -> Result<Vec<Manga>, Box<dyn std::error::Error>> {
         let (tx, rx) = tokio::sync::oneshot::channel();
-        self.tx
-            .send(Command::GetMangaList(source_id, param, tx))
-            .unwrap();
+        self.tx.send(Command::GetMangaList(source_id, param, tx))?;
 
-        let manga = rx.await?;
+        let manga = timeout(Duration::from_secs(30), rx).await??;
         Ok(manga)
     }
 
@@ -92,11 +97,9 @@ impl ExtensionBus {
         path: String,
     ) -> Result<Manga, Box<dyn std::error::Error>> {
         let (tx, rx) = tokio::sync::oneshot::channel();
-        self.tx
-            .send(Command::GetMangaInfo(source_id, path, tx))
-            .unwrap();
+        self.tx.send(Command::GetMangaInfo(source_id, path, tx))?;
 
-        let manga = rx.await?;
+        let manga = timeout(Duration::from_secs(30), rx).await??;
         Ok(manga)
     }
 
@@ -106,11 +109,9 @@ impl ExtensionBus {
         path: String,
     ) -> Result<Vec<Chapter>, Box<dyn std::error::Error>> {
         let (tx, rx) = tokio::sync::oneshot::channel();
-        self.tx
-            .send(Command::GetChapters(source_id, path, tx))
-            .unwrap();
+        self.tx.send(Command::GetChapters(source_id, path, tx))?;
 
-        let manga = rx.await?;
+        let manga = timeout(Duration::from_secs(30), rx).await??;
         Ok(manga)
     }
 
@@ -120,11 +121,9 @@ impl ExtensionBus {
         path: String,
     ) -> Result<Vec<String>, Box<dyn std::error::Error>> {
         let (tx, rx) = tokio::sync::oneshot::channel();
-        self.tx
-            .send(Command::GetPages(source_id, path, tx))
-            .unwrap();
+        self.tx.send(Command::GetPages(source_id, path, tx))?;
 
-        let manga = rx.await?;
+        let manga = timeout(Duration::from_secs(30), rx).await??;
         Ok(manga)
     }
 }
@@ -141,21 +140,20 @@ struct ExtensionProxy {
 }
 
 impl ExtensionProxy {
-    pub fn load(store: &Store, path: String) -> Self {
+    pub fn load(store: &Store, path: String) -> Result<Self, Box<dyn std::error::Error>> {
         let input = Pipe::new();
         let output = Pipe::new();
         let mut wasi_env = WasiState::new("tanoshi")
             .stdin(Box::new(input))
             .stdout(Box::new(output))
-            .finalize()
-            .unwrap();
+            .finalize()?;
 
         let extension_path = PathBuf::from(path.clone());
 
-        let wasm_bytes = std::fs::read(extension_path).unwrap();
-        let module = Module::new(&store, wasm_bytes).unwrap();
+        let wasm_bytes = std::fs::read(extension_path)?;
+        let module = Module::new(&store, wasm_bytes)?;
 
-        let import_object = wasi_env.import_object(&module).unwrap();
+        let import_object = wasi_env.import_object(&module)?;
 
         let env = ExtensionEnv { wasi_env };
 
@@ -165,56 +163,81 @@ impl ExtensionProxy {
             }
         };
 
-        let instance = Instance::new(&module, &tanoshi.chain_back(import_object)).unwrap();
+        let instance = Instance::new(&module, &tanoshi.chain_back(import_object))?;
 
-        ExtensionProxy {
+        Ok(ExtensionProxy {
             instance,
             path,
             env,
+        })
+    }
+
+    fn call<T>(&self, name: &str) -> Result<T, Box<dyn std::error::Error>>
+    where
+        T: DeserializeOwned,
+    {
+        let res = self.instance.exports.get_function(name)?;
+        res.call(&[])?;
+        let object_str = wasi_read(&self.env)?;
+        Ok(ron::from_str(&object_str)?)
+    }
+
+    fn call_with_args<T>(
+        &self,
+        name: &str,
+        param: &impl Serialize,
+    ) -> Result<T, Box<dyn std::error::Error>>
+    where
+        T: DeserializeOwned,
+    {
+        let res = self.instance.exports.get_function(name)?;
+        if let Err(e) = wasi_write(&self.env, &param) {
+            error!("error write to wasi: {}", e);
         }
-    }
-
-    fn call<T>(&self, name: &str) -> T
-    where
-        T: DeserializeOwned,
-    {
-        let res = self.instance.exports.get_function(name).unwrap();
-        res.call(&[]).unwrap();
-        let object_str = wasi_read(&self.env);
-        ron::from_str(&object_str).unwrap()
-    }
-
-    fn call_with_args<T>(&self, name: &str, param: &impl Serialize) -> T
-    where
-        T: DeserializeOwned,
-    {
-        let res = self.instance.exports.get_function(name).unwrap();
-        wasi_write(&self.env, &param);
-        res.call(&[]).unwrap();
-        let object_str = wasi_read(&self.env);
-        ron::from_str(&object_str).unwrap()
+        res.call(&[])?;
+        let object_str = wasi_read(&self.env)?;
+        Ok(ron::from_str(&object_str)?)
     }
 }
 
 impl Extension for ExtensionProxy {
     fn detail(&self) -> Source {
-        self.call("detail")
+        self.call("detail").unwrap_or(Source {
+            id: 0,
+            name: "".to_string(),
+            url: "".to_string(),
+            version: "".to_string(),
+            icon: "".to_string(),
+            need_login: false,
+        })
     }
 
-    fn get_manga_list(&self, param: Param) -> tanoshi_lib::prelude::ExtensionResult<Vec<Manga>> {
-        self.call_with_args("get_manga_list", &param)
+    fn get_manga_list(&self, param: Param) -> ExtensionResult<Vec<Manga>> {
+        match self.call_with_args("get_manga_list", &param) {
+            Ok(res) => res,
+            Err(e) => ExtensionResult::err(format!("{}", e).as_str()),
+        }
     }
 
-    fn get_manga_info(&self, path: String) -> tanoshi_lib::prelude::ExtensionResult<Manga> {
-        self.call_with_args("get_manga_info", &path)
+    fn get_manga_info(&self, path: String) -> ExtensionResult<Manga> {
+        match self.call_with_args("get_manga_info", &path) {
+            Ok(res) => res,
+            Err(e) => ExtensionResult::err(format!("{}", e).as_str()),
+        }
     }
 
-    fn get_chapters(&self, path: String) -> tanoshi_lib::prelude::ExtensionResult<Vec<Chapter>> {
-        self.call_with_args("get_chapters", &path)
+    fn get_chapters(&self, path: String) -> ExtensionResult<Vec<Chapter>> {
+        match self.call_with_args("get_chapters", &path) {
+            Ok(res) => res,
+            Err(e) => ExtensionResult::err(format!("{}", e).as_str()),
+        }
     }
 
-    fn get_pages(&self, path: String) -> tanoshi_lib::prelude::ExtensionResult<Vec<String>> {
-        self.call_with_args("get_pages", &path)
+    fn get_pages(&self, path: String) -> ExtensionResult<Vec<String>> {
+        match self.call_with_args("get_pages", &path) {
+            Ok(res) => res,
+            Err(e) => ExtensionResult::err(format!("{}", e).as_str()),
+        }
     }
 }
 
@@ -227,7 +250,10 @@ pub fn start() -> (JoinHandle<()>, UnboundedSender<Command>) {
     (handle, tx)
 }
 
-pub async fn load(extention_dir_path: String, tx: UnboundedSender<Command>) {
+pub async fn load(
+    extention_dir_path: String,
+    tx: UnboundedSender<Command>,
+) -> Result<(), Box<dyn std::error::Error>> {
     match std::fs::read_dir(extention_dir_path.clone()) {
         Ok(_) => {}
         Err(_) => {
@@ -235,8 +261,7 @@ pub async fn load(extention_dir_path: String, tx: UnboundedSender<Command>) {
         }
     }
 
-    for entry in std::fs::read_dir(extention_dir_path.clone())
-        .unwrap()
+    for entry in std::fs::read_dir(extention_dir_path.clone())?
         .into_iter()
         .filter(move |path| {
             if let Ok(p) = path {
@@ -253,11 +278,14 @@ pub async fn load(extention_dir_path: String, tx: UnboundedSender<Command>) {
             return false;
         })
     {
-        let path = entry.unwrap().path();
+        let path = entry?.path();
         info!("load plugin from {:?}", path.clone());
-        tx.send(Command::Load(path.to_str().unwrap().to_string()))
-            .unwrap();
+        tx.send(Command::Load(
+            path.to_str().ok_or("no path str")?.to_string(),
+        ))?;
     }
+
+    Ok(())
 }
 
 async fn extension_thread(extension_receiver: UnboundedReceiver<Command>) {
@@ -272,69 +300,113 @@ async fn extension_thread(extension_receiver: UnboundedReceiver<Command>) {
         let cmd = recv.recv().await;
         if let Some(cmd) = cmd {
             match cmd {
-                Command::Load(path) => {
-                    let proxy = ExtensionProxy::load(&store, path);
-                    let source = proxy.detail();
-                    info!("loaded: {:?}", source);
-
-                    extension_map.insert(source.id, proxy);
-                }
+                Command::Load(path) => match ExtensionProxy::load(&store, path) {
+                    Ok(proxy) => {
+                        let source = proxy.detail();
+                        info!("loaded: {:?}", source);
+                        extension_map.insert(source.id, proxy);
+                    }
+                    Err(e) => {
+                        error!("error load extension: {}", e);
+                    }
+                },
                 Command::Unload(source_id) => {
                     extension_map.remove(&source_id);
                 }
                 Command::Exist(source_id, tx) => {
                     let exist = extension_map.get(&source_id).is_some();
-                    tx.send(exist).unwrap();
+                    if let Err(_) = tx.send(exist) {
+                        error!("receiver dropped");
+                    }
                 }
-                Command::Detail(source_id, tx) => {
-                    let proxy = extension_map.get(&source_id).unwrap();
-                    let res = proxy.detail();
-                    tx.send(res).unwrap();
-                }
+                Command::Detail(source_id, tx) => match extension_map.get(&source_id) {
+                    Some(proxy) => {
+                        let res = proxy.detail();
+                        if let Err(_) = tx.send(res) {
+                            error!("receiver dropped");
+                        }
+                    }
+                    None => {
+                        error!("extension with id {} not found", source_id);
+                    }
+                },
                 Command::GetMangaList(source_id, param, tx) => {
-                    let proxy = extension_map.get(&source_id).unwrap();
-                    let res = proxy.get_manga_list(param);
-                    tx.send(res.data.unwrap()).unwrap();
+                    process(&extension_map, source_id, tx, |proxy| {
+                        proxy.get_manga_list(param.clone())
+                    });
                 }
                 Command::GetMangaInfo(source_id, path, tx) => {
-                    let proxy = extension_map.get(&source_id).unwrap();
-                    let res = proxy.get_manga_info(path);
-                    tx.send(res.data.unwrap()).unwrap();
+                    process(&extension_map, source_id, tx, |proxy| {
+                        proxy.get_manga_info(path.clone())
+                    });
                 }
                 Command::GetChapters(source_id, path, tx) => {
-                    let proxy = extension_map.get(&source_id).unwrap();
-                    let res = proxy.get_chapters(path);
-                    tx.send(res.data.unwrap()).unwrap();
+                    process(&extension_map, source_id, tx, |proxy| {
+                        proxy.get_chapters(path.clone())
+                    });
                 }
                 Command::GetPages(source_id, path, tx) => {
-                    let proxy = extension_map.get(&source_id).unwrap();
-                    let res = proxy.get_pages(path);
-                    tx.send(res.data.unwrap()).unwrap();
+                    process(&extension_map, source_id, tx, |proxy| {
+                        proxy.get_pages(path.clone())
+                    });
                 }
             }
         }
     }
 }
 
-fn wasi_read(env: &ExtensionEnv) -> String {
-    let mut state = env.wasi_env.state();
-    let wasm_stdout = state.fs.stdout_mut().unwrap().as_mut().unwrap();
-    let mut buf = String::new();
-    wasm_stdout.read_to_string(&mut buf).unwrap();
-    buf
+fn process<F, T>(extension_map: &HashMap<i64, ExtensionProxy>, source_id: i64, tx: Sender<T>, f: F)
+where
+    F: Fn(&ExtensionProxy) -> ExtensionResult<T>,
+{
+    match extension_map.get(&source_id) {
+        Some(proxy) => {
+            let res = f(proxy);
+            if let Some(data) = res.data {
+                if let Err(_) = tx.send(data) {
+                    error!("receiver dropped");
+                }
+            }
+        }
+        None => {
+            error!("extension with id {} not found", source_id);
+        }
+    }
 }
 
-fn wasi_write(env: &ExtensionEnv, param: &impl Serialize) {
+fn wasi_read(env: &ExtensionEnv) -> Result<String, Box<dyn std::error::Error>> {
     let mut state = env.wasi_env.state();
-    let wasm_stdout = state.fs.stdin_mut().unwrap().as_mut().unwrap();
+    let wasm_stdout = state.fs.stdout_mut()?.as_mut().ok_or("no wasi stdout")?;
+    let mut buf = String::new();
+    wasm_stdout.read_to_string(&mut buf)?;
+    Ok(buf)
+}
 
-    let buf = ron::to_string(param).unwrap();
-    wasm_stdout.write_all(&mut buf.as_bytes()).unwrap()
+fn wasi_write(
+    env: &ExtensionEnv,
+    param: &impl Serialize,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let mut state = env.wasi_env.state();
+    let wasm_stdout = state.fs.stdin_mut()?.as_mut().ok_or("no wasi stdin")?;
+
+    let buf = ron::to_string(param)?;
+    wasm_stdout.write_all(&mut buf.as_bytes())?;
+
+    Ok(())
 }
 
 fn host_http_request(env: &ExtensionEnv) {
-    let http_req_str = wasi_read(env);
-    let http_req = ron::from_str::<Request>(&http_req_str).unwrap();
+    match do_http_request(env) {
+        Ok(()) => {}
+        Err(e) => {
+            error!("error do_htp_request: {}", e);
+        }
+    }
+}
+
+fn do_http_request(env: &ExtensionEnv) -> Result<(), Box<dyn std::error::Error>> {
+    let http_req_str = wasi_read(env)?;
+    let http_req = ron::from_str::<Request>(&http_req_str)?;
 
     let mut req = ureq::get(&http_req.url);
     if let Some(headers) = http_req.headers {
@@ -344,8 +416,7 @@ fn host_http_request(env: &ExtensionEnv) {
             }
         }
     }
-    let res = req.call().unwrap();
-
+    let res = req.call()?;
     let mut headers: HashMap<String, Vec<String>> = HashMap::new();
     for name in res.headers_names() {
         if let Some(header_value) = res.header(&name) {
@@ -358,7 +429,7 @@ fn host_http_request(env: &ExtensionEnv) {
     }
 
     let status = res.status() as i32;
-    let body = res.into_string().unwrap();
+    let body = res.into_string()?;
 
     let http_res = Response {
         headers,
@@ -366,5 +437,7 @@ fn host_http_request(env: &ExtensionEnv) {
         status,
     };
 
-    wasi_write(env, &http_res);
+    wasi_write(env, &http_res)?;
+
+    Ok(())
 }

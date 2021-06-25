@@ -618,7 +618,7 @@ impl Db {
         Ok(row_id)
     }
 
-    pub async fn insert_mangas(&self, manga: Vec<Manga>) -> Result<()> {
+    pub async fn insert_mangas(&self, _manga: Vec<Manga>) -> Result<()> {
         todo!()
     }
 

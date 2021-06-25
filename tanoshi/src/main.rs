@@ -50,7 +50,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config = Config::open(opts.config)?;
 
     let (_, extension_tx) = extension::start();
-    extension::load(config.plugin_path.clone(), extension_tx.clone()).await;
+    extension::load(config.plugin_path.clone(), extension_tx.clone()).await?;
 
     let pool = db::establish_connection(config.database_path).await;
     let mangadb = db::MangaDatabase::new(pool.clone());
