@@ -12,6 +12,12 @@ use std::rc::Rc;
 use wasm_bindgen::{JsCast, JsValue, UnwrapThrowExt};
 use web_sys::HtmlImageElement;
 
+enum Nav {
+    None,
+    Prev,
+    Next
+}
+
 pub struct Reader {
     chapter_id: Mutable<i64>,
     manga_id: Mutable<i64>,
@@ -30,7 +36,7 @@ pub struct Reader {
 }
 
 impl Reader {
-    pub fn new(chapter_id: i64) -> Rc<Self> {
+    pub fn new(chapter_id: i64, page: i64) -> Rc<Self> {
         Rc::new(Self {
             chapter_id: Mutable::new(chapter_id),
             manga_id: Mutable::new(0),
@@ -39,7 +45,7 @@ impl Reader {
             next_chapter: Mutable::new(None),
             prev_chapter: Mutable::new(None),
             prev_page: Mutable::new(None),
-            current_page: Mutable::new(0),
+            current_page: Mutable::new(page as usize),
             next_page: Mutable::new(None),
             pages: MutableVec::new(),
             pages_len: Mutable::new(0),
@@ -49,7 +55,7 @@ impl Reader {
         })
     }
 
-    pub fn fetch_detail(reader: Rc<Self>, chapter_id: i64) {
+    fn fetch_detail(reader: Rc<Self>, chapter_id: i64, nav: Nav) {
         reader.loader.load(clone!(reader => async move {
             match fetch_chapter(chapter_id).await {
                 Ok(result) => {
@@ -58,13 +64,39 @@ impl Reader {
                     reader.chapter_title.set_neq(result.title);
                     reader.next_chapter.set_neq(result.next);
                     reader.prev_chapter.set_neq(result.prev);
-                    reader.current_page.set_neq(0);
                     reader.pages_len.set_neq(result.pages.len());
                     reader.pages.lock_mut().replace_cloned(result.pages.iter().map(|x| x.clone()).collect());
                     
                     reader.reader_settings.load_manga_reader_setting(result.manga.id);
 
-                    history().replace_state_with_url(&JsValue::null(), "", Some(format!("/chapter/{}", chapter_id).as_str())).unwrap_throw();
+                    match nav {
+                        Nav::None => {},
+                        Nav::Prev => {
+                            let len = result.pages.len();
+                            let page = match reader.reader_settings.reader_mode.get() {
+                                ReaderMode::Continous => len - 1,
+                                ReaderMode::Paged => {
+                                    match reader.reader_settings.display_mode.get() {
+                                        DisplayMode::Single => len - 1,
+                                        DisplayMode::Double => {
+                                            if len % 2 == 0 {
+                                                len - 2
+                                            } else {
+                                                len - 1
+                                            }
+                                        }
+                                    }
+                                }
+                            };
+
+                            reader.current_page.set(page);
+                        },
+                        Nav::Next => {
+                            reader.current_page.set(0);
+                        },
+                    }
+
+                    Self::replace_state_with_url(reader);
                 },
                 Err(err) => {
                     log::error!("{}", err);
@@ -73,7 +105,22 @@ impl Reader {
         }));
     }
 
-    pub fn update_page_read(reader: Rc<Self>, page: usize) {
+    fn replace_state_with_url(reader: Rc<Self>) {
+        history()
+        .replace_state_with_url(
+            &JsValue::null(), 
+            "", 
+            Some(
+                format!(
+                    "/chapter/{}/{}", 
+                    reader.chapter_id.get(), 
+                    reader.current_page.get() + 1
+                ).as_str()
+            )
+        ).unwrap_throw();
+    }
+
+    fn update_page_read(reader: Rc<Self>, page: usize) {
         let chapter_id = reader.chapter_id.get();
         reader.loader.load(async move {
             match update_page_read_at(chapter_id, page as i64).await {
@@ -277,7 +324,7 @@ impl Reader {
                             })
                         ])
                         .event(clone!(reader => move |_: events::Click| {
-                           reader.chapter_id.set_neq(next);
+                           reader.chapter_id.set(next);
                         }))
                     })),
                     None => Some(html!("div",{}))
@@ -530,11 +577,17 @@ impl Reader {
         html!("div", {
             .future(reader.current_page.signal().for_each(clone!(reader => move |page| {
                 Self::update_page_read(reader.clone(), page);
-
+                Self::replace_state_with_url(reader.clone());
                 async {}
             })))
             .future(reader.chapter_id.signal().for_each(clone!(reader => move |chapter_id| {
-                Self::fetch_detail(reader.clone(), chapter_id);
+                let nav = match chapter_id {
+                    _ if Some(chapter_id) == reader.prev_chapter.get() => Nav::Prev,
+                    _ if Some(chapter_id) == reader.next_chapter.get() => Nav::Next,
+                    _ => Nav::None,
+                };
+
+                Self::fetch_detail(reader.clone(), chapter_id, nav);
 
                 async {}
             })))

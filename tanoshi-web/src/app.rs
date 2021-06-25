@@ -64,8 +64,8 @@ impl App {
                     Route::MangaBySourcePath(source_id, path) => vec![
                         Manga::render(Manga::new(0, source_id, path)),
                     ],
-                    Route::Chapter(chapter_id) => vec![
-                        Reader::render(Reader::new(chapter_id)),
+                    Route::Chapter(chapter_id, page) => vec![
+                        Reader::render(Reader::new(chapter_id, page)),
                     ],
                     Route::Updates => vec![
                         Updates::render(Updates::new(), app.clone()),

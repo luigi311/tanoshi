@@ -444,7 +444,7 @@ impl Manga {
                         }
                     }))
                     .children_signal_vec(manga.chapters.signal_vec_cloned().map(|chapter| {
-                        link!(Route::Chapter(chapter.id).url(), {
+                        link!(Route::Chapter(chapter.id, 0).url(), {
                             .class(["flex", "inline-flex", "hover:bg-gray-200", "dark:hover:bg-gray-700", "p-2", "text-gray-900", "dark:text-gray-300"])
                             .class_signal("text-opacity-50", chapter.read_at.signal().map(|x| x.is_some()))
                             .children(&mut [

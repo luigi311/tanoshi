@@ -115,7 +115,7 @@ impl Histories {
                         "dark:divide-gray-900",
                     ])
                     .children_signal_vec(histories.entries.signal_vec_cloned().map(|entry| {
-                        link!(Route::Chapter(entry.chapter_id).url(), {
+                        link!(Route::Chapter(entry.chapter_id, entry.last_page_read).url(), {
                             .class([
                                 "flex",
                                 "p-2",

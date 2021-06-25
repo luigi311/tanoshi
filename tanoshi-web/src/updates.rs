@@ -113,7 +113,7 @@ impl Updates {
                         "dark:divide-gray-900",
                     ])
                     .children_signal_vec(updates.entries.signal_vec_cloned().map(|entry| {
-                        link!(Route::Chapter(entry.chapter_id).url(), {
+                        link!(Route::Chapter(entry.chapter_id, 0).url(), {
                             .class([
                                 "flex",
                                 "p-2",

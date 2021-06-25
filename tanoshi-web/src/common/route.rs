@@ -21,7 +21,7 @@ pub enum Route {
     Catalogue { id: i64, latest: bool },
     Manga(i64),
     MangaBySourcePath(i64, String),
-    Chapter(i64),
+    Chapter(i64, i64),
     Updates,
     Histories,
     Settings(SettingCategory),
@@ -84,7 +84,18 @@ impl Route {
                     }
                     ["chapter", id] => {
                         if let Ok(id) = id.parse() {
-                            Route::Chapter(id)
+                            Route::Chapter(id, 0)
+                        } else {
+                            Route::NotFound
+                        }
+                    }
+                    ["chapter", id, page] => {
+                        if let Ok(id) = id.parse() {
+                            if let Ok(page) = page.parse::<i64>() {
+                                Route::Chapter(id, page - 1)
+                            } else {
+                                Route::NotFound
+                            }
                         } else {
                             Route::NotFound
                         }
@@ -138,8 +149,8 @@ impl Route {
                 encode_config(path, URL_SAFE_NO_PAD),
             ]
             .join("/"),
-            Route::Chapter(chapter_id) => {
-                ["/chapter".to_string(), chapter_id.to_string()].join("/")
+            Route::Chapter(chapter_id, page) => {
+                format!("/chapter/{}/{}", chapter_id, page + 1)
             }
             Route::Updates => "/updates".to_string(),
             Route::Histories => "/histories".to_string(),
