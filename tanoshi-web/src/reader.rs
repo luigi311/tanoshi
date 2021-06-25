@@ -509,7 +509,7 @@ impl Reader {
                         })))
                         .event(clone!(reader, index => move |_: events::Load| {
                             let current_page = reader.current_page.get();
-                            if index.get().unwrap() == current_page + 1 {
+                            if index.get().unwrap() == current_page || index.get().unwrap() == current_page + 1 {
                                 reader.current_page.replace(current_page);
                             }
                         }))
