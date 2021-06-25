@@ -7,7 +7,6 @@ mod generate;
 
 use clap::{AppSettings, Clap};
 use anyhow::Result;
-use generate::generate_json;
 
 #[derive(Clap)]
 #[clap(version = "0.1.1", author = "Muhammad Fadhlika <fadhlika@gmail.com>")]
@@ -19,8 +18,13 @@ struct Opts {
 
 #[derive(Clap)]
 enum SubCommand {
-    #[clap(version = "0.1.1", author = "Muhammad Fadhlika <fadhlika@gmail.com>")]
     GenerateJson,
+    TestExtension(TestExtension)
+}
+
+#[derive(Clap)]
+struct TestExtension {
+    path: String
 }
 
 fn main() -> Result<()> {
@@ -30,8 +34,11 @@ fn main() -> Result<()> {
 
     match opts.subcmd {
         SubCommand::GenerateJson => {
-            generate_json().unwrap()
+            generate::generate_json().unwrap();
         }
+        SubCommand::TestExtension(test) => {
+            extension::test(test.path);
+        },
     }
     
     Ok(())

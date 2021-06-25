@@ -1,6 +1,6 @@
 use serde::{de::DeserializeOwned, Serialize};
 use std::{collections::HashMap, error::Error, path::PathBuf};
-use tanoshi_lib::prelude::{Chapter, Extension, Manga, Param, Request, Response, Source};
+use tanoshi_lib::prelude::{Chapter, Extension, Manga, Param, Request, Response, SortByParam, SortOrderParam, Source};
 use wasmer::{imports, ChainableNamedResolver, Function, Instance, Module, Store, WasmerEnv};
 use wasmer_wasi::{Pipe, WasiEnv, WasiState};
 
@@ -141,6 +141,87 @@ pub fn load(extention_dir_path: String) -> HashMap<i64, ExtensionProxy> {
     extension_map
 }
 
+pub fn test(path: String) {
+    let mut extension_map = HashMap::new();
+
+    let store = Store::default();
+    for entry in std::fs::read_dir(path.clone())
+        .unwrap()
+        .into_iter()
+        .filter(move |path| {
+            if let Ok(p) = path {
+                let ext = p
+                    .clone()
+                    .path()
+                    .extension()
+                    .unwrap_or("".as_ref())
+                    .to_owned();
+                if ext == "wasm" {
+                    return true;
+                }
+            }
+            return false;
+        })
+    {
+        let entry = entry.unwrap();
+        let path = entry.path().to_str().unwrap().to_string();
+        let proxy = ExtensionProxy::load(&store, path.clone());
+        let source = proxy.detail();
+        println!("loaded: {:?}", source);
+
+        extension_map.insert(source.id, proxy);
+    }
+
+    for (_, ext) in extension_map {
+        let detail = ext.detail();
+        println!("Test {}", detail.name);
+        
+        let param = Param{
+            keyword: None,
+            genres: None,
+            page: None,
+            sort_by: Some(SortByParam::LastUpdated),
+            sort_order: Some(SortOrderParam::Desc),
+            auth: None,
+        };
+
+        print!("Test get_manga_list ");
+        let res = ext.get_manga_list(param);
+        if let Some(res) = res.error {
+            println!("Error {}", res);
+            return;
+        }
+        println!("ok");
+        
+        let manga = res.data.unwrap();
+        print!("Test get_manga_info {} ", manga[0].path.clone());
+        let res = ext.get_manga_info(manga[0].path.clone());
+        if let Some(res) = res.error {
+            println!("Error {}", res);
+            return;
+        }
+        println!("ok");
+
+        print!("Test get_chapters {} ", manga[0].path.clone());
+        let res = ext.get_chapters(manga[0].path.clone());
+        if let Some(res) = res.error {
+            println!("Error {}", res);
+            return;
+        }
+        println!("ok");
+
+        let chapters = res.data.unwrap();
+        print!("Test get_pages {} ", chapters[0].path.clone());
+        let res = ext.get_pages(chapters[0].path.clone());
+        if let Some(res) = res.error {
+            println!("Error {}", res);
+            return;
+        }
+        println!("ok");
+    }
+    
+}
+
 fn wasi_read(env: &ExtensionEnv) -> String {
     let mut state = env.wasi_env.state();
     let wasm_stdout = state.fs.stdout_mut().unwrap().as_mut().unwrap();
@@ -184,7 +265,7 @@ fn host_http_request(env: &ExtensionEnv) {
 
     let status = res.status() as i32;
     let body = res.into_string().unwrap();
-
+    
     let http_res = Response {
         headers,
         body,
