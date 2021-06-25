@@ -35,7 +35,6 @@ use warp::{
 };
 
 #[derive(Clap)]
-#[clap(version = "0.22.4")]
 struct Opts {
     /// Path to config file
     #[clap(long)]
