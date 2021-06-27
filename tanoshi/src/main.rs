@@ -13,6 +13,7 @@ mod proxy;
 mod schema;
 mod status;
 mod user;
+mod local;
 
 use crate::{
     config::Config,
@@ -48,7 +49,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let opts: Opts = Opts::parse();
     let config = Config::open(opts.config)?;
 
-    let (_, extension_tx) = extension::start();
+    let (_, extension_tx) = extension::start(config.clone());
     extension::load(config.plugin_path.clone(), extension_tx.clone()).await?;
 
     let pool = db::establish_connection(config.database_path).await;

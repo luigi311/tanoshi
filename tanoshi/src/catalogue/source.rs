@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use crate::{context::GlobalContext, user};
+use crate::{context::GlobalContext, local, user};
 use async_graphql::{Context, Object, Result, SimpleObject};
 use serde::Deserialize;
 
@@ -126,7 +126,8 @@ pub struct SourceRoot;
 #[Object]
 impl SourceRoot {
     async fn installed_sources(&self, ctx: &Context<'_>) -> Result<Vec<Source>> {
-        let url = "https://raw.githubusercontent.com/faldez/tanoshi-extensions/repo/index.json".to_string();
+        let url = "https://raw.githubusercontent.com/faldez/tanoshi-extensions/repo/index.json"
+            .to_string();
         let source_indexes = reqwest::get(url).await?.json::<Vec<SourceIndex>>().await?;
 
         let extensions = ctx.data::<GlobalContext>()?.extensions.clone();
@@ -140,12 +141,22 @@ impl SourceRoot {
                 sources.push(source);
             }
         }
+        sources.push(Source {
+            id: local::ID,
+            name: "Local".to_string(),
+            version: "1.0.0".to_string(),
+            icon: "".to_string(),
+            need_login: false,
+            has_update: false,
+        });
+        sources.sort_by(|a, b| a.id.cmp(&b.id));
 
         Ok(sources)
     }
 
     async fn available_sources(&self, ctx: &Context<'_>) -> Result<Vec<Source>> {
-        let url = "https://raw.githubusercontent.com/faldez/tanoshi-extensions/repo/index.json".to_string();
+        let url = "https://raw.githubusercontent.com/faldez/tanoshi-extensions/repo/index.json"
+            .to_string();
         let source_indexes = reqwest::get(url).await?.json::<Vec<SourceIndex>>().await?;
         let extensions = ctx.data::<GlobalContext>()?.extensions.clone();
 
@@ -180,7 +191,8 @@ impl SourceMutationRoot {
             return Err("source installed, use updateSource to update".into());
         }
 
-        let url = "https://raw.githubusercontent.com/faldez/tanoshi-extensions/repo/index.json".to_string();
+        let url = "https://raw.githubusercontent.com/faldez/tanoshi-extensions/repo/index.json"
+            .to_string();
         let source_indexes = reqwest::get(url).await?.json::<Vec<SourceIndex>>().await?;
         let source: SourceIndex = source_indexes
             .iter()
@@ -221,7 +233,8 @@ impl SourceMutationRoot {
         let extensions = ctx.extensions.clone();
         extensions.exist(source_id).await?;
 
-        let url = "https://raw.githubusercontent.com/faldez/tanoshi-extensions/repo/index.json".to_string();
+        let url = "https://raw.githubusercontent.com/faldez/tanoshi-extensions/repo/index.json"
+            .to_string();
 
         let source_indexes = reqwest::get(url).await?.json::<Vec<SourceIndex>>().await?;
         let source: SourceIndex = source_indexes

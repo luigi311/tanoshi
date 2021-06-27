@@ -1,14 +1,14 @@
 use std::rc::Rc;
 
 use crate::query::fetch_histories;
-use crate::utils::AsyncLoader;
+use crate::utils::{proxied_image_url, AsyncLoader};
 use crate::{
     app::App,
     common::{Route, Spinner},
 };
 use dominator::{clone, events, html, link, Dom};
 use futures_signals::signal::{Mutable, SignalExt};
-use futures_signals::signal_vec::{MutableVec, SignalVec, SignalVecExt};
+use futures_signals::signal_vec::{MutableVec, SignalVecExt};
 use wasm_bindgen::UnwrapThrowExt;
 
 #[derive(Debug, Clone)]
@@ -71,22 +71,22 @@ impl Histories {
     pub fn render_topbar() -> Dom {
         html!("div", {
             .class([
-				"px-2",
-				"pb-2",
-				"flex",
-				"justify-between",
-				"fixed",
-				"left-0",
-				"right-0",
-				"top-0",
-				"z-50",
-				"bg-accent",
-				"dark:bg-gray-900",
-				"border-b",
-				"border-accent-darker",
-				"dark:border-gray-800",
-				"text-gray-50",
-				"pt-safe-top"
+                "px-2",
+                "pb-2",
+                "flex",
+                "justify-between",
+                "fixed",
+                "left-0",
+                "right-0",
+                "top-0",
+                "z-50",
+                "bg-accent",
+                "dark:bg-gray-900",
+                "border-b",
+                "border-accent-darker",
+                "dark:border-gray-800",
+                "text-gray-50",
+                "pt-safe-top"
             ])
             .children(&mut [
                 html!("span", {
@@ -113,6 +113,7 @@ impl Histories {
                         "divide-y",
                         "divide-gray-200",
                         "dark:divide-gray-900",
+                        "truncate"
                     ])
                     .children_signal_vec(histories.entries.signal_vec_cloned().map(|entry| {
                         link!(Route::Chapter(entry.chapter_id, entry.last_page_read).url(), {
@@ -135,7 +136,7 @@ impl Histories {
                                                 "rounded",
                                                 "object-cover"
                                             ])
-                                            .attribute("src", &entry.cover_url)
+                                            .attribute("src", &proxied_image_url(&entry.cover_url))
                                             .attribute("loading", "lazy")
                                         })
                                     ])
@@ -182,7 +183,7 @@ impl Histories {
                                 "focus:outline-none"
                             ])
                             .class_signal("disabled", histories.is_entries_empty.signal())
-                            .text_signal(histories.is_entries_empty.signal().map(|x| 
+                            .text_signal(histories.is_entries_empty.signal().map(|x|
                                 if x {
                                     "No recent histories, favorite manga to see recent histories"
                                 } else {
@@ -219,7 +220,7 @@ impl Histories {
         }
     }
 
-    pub fn render(histories: Rc<Self>, app: Rc<App>) -> Dom {
+    pub fn render(histories: Rc<Self>, _app: Rc<App>) -> Dom {
         Self::fetch_read_histories(histories.clone());
         html! {"div", {
             .class([

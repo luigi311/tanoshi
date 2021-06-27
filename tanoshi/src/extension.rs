@@ -18,6 +18,8 @@ use wasmer::{
 use wasmer_compiler_cranelift::Cranelift;
 use wasmer_wasi::{Pipe, WasiEnv, WasiState};
 
+use crate::{config::Config, local::{self, Local}};
+
 #[derive(Debug)]
 pub enum Command {
     Load(String),
@@ -140,7 +142,7 @@ struct ExtensionProxy {
 }
 
 impl ExtensionProxy {
-    pub fn load(store: &Store, path: String) -> Result<Self, Box<dyn std::error::Error>> {
+    pub fn load(store: &Store, path: String) -> Result<Box<dyn Extension>, Box<dyn std::error::Error>> {
         let input = Pipe::new();
         let output = Pipe::new();
         let mut wasi_env = WasiState::new("tanoshi")
@@ -165,11 +167,11 @@ impl ExtensionProxy {
 
         let instance = Instance::new(&module, &tanoshi.chain_back(import_object))?;
 
-        Ok(ExtensionProxy {
+        Ok(Box::new(ExtensionProxy {
             instance,
             path,
             env,
-        })
+        }))
     }
 
     fn call<T>(&self, name: &str) -> Result<T, Box<dyn std::error::Error>>
@@ -241,10 +243,10 @@ impl Extension for ExtensionProxy {
     }
 }
 
-pub fn start() -> (JoinHandle<()>, UnboundedSender<Command>) {
+pub fn start(cfg: Config) -> (JoinHandle<()>, UnboundedSender<Command>) {
     let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
     let handle = tokio::spawn(async {
-        extension_thread(rx).await;
+        extension_thread(cfg, rx).await;
     });
 
     (handle, tx)
@@ -288,9 +290,10 @@ pub async fn load(
     Ok(())
 }
 
-async fn extension_thread(extension_receiver: UnboundedReceiver<Command>) {
+async fn extension_thread(cfg: Config, extension_receiver: UnboundedReceiver<Command>) {
     let mut recv = extension_receiver;
-    let mut extension_map = HashMap::new();
+    let mut extension_map: HashMap<i64, Box<dyn Extension>> = HashMap::new();
+    extension_map.insert(local::ID, Local::new(cfg.local_path));
 
     let compiler = Cranelift::default();
     let engine = Universal::new(compiler).engine();
@@ -355,9 +358,9 @@ async fn extension_thread(extension_receiver: UnboundedReceiver<Command>) {
     }
 }
 
-fn process<F, T>(extension_map: &HashMap<i64, ExtensionProxy>, source_id: i64, tx: Sender<T>, f: F)
+fn process<F, T>(extension_map: &HashMap<i64, Box<dyn Extension>>, source_id: i64, tx: Sender<T>, f: F)
 where
-    F: Fn(&ExtensionProxy) -> ExtensionResult<T>,
+    F: Fn(&Box<dyn Extension>) -> ExtensionResult<T>,
 {
     match extension_map.get(&source_id) {
         Some(proxy) => {

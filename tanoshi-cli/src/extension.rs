@@ -1,5 +1,5 @@
 use serde::{de::DeserializeOwned, Serialize};
-use std::{collections::HashMap, error::Error, path::PathBuf};
+use std::{collections::HashMap, path::PathBuf};
 use tanoshi_lib::prelude::{Chapter, Extension, Manga, Param, Request, Response, SortByParam, SortOrderParam, Source};
 use wasmer::{imports, ChainableNamedResolver, Function, Instance, Module, Store, WasmerEnv};
 use wasmer_wasi::{Pipe, WasiEnv, WasiState};

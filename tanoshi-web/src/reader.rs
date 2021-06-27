@@ -147,6 +147,7 @@ impl Reader {
                 "z-50",
                 "bg-gray-800",
                 "content-end",
+                "opacity-75",
                 "pt-safe-top",
                 "pb-2",
                 "text-gray-50"
@@ -188,11 +189,11 @@ impl Reader {
                     .class([
                         "flex",
                         "flex-col",
-                        "text-center"
+                        "text-center",
+                        "truncate"
                     ])
                     .children(&mut [
                         html!("span", {
-                            .class("truncate")
                             .text_signal(reader.chapter_title.signal_cloned().map(|t| t))
                         }),
                     ])

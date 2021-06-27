@@ -46,3 +46,5 @@ ureq = { version = "2", features = ["json"] }
 futures = "^0.3"
 rust-argon2 = "0.8"
 ron = "0.6.4"
+zip = "0.5"
+fancy-regex = "0.6"

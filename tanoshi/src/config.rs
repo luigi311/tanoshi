@@ -1,8 +1,9 @@
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
-use std::{collections::BTreeMap, iter, path::PathBuf};
+use serde::{Deserialize, Serialize};
+use std::{iter, path::PathBuf};
 
-#[derive(serde::Deserialize, serde::Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct Config {
     #[serde(default = "default_port")]
     pub port: u16,
@@ -12,19 +13,19 @@ pub struct Config {
     #[serde(default = "default_update_interval")]
     pub update_interval: u64,
     pub plugin_path: String,
-    #[serde(default = "BTreeMap::new")]
-    pub plugin_config: BTreeMap<String, serde_yaml::Value>,
+    #[serde(default)]
+    pub local_path: String,
 }
 
 impl Config {
-    fn new(database_path: String, plugin_path: String) -> Self {
+    fn new(database_path: String, plugin_path: String, local_path: String) -> Self {
         Self {
             port: default_port(),
             database_path,
             secret: default_secret(),
             update_interval: default_update_interval(),
             plugin_path,
-            plugin_config: Default::default(),
+            local_path,
         }
     }
 }
@@ -71,7 +72,8 @@ impl Config {
                     .unwrap()
                     .to_string();
                 let plugin_path = parent.join("plugins").to_str().unwrap().to_string();
-                let config = Config::new(database_path, plugin_path);
+                let local_path = parent.join("manga").to_str().unwrap().to_string();
+                let config = Config::new(database_path, plugin_path, local_path);
 
                 let _ = std::fs::create_dir_all(config_path.parent().expect("should have parent"));
                 let _ = std::fs::write(&config_path, serde_yaml::to_string(&config).unwrap());
