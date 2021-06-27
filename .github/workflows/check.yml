@@ -18,6 +18,8 @@ jobs:
         run: cargo install wasm-bindgen-cli wasm-pack
       - name: Build Frontend
         run: cd $GITHUB_WORKSPACE/tanoshi-web && yarn install && yarn build
+      - name: Install libarchive
+        run: sudo apt install libarchive-dev
       - name: Build Backend
         run: cd $GITHUB_WORKSPACE && cargo check -p tanoshi
   build-macos:
@@ -28,6 +30,8 @@ jobs:
         run: cargo install wasm-bindgen-cli wasm-pack
       - name: Build Frontend
         run: cd $GITHUB_WORKSPACE/tanoshi-web && yarn install && yarn build
+      - name: Install libarchive
+        run: brew install libarchive
       - name: Build Backend
         run: cd $GITHUB_WORKSPACE && cargo check -p tanoshi
   build-windows:
@@ -36,7 +40,11 @@ jobs:
       - uses: actions/checkout@v2
       - name: Install wasm-pack
         run: cargo install wasm-bindgen-cli wasm-pack
+      - name: Install libarchive
+        run: vcpkg install libarchive:x64-windows-static
       - name: Build Frontend
         run: cd $Env:GITHUB_WORKSPACE/tanoshi-web && yarn install && yarn build
       - name: Build Backend
-        run: cd $Env:GITHUB_WORKSPACE && cargo check -p tanoshi
+        run: |
+          $Env:RUSTFLAGS='-C target-feature=+crt-static'
+          cd $Env:GITHUB_WORKSPACE && cargo check -p tanoshi
