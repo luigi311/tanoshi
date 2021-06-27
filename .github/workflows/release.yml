@@ -31,7 +31,7 @@ jobs:
       - name: Build Frontend
         run: cd $GITHUB_WORKSPACE/tanoshi-web && yarn install && yarn build
       - name: Install libarchive
-        run: vcpkg install libarchive:x64-osx
+        run: brew install libarchive
       - name: Build Backend
         run: cd $GITHUB_WORKSPACE/tanoshi && cargo build -p tanoshi --release
       - name: Upload Release Asset
@@ -54,7 +54,7 @@ jobs:
       - name: Build Frontend
         run: cd $GITHUB_WORKSPACE/tanoshi-web && yarn install && yarn build
       - name: Install libarchive
-        run: vcpkg install libarchive:x64-linux
+        run: sudo apt install libarchive-dev
       - name: Build Backend
         run: cd /home/runner/work/tanoshi/tanoshi/tanoshi && cargo build -p tanoshi --release
       - name: Upload Release Asset
