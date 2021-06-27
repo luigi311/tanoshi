@@ -132,7 +132,9 @@ impl SourceRoot {
 
         let extensions = ctx.data::<GlobalContext>()?.extensions.clone();
 
-        let mut sources: Vec<Source> = vec![];
+        let local_source: Source = extensions.detail(local::ID).await?.into();
+        let mut sources: Vec<Source> = vec![local_source];
+
         for index in source_indexes {
             if extensions.exist(index.id).await? {
                 let mut source: Source = extensions.detail(index.id).await?.into();
@@ -141,14 +143,6 @@ impl SourceRoot {
                 sources.push(source);
             }
         }
-        sources.push(Source {
-            id: local::ID,
-            name: "Local".to_string(),
-            version: "1.0.0".to_string(),
-            icon: "".to_string(),
-            need_login: false,
-            has_update: false,
-        });
         sources.sort_by(|a, b| a.id.cmp(&b.id));
 
         Ok(sources)

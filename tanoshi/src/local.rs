@@ -3,7 +3,6 @@ use std::{path::PathBuf, time::UNIX_EPOCH};
 use chrono::NaiveDateTime;
 use fancy_regex::Regex;
 use tanoshi_lib::prelude::{Chapter, Extension, ExtensionResult, Manga, Source};
-use zip::ZipArchive;
 
 pub static ID: i64 = 1;
 
@@ -24,7 +23,7 @@ impl Extension for Local {
             name: "local".to_string(),
             url: self.path.clone(),
             version: "1.0.0".to_string(),
-            icon: "".to_string(),
+            icon: "/icons/192.png".to_string(),
             need_login: false,
         }
     }
@@ -55,16 +54,16 @@ impl Extension for Local {
                     })
                     .next()
                 {
-                    match std::fs::File::open(entry.path()) {
+                    let path = entry.path();
+                    match std::fs::File::open(path.clone()) {
                         Ok(file) => {
-                            let mut archive = ZipArchive::new(file).unwrap();
-                            let f = archive.by_index(0).unwrap();
-                            cover_url = entry
-                                .path()
-                                .join(f.name().clone())
-                                .to_str()
+                            info!("open {:?}", path);
+                            let first_page = compress_tools::list_archive_files(file)
                                 .unwrap()
-                                .to_string();
+                                .first()
+                                .unwrap()
+                                .clone();
+                            cover_url = path.join(first_page).to_str().unwrap().to_string();
                         }
                         Err(e) => {
                             return ExtensionResult::err(format!("{}", e).as_str());
@@ -107,16 +106,15 @@ impl Extension for Local {
                 })
                 .next()
             {
-                match std::fs::File::open(entry.path()) {
+                let path = entry.path();
+                match std::fs::File::open(path.clone()) {
                     Ok(file) => {
-                        let mut archive = ZipArchive::new(file).unwrap();
-                        let f = archive.by_index(0).unwrap();
-                        cover_url = entry
-                            .path()
-                            .join(f.name().clone())
-                            .to_str()
+                        let first_page = compress_tools::list_archive_files(file)
                             .unwrap()
-                            .to_string();
+                            .first()
+                            .unwrap()
+                            .clone();
+                        cover_url = path.join(first_page).to_str().unwrap().to_string();
                     }
                     Err(e) => {
                         return ExtensionResult::err(format!("{}", e).as_str());
@@ -125,13 +123,14 @@ impl Extension for Local {
             }
         }
 
+        let title = path.file_name().unwrap().to_str().unwrap().to_string();
         ExtensionResult::ok(Manga {
             source_id: ID,
-            title: path.file_name().unwrap().to_str().unwrap().to_string(),
+            title: title.clone(),
             author: vec![],
             genre: vec![],
-            status: None,
-            description: None,
+            status: Some("".to_string()),
+            description: Some(title),
             path: path.to_str().unwrap().to_string(),
             cover_url,
         })
@@ -188,13 +187,11 @@ impl Extension for Local {
         let path = PathBuf::from(path);
         match std::fs::File::open(path.clone()) {
             Ok(file) => {
-                let mut archive = ZipArchive::new(file).unwrap();
-                let mut pages = vec![];
-                for i in 0..archive.len() {
-                    let f = archive.by_index(i).unwrap();
-                    pages.push(path.join(f.name()).to_str().unwrap().to_string());
-                }
-
+                let pages = compress_tools::list_archive_files(file)
+                    .unwrap()
+                    .into_iter()
+                    .map(|p| path.clone().join(p).to_str().unwrap().to_string())
+                    .collect();
                 ExtensionResult::ok(pages)
             }
             Err(e) => ExtensionResult::err(format!("{}", e).as_str()),

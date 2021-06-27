@@ -2,7 +2,6 @@ use bytes::Bytes;
 use serde::Deserialize;
 use std::convert::Infallible;
 use warp::{hyper::Response, Filter};
-use zip::ZipArchive;
 
 #[derive(Deserialize)]
 pub struct Image {
@@ -19,28 +18,32 @@ pub fn proxy() -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejectio
 pub async fn get_image(image: Image) -> Result<impl warp::Reply, Infallible> {
     match image.url {
         url if url.starts_with("http") => Ok(get_image_from_url(url).await?),
-        url => Ok(get_image_from_file(url).await?)
+        url if !url.is_empty() => Ok(get_image_from_file(url).await?),
+        _ => Ok(warp::http::Response::builder()
+            .status(400)
+            .body(Bytes::new())
+            .unwrap()),
     }
 }
 
 pub async fn get_image_from_file(file: String) -> Result<Response<Bytes>, Infallible> {
     let path = std::path::PathBuf::from(file);
     match std::fs::File::open(path.clone().parent().unwrap()) {
-        Ok(f) => {
-            let mut archive = ZipArchive::new(f).unwrap();
-            let mut f = archive
-                .by_name(path.file_name().unwrap().to_str().unwrap())
-                .unwrap();
-
-            let mut res = vec![];
-            std::io::copy(&mut f, &mut res).unwrap();
+        Ok(mut f) => {
+            let mut buf = vec![];
+            compress_tools::uncompress_archive_file(
+                &mut f,
+                &mut buf,
+                path.file_name().unwrap().to_str().unwrap(),
+            )
+            .unwrap();
 
             Ok(warp::http::Response::builder()
-                .status(400)
-                .body(Bytes::from(res))
+                .status(200)
+                .body(Bytes::from(buf))
                 .unwrap())
         }
-        Err(e) => Ok(warp::http::Response::builder()
+        Err(_) => Ok(warp::http::Response::builder()
             .status(400)
             .body(Bytes::new())
             .unwrap()),

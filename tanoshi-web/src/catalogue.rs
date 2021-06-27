@@ -5,7 +5,6 @@ use futures_signals::signal::{Mutable, SignalExt};
 use futures_signals::signal_vec::{MutableVec, SignalVecExt};
 use wasm_bindgen::prelude::*;
 
-use crate::utils::proxied_image_url;
 use crate::{
     common::Route,
     query::{
@@ -380,7 +379,7 @@ impl Catalogue {
                                     html!("img", {
                                         .class(["h-6", "w-6", "mr-2"])
                                         .class_signal("invisible", Mutable::new(source.icon.clone()).signal_cloned().map(|icon| icon.is_empty()))
-                                        .attribute("src", &proxied_image_url(&source.icon))
+                                        .attribute("src", &source.icon)
                                     }),
                                     html!("div", {
                                         .text(&source.name)

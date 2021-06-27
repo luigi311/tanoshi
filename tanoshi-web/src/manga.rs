@@ -249,7 +249,7 @@ impl Manga {
                                 if let Some(cover_url) = x {
                                     Some(html!("img", {
                                         .class(["w-32", "rounded", "object-cover"])
-                                        .attribute("src", &cover_url)
+                                        .attribute("src", &proxied_image_url(&cover_url))
                                         .attribute("loading", "lazy")
                                     }))
                                 } else {
