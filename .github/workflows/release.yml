@@ -30,6 +30,8 @@ jobs:
         run: cargo install wasm-bindgen-cli wasm-pack
       - name: Build Frontend
         run: cd $GITHUB_WORKSPACE/tanoshi-web && yarn install && yarn build
+      - name: Install libarchive
+        run: vcpkg install libarchive:x64-osx
       - name: Build Backend
         run: cd $GITHUB_WORKSPACE/tanoshi && cargo build -p tanoshi --release
       - name: Upload Release Asset
@@ -51,6 +53,8 @@ jobs:
         run: cargo install wasm-bindgen-cli wasm-pack
       - name: Build Frontend
         run: cd $GITHUB_WORKSPACE/tanoshi-web && yarn install && yarn build
+      - name: Install libarchive
+        run: vcpkg install libarchive:x64-linux
       - name: Build Backend
         run: cd /home/runner/work/tanoshi/tanoshi/tanoshi && cargo build -p tanoshi --release
       - name: Upload Release Asset
@@ -72,8 +76,12 @@ jobs:
         run: cargo install wasm-bindgen-cli wasm-pack
       - name: Build Frontend
         run: cd $Env:GITHUB_WORKSPACE/tanoshi-web && yarn install && yarn build
+      - name: Install libarchive
+        run: vcpkg install libarchive:x64-windows-static
       - name: Build Backend
-        run: cd $Env:GITHUB_WORKSPACE\tanoshi && cargo build -p tanoshi --release
+        run: |
+          $Env:RUSTFLAGS='-C target-feature=+crt-static'
+          cd $Env:GITHUB_WORKSPACE\tanoshi && cargo build -p tanoshi --release
       - name: Upload Release Asset
         id: upload-release-asset
         uses: actions/upload-release-asset@v1
