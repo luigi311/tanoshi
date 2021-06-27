@@ -80,6 +80,7 @@ jobs:
         run: cd $Env:GITHUB_WORKSPACE/tanoshi-web && yarn install && yarn build
       - name: Install libarchive
         run: |
+          vcpkg integrate install
           vcpkg install --only-downloads libarchive:x64-windows-static
           vcpkg install libarchive:x64-windows-static
       - name: Build Backend

@@ -41,12 +41,13 @@ jobs:
       - uses: actions/checkout@v2
       - name: Install wasm-pack
         run: cargo install wasm-bindgen-cli wasm-pack
-      - name: Install libarchive
-        run: |
-          vcpkg install --only-downloads libarchive:x64-windows-static
-          vcpkg install libarchive:x64-windows-static
       - name: Build Frontend
         run: cd $Env:GITHUB_WORKSPACE/tanoshi-web && yarn install && yarn build
+      - name: Install libarchive
+        run: |
+          vcpkg integrate install
+          vcpkg install --only-downloads libarchive:x64-windows-static
+          vcpkg install libarchive:x64-windows-static
       - name: Build Backend
         run: |
           $Env:RUSTFLAGS='-C target-feature=+crt-static'
