@@ -56,7 +56,9 @@ jobs:
       - name: Install libarchive
         run: sudo apt install libarchive-dev
       - name: Build Backend
-        run: cd /home/runner/work/tanoshi/tanoshi/tanoshi && cargo build -p tanoshi --release
+        run: |
+          export PKG_CONFIG_PATH="/usr/local/opt/libarchive/lib/pkgconfig"
+          cd /home/runner/work/tanoshi/tanoshi/tanoshi && cargo build -p tanoshi --release
       - name: Upload Release Asset
         id: upload-release-asset
         uses: actions/upload-release-asset@v1
@@ -77,7 +79,9 @@ jobs:
       - name: Build Frontend
         run: cd $Env:GITHUB_WORKSPACE/tanoshi-web && yarn install && yarn build
       - name: Install libarchive
-        run: vcpkg install libarchive:x64-windows-static
+        run: |
+          vcpkg install --only-downloads libarchive:x64-windows-static
+          vcpkg install libarchive:x64-windows-static
       - name: Build Backend
         run: |
           $Env:RUSTFLAGS='-C target-feature=+crt-static'

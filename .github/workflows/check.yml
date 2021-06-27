@@ -32,7 +32,9 @@ jobs:
       - name: Install libarchive
         run: brew install libarchive
       - name: Build Backend
-        run: cd $GITHUB_WORKSPACE && cargo check -p tanoshi
+        run: |
+          export PKG_CONFIG_PATH="/usr/local/opt/libarchive/lib/pkgconfig"
+          cd $GITHUB_WORKSPACE && cargo check -p tanoshi
   build-windows:
     runs-on: windows-latest
     steps:
@@ -40,7 +42,9 @@ jobs:
       - name: Install wasm-pack
         run: cargo install wasm-bindgen-cli wasm-pack
       - name: Install libarchive
-        run: vcpkg install libarchive:x64-windows-static
+        run: |
+          vcpkg install --only-downloads libarchive:x64-windows-static
+          vcpkg install libarchive:x64-windows-static
       - name: Build Frontend
         run: cd $Env:GITHUB_WORKSPACE/tanoshi-web && yarn install && yarn build
       - name: Build Backend
