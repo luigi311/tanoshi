@@ -33,7 +33,7 @@ jobs:
       - name: Install libarchive
         run: brew install libarchive
       - name: Build Backend
-        run: cd $GITHUB_WORKSPACE/tanoshi && cargo build -p tanoshi --release
+        run: cd $GITHUB_WORKSPACE/tanoshi && LIBARCHIVE_STATIC=1 cargo build -p tanoshi --release
       - name: Upload Release Asset
         id: upload-release-asset
         uses: actions/upload-release-asset@v1
@@ -58,6 +58,7 @@ jobs:
       - name: Build Backend
         run: |
           export PKG_CONFIG_PATH="/usr/local/opt/libarchive/lib/pkgconfig"
+          export LIBARCHIVE_STATIC=1
           cd /home/runner/work/tanoshi/tanoshi/tanoshi && cargo build -p tanoshi --release
       - name: Upload Release Asset
         id: upload-release-asset
@@ -85,7 +86,6 @@ jobs:
           vcpkg install libarchive:x64-windows-static
       - name: Build Backend
         run: |
-          $Env:RUSTFLAGS='-C target-feature=+crt-static'
           cd $Env:GITHUB_WORKSPACE\tanoshi && cargo build -p tanoshi --release
       - name: Upload Release Asset
         id: upload-release-asset
