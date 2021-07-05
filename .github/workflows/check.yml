@@ -18,9 +18,9 @@ jobs:
       - name: Build Frontend
         run: cd $GITHUB_WORKSPACE/tanoshi-web && yarn install && yarn build
       - name: Install libarchive
-        run: sudo apt install libarchive-dev
+        run: sudo apt install libarchive-dev nettle libacl1 libzstd liblz4
       - name: Build Backend
-        run: cd $GITHUB_WORKSPACE && cargo check -p tanoshi
+        run: cd $GITHUB_WORKSPACE && LIBARCHIVE_STATIC=1 cargo check -p tanoshi
   build-macos:
     runs-on: macos-latest
     steps:
@@ -30,11 +30,9 @@ jobs:
       - name: Build Frontend
         run: cd $GITHUB_WORKSPACE/tanoshi-web && yarn install && yarn build
       - name: Install libarchive
-        run: brew install libarchive
+        run: brew install libarchive pkg-config
       - name: Build Backend
-        run: |
-          export PKG_CONFIG_PATH="/usr/local/opt/libarchive/lib/pkgconfig"
-          cd $GITHUB_WORKSPACE && cargo check -p tanoshi
+        run: LIBARCHIVE_STATIC=1 cd $GITHUB_WORKSPACE && cargo check -p tanoshi
   build-windows:
     runs-on: windows-latest
     steps:
@@ -46,9 +44,7 @@ jobs:
       - name: Install libarchive
         run: |
           vcpkg integrate install
-          vcpkg install --only-downloads libarchive:x64-windows-static
-          vcpkg install libarchive:x64-windows-static
+          vcpkg install --only-downloads libarchive:x64-windows-static-md
+          vcpkg install libarchive:x64-windows-static-md
       - name: Build Backend
-        run: |
-          $Env:RUSTFLAGS='-C target-feature=+crt-static'
-          cd $Env:GITHUB_WORKSPACE && cargo check -p tanoshi
+        run: cd $Env:GITHUB_WORKSPACE && cargo check -p tanoshi
