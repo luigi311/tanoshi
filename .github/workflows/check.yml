@@ -18,19 +18,9 @@ jobs:
       - name: Build Frontend
         run: cd $GITHUB_WORKSPACE/tanoshi-web && yarn install && yarn build
       - name: Install libarchive
-        run: sudo apt update && sudo apt install -y libarchive-dev nettle libacl1 libzstd liblz4  
+        run: sudo apt update && sudo apt install -y libarchive-dev nettle-dev libacl1-dev libzstd-dev liblz4-dev  
       - name: Build Backend
-        run: cd /home/runner/work/tanoshi/tanoshi/tanoshi && LIBARCHIVE_STATIC=1 cargo build -p tanoshi --release
-      - name: Upload Release Asset
-        id: upload-release-asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps
-          asset_path: ${{ github.workspace }}/target/release/tanoshi
-          asset_name: tanoshi-linux
-          asset_content_type: application/octet-stream
+        run: cd /home/runner/work/tanoshi/tanoshi/tanoshi && LIBARCHIVE_STATIC=1 cargo build -p tanoshi
   build-macos:
     runs-on: macos-latest
     steps:

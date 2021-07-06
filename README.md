@@ -72,6 +72,20 @@ plugin_path: /absolute/path/to/plugins
 local_path: /absolute/path/to/manga
 ```
 
+local manga have to be structured below
+```
+/path/to/manga
+├─── Series 1
+│   ├─── Volume 1
+|   ├─── Volume 2
+|   └─── ...
+└─── Series 2
+    ├─── Volume 1
+    ├─── Volume 2
+    └─── ...
+
+```
+
 # Build
 Tanoshi backend use [rust-embed](https://github.com/pyros2097/rust-embed) to embed static files to the binary. Because of this, `tanoshi-web` need to be built first so `tanoshi` will be able to build successfully.
 
