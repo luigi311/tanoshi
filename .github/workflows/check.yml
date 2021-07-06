@@ -18,7 +18,7 @@ jobs:
       - name: Build Frontend
         run: cd $GITHUB_WORKSPACE/tanoshi-web && yarn install && yarn build
       - name: Install libarchive
-        run: sudo apt install libarchive-dev nettle libacl1 libzstd liblz4  
+        run: sudo apt update && sudo apt install -y libarchive-dev nettle libacl1 libzstd liblz4  
       - name: Build Backend
         run: cd /home/runner/work/tanoshi/tanoshi/tanoshi && LIBARCHIVE_STATIC=1 cargo build -p tanoshi --release
       - name: Upload Release Asset
