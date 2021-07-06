@@ -18,7 +18,7 @@ jobs:
       - name: Build Frontend
         run: cd $GITHUB_WORKSPACE/tanoshi-web && yarn install && yarn build
       - name: Install libarchive
-        run: sudo apt install libarchive-dev
+        run: sudo apt install libarchive-dev nettle libacl1 libzstd liblz4  
       - name: Build Backend
         run: cd /home/runner/work/tanoshi/tanoshi/tanoshi && LIBARCHIVE_STATIC=1 cargo build -p tanoshi --release
       - name: Upload Release Asset
@@ -42,7 +42,11 @@ jobs:
       - name: Install libarchive
         run: brew install libarchive pkg-config
       - name: Build Backend
-        run: cd $GITHUB_WORKSPACE/tanoshi && LIBARCHIVE_STATIC=1 cargo build -p tanoshi
+        run: |
+          export LDFLAGS="-L/usr/local/opt/libarchive/lib"
+          export CPPFLAGS="-I/usr/local/opt/libarchive/include"
+          export PKG_CONFIG_PATH="/usr/local/opt/libarchive/lib/pkgconfig"
+          cd $GITHUB_WORKSPACE/tanoshi && LIBARCHIVE_STATIC=1 cargo build -p tanoshi
   build-windows:
     runs-on: windows-latest
     steps:
