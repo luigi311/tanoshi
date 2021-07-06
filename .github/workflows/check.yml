@@ -18,9 +18,19 @@ jobs:
       - name: Build Frontend
         run: cd $GITHUB_WORKSPACE/tanoshi-web && yarn install && yarn build
       - name: Install libarchive
-        run: sudo apt install libarchive-dev nettle libacl1 libzstd liblz4
+        run: sudo apt install libarchive-dev
       - name: Build Backend
-        run: cd $GITHUB_WORKSPACE && LIBARCHIVE_STATIC=1 cargo check -p tanoshi
+        run: cd /home/runner/work/tanoshi/tanoshi/tanoshi && LIBARCHIVE_STATIC=1 cargo build -p tanoshi --release
+      - name: Upload Release Asset
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps
+          asset_path: ${{ github.workspace }}/target/release/tanoshi
+          asset_name: tanoshi-linux
+          asset_content_type: application/octet-stream
   build-macos:
     runs-on: macos-latest
     steps:
@@ -32,7 +42,7 @@ jobs:
       - name: Install libarchive
         run: brew install libarchive pkg-config
       - name: Build Backend
-        run: LIBARCHIVE_STATIC=1 cd $GITHUB_WORKSPACE && cargo check -p tanoshi
+        run: cd $GITHUB_WORKSPACE/tanoshi && LIBARCHIVE_STATIC=1 cargo build -p tanoshi
   build-windows:
     runs-on: windows-latest
     steps:
@@ -47,4 +57,4 @@ jobs:
           vcpkg install --only-downloads libarchive:x64-windows-static-md
           vcpkg install libarchive:x64-windows-static-md
       - name: Build Backend
-        run: cd $Env:GITHUB_WORKSPACE && cargo check -p tanoshi
+        run: cd $Env:GITHUB_WORKSPACE\tanoshi && cargo build -p tanoshi
