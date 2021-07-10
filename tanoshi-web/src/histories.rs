@@ -53,7 +53,7 @@ impl Histories {
                             cover_url: edge.as_ref().unwrap_throw().node.cover_url.clone(),
                             chapter_id: edge.as_ref().unwrap_throw().node.chapter_id,
                             chapter_title: edge.as_ref().unwrap_throw().node.chapter_title.clone(),
-                            read_at: chrono::NaiveDateTime::parse_from_str(&edge.as_ref().unwrap_throw().node.read_at, "%Y-%m-%d %H:%M:%S").unwrap_throw(),
+                            read_at: chrono::NaiveDateTime::parse_from_str(&edge.as_ref().unwrap_throw().node.read_at, "%Y-%m-%dT%H:%M:%S%.f").unwrap_throw(),
                             last_page_read: edge.as_ref().unwrap_throw().node.last_page_read,
                             cursor: edge.as_ref().unwrap_throw().cursor.clone(),
                         })

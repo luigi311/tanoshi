@@ -47,4 +47,4 @@ futures = "^0.3"
 rust-argon2 = "0.8"
 ron = "0.6.4"
 fancy-regex = "0.6"
-compress-tools = "0.11"
+libarchive-rs = { git = "https://github.com/faldez/libarchive-rs", features = ["static"] }

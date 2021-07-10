@@ -27,17 +27,11 @@ pub async fn get_image(image: Image) -> Result<impl warp::Reply, Infallible> {
 }
 
 pub async fn get_image_from_file(file: String) -> Result<Response<Bytes>, Infallible> {
-    let path = std::path::PathBuf::from(file);
-    match std::fs::File::open(path.clone().parent().unwrap()) {
-        Ok(mut f) => {
-            let mut buf = vec![];
-            compress_tools::uncompress_archive_file(
-                &mut f,
-                &mut buf,
-                path.file_name().unwrap().to_str().unwrap(),
-            )
-            .unwrap();
-
+    let file = std::path::PathBuf::from(file);
+    let filename = file.parent().unwrap().to_str().unwrap();
+    let path = file.file_name().unwrap().to_str().unwrap();
+    match libarchive_rs::extract_archive_file(filename, path) {
+        Ok(buf) => {
             Ok(warp::http::Response::builder()
                 .status(200)
                 .body(Bytes::from(buf))

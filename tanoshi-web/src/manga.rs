@@ -70,8 +70,8 @@ impl Manga {
                     manga.chapters.lock_mut().replace_cloned(result.chapters.iter().map(|chapter| Chapter{
                         id: chapter.id,
                         title: chapter.title.clone(),
-                        uploaded: NaiveDateTime::parse_from_str(&chapter.uploaded, "%Y-%m-%d %H:%M:%S").unwrap_throw(),
-                        read_at: Mutable::new(chapter.read_at.as_ref().map(|time| NaiveDateTime::parse_from_str(&time, "%Y-%m-%d %H:%M:%S").unwrap_throw())),
+                        uploaded: NaiveDateTime::parse_from_str(&chapter.uploaded, "%Y-%m-%dT%H:%M:%S%.f").expect_throw("failed to parse uploaded date"),
+                        read_at: Mutable::new(chapter.read_at.as_ref().map(|time| NaiveDateTime::parse_from_str(&time, "%Y-%m-%dT%H:%M:%S%.f").expect_throw("failed to parse read at date"))),
                     }).collect());
                 },
                 Err(err) => {
@@ -96,8 +96,8 @@ impl Manga {
                     manga.chapters.lock_mut().replace_cloned(result.chapters.iter().map(|chapter| Chapter{
                         id: chapter.id,
                         title: chapter.title.clone(),
-                        uploaded: NaiveDateTime::parse_from_str(&chapter.uploaded, "%Y-%m-%d %H:%M:%S").unwrap_throw(),
-                        read_at: Mutable::new(chapter.read_at.as_ref().map(|time| NaiveDateTime::parse_from_str(&time, "%Y-%m-%d %H:%M:%S").unwrap_throw())),
+                        uploaded: NaiveDateTime::parse_from_str(&chapter.uploaded, "%Y-%m-%dT%H:%M:%S%.f").expect_throw("failed to parse uploaded date"),
+                        read_at: Mutable::new(chapter.read_at.as_ref().map(|time| NaiveDateTime::parse_from_str(&time, "%Y-%m-%dT%H:%M:%S%.f").expect_throw("failed to parse read at date"))),
                     }).collect());
                 },
                 Err(err) => {

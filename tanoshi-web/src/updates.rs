@@ -52,7 +52,7 @@ impl Updates {
                             cover_url: edge.as_ref().unwrap_throw().node.cover_url.clone(),
                             chapter_id: edge.as_ref().unwrap_throw().node.chapter_id,
                             chapter_title: edge.as_ref().unwrap_throw().node.chapter_title.clone(),
-                            uploaded: chrono::NaiveDateTime::parse_from_str(&edge.as_ref().unwrap_throw().node.uploaded, "%Y-%m-%d %H:%M:%S").unwrap_throw(),
+                            uploaded: chrono::NaiveDateTime::parse_from_str(&edge.as_ref().unwrap_throw().node.uploaded, "%Y-%m-%dT%H:%M:%S%.f").unwrap_throw(),
                             cursor: edge.as_ref().unwrap_throw().cursor.clone(),
                         })
                     }

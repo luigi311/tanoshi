@@ -1,7 +1,8 @@
-use std::{path::PathBuf, time::UNIX_EPOCH};
+use std::{fs::DirEntry, path::PathBuf, time::UNIX_EPOCH};
 
 use chrono::NaiveDateTime;
 use fancy_regex::Regex;
+use libarchive_rs;
 use tanoshi_lib::prelude::{Chapter, Extension, ExtensionResult, Manga, Source};
 
 pub static ID: i64 = 1;
@@ -13,6 +14,19 @@ pub struct Local {
 impl Local {
     pub fn new(path: String) -> Box<dyn Extension> {
         Box::new(Self { path })
+    }
+
+    fn filter_file_only(entry: Result<DirEntry, std::io::Error>) -> Option<DirEntry> {
+        match entry {
+            Ok(res) => {
+                if res.path().is_file() {
+                    Some(res)
+                } else {
+                    None
+                }
+            }
+            Err(_) => None,
+        }
     }
 }
 
@@ -42,27 +56,14 @@ impl Extension for Local {
                 let mut cover_url = "".to_string();
                 if let Some(entry) = entry_read_dir
                     .into_iter()
-                    .filter_map(|entry| match entry {
-                        Ok(res) => {
-                            if res.path().is_file() {
-                                Some(res)
-                            } else {
-                                None
-                            }
-                        }
-                        Err(_) => None,
-                    })
+                    .filter_map(Self::filter_file_only)
                     .next()
                 {
                     let path = entry.path();
-                    match std::fs::File::open(path.clone()) {
-                        Ok(file) => {
+                    match libarchive_rs::list_archive_files(path.to_str().unwrap()) {
+                        Ok(files) => {
                             info!("open {:?}", path);
-                            let first_page = compress_tools::list_archive_files(file)
-                                .unwrap()
-                                .first()
-                                .unwrap()
-                                .clone();
+                            let first_page = files.first().unwrap().clone();
                             cover_url = path.join(first_page).to_str().unwrap().to_string();
                         }
                         Err(e) => {
@@ -94,26 +95,13 @@ impl Extension for Local {
         if let Ok(entry_read_dir) = path.read_dir() {
             if let Some(entry) = entry_read_dir
                 .into_iter()
-                .filter_map(|entry| match entry {
-                    Ok(res) => {
-                        if res.path().is_file() {
-                            Some(res)
-                        } else {
-                            None
-                        }
-                    }
-                    Err(_) => None,
-                })
+                .filter_map(Self::filter_file_only)
                 .next()
             {
                 let path = entry.path();
-                match std::fs::File::open(path.clone()) {
-                    Ok(file) => {
-                        let first_page = compress_tools::list_archive_files(file)
-                            .unwrap()
-                            .first()
-                            .unwrap()
-                            .clone();
+                match libarchive_rs::list_archive_files(path.to_str().unwrap()) {
+                    Ok(files) => {
+                        let first_page = files.first().unwrap().clone();
                         cover_url = path.join(first_page).to_str().unwrap().to_string();
                     }
                     Err(e) => {
@@ -183,12 +171,11 @@ impl Extension for Local {
         ExtensionResult::ok(data)
     }
 
-    fn get_pages(&self, path: String) -> ExtensionResult<Vec<String>> {
-        let path = PathBuf::from(path);
-        match std::fs::File::open(path.clone()) {
-            Ok(file) => {
-                let pages = compress_tools::list_archive_files(file)
-                    .unwrap()
+    fn get_pages(&self, filename: String) -> ExtensionResult<Vec<String>> {
+        let path = PathBuf::from(filename.clone());
+        match libarchive_rs::list_archive_files(&filename) {
+            Ok(files) => {
+                let pages = files
                     .into_iter()
                     .map(|p| path.clone().join(p).to_str().unwrap().to_string())
                     .collect();
