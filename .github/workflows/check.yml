@@ -9,49 +9,45 @@ on:
       - .github/screenshots/**
 
 jobs:
-  build-linux:
-    runs-on: ubuntu-latest
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
     steps:
       - uses: actions/checkout@v2
       - name: Install deps
+        if: ${{ matrix.os == 'ubuntu-latest' }}
         run: sudo apt update && sudo apt install -y libssl-dev libarchive-dev build-essential cmake llvm clang libicu-dev nettle-dev libacl1-dev liblzma-dev libzstd-dev liblz4-dev libbz2-dev zlib1g-dev libxml2-dev
-      - name: Install wasm-pack
-        run: cargo install wasm-bindgen-cli wasm-pack
-      - name: Build Frontend
-        run: cd $GITHUB_WORKSPACE/tanoshi-web && yarn install && yarn build
-      - name: Build Backend
-        run: cd /home/runner/work/tanoshi/tanoshi/tanoshi &&cargo build -p tanoshi
-  build-macos:
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v2
       - name: Install deps
+        if: ${{ matrix.os == 'macos-latest' }}
         run: brew install icu4c libarchive bzip2 lz4 zlib expat
-      - name: Install wasm-pack
-        run: cargo install wasm-bindgen-cli wasm-pack
-      - name: Build Frontend
-        run: cd $GITHUB_WORKSPACE/tanoshi-web && yarn install && yarn build
-      - name: Build Backend
-        run: |
-          export PKG_CONFIG_PATH="/usr/local/opt/icu4c/lib/pkgconfig:/usr/local/opt/libarchive/lib/pkgconfig:/usr/local/opt/zlib/lib/pkgconfig:/usr/local/opt/expat/lib/pkgconfig"
-          cd $GITHUB_WORKSPACE/tanoshi && cargo build -p tanoshi
-  build-windows:
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v2
       - name: Install LLVM and Clang
+        if: ${{ matrix.os == 'windows-latest' }}
         uses: KyleMayes/install-llvm-action@v1
         with:
           version: "12.0"
-      - name: Install wasm-pack
-        run: cargo install wasm-bindgen-cli wasm-pack
-      - name: Build Frontend
-        run: cd $env:GITHUB_WORKSPACE/tanoshi-web && yarn install && yarn build
-      - name: Install libarchive
+      - name: Install deps
+        if: ${{ matrix.os == 'windows-latest' }}
         run: |
           vcpkg integrate install
+          vcpkg install --only-downloads libarchive:x64-windows-static-md
           vcpkg install libarchive:x64-windows-static-md
+      - name: Build Frontend
+        run: yarn --cwd tanoshi-web && yarn --cwd tanoshi-web build
       - name: Build Backend
-        run: |
-          $env:LIBCLANG_PATH="C:\Program Files\LLVM\bin"
-          cd $env:GITHUB_WORKSPACE\tanoshi && cargo build -p tanoshi
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+        run: cargo build -p tanoshi
+      - name: Build Backend
+        if: ${{ matrix.os == 'macos-latest' }}
+        run: cargo build -p tanoshi
+        env:
+          PKG_CONFIG_PATH: /usr/local/opt/icu4c/lib/pkgconfig:/usr/local/opt/libarchive/lib/pkgconfig:/usr/local/opt/zlib/lib/pkgconfig:/usr/local/opt/expat/lib/pkgconfig
+      - name: Build Backend
+        if: ${{ matrix.os == 'windows-latest' }}
+        run: cargo build -p tanoshi
+        env:
+          LIBCLANG_PATH: C:\Program Files\LLVM\bin

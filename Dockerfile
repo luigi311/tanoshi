@@ -26,9 +26,8 @@ RUN npm install -g yarn
 
 COPY . .
 
-RUN cargo install wasm-bindgen-cli wasm-pack
-RUN cd /app/tanoshi-web && yarn install && yarn build
-RUN cd /app/tanoshi && cargo build -p tanoshi --release
+RUN yarn --cwd tanoshi-web && yarn --cwd tanoshi-web build
+RUN cargo build -p tanoshi --release
 
 FROM debian:buster-slim
 
