@@ -3039,7 +3039,7 @@ dependencies = [
 
 [[package]]
 name = "tanoshi"
-version = "0.24.0"
+version = "0.24.1"
 dependencies = [
  "anyhow",
  "async-graphql",
@@ -3123,7 +3123,7 @@ dependencies = [
 
 [[package]]
 name = "tanoshi-web"
-version = "0.24.0"
+version = "0.24.1"
 dependencies = [
  "base64 0.13.0",
  "chrono",
