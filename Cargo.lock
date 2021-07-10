@@ -1649,7 +1649,7 @@ dependencies = [
 [[package]]
 name = "libarchive-rs"
 version = "0.1.0"
-source = "git+https://github.com/faldez/libarchive-rs#6792521b6b64f34b40fd51639398bad6fb9e2785"
+source = "git+https://github.com/faldez/libarchive-rs#72b05160dd2a4147ef6dd2548e49b87d2ec482e9"
 dependencies = [
  "libarchive-sys",
 ]
@@ -1657,7 +1657,7 @@ dependencies = [
 [[package]]
 name = "libarchive-sys"
 version = "0.1.0"
-source = "git+https://github.com/faldez/libarchive-rs#6792521b6b64f34b40fd51639398bad6fb9e2785"
+source = "git+https://github.com/faldez/libarchive-rs#72b05160dd2a4147ef6dd2548e49b87d2ec482e9"
 dependencies = [
  "bindgen",
  "cmake",
