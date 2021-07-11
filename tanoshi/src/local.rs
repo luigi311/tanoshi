@@ -134,10 +134,10 @@ impl Extension for Local {
 
         let mut data = vec![];
         for entry in read_dir.into_iter().filter_map(|entry| entry.ok()) {
-            let created = entry
+            let modified = entry
                 .metadata()
                 .unwrap()
-                .created()
+                .modified()
                 .unwrap()
                 .duration_since(UNIX_EPOCH)
                 .unwrap()
@@ -164,7 +164,7 @@ impl Extension for Local {
                 path: entry.path().to_str().unwrap().to_string(),
                 number,
                 scanlator: "".to_string(),
-                uploaded: NaiveDateTime::from_timestamp(created as i64, 0),
+                uploaded: NaiveDateTime::from_timestamp(modified as i64, 0),
             })
         }
 
