@@ -339,7 +339,6 @@ impl Reader {
             .children_signal_vec(reader.pages.signal_vec_cloned().enumerate().map(clone!(reader => move |(index, page)|
                 html!("img", {
                     .class([
-                        "page",
                         "mx-auto",
                     ])
                     .attribute("id", index.get().unwrap().to_string().as_str())
@@ -371,10 +370,14 @@ impl Reader {
             .global_event(clone!(reader => move |_: events::Scroll| {
                 let mut page_no = 0;
                 let body_top = window().scroll_y().unwrap_throw();
-                let page_collection = document().get_elements_by_class_name("page");
-                for i in 0..page_collection.length() {
-                    let page_top = page_collection.item(i).unwrap().dyn_into::<web_sys::HtmlElement>().unwrap().offset_top() as f64;
-                    if body_top > page_top {
+                for i in 0..reader.pages_len.get() {
+                    let page_top = document()
+                        .get_element_by_id(i.to_string().as_str())
+                        .unwrap()
+                        .dyn_into::<web_sys::HtmlElement>()
+                        .unwrap()
+                        .offset_top() as f64;
+                    if page_top > body_top {
                         page_no = i;
                         break;
                     }
