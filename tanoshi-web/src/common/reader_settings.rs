@@ -2,7 +2,6 @@ use dominator::{clone, events, html, Dom};
 use futures_signals::signal::{Mutable, Signal, SignalExt};
 use serde::{Deserialize, Serialize};
 use std::rc::Rc;
-use web_sys::console::info;
 
 use crate::{manga, utils::local_storage};
 
@@ -186,7 +185,15 @@ impl ReaderSettings {
 
     pub fn render_apply_button(reader: Rc<Self>) -> Dom {
         html!("button", {
-            .class("focus:outline-none")
+            .class([
+                "focus:outline-none",
+                "rounded",
+                "bg-accent",
+                "text-white",
+                "px-2",
+                "py-1",
+                "m-1"
+            ])
             .text("Apply")
             .event(clone!(reader => move |_: events::Click| {
                 let settings = Settings {
@@ -499,20 +506,32 @@ impl ReaderSettings {
     }
 
     pub fn render(reader: Rc<Self>) -> Dom {
+        let use_modal = reader.use_modal.get();
         html!("div", {
-            .class_signal(MODAL_CLASS, reader.use_modal.signal())
-            .class_signal(NON_MODAL_CLASS, reader.use_modal.signal().map(|x| !x))
-            .class_signal("animate__slideInUp", reader.show.signal())
-            .class_signal("animate__slideOutDown", reader.show.signal().map(|x| !x))
-            .visible_signal(reader.first_render.signal().map(|x| !x))
             .children(&mut [
                 html!("div", {
+                    .visible_signal(reader.show.signal().map(move |show| show && use_modal))
+                    .class(["fixed", "inset-0", "bg-black", "bg-opacity-25", "z-30"])
+                    .event(clone!(reader => move |_: events::Click| {
+                        reader.show.set_neq(false);
+                    }))
+                }),
+                html!("div", {
+                    .class_signal(MODAL_CLASS, reader.use_modal.signal())
+                    .class_signal(NON_MODAL_CLASS, reader.use_modal.signal().map(|x| !x))
+                    .class_signal("animate__slideInUp", reader.show.signal())
+                    .class_signal("animate__slideOutDown", reader.show.signal().map(|x| !x))
+                    .visible_signal(reader.first_render.signal().map(|x| !x))
                     .children(&mut [
-                        Self::render_reader_mode(reader.clone()),
-                        Self::render_display_mode(reader.clone()),
-                        Self::render_direction(reader.clone()),
-                        Self::render_background(reader.clone()),
-                        Self::render_fit_screen(reader.clone()),
+                        html!("div", {
+                            .children(&mut [
+                                Self::render_reader_mode(reader.clone()),
+                                Self::render_display_mode(reader.clone()),
+                                Self::render_direction(reader.clone()),
+                                Self::render_background(reader.clone()),
+                                Self::render_fit_screen(reader.clone()),
+                            ])
+                        })
                     ])
                 })
             ])

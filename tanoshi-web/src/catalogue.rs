@@ -5,6 +5,7 @@ use futures_signals::signal::{Mutable, SignalExt};
 use futures_signals::signal_vec::{MutableVec, SignalVecExt};
 use wasm_bindgen::prelude::*;
 
+use crate::common::css;
 use crate::{
     common::Route,
     query::{
@@ -155,24 +156,7 @@ impl Catalogue {
 
     pub fn render_topbar(catalogue: Rc<Self>) -> Dom {
         html!("div", {
-            .class([
-                "px-2",
-                "pb-2",
-                "flex",
-                "justify-between",
-                "fixed",
-                "left-0",
-                "right-0",
-                "top-0",
-                "z-50",
-                "bg-accent",
-                "dark:bg-gray-900",
-                "border-b",
-                "border-accent-darker",
-                "dark:border-gray-800",
-                "text-gray-50",
-                "pt-safe-top"
-            ])
+            .class(css::TOPBAR_CLASS)
             .child_signal(catalogue.is_search.signal().map(|is_search| {
                 if is_search {
                     None

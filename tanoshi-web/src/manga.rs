@@ -1,3 +1,4 @@
+use crate::common::css;
 use crate::query;
 use crate::utils::{AsyncLoader, local_storage, proxied_image_url};
 use crate::{
@@ -136,25 +137,7 @@ impl Manga {
 
     pub fn render_topbar(manga: Rc<Self>) -> Dom {
         html!("div", {
-            .class([
-                "w-full",
-                "pl-2",
-                "pr-2",
-                "pb-2",
-                "flex",
-                "justify-between",
-                "fixed",
-                "right-0",
-                "top-0",
-                "z-50",
-                "bg-accent",
-                "dark:bg-gray-900",
-                "border-b",
-                "border-accent-darker",
-                "dark:border-gray-800",
-                "text-gray-50",
-                "pt-safe-top"
-            ])
+            .class(css::TOPBAR_CLASS)
             .children(&mut [
                 html!("button", {
                     .class([
@@ -501,9 +484,14 @@ impl Manga {
             .class(["main", "w-full", "2xl:w-1/2", "mx-auto", "px-2", "flex", "flex-col"])
             .children(&mut [
                 Self::render_topbar(manga_page.clone()),
-                Self::render_header(manga_page.clone()),
-                Self::render_description(manga_page.clone()),
-                Self::render_chapters(manga_page.clone())
+                html!("div", {
+                    .class(["animate__animated", "animate__fadeIn"])
+                    .children(&mut [
+                        Self::render_header(manga_page.clone()),
+                        Self::render_description(manga_page.clone()),
+                        Self::render_chapters(manga_page.clone())
+                    ])
+                })
             ])
         })
     }

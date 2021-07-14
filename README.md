@@ -6,11 +6,9 @@
 Selfhosted web manga reader with extensions.
 
 ## Screenshots
-|<img src=".github/screenshots/500090500998_340663.jpg" width="300">|<img src=".github/screenshots/500091000007_337931.jpg" width="300">|<img src=".github/screenshots/500091000716_337400.jpg" width="300">|
+|![library](.github/screenshots/library.png)|![manga](.github/screenshots/manga.png)|![reader](.github/screenshots/reader.png)|
 |---|---|---|
-|<img src=".github/screenshots/500090500998_340663.jpg" width="300">|<img src=".github/screenshots/500091900058_262461.jpg" width="300">|<img src=".github/screenshots/500137900477_11101.jpg" width="300">|
-|<img src=".github/screenshots/500150500865_147534.jpg" width="300">|<img src=".github/screenshots/500150900428_145213.jpg" width="300">|<img src=".github/screenshots/500151200144_147569.jpg" width="300">|
-|<img src=".github/screenshots/500153300213_142653.jpg" width="300">|<img src=".github/screenshots/500153300501_141971.jpg" width="300">|<img src=".github/screenshots/500153400004_134590.jpg" width="300">|
+|![sources](.github/screenshots/sources.png)|![catalogue](.github/screenshots/catalogue.png)|![settings](.github/screenshots/settings.png)|
 
 ## Features
 ### Currently working

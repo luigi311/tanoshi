@@ -22,15 +22,6 @@ impl LibraryRoot {
         let ctx = ctx.data_unchecked::<GlobalContext>();
         let manga = ctx.mangadb.get_library(user.sub).await?;
 
-        if refresh {
-            for m in manga.iter() {
-                ctx.extensions
-                    .clone()
-                    .get_chapters(m.source_id, m.path.clone())
-                    .await?;
-            }
-        }
-
         Ok(manga)
     }
 

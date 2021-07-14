@@ -1,5 +1,6 @@
 use std::rc::Rc;
 
+use crate::common::css;
 use crate::query;
 use crate::utils::{proxied_image_url, AsyncLoader};
 use crate::{
@@ -68,24 +69,7 @@ impl Updates {
 
     pub fn render_topbar() -> Dom {
         html!("div", {
-            .class([
-                "px-2",
-                "pb-2",
-                "flex",
-                "justify-between",
-                "fixed",
-                "left-0",
-                "right-0",
-                "top-0",
-                "z-50",
-                "bg-accent",
-                "dark:bg-gray-900",
-                "border-b",
-                "border-accent-darker",
-                "dark:border-gray-800",
-                "text-gray-50",
-                "pt-safe-top"
-            ])
+            .class(css::TOPBAR_CLASS)
             .children(&mut [
                 html!("span", {
                     .class([

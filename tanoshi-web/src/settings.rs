@@ -1,8 +1,4 @@
-use crate::{
-    query,
-    common::{events, ReaderSettings, Route, SettingCategory, Login, Profile, Source, User},
-    utils::AsyncLoader
-};
+use crate::{common::{Login, Profile, ReaderSettings, Route, SettingCategory, Source, User, css, events}, query, utils::AsyncLoader};
 use dominator::svg;
 use dominator::{clone, html, link, routing, Dom};
 use futures_signals::{
@@ -189,25 +185,7 @@ impl Settings {
 
     pub fn render_topbar(settings: Rc<Self>) -> Dom {
         html!("div", {
-            .class([
-                "pl-2",
-                "pr-2",
-                "pb-2",
-                "grid",
-                "grid-cols-3",
-                "fixed",
-                "left-0",
-                "right-0",
-                "top-0",
-                "z-50",
-                "bg-accent",
-                "dark:bg-gray-900",
-                "border-b",
-                "border-accent-darker",
-                "dark:border-gray-800",
-                "text-gray-50",
-                "pt-safe-top"
-            ])
+            .class(css::TOPBAR_CLASS)
             .children(&mut [
                 html!("button", {
                     .class("focus:outline-none")

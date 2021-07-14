@@ -4,11 +4,7 @@ use dominator::{clone, html, Dom};
 use futures_signals::signal_vec::{MutableVec, SignalVecExt};
 use wasm_bindgen::prelude::*;
 
-use crate::{
-    common::{events, Cover, Spinner},
-    query,
-    utils::AsyncLoader,
-};
+use crate::{common::{Cover, Spinner, css, events}, query, utils::AsyncLoader};
 
 pub struct Library {
     loader: AsyncLoader,
@@ -43,25 +39,7 @@ impl Library {
 
     pub fn render_topbar(library: Rc<Self>) -> Dom {
         html!("div", {
-            .class([
-                "pl-2",
-                "pr-2",
-                "pb-2",
-                "flex",
-                "justify-between",
-                "fixed",
-                "left-0",
-                "right-0",
-                "top-0",
-                "z-50",
-                "bg-accent",
-                "dark:bg-gray-900",
-                "border-b",
-                "border-accent-darker",
-                "dark:border-gray-800",
-                "text-gray-50",
-                "pt-safe-top"
-            ])
+            .class(css::TOPBAR_CLASS)
             .children(&mut [
                 html!("button", {
                     .class("focus:outline-none")

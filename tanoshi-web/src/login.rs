@@ -1,12 +1,12 @@
 use std::rc::Rc;
 
+use dominator::routing;
 use dominator::{clone, html, Dom};
-use dominator::{routing, text_signal};
 use futures_signals::signal::Mutable;
 use futures_signals::signal::SignalExt;
 use wasm_bindgen::UnwrapThrowExt;
 
-use crate::common::{events, Route};
+use crate::common::{events, Route, css};
 use crate::query;
 use crate::utils::local_storage;
 use crate::utils::AsyncLoader;
@@ -83,9 +83,13 @@ impl Login {
         }));
     }
 
-    pub fn render(login: Rc<Self>) -> Dom {
-        Self::fetch_server_status(login.clone());
+    pub fn render_topbar(login: Rc<Self>) -> Dom {
+        html!("div", {
+            .class(css::TOPBAR_CLASS)
+        })
+    }
 
+    pub fn render_main(login: Rc<Self>) -> Dom {
         html!("div", {
             .class([
                 "flex",
@@ -206,6 +210,20 @@ impl Login {
                         })
                     ])
                 })
+            ])
+        })
+    }
+
+    pub fn render(login: Rc<Self>) -> Dom {
+        Self::fetch_server_status(login.clone());
+
+        html!("div", {
+            .class([
+                "main",
+            ])
+            .children(&mut [
+                Self::render_topbar(login.clone()),
+                Self::render_main(login)
             ])
         })
     }
