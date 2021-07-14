@@ -36,6 +36,8 @@ jobs:
           vcpkg integrate install
           vcpkg install --only-downloads libarchive:x64-windows-static-md
           vcpkg install libarchive:x64-windows-static-md
+      - name: Create dist directory
+        run: mkdir tanoshi-web/dist
       - name: Build Backend
         if: ${{ matrix.os == 'ubuntu-latest' }}
         run: cargo build -p tanoshi
