@@ -96,7 +96,8 @@ local manga have to be structured below
 # Build
 Tanoshi backend use [rust-embed](https://github.com/pyros2097/rust-embed) to embed static files to the binary. Because of this, `tanoshi-web` need to be built first so `tanoshi` will be able to build successfully.
 
-## Steps
+## Debug
+### Steps
 #### Frontend
 1. Install Rust
 2. Change directory into `tanoshi-web`
@@ -105,18 +106,14 @@ cd tanoshi-web
 ```
 3. Install all npm dependencies
 ```
-yarn install
+npm install
 ```
-4. Install `wasm-bindgen-cli` and `wasm-pack`
+4. Run
 ```
-cargo install wasm-bindgen-cli wasm-pack
-```
-5. Build
-```
-yarn build
+npm run start
 ```
 
-### Backend
+#### Backend
 1. Change directory into `tanoshi` or root repository
 ```
 cd tanoshi
@@ -124,6 +121,18 @@ cd tanoshi
 2. Build
 ```
 cargo build
+```
+
+## Release
+When building release profile, `tanoshi-web` automatically built and embedded to binary
+### Steps
+1. Change directory into `tanoshi` or root repository
+```
+cd tanoshi
+```
+2. Build
+```
+cargo build --release
 ```
 
 PS. On linux you may need to install libssl-dev on ubuntu/debian or openssl-dev on fedora/centos

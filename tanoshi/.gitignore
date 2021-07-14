@@ -1,8 +1,0 @@
-/target/
-/Cargo.lock
-.idea/
-/dist/
-/db/
-.DS_Store
-.vscode/
-.fish_env

@@ -57,3 +57,5 @@ features = [
 [dev-dependencies]
 wasm-bindgen-test = "*"
 
+[build-dependencies]
+npm_rs = "0.1.1"

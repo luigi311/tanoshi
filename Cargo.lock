@@ -1915,6 +1915,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "npm_rs"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a8eb854755088f879c2e086a337b3f37a6f9f268f7070c9c966917ff185d61a7"
+dependencies = [
+ "cfg-if 1.0.0",
+]
+
+[[package]]
 name = "ntapi"
 version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3067,6 +3076,7 @@ dependencies = [
  "serde_yaml",
  "sqlx",
  "tanoshi-lib 0.23.0",
+ "tanoshi-web",
  "tokio",
  "tokio-stream",
  "ureq",
@@ -3134,6 +3144,7 @@ dependencies = [
  "graphql_client",
  "js-sys",
  "log",
+ "npm_rs",
  "reqwest",
  "serde",
  "serde_json",

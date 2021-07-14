@@ -36,8 +36,6 @@ jobs:
           vcpkg integrate install
           vcpkg install --only-downloads libarchive:x64-windows-static-md
           vcpkg install libarchive:x64-windows-static-md
-      - name: Build Frontend
-        run: yarn --cwd tanoshi-web && yarn --cwd tanoshi-web build
       - name: Build Backend
         if: ${{ matrix.os == 'ubuntu-latest' }}
         run: cargo build -p tanoshi

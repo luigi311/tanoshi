@@ -46,7 +46,7 @@ mod static_files {
     use warp::{Rejection, Reply};
 
     #[derive(RustEmbed)]
-    #[folder = "$CARGO_MANIFEST_DIR/../tanoshi-web/dist/"]
+    #[folder = "$CARGO_MANIFEST_DIR/tanoshi-web/dist"]
     pub struct Asset;
 
     #[derive(Debug, Clone)]
