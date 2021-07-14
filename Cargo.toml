@@ -59,3 +59,7 @@ ron = "0.6.4"
 fancy-regex = "0.6"
 libarchive-rs = { git = "https://github.com/faldez/libarchive-rs", features = ["static"] }
 
+[profile.release]
+lto = true
+
+

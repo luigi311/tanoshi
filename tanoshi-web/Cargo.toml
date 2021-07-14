@@ -7,9 +7,6 @@ description = "Tanoshi Web"
 repository = "https://github.com/faldez/tanoshi"
 license = "MIT"
 
-[profile.release]
-lto = true
-
 [lib]
 crate-type = ["cdylib"]
 
