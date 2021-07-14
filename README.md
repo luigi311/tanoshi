@@ -32,6 +32,15 @@ Note that this project is still under heavy development, expect breaking changes
 ### Prebuilt Binary
 Download and run binary from latest release, aside from plugins all dependencies are statically linked.
 
+### Docker
+```
+docker create --name=tanoshi -p 8080:80 --mount type=bind,source=/path/to/data,target=/tanoshi --restart unless-stopped faldez/tanoshi
+```
+
+```
+docker start tanoshi
+```
+
 ### Plugins
 To browse and read manga, tanoshi needs plugins. Plugins can be donwnloaded from [here](https://github.com/fadhlika/tanoshi-extensions) in `repo-<your operating system>` branch. 
 You can download individual plugins and store in on your selected `plugins_path` in `config.yml`, or clone `repo` branch and copy all of plugins to `plugins_path`.

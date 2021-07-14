@@ -109,9 +109,9 @@ dependencies = [
 
 [[package]]
 name = "async-graphql"
-version = "2.9.7"
+version = "2.9.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "97ebc8c1665a8fa25b00089468f910cb691a189df4aa8b00b15dd32655d3d344"
+checksum = "a8d07226ea0121d5f90190689c49926381f60e82b68d528464f2e732a63415fa"
 dependencies = [
  "async-graphql-derive",
  "async-graphql-parser",
@@ -136,9 +136,9 @@ dependencies = [
 
 [[package]]
 name = "async-graphql-derive"
-version = "2.9.7"
+version = "2.9.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "69d77bf9ec082d38b243efb24863f8ac52990ba601d631c3eebeeb8ea89ccbf8"
+checksum = "f10359ae16070580459ce72c6acba41e73a5af1492e0a5f8a88dc3d079a2f9f1"
 dependencies = [
  "Inflector",
  "async-graphql-parser",
@@ -152,9 +152,9 @@ dependencies = [
 
 [[package]]
 name = "async-graphql-parser"
-version = "2.9.7"
+version = "2.9.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "438b8f763c79c99c50294a232128bc7031f53a49c36f5427c88aaf7f0650f073"
+checksum = "8254a76c90332fed8623f0ec8f20e22a91e43737e6dfb5db39d01620666c408b"
 dependencies = [
  "async-graphql-value",
  "pest",
@@ -165,9 +165,9 @@ dependencies = [
 
 [[package]]
 name = "async-graphql-value"
-version = "2.9.7"
+version = "2.9.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2d402454fcdd6bd55765220b02e22e272db54daabe017bc3f4745a76fbbe932e"
+checksum = "45be1a2f994560acf7648fff3c290c71565a575bef2d805e94d9c05506d1d7d5"
 dependencies = [
  "serde",
  "serde_json",
@@ -175,9 +175,9 @@ dependencies = [
 
 [[package]]
 name = "async-graphql-warp"
-version = "2.9.7"
+version = "2.9.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f13332f2b27e6da1b6750e1d899c93bf30aac04795f129cd601308875824f5f9"
+checksum = "755aef2f575ec6dd762ef8f381df8db86adf2a886c6d86dfe6d164f9b3e45054"
 dependencies = [
  "async-graphql",
  "futures-util",
@@ -439,9 +439,9 @@ checksum = "b700ce4376041dcd0a327fd0097c41095743c4c8af8887265942faf1100bd040"
 
 [[package]]
 name = "cc"
-version = "1.0.68"
+version = "1.0.69"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4a72c244c1ff497a746a7e1fb3d14bd08420ecda70c8f25c7112f2781652d787"
+checksum = "e70cc2f62c6ce1868963827bd677764c62d07c3d9a3e1fb1177ee1a9ab199eb2"
 
 [[package]]
 name = "cexpr"
@@ -1551,9 +1551,9 @@ dependencies = [
 
 [[package]]
 name = "instant"
-version = "0.1.9"
+version = "0.1.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "61124eeebbd69b8190558df225adf7e4caafce0d743919e5d6b19652314ec5ec"
+checksum = "bee0328b1209d157ef001c94dd85b4f8f64139adb0eac2659f4b08382b2f474d"
 dependencies = [
  "cfg-if 1.0.0",
 ]
@@ -1649,7 +1649,7 @@ dependencies = [
 [[package]]
 name = "libarchive-rs"
 version = "0.1.0"
-source = "git+https://github.com/faldez/libarchive-rs#72b05160dd2a4147ef6dd2548e49b87d2ec482e9"
+source = "git+https://github.com/faldez/libarchive-rs#9a68516e4302713a0c5f94fc3a561fc53b441c81"
 dependencies = [
  "libarchive-sys",
 ]
@@ -1657,7 +1657,7 @@ dependencies = [
 [[package]]
 name = "libarchive-sys"
 version = "0.1.0"
-source = "git+https://github.com/faldez/libarchive-rs#72b05160dd2a4147ef6dd2548e49b87d2ec482e9"
+source = "git+https://github.com/faldez/libarchive-rs#9a68516e4302713a0c5f94fc3a561fc53b441c81"
 dependencies = [
  "bindgen",
  "cmake",
@@ -3027,9 +3027,9 @@ dependencies = [
 
 [[package]]
 name = "synstructure"
-version = "0.12.4"
+version = "0.12.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b834f2d66f734cb897113e34aaff2f1ab4719ca946f9a7358dba8f8064148701"
+checksum = "474aaa926faa1603c40b7885a9eaea29b444d1cb2850cb7c0e37bb1a4182f4fa"
 dependencies = [
  "proc-macro2",
  "quote",
