@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use crate::query::fetch_recent_updates;
+use crate::query;
 use crate::utils::{proxied_image_url, AsyncLoader};
 use crate::{
     app::App,
@@ -43,7 +43,7 @@ impl Updates {
         updates.spinner.set_active(true);
         updates.loader.load(clone!(updates => async move {
             let cursor = updates.entries.lock_ref().last().map(|entry| entry.cursor.clone());
-            match fetch_recent_updates(cursor).await {
+            match query::fetch_recent_updates(cursor).await {
                 Ok(result) => {
                     for edge in result.edges.unwrap_throw() {
                         updates.entries.lock_mut().push_cloned(Entry{

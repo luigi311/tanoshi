@@ -8,8 +8,8 @@ use wasm_bindgen::prelude::*;
 use crate::{
     common::Route,
     query::{
+        self,
         browse_source::{SortByParam, SortOrderParam},
-        fetch_manga_from_source, fetch_sources,
     },
     utils::local_storage,
 };
@@ -109,7 +109,7 @@ impl Catalogue {
     pub fn fetch_mangas(catalogue: Rc<Self>) {
         catalogue.spinner.set_active(true);
         catalogue.loader.load(clone!(catalogue => async move {
-            match fetch_manga_from_source(*catalogue.source_id.lock_ref(), catalogue.page.get(), Some(catalogue.keyword.get_cloned()), catalogue.sort_by.get_cloned(), catalogue.sort_order.get_cloned()).await {
+            match query::fetch_manga_from_source(*catalogue.source_id.lock_ref(), catalogue.page.get(), Some(catalogue.keyword.get_cloned()), catalogue.sort_by.get_cloned(), catalogue.sort_order.get_cloned()).await {
                 Ok(covers) => {
                     let mut cover_list = catalogue.cover_list.lock_mut();
                     if catalogue.page.get() == 1 {
@@ -136,7 +136,7 @@ impl Catalogue {
 
     pub fn fetch_sources(catalogue: Rc<Self>) {
         catalogue.loader.load(clone!(catalogue => async move {
-            match fetch_sources().await {
+            match query::fetch_sources().await {
                 Ok(result) => {
                     catalogue.sources.lock_mut().replace_cloned(result.iter().map(|s| Source {
                         id: s.id,

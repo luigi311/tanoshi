@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use crate::query::fetch_histories;
+use crate::query;
 use crate::utils::{proxied_image_url, AsyncLoader};
 use crate::{
     app::App,
@@ -44,7 +44,7 @@ impl Histories {
         histories.spinner.set_active(true);
         histories.loader.load(clone!(histories => async move {
             let cursor = histories.entries.lock_ref().last().map(|entry| entry.cursor.clone());
-            match fetch_histories(cursor).await {
+            match query::fetch_histories(cursor).await {
                 Ok(result) => {
                     for edge in result.edges.unwrap_throw() {
                         histories.entries.lock_mut().push_cloned(Entry{

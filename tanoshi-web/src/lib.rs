@@ -27,7 +27,7 @@ pub async fn main_js() -> Result<(), JsValue> {
 
     utils::BODY.with(|b| {
         b.class_list()
-            .add_2("bg-gray-100", "dark:bg-black")
+            .add_2("bg-gray-50", "dark:bg-black")
             .unwrap_throw()
     });
 

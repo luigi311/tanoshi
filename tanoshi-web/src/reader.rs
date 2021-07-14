@@ -2,7 +2,7 @@ use crate::common::{events, ReaderSettings};
 use crate::utils::{document, proxied_image_url, window, AsyncLoader};
 use crate::{
     common::{Background, Direction, DisplayMode, ReaderMode},
-    query::{fetch_chapter, update_page_read_at},
+    query,
     utils::history,
 };
 use dominator::{clone, html, routing, svg, Dom, with_node};
@@ -57,7 +57,7 @@ impl Reader {
 
     fn fetch_detail(reader: Rc<Self>, chapter_id: i64, nav: Nav) {
         reader.loader.load(clone!(reader => async move {
-            match fetch_chapter(chapter_id).await {
+            match query::fetch_chapter(chapter_id).await {
                 Ok(result) => {
                     reader.manga_id.set_neq(result.manga.id);
                     reader.manga_title.set_neq(result.manga.title);
@@ -123,7 +123,7 @@ impl Reader {
     fn update_page_read(reader: Rc<Self>, page: usize) {
         let chapter_id = reader.chapter_id.get();
         reader.loader.load(async move {
-            match update_page_read_at(chapter_id, page as i64).await {
+            match query::update_page_read_at(chapter_id, page as i64).await {
                 Ok(_) => {}
                 Err(err) => {
                     log::error!("{}", err);

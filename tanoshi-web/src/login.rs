@@ -7,7 +7,7 @@ use futures_signals::signal::SignalExt;
 use wasm_bindgen::UnwrapThrowExt;
 
 use crate::common::{events, Route};
-use crate::query::{server_status, user_login, user_register};
+use crate::query;
 use crate::utils::local_storage;
 use crate::utils::AsyncLoader;
 
@@ -38,9 +38,14 @@ impl Login {
         login.loader.load(clone!(login => async move {
             let username = login.username.get_cloned();
             let password = login.password.get_cloned();
-            if let Ok(token) = user_login(username, password).await {
-                local_storage().set("token", &token).unwrap_throw();
-                routing::go_to_url(&Route::Library.url());
+            match query::user_login(username, password).await {
+                Ok(token) => {
+                    local_storage().set("token", &token).unwrap_throw();
+                    routing::go_to_url(&Route::Library.url());
+                }
+                Err(e) => {
+                    error!("Login failed: {}", e);
+                }
             }
         }));
     }
@@ -49,7 +54,7 @@ impl Login {
         login.loader.load(clone!(login => async move {
             let username = login.username.get_cloned();
             let password = login.password.get_cloned();
-            match user_register(username, password, true).await {
+            match query::user_register(username, password, true).await {
                 Ok(_) => {
                     login.username.set("".to_string());
                     login.password.set("".to_string());
@@ -64,11 +69,16 @@ impl Login {
 
     pub fn fetch_server_status(login: Rc<Self>) {
         login.loader.load(clone!(login => async move {
-            if let Ok(server_status) = server_status().await {
+            match query::server_status().await {
+                Ok(server_status) => {
                 login.server_status.set(Some(ServerStatus{
                     activated: server_status.activated,
                     version: server_status.version,
                 }));
+                }
+                Err(e) => {
+                    error!("error check server status: {}", e);
+                }
             }
         }));
     }

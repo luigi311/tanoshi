@@ -33,11 +33,16 @@ impl Login {
             let username = login.username.get_cloned();
             let password = login.password.get_cloned();
             let is_admin = login.is_admin.get();
-            if query::user_register(username, password, is_admin).await.is_ok() {
-                login.username.set("".to_string());
-                login.password.set("".to_string());
+            match query::user_register(username, password, is_admin).await {
+                Ok(_) => {
+                    login.username.set("".to_string());
+                    login.password.set("".to_string());
 
-                routing::go_to_url(Route::Settings(SettingCategory::Users).url().as_str());
+                    routing::go_to_url(Route::Settings(SettingCategory::Users).url().as_str());
+                }
+                Err(e) => {
+                    error!("error register: {}", e);
+                }
             }
         }));
     }

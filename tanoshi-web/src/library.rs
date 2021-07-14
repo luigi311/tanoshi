@@ -28,9 +28,15 @@ impl Library {
     pub fn fetch_libraries(library: Rc<Self>, refresh: bool) {
         library.spinner.set_active(true);
         library.loader.load(clone!(library => async move {
-            let covers = query::fetch_manga_from_favorite(refresh).await.unwrap_throw();
-            let mut cover_list = library.cover_list.lock_mut();
-            cover_list.replace_cloned(covers);
+            match query::fetch_manga_from_favorite(refresh).await {
+                Ok(covers) => {
+                    let mut cover_list = library.cover_list.lock_mut();
+                    cover_list.replace_cloned(covers);
+                }
+                Err(e) => {
+                    error!("failed to fetch library {}", e);
+                }
+            }
             library.spinner.set_active(false);
         }));
     }
