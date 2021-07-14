@@ -22,6 +22,7 @@ struct Chapter {
     pub title: String,
     pub uploaded: NaiveDateTime,
     pub read_at: Mutable<Option<NaiveDateTime>>,
+    pub last_page_read: Mutable<Option<i64>>,
 }
 
 pub struct Manga {
@@ -73,6 +74,7 @@ impl Manga {
                         title: chapter.title.clone(),
                         uploaded: NaiveDateTime::parse_from_str(&chapter.uploaded, "%Y-%m-%dT%H:%M:%S%.f").expect_throw("failed to parse uploaded date"),
                         read_at: Mutable::new(chapter.read_at.as_ref().map(|time| NaiveDateTime::parse_from_str(&time, "%Y-%m-%dT%H:%M:%S%.f").expect_throw("failed to parse read at date"))),
+                        last_page_read: Mutable::new(chapter.last_page_read)
                     }).collect());
                 },
                 Err(err) => {
@@ -99,6 +101,7 @@ impl Manga {
                         title: chapter.title.clone(),
                         uploaded: NaiveDateTime::parse_from_str(&chapter.uploaded, "%Y-%m-%dT%H:%M:%S%.f").expect_throw("failed to parse uploaded date"),
                         read_at: Mutable::new(chapter.read_at.as_ref().map(|time| NaiveDateTime::parse_from_str(&time, "%Y-%m-%dT%H:%M:%S%.f").expect_throw("failed to parse read at date"))),
+                        last_page_read: Mutable::new(chapter.last_page_read)
                     }).collect());
                 },
                 Err(err) => {
@@ -441,9 +444,20 @@ impl Manga {
                                                     .class(["text-md", "font-semibold"])
                                                     .text(&chapter.title)
                                                 }),
-                                                html!("span", {
-                                                    .class("text-sm")
-                                                    .text(&chapter.uploaded.date().to_string())
+                                                html!("div", {
+                                                    .children(&mut [
+                                                        html!("span", {
+                                                            .class("text-sm")
+                                                            .text(&chapter.uploaded.date().to_string())
+                                                        }),
+                                                    ])
+                                                    .child_signal(chapter.last_page_read.signal().map(|x| match x {
+                                                        None => None,
+                                                        Some(page) => Some(html!("span", {
+                                                            .class(["mx-2", "text-sm"])
+                                                            .text(format!("Page: {}", page + 1).as_str())
+                                                        }))
+                                                    }))
                                                 })
                                             ])
                                         }),
