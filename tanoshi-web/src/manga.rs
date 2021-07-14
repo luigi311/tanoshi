@@ -1,4 +1,4 @@
-use crate::common::css;
+use crate::common::{css, snackbar};
 use crate::query;
 use crate::utils::{AsyncLoader, local_storage, proxied_image_url};
 use crate::{
@@ -78,7 +78,7 @@ impl Manga {
                     }).collect());
                 },
                 Err(err) => {
-                    log::error!("{}", err);
+                    snackbar::show(format!("{}", err));
                 }
             }
         }));
@@ -105,7 +105,7 @@ impl Manga {
                     }).collect());
                 },
                 Err(err) => {
-                    log::error!("{}", err);
+                    snackbar::show(format!("{}", err));
                 }
             }
         }));
@@ -122,7 +122,7 @@ impl Manga {
                         manga.is_favorite.set_neq(false);
                     },
                     Err(err) => {
-                        log::error!("{}", err);
+                        snackbar::show(format!("{}", err));
                     }
                 }
             } else {
@@ -131,7 +131,7 @@ impl Manga {
                         manga.is_favorite.set_neq(true);
                     },
                     Err(err) => {
-                        log::error!("{}", err);
+                        snackbar::show(format!("{}", err));
                     }
                 }
             }

@@ -6,6 +6,7 @@ use futures_signals::signal::SignalExt;
 use wasm_bindgen::UnwrapThrowExt;
 
 use crate::catalogue::Catalogue;
+use crate::common::snackbar;
 use crate::library::Library;
 use crate::login::Login;
 use crate::manga::Manga;
@@ -22,9 +23,6 @@ use crate::{
 pub struct App {
     pub spinner: Rc<Spinner>,
     pub loader: AsyncLoader,
-    pub library_page: Rc<Library>,
-    pub catalogue_page: Rc<Catalogue>,
-    pub settings_page: Rc<Settings>,
 }
 
 impl App {
@@ -32,9 +30,6 @@ impl App {
         Rc::new(App {
             spinner: Spinner::new(),
             loader: AsyncLoader::new(),
-            library_page: Library::new(),
-            catalogue_page: Catalogue::new(),
-            settings_page: Settings::new(),
         })
     }
 
@@ -45,48 +40,51 @@ impl App {
         };
 
         html!("div", {
-            .children_signal_vec(Route::signal().map(clone!(app => move |x| {
+            .child_signal(Route::signal().map(clone!(app => move |x| {
                 match x {
-                    Route::Login => vec![
+                    Route::Login => Some(
                         Login::render(Login::new())
-                    ],
-                    Route::Library => vec![
-                        Library::render(app.library_page.clone()),
-                        Bottombar::render()
-                    ],
-                    Route::Catalogue{id, latest} => vec![
-                        Catalogue::render(app.catalogue_page.clone(), id, latest),
-                        Bottombar::render()
-                    ],
-                    Route::Manga(manga_id) => vec![
+                    ),
+                    Route::Library => Some(
+                        Library::render(Library::new()),
+                    ),
+                    Route::Catalogue{id, latest} => Some(
+                        Catalogue::render(Catalogue::new(), id, latest),
+                    ),
+                    Route::Manga(manga_id) => Some(
                         Manga::render(Manga::new(manga_id, 0, "".to_string())),
-                    ],
-                    Route::MangaBySourcePath(source_id, path) => vec![
+                    ),
+                    Route::MangaBySourcePath(source_id, path) => Some(
                         Manga::render(Manga::new(0, source_id, path)),
-                    ],
-                    Route::Chapter(chapter_id, page) => vec![
+                    ),
+                    Route::Chapter(chapter_id, page) => Some(
                         Reader::render(Reader::new(chapter_id, page)),
-                    ],
-                    Route::Updates => vec![
+                    ),
+                    Route::Updates => Some(
                         Updates::render(Updates::new(), app.clone()),
-                        Bottombar::render()
-                    ],
-                    Route::Histories => vec![
+                    ),
+                    Route::Histories => Some(
                         Histories::render(Histories::new(), app.clone()),
-                        Bottombar::render()
-                    ],
-                    Route::Settings(category) => vec![
-                        Settings::render(app.settings_page.clone(), category),
-                        Bottombar::render()
-                    ],
-                    Route::NotFound => vec![
+                    ),
+                    Route::Settings(category) => Some(
+                        Settings::render(Settings::new(), category),
+                    ),
+                    Route::NotFound => Some(
                         html!("div", {
                             .text("not found")
                         }),
-                        Bottombar::render()
-                    ]
+                    )
                 }
-            })).to_signal_vec())
+            })))
+            .child_signal(Route::signal().map(|x| {
+                match x {
+                    Route::Login => None,
+                    _ => Some(Bottombar::render()),
+                }
+            }))
+            .children(&mut [
+                snackbar::render(),
+            ])
         })
     }
 }

@@ -7,7 +7,7 @@ use web_sys::HtmlInputElement;
 use futures_signals::signal::SignalExt;
 use wasm_bindgen::UnwrapThrowExt;
 
-use crate::common::{events, Route, SettingCategory};
+use crate::common::{Route, SettingCategory, events, snackbar};
 use crate::query;
 use crate::utils::AsyncLoader;
 
@@ -41,7 +41,7 @@ impl Login {
                     routing::go_to_url(Route::Settings(SettingCategory::Users).url().as_str());
                 }
                 Err(e) => {
-                    error!("error register: {}", e);
+                    snackbar::show(format!("error register: {}", e));
                 }
             }
         }));

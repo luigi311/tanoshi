@@ -1,4 +1,4 @@
-use crate::common::{events, ReaderSettings};
+use crate::common::{ReaderSettings, events, snackbar};
 use crate::utils::{document, proxied_image_url, window, AsyncLoader};
 use crate::{
     common::{Background, Direction, DisplayMode, ReaderMode},
@@ -99,7 +99,7 @@ impl Reader {
                     Self::replace_state_with_url(reader);
                 },
                 Err(err) => {
-                    log::error!("{}", err);
+                    snackbar::show(format!("{}", err));
                 }
             }
         }));
@@ -126,7 +126,7 @@ impl Reader {
             match query::update_page_read_at(chapter_id, page as i64).await {
                 Ok(_) => {}
                 Err(err) => {
-                    log::error!("{}", err);
+                    snackbar::show(format!("{}", err));
                 }
             }
         });

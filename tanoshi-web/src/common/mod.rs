@@ -24,7 +24,6 @@ pub use model::*;
 mod profile;
 pub use profile::Profile;
 
-mod snackbar;
-pub use snackbar::Snackbar;
+pub mod snackbar;
 
 pub mod css;

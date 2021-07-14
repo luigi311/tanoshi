@@ -5,7 +5,7 @@ use dominator::{clone, html, Dom};
 use futures_signals::signal::Mutable;
 use futures_signals::signal::SignalExt;
 
-use crate::common::{events, Route, SettingCategory};
+use crate::common::{Route, SettingCategory, events, snackbar};
 use crate::query;
 use crate::utils::AsyncLoader;
 
@@ -35,7 +35,7 @@ impl Profile {
                     routing::go_to_url(Route::Settings(SettingCategory::None).url().as_str());
                 },
                 Err(e) => {
-                    log::error!("{}", e);
+                    snackbar::show(format!("change password error: {}", e));
                 }
             };
         }));

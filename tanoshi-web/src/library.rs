@@ -4,7 +4,7 @@ use dominator::{clone, html, Dom};
 use futures_signals::signal_vec::{MutableVec, SignalVecExt};
 use wasm_bindgen::prelude::*;
 
-use crate::{common::{Cover, Spinner, css, events}, query, utils::AsyncLoader};
+use crate::{common::{Cover, Spinner, css, events, snackbar}, query, utils::AsyncLoader};
 
 pub struct Library {
     loader: AsyncLoader,
@@ -30,7 +30,7 @@ impl Library {
                     cover_list.replace_cloned(covers);
                 }
                 Err(e) => {
-                    error!("failed to fetch library {}", e);
+                    snackbar::show(format!("failed to fetch library {}", e));
                 }
             }
             library.spinner.set_active(false);
@@ -77,7 +77,7 @@ impl Library {
                     "xl:pl-52",
                     "pb-safe-bottom-scroll"
             ])
-            .children_signal_vec(library.cover_list.signal_vec_cloned().map(clone!(library => move |cover| cover.render())))
+            .children_signal_vec(library.cover_list.signal_vec_cloned().map(move |cover| cover.render()))
         })
     }
 

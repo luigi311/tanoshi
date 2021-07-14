@@ -6,7 +6,8 @@ use futures_signals::signal::Mutable;
 use futures_signals::signal::SignalExt;
 use wasm_bindgen::UnwrapThrowExt;
 
-use crate::common::{events, Route, css};
+use crate::app::App;
+use crate::common::{Route, css, events, snackbar};
 use crate::query;
 use crate::utils::local_storage;
 use crate::utils::AsyncLoader;
@@ -44,7 +45,7 @@ impl Login {
                     routing::go_to_url(&Route::Library.url());
                 }
                 Err(e) => {
-                    error!("Login failed: {}", e);
+                    snackbar::show(format!("Login failed: {}", e));
                 }
             }
         }));
@@ -61,7 +62,7 @@ impl Login {
                     Self::fetch_server_status(login.clone());
                 }
                 Err(e) => {
-                    error!("error: {:?}", e);
+                    snackbar::show(format!("error: {:?}", e));
                 }
             }
         }));
@@ -77,7 +78,7 @@ impl Login {
                 }));
                 }
                 Err(e) => {
-                    error!("error check server status: {}", e);
+                    snackbar::show(format!("error check server status: {}", e));
                 }
             }
         }));
@@ -223,7 +224,7 @@ impl Login {
             ])
             .children(&mut [
                 Self::render_topbar(login.clone()),
-                Self::render_main(login)
+                Self::render_main(login.clone()),
             ])
         })
     }

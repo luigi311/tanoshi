@@ -5,7 +5,7 @@ use futures_signals::signal::{Mutable, SignalExt};
 use futures_signals::signal_vec::{MutableVec, SignalVecExt};
 use wasm_bindgen::prelude::*;
 
-use crate::common::css;
+use crate::common::{css, snackbar};
 use crate::{
     common::Route,
     query::{
@@ -127,7 +127,7 @@ impl Catalogue {
                     local_storage().set("catalogue_cover_list", serde_json::to_string(&*cover_list).unwrap_or("".to_string()).as_str()).unwrap_throw();
                 }
                 Err(e) => {
-                    error!("error fetch manga: {:?}", e);
+                    snackbar::show(format!("Login failed: {}", e))
                 }
             }
             
@@ -148,7 +148,7 @@ impl Catalogue {
                     }).collect()
                 )},
                 Err(err) => {
-                    log::error!("{}", err);
+                    snackbar::show(format!("{}", err));
                 }
             }
         }));

@@ -6,14 +6,13 @@ mod catalogue;
 mod common;
 mod histories;
 mod library;
+mod login;
 mod manga;
 mod query;
 mod reader;
 mod settings;
 mod updates;
 mod utils;
-mod login;
-
 
 use wasm_bindgen::prelude::*;
 
@@ -25,11 +24,10 @@ pub async fn main_js() -> Result<(), JsValue> {
     console_error_panic_hook::set_once();
     wasm_logger::init(wasm_logger::Config::default());
 
-    utils::BODY.with(|b| {
-        b.class_list()
-            .add_2("bg-gray-50", "dark:bg-black")
-            .unwrap_throw()
-    });
+    utils::body()
+        .class_list()
+        .add_2("bg-gray-50", "dark:bg-black")
+        .unwrap_throw();
 
     dominator::append_dom(&dominator::body(), App::render(App::new()));
 

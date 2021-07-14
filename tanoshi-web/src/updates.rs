@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use crate::common::css;
+use crate::common::{css, snackbar};
 use crate::query;
 use crate::utils::{proxied_image_url, AsyncLoader};
 use crate::{
@@ -60,7 +60,7 @@ impl Updates {
                     updates.is_entries_empty.set(updates.entries.lock_ref().is_empty());
                 },
                 Err(err) => {
-                    log::error!("{}", err);
+                    snackbar::show(format!("{}", err));
                 }
             }
             updates.spinner.set_active(false);

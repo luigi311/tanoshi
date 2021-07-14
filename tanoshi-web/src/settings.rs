@@ -1,4 +1,4 @@
-use crate::{common::{Login, Profile, ReaderSettings, Route, SettingCategory, Source, User, css, events}, query, utils::AsyncLoader};
+use crate::{common::{Login, Profile, ReaderSettings, Route, SettingCategory, Source, User, css, events, snackbar}, query, utils::AsyncLoader};
 use dominator::svg;
 use dominator::{clone, html, link, routing, Dom};
 use futures_signals::{
@@ -55,7 +55,7 @@ impl Settings {
                     }).collect());                    
                 },
                 Err(err) => {
-                    log::error!("{}", err);
+                    snackbar::show(format!("{}", err));
                 }
             }
         }));
@@ -72,7 +72,7 @@ impl Settings {
                     }).collect());
                 },
                 Err(err) => {
-                    log::error!("{}", err);
+                    snackbar::show(format!("{}", err));
                 }
             }
         }));
@@ -89,7 +89,7 @@ impl Settings {
                     }))
                 },
                 Err(err) => {
-                    log::error!("{}", err);
+                    snackbar::show(format!("{}", err));
                 }
             }
         }));
@@ -100,7 +100,7 @@ impl Settings {
             match query::install_source(id).await {
                 Ok(_) => {},
                 Err(err) => {
-                    log::error!("{}", err);
+                    snackbar::show(format!("{}", err));
                     return;
                 }
             }
@@ -126,7 +126,7 @@ impl Settings {
                     }).collect());
                 },
                 Err(err) => {
-                    log::error!("{}", err);
+                    snackbar::show(format!("{}", err));
                 }
             }
         }));
@@ -137,7 +137,7 @@ impl Settings {
             match query::update_source(id).await {
                 Ok(_) => {},
                 Err(err) => {
-                    log::error!("{}", err);
+                    snackbar::show(format!("{}", err));
                     return;
                 }
             }
@@ -163,7 +163,7 @@ impl Settings {
                     }).collect());
                 },
                 Err(err) => {
-                    log::error!("{}", err);
+                    snackbar::show(format!("{}", err));
                 }
             }
         }));
@@ -176,7 +176,7 @@ impl Settings {
                     routing::go_to_url(&Route::Settings(SettingCategory::Source(0)).url());
                 },
                 Err(err) => {
-                    log::error!("{}", err);
+                    snackbar::show(format!("{}", err));
                     return;
                 }
             }

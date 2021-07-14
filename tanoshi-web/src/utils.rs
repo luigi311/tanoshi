@@ -1,4 +1,4 @@
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::{cell::RefCell, sync::atomic::{AtomicUsize, Ordering}};
 
 use futures::{Future, future::{abortable, AbortHandle}};
 use futures_signals::signal::{Mutable, Signal};
@@ -8,11 +8,11 @@ use wasm_bindgen::prelude::*;
 use web_sys::{Document, History, HtmlElement, Storage, Window};
 
 thread_local! {
-    pub static WINDOW: Window = web_sys::window().unwrap_throw();
-    pub static DOCUMENT: Document = WINDOW.with(|w| w.document().unwrap_throw());
-    pub static BODY: HtmlElement = DOCUMENT.with(|d| d.body().unwrap_throw());
-    pub static LOCAL_STORAGE: Storage = WINDOW.with(|w| w.local_storage().unwrap_throw().unwrap_throw());
-    pub static HISTORY: History = WINDOW.with(|w| w.history().unwrap_throw());
+    static WINDOW: Window = web_sys::window().unwrap_throw();
+    static DOCUMENT: Document = WINDOW.with(|w| w.document().unwrap_throw());
+    static BODY: HtmlElement = DOCUMENT.with(|d| d.body().unwrap_throw());
+    static LOCAL_STORAGE: Storage = WINDOW.with(|w| w.local_storage().unwrap_throw().unwrap_throw());
+    static HISTORY: History = WINDOW.with(|w| w.history().unwrap_throw());
 }
 
 pub struct AsyncState {
