@@ -3076,7 +3076,6 @@ dependencies = [
  "serde_yaml",
  "sqlx",
  "tanoshi-lib 0.23.0",
- "tanoshi-web",
  "tokio",
  "tokio-stream",
  "ureq",

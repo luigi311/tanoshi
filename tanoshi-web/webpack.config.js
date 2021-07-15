@@ -74,7 +74,6 @@ module.exports = (env, argv) => {
             filename: isProduction ? '[name].[contenthash].js' : '[name].[fullhash].js'
         },
         plugins: plugins,
-        watch: argv.mode !== "production",
         experiments: {
             asyncWebAssembly: true,
         },
