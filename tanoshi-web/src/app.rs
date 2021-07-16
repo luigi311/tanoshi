@@ -78,7 +78,7 @@ impl App {
             })))
             .child_signal(Route::signal().map(|x| {
                 match x {
-                    Route::Login => None,
+                    Route::Login | Route::Chapter(_, _) => None,
                     _ => Some(Bottombar::render()),
                 }
             }))
