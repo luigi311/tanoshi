@@ -1,6 +1,6 @@
 [package]
 name = "tanoshi-vm"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Muhammad Fadhlika <fadhlika@gmail.com>"]
 edition = "2018"
 description = "Tanoshi VM"
@@ -19,5 +19,5 @@ ron = "0.6.4"
 tanoshi-lib = { path = "../tanoshi-lib", version = "0.23.1" }
 bytes = "1"
 ureq = { version = "2", features = ["json"] }
-log = { version="*" }
+log = "0.4.14"
 env_logger = "0.8.4"
