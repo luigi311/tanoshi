@@ -24,7 +24,7 @@ serde = {version = "1.0", features = ["derive"]}
 serde_json = "1.0"
 serde_yaml = "0.8"
 tanoshi-lib = { path = "../tanoshi-lib", version = "0.23.1" }
-tanoshi-vm = { path = "../tanoshi-vm" }
+tanoshi-vm = { path = "../tanoshi-vm", version = "0.1.0" }
 log = { version="0.4.14" }
 env_logger = "0.8.4"
 ron = "0.6.4"
