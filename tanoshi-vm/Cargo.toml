@@ -3,6 +3,9 @@ name = "tanoshi-vm"
 version = "0.1.0"
 authors = ["Muhammad Fadhlika <fadhlika@gmail.com>"]
 edition = "2018"
+description = "Tanoshi VM"
+repository= "https://github.com/faldez/tanoshi"
+license = "MIT"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
