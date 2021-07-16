@@ -7,21 +7,20 @@ mod catalogue;
 mod config;
 mod context;
 mod db;
-mod extension;
 mod library;
+mod local;
 mod proxy;
 mod schema;
 mod status;
 mod user;
-mod local;
 
 use crate::{
     config::Config,
     context::GlobalContext,
-    extension::ExtensionBus,
     schema::{MutationRoot, QueryRoot, TanoshiSchema},
 };
 use clap::Clap;
+use tanoshi_vm::{extension_bus::ExtensionBus, extension_thread};
 
 use async_graphql::{
     extensions::ApolloTracing,
@@ -49,14 +48,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let opts: Opts = Opts::parse();
     let config = Config::open(opts.config)?;
 
-    let (_, extension_tx) = extension::start(config.clone());
-    extension::load(config.plugin_path.clone(), extension_tx.clone()).await?;
+    let (_, extension_tx) = extension_thread::start();
+    extension_thread::load(config.plugin_path.clone(), extension_tx.clone()).await?;
 
     let pool = db::establish_connection(config.database_path).await;
     let mangadb = db::MangaDatabase::new(pool.clone());
     let userdb = db::UserDatabase::new(pool.clone());
 
     let extension_bus = ExtensionBus::new(config.plugin_path, extension_tx);
+
+    extension_bus.insert(local::ID, local::Local::new(config.local_path)).await?;
+
     let schema: TanoshiSchema = Schema::build(
         QueryRoot::default(),
         MutationRoot::default(),
@@ -86,17 +88,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             },
         );
 
-    let graphql_playground = warp::path!("graphql").and(warp::get()).map(|| {
-        HttpResponse::builder()
-            .header("content-type", "text/html")
-            .body(playground_source(GraphQLPlaygroundConfig::new("/graphql")))
-    });
+    // let graphql_playground = warp::path!("graphql").and(warp::get()).map(|| {
+    //     HttpResponse::builder()
+    //         .header("content-type", "text/html")
+    //         .body(playground_source(GraphQLPlaygroundConfig::new("/graphql")))
+    // });
 
     let static_files = assets::filter::static_files();
 
     let cors = warp::cors().allow_any_origin().allow_method("POST");
     let routes = proxy::proxy()
-        .or(graphql_playground)
+        // .or(graphql_playground)
         .or(static_files)
         .or(graphql_post)
         .recover(|err: Rejection| async move {

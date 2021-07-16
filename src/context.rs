@@ -1,5 +1,5 @@
 use crate::db::{MangaDatabase, UserDatabase};
-use crate::extension::ExtensionBus;
+use tanoshi_vm::extension_bus::ExtensionBus;
 
 pub struct GlobalContext {
     pub userdb: UserDatabase,

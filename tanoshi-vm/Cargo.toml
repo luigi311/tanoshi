@@ -1,0 +1,20 @@
+[package]
+name = "tanoshi-vm"
+version = "0.1.0"
+authors = ["Muhammad Fadhlika <fadhlika@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+tokio = { version="1", features=["full"] }
+wasmer = "2.0.0"
+wasmer-wasi = "2.0.0"
+wasmer-compiler-cranelift = "2.0.0"
+serde = { version="1.0", features=["derive"] }
+ron = "0.6.4"
+tanoshi-lib = { path="../tanoshi-lib", version = "0.23.0" }
+bytes = "1"
+ureq = { version = "2", features = ["json"] }
+log = { version="*" }
+env_logger = "0.8.4"
