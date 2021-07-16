@@ -1,6 +1,6 @@
-|Build|Stats|Release|
-|---|---|---|
-|![Build](https://github.com/faldez/tanoshi/workflows/Build/badge.svg)|![Release Stats](https://img.shields.io/github/downloads/faldez/tanoshi/total)|![Release](https://img.shields.io/github/v/release/faldez/tanoshi)|
+|Build|Stats|Release|Docker|
+|---|---|---|---|
+|![Build](https://github.com/faldez/tanoshi/workflows/Build/badge.svg)|![Release Stats](https://img.shields.io/github/downloads/faldez/tanoshi/total)|![Release](https://img.shields.io/github/v/release/faldez/tanoshi)|![Docker Pulls](https://img.shields.io/docker/pulls/faldez/tanoshi)|
 
 # ![icon](tanoshi-web/static/icons/tanoshi.png) Tanoshi
 Selfhosted web manga reader with extensions.
