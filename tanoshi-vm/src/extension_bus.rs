@@ -18,6 +18,7 @@ pub enum Command {
     Load(String),
     Unload(i64),
     Exist(i64, Sender<bool>),
+    List(Sender<Vec<Source>>),
     Detail(i64, Sender<Source>),
     GetMangaList(i64, Param, Sender<Vec<Manga>>),
     GetMangaInfo(i64, String, Sender<Manga>),
@@ -72,6 +73,14 @@ impl ExtensionBus {
 
         let exist = timeout(Duration::from_secs(30), rx).await??;
         Ok(exist)
+    }
+
+    pub async fn list(&self) -> Result<Vec<Source>, Box<dyn std::error::Error>> {
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        self.tx.send(Command::List(tx))?;
+
+        let sources = timeout(Duration::from_secs(30), rx).await??;
+        Ok(sources)
     }
 
     pub async fn detail(&self, source_id: i64) -> Result<Source, Box<dyn std::error::Error>> {

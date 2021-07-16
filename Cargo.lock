@@ -3075,7 +3075,7 @@ dependencies = [
  "serde_json",
  "serde_yaml",
  "sqlx",
- "tanoshi-lib 0.23.1",
+ "tanoshi-lib",
  "tanoshi-vm",
  "tokio",
  "tokio-stream",
@@ -3098,21 +3098,12 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml",
- "tanoshi-lib 0.23.0",
+ "tanoshi-lib",
+ "tanoshi-vm",
+ "tokio",
  "ureq",
  "wasmer",
  "wasmer-wasi",
-]
-
-[[package]]
-name = "tanoshi-lib"
-version = "0.23.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "267984b3bf7de075a80e4f9425ef6044cbdad6524a98ca3ebab5b40e48bde2a2"
-dependencies = [
- "chrono",
- "ron",
- "serde",
 ]
 
 [[package]]
@@ -3128,7 +3119,7 @@ dependencies = [
 name = "tanoshi-util"
 version = "0.1.0"
 dependencies = [
- "tanoshi-lib 0.23.1",
+ "tanoshi-lib",
 ]
 
 [[package]]
@@ -3140,7 +3131,7 @@ dependencies = [
  "log",
  "ron",
  "serde",
- "tanoshi-lib 0.23.1",
+ "tanoshi-lib",
  "tokio",
  "ureq",
  "wasmer",
@@ -3181,9 +3172,9 @@ checksum = "55937e1799185b12863d447f42597ed69d9928686b8d88a1df17376a097d8369"
 
 [[package]]
 name = "target-lexicon"
-version = "0.12.0"
+version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "64ae3b39281e4b14b8123bdbaddd472b7dfe215e444181f2f9d2443c2444f834"
+checksum = "b0652da4c4121005e9ed22b79f6c5f2d9e2752906b53a33e9490489ba421a6fb"
 
 [[package]]
 name = "tempfile"

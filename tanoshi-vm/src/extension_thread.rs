@@ -216,6 +216,16 @@ async fn thread(extension_receiver: UnboundedReceiver<Command>) {
                         error!("receiver dropped");
                     }
                 }
+                Command::List(tx) => {
+                    let sources = extension_map
+                        .iter()
+                        .map(|(_, ext)| ext.detail())
+                        .collect::<Vec<Source>>();
+
+                    if let Err(_) = tx.send(sources) {
+                        error!("receiver dropped");
+                    }
+                }
                 Command::Detail(source_id, tx) => match extension_map.get(&source_id) {
                     Some(proxy) => {
                         let res = proxy.detail();
