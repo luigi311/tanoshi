@@ -1,3 +1,5 @@
+use std::fmt::Debug;
+
 use crate::data::{Chapter, Manga, Param, Source, ExtensionResult};
 
 /// `Extension` trait is an implementation for building extensions
@@ -45,4 +47,10 @@ pub trait Extension: Send + Sync {
     // fn login(&self, _: SourceLogin) -> Result<SourceLoginResult, Box<dyn Error>> {
     //     Err(anyhow!("not implemented"))
     // }
+}
+
+impl Debug for dyn Extension {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Extension: {:?}", self.detail())
+    }
 }
