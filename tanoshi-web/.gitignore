@@ -7,5 +7,4 @@ wasm-pack.log
 node_modules
 .idea/
 .DS_Store
-package-lock.json
 /dist/

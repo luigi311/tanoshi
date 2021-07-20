@@ -17,6 +17,13 @@ jobs:
           - ubuntu-latest
           - macos-latest
           - windows-latest
+        include:
+          - os: ubuntu-latest
+            filename: tanoshi
+          - os: macos-latest
+            filename: tanoshi
+          - os: windows-latest
+            filename: tanoshi.exe
     steps:
       - uses: actions/checkout@v2
       - name: Install deps
@@ -36,8 +43,6 @@ jobs:
           vcpkg integrate install
           vcpkg install --only-downloads libarchive:x64-windows-static-md
           vcpkg install libarchive:x64-windows-static-md
-      - name: Install wasm-pack
-        run: cargo install wasm-pack
       - name: Build tanoshi-web
         run: yarn --cwd tanoshi-web && yarn --cwd tanoshi-web dev
       - name: Build tanoshi
@@ -53,3 +58,9 @@ jobs:
         run: cargo build -p tanoshi
         env:
           LIBCLANG_PATH: C:\Program Files\LLVM\bin
+      - name: 'Upload Artifact'
+        uses: actions/upload-artifact@v2
+        with:
+          name: ${{ matrix.filename }}
+          path: ${{ github.workspace }}/target/debug/${{ matrix.filename }}
+          retention-days: 7
