@@ -23,6 +23,7 @@ RUN apt upgrade -y && \
     zlib1g-dev \
     libxml2-dev
 RUN npm install -g yarn
+RUN cargo install wasm-pack
 
 COPY . .
 

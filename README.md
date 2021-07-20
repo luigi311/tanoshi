@@ -99,27 +99,28 @@ Tanoshi backend use [rust-embed](https://github.com/pyros2097/rust-embed) to emb
 ## Steps
 ### Frontend
 1. Install Rust
-2. Change directory into `tanoshi-web`
-```
-cd tanoshi-web 
-```
+2. Install wasm-pack
+   ```
+   cargo install wasm-pack
+   ```
+3. Change directory into `tanoshi-web`
+    ```
+    cd tanoshi-web 
+    ```
 3. Install all npm dependencies
-```
-yarn
-```
+    ```
+    yarn
+    ```
 4. Run
-```
-yarn start
-```
+    ```
+    yarn start
+    ```
 
 ### Backend
 1. Change directory into `tanoshi` or root repository
-```
-cd tanoshi
-```
 2. Build
-```
-cargo build
-```
+    ```
+    cargo build
+    ```
 
 PS. On linux you may need to install libssl-dev on ubuntu/debian or openssl-dev on fedora/centos
