@@ -1,11 +1,14 @@
 use std::fmt::Debug;
 
-use crate::data::{Chapter, Manga, Param, Source, ExtensionResult};
+use crate::data::{Chapter, Manga, Param, Source, ExtensionResult, Filters};
 
 /// `Extension` trait is an implementation for building extensions
 pub trait Extension: Send + Sync {
     /// Returns the information of the source
     fn detail(&self) -> Source;
+
+    /// Returns filter supported by the source
+    fn filters(&self) -> ExtensionResult<Option<Filters>>;
 
     /// Returns list of manga from the source
     ///

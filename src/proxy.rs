@@ -1,18 +1,19 @@
 use bytes::Bytes;
 use serde::Deserialize;
 use std::convert::Infallible;
-use warp::{hyper::Response, Filter};
+use warp::{Filter, Reply, filters::BoxedFilter, hyper::Response};
 
 #[derive(Deserialize)]
 pub struct Image {
     pub url: String,
 }
 
-pub fn proxy() -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+pub fn proxy() -> BoxedFilter<(impl Reply,)>  {
     warp::path!("image")
         .and(warp::get())
         .and(warp::query::<Image>())
         .and_then(get_image)
+        .boxed()
 }
 
 pub async fn get_image(image: Image) -> Result<impl warp::Reply, Infallible> {

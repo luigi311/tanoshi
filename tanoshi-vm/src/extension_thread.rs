@@ -1,15 +1,13 @@
 use serde::{de::DeserializeOwned, Serialize};
-use std::{collections::HashMap, path::PathBuf, time::Duration};
+use std::{collections::HashMap, path::PathBuf};
 use tanoshi_lib::prelude::{
-    Chapter, Extension, ExtensionResult, Manga, Param, Request, Response, Source,
+    Chapter, Extension, ExtensionResult, Filters, Manga, Param, Request, Response, Source,
 };
 use tokio::{
     sync::{
         mpsc::{UnboundedReceiver, UnboundedSender},
-        oneshot::Sender,
     },
     task::JoinHandle,
-    time::timeout,
 };
 use wasmer::{
     imports, ChainableNamedResolver, Function, Instance, Module, Store, Universal, WasmerEnv,
@@ -17,7 +15,7 @@ use wasmer::{
 use wasmer_compiler_cranelift::Cranelift;
 use wasmer_wasi::{Pipe, WasiEnv, WasiState};
 
-use crate::extension_bus::Command;
+use crate::extension_bus::{Command, ExtensionResultSender};
 
 #[derive(WasmerEnv, Clone)]
 struct ExtensionEnv {
@@ -73,6 +71,7 @@ impl ExtensionProxy {
         let res = self.instance.exports.get_function(name)?;
         res.call(&[])?;
         let object_str = wasi_read(&self.env)?;
+        debug!("call {} => {}", name, object_str);
         Ok(ron::from_str(&object_str)?)
     }
 
@@ -90,20 +89,21 @@ impl ExtensionProxy {
         }
         res.call(&[])?;
         let object_str = wasi_read(&self.env)?;
+        debug!("call {} => {}", name, object_str);
         Ok(ron::from_str(&object_str)?)
     }
 }
 
 impl Extension for ExtensionProxy {
     fn detail(&self) -> Source {
-        self.call("detail").unwrap_or(Source {
-            id: 0,
-            name: "".to_string(),
-            url: "".to_string(),
-            version: "".to_string(),
-            icon: "".to_string(),
-            need_login: false,
-        })
+        self.call("detail").unwrap_or_default()
+    }
+
+    fn filters(&self) -> ExtensionResult<Option<Filters>> {
+        match self.call("filters") {
+            Ok(res) => res,
+            Err(e) => ExtensionResult::err(format!("{}", e).as_str()),
+        }
     }
 
     fn get_manga_list(&self, param: Param) -> ExtensionResult<Vec<Manga>> {
@@ -237,6 +237,9 @@ async fn thread(extension_receiver: UnboundedReceiver<Command>) {
                         error!("extension with id {} not found", source_id);
                     }
                 },
+                Command::Filters(source_id, tx) => {
+                    process(&extension_map, source_id, tx, |proxy| proxy.filters());
+                }
                 Command::GetMangaList(source_id, param, tx) => {
                     process(&extension_map, source_id, tx, |proxy| {
                         proxy.get_manga_list(param.clone())
@@ -265,7 +268,7 @@ async fn thread(extension_receiver: UnboundedReceiver<Command>) {
 fn process<F, T>(
     extension_map: &HashMap<i64, Box<dyn Extension>>,
     source_id: i64,
-    tx: Sender<T>,
+    tx: ExtensionResultSender<T>,
     f: F,
 ) where
     F: Fn(&Box<dyn Extension>) -> ExtensionResult<T>,
@@ -273,10 +276,8 @@ fn process<F, T>(
     match extension_map.get(&source_id) {
         Some(proxy) => {
             let res = f(proxy);
-            if let Some(data) = res.data {
-                if let Err(_) = tx.send(data) {
-                    error!("receiver dropped");
-                }
+            if let Err(_) = tx.send(res) {
+                error!("receiver dropped");
             }
         }
         None => {

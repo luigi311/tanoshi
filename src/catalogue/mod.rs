@@ -55,12 +55,9 @@ impl CatalogueRoot {
                 .get_manga_list(
                     source_id,
                     Param {
-                        keyword,
-                        genres,
-                        page,
                         sort_by,
                         sort_order,
-                        auth: None,
+                        ..Default::default()
                     },
                 )
                 .await?
