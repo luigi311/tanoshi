@@ -4,31 +4,6 @@ use dominator::{html, link, svg, Dom};
 use futures_signals::signal::SignalExt;
 use super::{Route, SettingCategory};
 
-const ACTIVE_CLASS: [&'static str; 6] = [
-    "text-accent",
-    "bg-transparent",
-    "xl:text-gray-900",
-    "xl:dark:text-gray-100",
-    "xl:bg-gray-300",
-    "xl:dark:bg-gray-700",
-];
-
-const DEACTIVE_CLASS: [&'static str; 4] = [
-    "text-gray-900",
-    "dark:text-gray-50",
-    "xl:text-gray-900",
-    "xl:dark:text-gray-50",
-];
-
-const LINK_CLASS: [&'static str; 6] = [
-    "flex", 
-    "flex-col",
-    "lg:flex-row",
-    "rounded", 
-    "px-2",
-    "items-center"
-];
-
 pub struct Bottombar {}
 
 impl Bottombar {
@@ -38,43 +13,13 @@ impl Bottombar {
 
     pub fn render() -> Dom {
         html!("div", {
-            .class([
-                "fixed",
-                "inset-x-0",
-                "bottom-0",
-                "xl:top-10",
-                "xl:left-0",
-                "w-full",
-                "xl:w-48",
-                "z-40",
-                "flex",
-                "xl:flex-col",
-                "justify-evenly",
-                "xl:justify-start",
-                "border-t",
-                "xl:border-r",
-                "border-gray-200",
-                "dark:border-gray-800",
-                "safe-bottom",
-                "bg-gray-100",
-                "dark:bg-gray-900",
-                "pt-2",
-                "xl:pt-0",
-                "px-2",
-                "xl:px-3",
-                "pb-safe-bottom",
-                "xl:pt-safe-top",
-            ])
+            .class("bottombar")
             .children(&mut [
                 link!(Route::Library.url(), {
-                    .class(LINK_CLASS)
-                    .class_signal(ACTIVE_CLASS, Route::signal().map(|x| match x {
+                    // .class(LINK_CLASS)
+                    .class_signal("active", Route::signal().map(|x| match x {
                         Route::Library => true,
                         _ => false,
-                    }))
-                    .class_signal(DEACTIVE_CLASS, Route::signal().map(|x| match x {
-                        Route::Library => false,
-                        _ => true,
                     }))
                     .children(&mut [
                         svg!("svg", {
@@ -82,12 +27,6 @@ impl Bottombar {
                             .attribute("viewBox", "0 0 24 24")
                             .attribute("stroke", "currentColor")
                             .attribute("fill", "none")
-                            .class([
-                                "w-6",
-                                "h-6",
-                                "my-0",
-                                "xl:my-2",
-                            ])
                             .children(&mut [
                                 svg!("path", {
                                     .attribute("stroke-linecap", "round")
@@ -99,25 +38,15 @@ impl Bottombar {
                             ])
                         }),
                         html!("span", {
-                            .class([
-                                "text-xs",
-                                "xl:text-base",
-                                "my-auto",
-                                "mx-2"
-                            ])
                             .text("Library")
                         })
                     ])
                 }),
                 link!(Route::Catalogue{id: 0, latest: false}.url(), {
-                    .class(LINK_CLASS)
-                    .class_signal(ACTIVE_CLASS, Route::signal().map(|x| match x {
+                    // .class(LINK_CLASS)
+                    .class_signal("active", Route::signal().map(|x| match x {
                         Route::Catalogue{id, latest} => true,
                         _ => false,
-                    }))
-                    .class_signal(DEACTIVE_CLASS, Route::signal().map(|x| match x {
-                        Route::Catalogue{id, latest} => false,
-                        _ => true,
                     }))
                     .children(&mut [
                         svg!("svg", {
@@ -125,12 +54,6 @@ impl Bottombar {
                             .attribute("viewBox", "0 0 24 24")
                             .attribute("stroke", "currentColor")
                             .attribute("fill", "none")
-                            .class([
-                                "w-6",
-                                "h-6",
-                                "my-0",
-                                "xl:my-2",
-                            ])
                             .children(&mut [
                                 svg!("path", {
                                     .attribute("stroke-linecap", "round")
@@ -142,25 +65,15 @@ impl Bottombar {
                             ])
                         }),
                         html!("span", {
-                            .class([
-                                "text-xs",
-                                "xl:text-base",
-                                "my-auto",
-                                "mx-2"
-                            ])
                             .text("Catalogue")
                         })
                     ])
                 }),
                 link!(Route::Updates.url(), {
-                    .class(LINK_CLASS)
-                    .class_signal(ACTIVE_CLASS, Route::signal().map(|x| match x {
+                    // .class(LINK_CLASS)
+                    .class_signal("active", Route::signal().map(|x| match x {
                         Route::Updates => true,
                         _ => false,
-                    }))
-                    .class_signal(DEACTIVE_CLASS, Route::signal().map(|x| match x {
-                        Route::Updates => false,
-                        _ => true,
                     }))
                     .children(&mut [
                         svg!("svg", {
@@ -168,12 +81,6 @@ impl Bottombar {
                             .attribute("viewBox", "0 0 24 24")
                             .attribute("stroke", "currentColor")
                             .attribute("fill", "none")
-                            .class([
-                                "w-6",
-                                "h-6",
-                                "my-0",
-                                "xl:my-2",
-                            ])
                             .children(&mut [
                                 svg!("path", {
                                     .attribute("stroke-linecap", "round")
@@ -185,25 +92,15 @@ impl Bottombar {
                             ])
                         }),
                         html!("span", {
-                            .class([
-                                "text-xs",
-                                "xl:text-base",
-                                "my-auto",
-                                "mx-2"
-                            ])
                             .text("Updates")
                         })
                     ])
                 }),
                 link!(Route::Histories.url(), {
-                    .class(LINK_CLASS)
-                    .class_signal(ACTIVE_CLASS, Route::signal().map(|x| match x {
+                    // .class(LINK_CLASS)
+                    .class_signal("active", Route::signal().map(|x| match x {
                         Route::Histories => true,
                         _ => false,
-                    }))
-                    .class_signal(DEACTIVE_CLASS, Route::signal().map(|x| match x {
-                        Route::Histories => false,
-                        _ => true,
                     }))
                     .children(&mut [
                         svg!("svg", {
@@ -211,12 +108,6 @@ impl Bottombar {
                             .attribute("viewBox", "0 0 24 24")
                             .attribute("stroke", "currentColor")
                             .attribute("fill", "none")
-                            .class([
-                                "w-6",
-                                "h-6",
-                                "my-0",
-                                "xl:my-2",
-                            ])
                             .children(&mut [
                                 svg!("path", {
                                     .attribute("stroke-linecap", "round")
@@ -228,25 +119,15 @@ impl Bottombar {
                             ])
                         }),
                         html!("span", {
-                            .class([
-                                "text-xs",
-                                "xl:text-base",
-                                "my-auto",
-                                "mx-2"
-                            ])
                             .text("History")
                         })
                     ])
                 }),
                 link!(Route::Settings(SettingCategory::None).url(), {
-                    .class(LINK_CLASS)
-                    .class_signal(ACTIVE_CLASS, Route::signal().map(|x| match x {
+                    // .class(LINK_CLASS)
+                    .class_signal("active", Route::signal().map(|x| match x {
                         Route::Settings(_) => true,
                         _ => false,
-                    }))
-                    .class_signal(DEACTIVE_CLASS, Route::signal().map(|x| match x {
-                        Route::Settings(_) => false,
-                        _ => true,
                     }))
                     .children(&mut [
                         svg!("svg", {
@@ -254,12 +135,6 @@ impl Bottombar {
                             .attribute("viewBox", "0 0 24 24")
                             .attribute("stroke", "currentColor")
                             .attribute("fill", "none")
-                            .class([
-                                "w-6",
-                                "h-6",
-                                "my-0",
-                                "xl:my-2",
-                            ])
                             .children(&mut [
                                 svg!("path", {
                                     .attribute("stroke-linecap", "round")
@@ -278,12 +153,6 @@ impl Bottombar {
                             ])
                         }),
                         html!("span", {
-                            .class([
-                                "text-xs",
-                                "xl:text-base",
-                                "my-auto",
-                                "mx-2"
-                            ])
                             .text("Settings")
                         })
                     ])

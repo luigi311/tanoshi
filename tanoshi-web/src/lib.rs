@@ -14,6 +14,7 @@ mod settings;
 mod updates;
 mod utils;
 
+use utils::{local_storage, window};
 use wasm_bindgen::prelude::*;
 
 use app::App;
@@ -24,10 +25,27 @@ pub async fn main_js() -> Result<(), JsValue> {
     console_error_panic_hook::set_once();
     wasm_logger::init(wasm_logger::Config::default());
 
-    utils::body()
-        .class_list()
-        .add_2("bg-gray-50", "dark:bg-black")
-        .unwrap_throw();
+    match local_storage().get("theme").unwrap_throw() {
+        Some(theme) => {
+            if theme == "dark" {
+                utils::body().class_list().add_1("dark").unwrap_throw();
+            } else {
+                utils::body().class_list().remove_1("dark").unwrap_throw();
+            }
+        }
+        None => {
+            if window()
+                .match_media("(prefers-color-scheme: dark)")
+                .unwrap_throw()
+                .map(|m| m.matches())
+                .unwrap_or(false)
+            {
+                utils::body().class_list().add_1("dark").unwrap_throw();
+            } else {
+                utils::body().class_list().remove_1("dark").unwrap_throw();
+            }
+        }
+    }
 
     dominator::append_dom(&dominator::body(), App::render(App::new()));
 

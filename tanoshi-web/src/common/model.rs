@@ -6,6 +6,7 @@ pub struct Source {
     pub icon: String,
     pub need_login: bool,
     pub has_update: bool,
+    pub installed: bool,
 }
 
 #[derive(Debug, Clone)]

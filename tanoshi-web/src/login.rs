@@ -1,13 +1,13 @@
 use std::rc::Rc;
 
-use dominator::routing;
 use dominator::{clone, html, Dom};
+use dominator::{routing, with_node};
 use futures_signals::signal::Mutable;
 use futures_signals::signal::SignalExt;
 use wasm_bindgen::UnwrapThrowExt;
+use web_sys::HtmlInputElement;
 
-use crate::app::App;
-use crate::common::{Route, css, events, snackbar};
+use crate::common::{events, snackbar, Route};
 use crate::query;
 use crate::utils::local_storage;
 use crate::utils::AsyncLoader;
@@ -86,38 +86,30 @@ impl Login {
 
     pub fn render_topbar(login: Rc<Self>) -> Dom {
         html!("div", {
-            .class(css::TOPBAR_CLASS)
+            .class("topbar")
         })
     }
 
     pub fn render_main(login: Rc<Self>) -> Dom {
         html!("div", {
-            .class([
-                "flex",
-                "flex-col",
-                "max-w-lg",
-                "mx-auto",
-                "mt-safe-top"
-            ])
+            .style("display", "flex")
+            .style("flex-direction", "column")
+            .style("max-width", "1024px")
+            .style("margin", "auto")
+            .style("padding", "0.5rem")
             .children(&mut [
                 html!("img", {
-                    .class([
-                        "w-32",
-                        "h-32",
-                        "mx-auto",
-                        "rounded"
-                    ])
+                    .style("width", "8rem")
+                    .style("height", "8rem")
+                    .style("border-radius", "0.5rem")
+                    .style("margin", "auto")
                     .attribute("src", "/icons/512.png")
                 }),
                 html!("div", {
-                    .class([
-                        "text-white",
-                        "bg-accent",
-                        "rounded",
-                        "m-2",
-                        "px-2",
-                        "py-1"
-                    ])
+                    .style("color", "white")
+                    .style("background-color", "var(--primary-color)")
+                    .style("border-radius", "0.5rem")
+                    .style("padding", "0.25rem")
                     .visible_signal(login.server_status.signal_cloned().map(|x| {
                         if let Some(status) = x {
                             !status.activated
@@ -127,87 +119,56 @@ impl Login {
                     }))
                     .text("Server is not activated, activate by create an account")
                 }),
-                html!("input", {
-                    .class([
-                        "m-2",
-                        "p-1",
-                        "focus:outline-none",
-                        "rounded",
-                        "bg-white",
-                        "dark:bg-gray-900",
-                        "text-black",
-                        "dark:text-white"
-                    ])
-                    .attribute("type", "username")
-                    .attribute("placeholder", "Username")
-                    .property_signal("value", login.username.signal_cloned())
-                    .event(clone!(login => move |e: events::Input| {
-                        login.username.set(e.value().unwrap_or("".to_string()));
-                    }))
-                }),
-                html!("input", {
-                    .class([
-                        "m-2",
-                        "p-1",
-                        "focus:outline-none",
-                        "rounded",
-                        "bg-white",
-                        "dark:bg-gray-900",
-                        "text-black",
-                        "dark:text-white"
-                    ])
-                    .attribute("type", "password")
-                    .attribute("placeholder", "Password")
-                    .property_signal("value", login.password.signal_cloned())
-                    .event(clone!(login => move |e: events::Input| {
-                        login.password.set(e.value().unwrap_or("".to_string()));
-                    }))
-                }),
-                html!("div", {
-                    .class([
-                        "flex",
-                        "justify-end",
-                        "m-2"
-                    ])
+                html!("form", {
+                    .style("display", "flex")
+                    .style("flex-direction", "column")
+                    .event_preventable(|e: events::KeyDown| {
+                        if e.key() == "enter" {
+                            e.prevent_default();
+                        }
+                    })
                     .children(&mut [
-                        html!("button", {
-                            .class([
-                                "mx-2",
-                                "focus:outline-none",
-                                "hover:underline",
-                                "active:underline",
-                                "text-black",
-                                "dark:text-white",
-                                "focus:outline-none"
-                            ])
-                            .visible_signal(login.server_status.signal_cloned().map(|x| {
-                                if let Some(status) = x {
-                                    !status.activated
-                                } else {
-                                    false
-                                }
-                            }))
-                            .text("Create Account")
-                            .event(clone!(login => move |_: events::Click| {
-                                Self::register(login.clone());
-                            }))
+                        html!("input" => HtmlInputElement, {
+                            .attribute("type", "username")
+                            .attribute("placeholder", "Username")
+                            .property_signal("value", login.username.signal_cloned())
+                            .with_node!(input => {
+                                .event(clone!(login => move |_: events::Input| {
+                                    login.username.set(input.value());
+                                }))
+                            })
                         }),
-                        html!("button", {
-                            .class([
-                                "bg-accent",
-                                "active:bg-accent-lighter",
-                                "hover:bg-accent-lighter",
-                                "focus:outline-none",
-                                "text-white",
-                                "px-2",
-                                "py-1",
-                                "rounded",
-                                "focus:outline-none"
-                            ])
-                            .text("Login")
-                            .event(clone!(login => move |_: events::Click| {
-                                Self::login(login.clone());
-                            }))
+                        html!("input" => HtmlInputElement, {
+                            .attribute("type", "password")
+                            .attribute("placeholder", "Password")
+                            .property_signal("value", login.password.signal_cloned())
+                            .with_node!(input => {
+                                .event(clone!(login => move |e: events::Input| {
+                                    login.password.set(input.value());
+                                }))
+                            })
+                        }),
+                        html!("div", {
+                            .style("display", "flex")
+                            .style("justify-content", "flex-end")
+                            .child_signal(login.server_status.signal_cloned().map(clone!(login => move |x| {
+                                if x.map(|status| status.activated).unwrap_or(false) {
+                                    Some(html!("button", {
+                                        .text("Login")
+                                        .event_preventable(clone!(login => move |e: events::Click| {
+                                            e.prevent_default();
+                                            Self::login(login.clone());
+                                        }))
+                                    }))
+                                } else {
+                                    Some(html!("button", {
+                                        .text("Create Account")
+                                        .event(clone!(login => move |_: events::Click| {
+                                            Self::register(login.clone());
+                                        }))
+                                    }))
+                                }
+                            })))
                         })
                     ])
                 })
@@ -224,6 +185,9 @@ impl Login {
             ])
             .children(&mut [
                 Self::render_topbar(login.clone()),
+                html!("div", {
+                    .class("topbar-spacing")
+                }),
                 Self::render_main(login.clone()),
             ])
         })

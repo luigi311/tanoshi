@@ -37,45 +37,12 @@ impl Spinner {
 
     pub fn render(spinner: &Self) -> Dom {
         html!("div", {
-            .class_signal([
-                "w-full",
-                "h-full",
-                "fixed",
-                "flex",
-                "top-0",
-                "left-0",
-                "bg-white",
-                "dark:bg-gray-900",
-                "bg-opacity-50",
-                "z-10",
-                "justify-center",
-            ], spinner.fullscreen.signal_cloned())
-            .class_signal([
-                "w-full",
-                "block",
-                "flex",
-                "mx-auto",
-                "z-10",
-                "justify-center",
-            ], spinner.fullscreen.signal_cloned().map(|x| !x))
-            .visible_signal(spinner.active.signal_cloned().map(|x| x))
+            .class("spinner")
+            .class_signal("fullscreen", spinner.fullscreen.signal_cloned())
+            .visible_signal(spinner.active.signal_cloned())
             .children(&mut [
                 html!("div", {
-                    .class(["loader-dots", "block", "relative", "w-20", "h-5", "m-auto"])
-                    .children(&mut [
-                        html!("div", {
-                            .class(["absolute", "top-0", "mt-1", "w-3", "h-3", "rounded-full", "bg-accent"])
-                        }),
-                        html!("div", {
-                            .class(["absolute", "top-0", "mt-1", "w-3", "h-3", "rounded-full", "bg-accent"])
-                        }),
-                        html!("div", {
-                            .class(["absolute", "top-0", "mt-1", "w-3", "h-3", "rounded-full", "bg-accent"])
-                        }),
-                        html!("div", {
-                            .class(["absolute", "top-0", "mt-1", "w-3", "h-3", "rounded-full", "bg-accent"])
-                        }),
-                    ])
+                    .class("loader")
                 })
             ])
         })

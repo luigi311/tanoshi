@@ -1,10 +1,9 @@
 use std::rc::Rc;
 
-use dominator::{clone, html, Dom};
+use dominator::{Dom, clone, html};
 use futures_signals::signal_vec::{MutableVec, SignalVecExt};
-use wasm_bindgen::prelude::*;
 
-use crate::{common::{Cover, Spinner, css, events, snackbar}, query, utils::AsyncLoader};
+use crate::{common::{Cover, Spinner, events, snackbar}, query, utils::AsyncLoader};
 
 pub struct Library {
     loader: AsyncLoader,
@@ -39,21 +38,15 @@ impl Library {
 
     pub fn render_topbar(library: Rc<Self>) -> Dom {
         html!("div", {
-            .class(css::TOPBAR_CLASS)
+            .class("topbar")
             .children(&mut [
                 html!("button", {
-                    .class("focus:outline-none")
                     .text("Filter")
                 }),
                 html!("span", {
-                    .class([
-                        "text-gray-50",
-                        "focus:outline-none"
-                    ])
                     .text("Library")
                 }),
                 html!("button", {
-                    .class("focus:outline-none")
                     .text("Refresh")
                     .event(clone!(library => move |_: events::Click| {
                         Self::fetch_libraries(library.clone(), true);
@@ -65,18 +58,7 @@ impl Library {
 
     pub fn render_main(library: &Self) -> Dom {
         html!("div", {
-            .class(["w-full",
-                    "grid",
-                    "grid-cols-3",
-                    "md:grid-cols-4",
-                    "lg:grid-cols-6",
-                    "xl:grid-cols-12",
-                    "gap-2",
-                    "px-2",
-                    "xl:pr-2",
-                    "xl:pl-52",
-                    "pb-safe-bottom-scroll"
-            ])
+            .class("manga-grid")
             .children_signal_vec(library.cover_list.signal_vec_cloned().map(move |cover| cover.render()))
         })
     }
@@ -85,11 +67,12 @@ impl Library {
         Self::fetch_libraries(library.clone(), false);
 
         html!("div", {
-            .class([
-                "main",
-            ])
+            .class("page")
             .children(&mut [
                 Self::render_topbar(library.clone()),
+                html!("div", {
+                    .class("topbar-spacing")
+                }),
                 Self::render_main(&library),
                 Spinner::render(&library.spinner)
             ])

@@ -71,116 +71,57 @@ impl Histories {
 
     pub fn render_topbar() -> Dom {
         html!("div", {
-            .class(css::TOPBAR_CLASS)
+            .class("topbar")
             .children(&mut [
+                html!("div", {
+                }),
                 html!("span", {
-                    .class([
-                        "mx-auto",
-                        "text-gray-50"
-                    ])
-                    .text("Histories")
+                    .text("History")
+                }),
+                html!("div", {
                 })
             ])
         })
     }
 
     pub fn render_main(histories: Rc<Self>) -> Dom {
-        html!("div", {
-            .class([
-                "px-2",
-                "xl:pr-2",
-                "xl:pl-52",
-            ])
-            .children(&mut [
-                html!("div", {
-                    .class([
-                        "divide-y",
-                        "divide-gray-200",
-                        "dark:divide-gray-900",
-                        "truncate"
-                    ])
-                    .children_signal_vec(histories.entries.signal_vec_cloned().map(|entry| {
-                        link!(Route::Chapter(entry.chapter_id, entry.last_page_read).url(), {
-                            .class([
-                                "flex",
-                                "p-2",
-                                "m-2"
-                            ])
-                            .children(&mut [
-                                html!("div", {
-                                    .class([
-                                        "pb-7/6",
-                                        "mr-2",
-                                        "flex-shrink-0"
-                                    ])
-                                    .children(&mut [
-                                        html!("img", {
-                                            .class([
-                                                "w-16",
-                                                "rounded",
-                                                "object-cover"
-                                            ])
-                                            .attribute("src", &proxied_image_url(&entry.cover_url))
-                                            .attribute("loading", "lazy")
-                                        })
-                                    ])
-                                }),
-                                html!("div", {
-                                    .class(["flex-col"])
-                                    .children(&mut [
-                                        html!("h1", {
-                                            .class([
-                                                "text-gray-900",
-                                                "dark:text-gray-50",
-                                            ])
-                                            .text(&entry.manga_title)
-                                        }),
-                                        html!("h2", {
-                                            .class([
-                                                "text-gray-900",
-                                                "dark:text-gray-50",
-                                            ])
-                                            .text(&entry.chapter_title)
-                                        }),
-                                        html!("h2", {
-                                            .class([
-                                                "text-gray-900",
-                                                "dark:text-gray-50",
-                                            ])
-                                            .text(&Self::calculate_days(entry.read_at))
-                                        })
-                                    ])
-                                })
-                            ])
-                        })
-                    }))
-                }),
-                html!("div", {
-                    .child_signal(histories.spinner.signal().map(clone!(histories => move |x| if x {
-                        Some(Spinner::render(&histories.spinner))
-                    } else {
-                        Some(html!("button", {
-                            .class([
-                                "w-full",
-                                "text-gray-900",
-                                "dark:text-gray-50",
-                                "focus:outline-none"
-                            ])
-                            .class_signal("disabled", histories.is_entries_empty.signal())
-                            .text_signal(histories.is_entries_empty.signal().map(|x|
-                                if x {
-                                    "No recent histories, favorite manga to see recent histories"
-                                } else {
-                                    "Load More"
-                                }
-                            ))
-                            .event(clone!(histories => move |_: events::Click| {
-                                Self::fetch_read_histories(histories.clone());
-                            }))
-                        }))
-                    })))
-                })
-            ])
+        html!("ul", {
+            .class("list")
+            .children_signal_vec(histories.entries.signal_vec_cloned().map(|entry| html!("li", {
+                .class("list-item")
+                .children(&mut [
+                    link!(Route::Chapter(entry.chapter_id, entry.last_page_read).url(), {
+                        .class("update-item")
+                        .children(&mut [
+                            html!("div", {
+                                .class("update-item-thumbnail")
+                                .children(&mut [
+                                    html!("img", {
+                                        .attribute("src", &proxied_image_url(&entry.cover_url))
+                                    })
+                                ])
+                            }),
+                            html!("div", {
+                                .class("update-item-detail")
+                                .children(&mut [
+                                    html!("span", {
+                                        .class("manga-title")
+                                        .text(&entry.manga_title)
+                                    }),
+                                    html!("span", {
+                                        .class("last-chapter")
+                                        .text(&entry.chapter_title)
+                                    }),
+                                    html!("span", {
+                                        .class("date-updated")
+                                        .text(&Self::calculate_days(entry.read_at))
+                                    })
+                                ])
+                            })
+                        ])
+                    })
+                ])
+            })))
         })
     }
 
@@ -206,14 +147,34 @@ impl Histories {
 
     pub fn render(histories: Rc<Self>, _app: Rc<App>) -> Dom {
         Self::fetch_read_histories(histories.clone());
-        html! {"div", {
-            .class([
-                "main",
-            ])
+        html!("div", {
             .children(&mut [
                 Self::render_topbar(),
-                Self::render_main(histories.clone())
+                html!("div", {
+                    .class("topbar-spacing")
+                }),
+                Self::render_main(histories.clone()),
+                html!("div", {
+                    .class("load-more-btn")
+                    .child_signal(histories.spinner.signal().map(clone!(histories => move |x| if x {
+                        Some(Spinner::render(&histories.spinner))
+                    } else {
+                        Some(html!("button", {
+                            .class_signal("disabled", histories.is_entries_empty.signal())
+                            .text_signal(histories.is_entries_empty.signal().map(|x|
+                                if x {
+                                    "No recent histories, favorite manga to see recent histories"
+                                } else {
+                                    "Load More"
+                                }
+                            ))
+                            .event(clone!(histories => move |_: events::Click| {
+                                Self::fetch_read_histories(histories.clone());
+                            }))
+                        }))
+                    })))
+                })
             ])
-        }}
+        })
     }
 }

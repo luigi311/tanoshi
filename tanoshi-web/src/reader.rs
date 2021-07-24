@@ -134,39 +134,31 @@ impl Reader {
 
     pub fn render_topbar(reader: Rc<Self>) -> Dom {
         html!("div", {
-            .class([
-                "flex",
-                "justify-between",
-                "items-center",
-                "animate__animated",
-                "faster",
-                "block",
-                "fixed",
-                "inset-x-0",
-                "top-0",
-                "z-50",
-                "bg-gray-800",
-                "content-end",
-                "opacity-75",
-                "pt-safe-top",
-                "pb-2",
-                "text-gray-50"
-            ])
+            .style("display", "flex")
+            .style("justify-content", "space-between")
+            .style("align-items", "center")
+            .style("position", "fixed")
+            .style("left", "0")
+            .style("right", "0")
+            .style("top", "0")
+            .style("background-color", "var(--background-color-100")
+            .style("align-content", "flex-end")
+            .style("padding-top", "calc(env(safe-area-inset-top) + 0.5rem)")
+            .style("padding-bottom", "0.5rem")
+            .style("color", "var(--color)")
+            .style("z-index", "50")
+            .class("animate__animated")
             .class_signal("animate__slideInDown", reader.is_bar_visible.signal())
             .class_signal("animate__slideOutUp", reader.is_bar_visible.signal().map(|x| !x))
             .children(&mut [
                 html!("button", {
-                    .class([
-                        "mx-2",
-                        "focus:outline-none"
-                    ])
                     .children(&mut [
                         svg!("svg", {
                             .attribute("xmlns", "http://www.w3.org/2000/svg")
                             .attribute("fill", "none")
                             .attribute("viewBox", "0 0 24 24")
                             .attribute("stroke", "currentColor")
-                            .class(["w-6", "h-6"])
+                            .class("icon")
                             .children(&mut [
                                 svg!("path", {
                                     .attribute("stroke-linecap", "round")
@@ -186,31 +178,32 @@ impl Reader {
                     })
                 }),
                 html!("div", {
-                    .class([
-                        "flex",
-                        "flex-col",
-                        "text-center",
-                        "truncate"
-                    ])
+                    .style("width", "100%")
                     .children(&mut [
-                        html!("span", {
-                            .text_signal(reader.chapter_title.signal_cloned().map(|t| t))
-                        }),
+                        html!("div", {
+                            .style("display", "flex")
+                            .style("flex-direction", "column")
+                            .style("overflow", "hidden")
+                            .style("text-overflow", "ellipsis")
+                            .children(&mut [
+                                html!("span", {
+                                    .text_signal(reader.manga_title.signal_cloned())
+                                }),
+                                html!("span", {
+                                    .text_signal(reader.chapter_title.signal_cloned())
+                                }),
+                            ])
+                        })
                     ])
                 }),
                 html!("button", {
-                    .class([
-                        "mx-2",
-                        "focus:outline-none"
-                    ])
                     .children(&mut [
                         svg!("svg", {
                             .attribute("xmlns", "http://www.w3.org/2000/svg")
                             .attribute("viewBox", "0 0 24 24")
                             .attribute("stroke", "currentColor")
                             .attribute("fill", "none")
-                            .class("w-6")
-                            .class("h-6")
+                            .class("icon")
                             .children(&mut [
                                 svg!("path", {
                                     .attribute("stroke-linecap", "round")
@@ -239,37 +232,32 @@ impl Reader {
 
     pub fn render_bottombar(reader: Rc<Self>) -> Dom {
         html!("div", {
-            .class([
-                "flex",
-                "justify-between",
-                "items-center",
-                "animate__animated",
-                "faster",
-                "block",
-                "fixed",
-                "inset-x-0",
-                "bottom-0",
-                "z-40",
-                "bg-gray-800",
-                "content-end",
-                "opacity-75",
-                "pt-2",
-                "pb-safe-bottom",
-                "text-gray-50"
-            ])
+            .style("display", "flex")
+            .style("justify-content", "space-between")
+            .style("align-items", "center")
+            .style("position", "fixed")
+            .style("left", "0")
+            .style("right", "0")
+            .style("bottom", "0")
+            .style("background-color", "var(--background-color-100")
+            .style("align-content", "flex-end")
+            .style("padding-top", "0.5rem")
+            .style("padding-bottom", "calc(env(safe-area-inset-bottom) + 0.5rem)")
+            .style("color", "var(--color)")
+            .style("z-index", "40")
+            .class("animate__animated")
             .class_signal("animate__slideInUp", reader.is_bar_visible.signal())
             .class_signal("animate__slideOutDown", reader.is_bar_visible.signal().map(|x| !x))
             .child_signal(reader.prev_chapter.signal().map(clone!(reader => move |prev_chapter| {
                 match prev_chapter {
                     Some(prev) => Some(html!("button", {
-                        .class("focus:outline-none")
                         .children(&mut [
                             svg!("svg", {
                                 .attribute("xmlns", "http://www.w3.org/2000/svg")
                                 .attribute("fill", "none")
                                 .attribute("viewBox", "0 0 24 24")
                                 .attribute("stroke", "currentColor")
-                                .class(["w-6", "h-6", "ml-2"])
+                                .class("icon")
                                 .children(&mut [
                                     svg!("path", {
                                         .attribute("stroke-linecap", "round")
@@ -305,15 +293,13 @@ impl Reader {
             .child_signal(reader.next_chapter.signal().map(clone!(reader => move |next_chapter| {
                 match next_chapter {
                     Some(next) => Some(html!("button", {
-                        .class("focus:outline-none")
                         .children(&mut [
                             svg!("svg", {
-                                
                                 .attribute("xmlns", "http://www.w3.org/2000/svg")
                                 .attribute("fill", "none")
                                 .attribute("viewBox", "0 0 24 24")
                                 .attribute("stroke", "currentColor")
-                                .class(["w-6", "h-6", "mr-2"])
+                                .class("icon")
                                 .children(&mut [
                                     svg!("path", {
                                         .attribute("stroke-linecap", "round")
@@ -338,26 +324,26 @@ impl Reader {
         html!("div", {
             .children_signal_vec(reader.pages.signal_vec_cloned().enumerate().map(clone!(reader => move |(index, page)|
                 html!("img", {
-                    .class([
-                        "mx-auto",
-                    ])
+                    .style("margin-left", "auto")
+                    .style("margin-right", "auto")
+                    .style("object-position", "center")
                     .attribute("id", index.get().unwrap().to_string().as_str())
                     .attribute("src", &proxied_image_url(&page))
-                    .class_signal("max-w-none", reader.reader_settings.fit.signal().map(|x| match x {
-                        crate::common::Fit::Height => true,
-                        _ => false,
+                    .style_signal("max-width", reader.reader_settings.fit.signal().map(|x| match x {
+                        crate::common::Fit::Height => "none",
+                        _ => "100%",
                     }))
-                    .class_signal("object-contain", reader.reader_settings.fit.signal().map(|x| match x {
-                        crate::common::Fit::All => true,
-                        _ => false,
+                    .style_signal("object-fit", reader.reader_settings.fit.signal().map(|x| match x {
+                        crate::common::Fit::All => "contain",
+                        _ => "initial",
                     }))
-                    .class_signal("w-screen", reader.reader_settings.fit.signal().map(|x| match x {
-                        crate::common::Fit::Height => false,
-                        _ => true
+                    .style_signal("width", reader.reader_settings.fit.signal().map(|x| match x {
+                        crate::common::Fit::Height =>"initial",
+                        _ => "100vw"
                     }))
-                    .class_signal("h-screen", reader.reader_settings.fit.signal().map(|x| match x {
-                        crate::common::Fit::Width => false,
-                        _ => true
+                    .style_signal("height", reader.reader_settings.fit.signal().map(|x| match x {
+                        crate::common::Fit::Width => "initial",
+                        _ => "100vh"
                     }))
                     .event(|_: events::Error| {
                         log::error!("error loading image");
@@ -389,30 +375,27 @@ impl Reader {
 
     pub fn render_single(reader: Rc<Self>) -> Dom {
         html!("div", {
-            .class([
-                "flex",
-                "items-center",
-            ])
+            .style("display", "flex")
+            .style("align-items", "center")
             .children_signal_vec(reader.pages.signal_vec_cloned().enumerate().map(clone!(reader => move |(index, page)|
                 html!("img", {
-                    .class([
-                        "mx-auto",
-                    ])
-                    .class_signal("max-w-none", reader.reader_settings.fit.signal().map(|x| match x {
-                        crate::common::Fit::Height => true,
-                        _ => false,
+                    .style("margin-left", "auto")
+                    .style("margin-right", "auto")
+                    .style_signal("max-width", reader.reader_settings.fit.signal().map(|x| match x {
+                        crate::common::Fit::Height => "node",
+                        _ => "100%",
                     }))
-                    .class_signal("object-contain", reader.reader_settings.fit.signal().map(|x| match x {
-                        crate::common::Fit::All => true,
-                        _ => false,
+                    .style_signal("object-fit", reader.reader_settings.fit.signal().map(|x| match x {
+                        crate::common::Fit::All => "contain",
+                        _ => "initial",
                     }))
-                    .class_signal("w-screen", reader.reader_settings.fit.signal().map(|x| match x {
-                        crate::common::Fit::Height => false,
-                        _ => true
+                    .style_signal("width", reader.reader_settings.fit.signal().map(|x| match x {
+                        crate::common::Fit::Height => "intial",
+                        _ => "100vw"
                     }))
-                    .class_signal("h-screen", reader.reader_settings.fit.signal().map(|x| match x {
-                        crate::common::Fit::Width => false,
-                        _ => true
+                    .style_signal("height", reader.reader_settings.fit.signal().map(|x| match x {
+                        crate::common::Fit::Width => "inittial",
+                        _ => "100vh"
                     }))
                     .visible_signal(reader.current_page.signal_cloned().map(clone!(reader => move |x| {
                         reader.prev_page.set_neq(x.checked_sub(1));
@@ -434,15 +417,13 @@ impl Reader {
     pub fn render_double(reader: Rc<Self>) -> Dom {
         html!("div", {
             .attribute("id", "page-list")
-            .class([
-                "w-screen",
-                "h-screen",
-                "flex",
-                "items-center"
-            ])
-            .class_signal("flex-row-reverse", reader.reader_settings.direction.signal_cloned().map(|x| match x {
-                Direction::LeftToRight => false,
-                Direction::RightToLeft => true,
+            .style("display", "flex")
+            .style("width", "100vw")
+            .style("height", "100vh")
+            .style("align-items", "center")
+            .style_signal("flex-direction", reader.reader_settings.direction.signal_cloned().map(|x| match x {
+                Direction::LeftToRight => "row",
+                Direction::RightToLeft => "row-reverse",
             }))
             .children_signal_vec(reader.pages.signal_vec_cloned().enumerate().map(clone!(reader => move |(index, page)|
                 html!("img" => HtmlImageElement, {
@@ -450,35 +431,35 @@ impl Reader {
                         "mx-auto"
                     ])
                     .attribute("id", format!("page-{}", index.get().unwrap_or(0)).as_str())
-                    .class_signal("max-w-none", reader.reader_settings.fit.signal().map(|x| match x {
-                        crate::common::Fit::Height => true,
-                        _ => false,
+                    .style_signal("max-width", reader.reader_settings.fit.signal().map(|x| match x {
+                        crate::common::Fit::Height => "node",
+                        _ => "100%",
                     }))
-                    .class_signal("object-contain", reader.reader_settings.fit.signal().map(|x| match x {
-                        crate::common::Fit::All => true,
-                        _ => false,
+                    .style_signal("object-fit", reader.reader_settings.fit.signal().map(|x| match x {
+                        crate::common::Fit::All => "contain",
+                        _ => "initial",
                     }))
-                    .class_signal("h-full", reader.reader_settings.fit.signal().map(|x| match x {
-                        crate::common::Fit::Width => false,
-                        _ => true
+                    .style_signal("height", reader.reader_settings.fit.signal().map(|x| match x {
+                        crate::common::Fit::Width => "initial",
+                        _ => "100%"
                     }))
                     .attribute("src", &proxied_image_url(&page))
                     .event(|_: events::Error| {
                         log::error!("error loading image");
                     })
                     .with_node!(img => {
-                        .class_signal("w-1/2", reader.current_page.signal_cloned().map(clone!(reader, index, img => move |current_page| {
+                        .style_signal("width", reader.current_page.signal_cloned().map(clone!(reader, index, img => move |current_page| {
                             if index.get().unwrap() == current_page && img.natural_width() > img.natural_height
                             () {
-                                false
+                                "initial"
                             } else {
                                 match reader.reader_settings.fit.get() {
-                                    crate::common::Fit::Height => false,
-                                    _ => true
+                                    crate::common::Fit::Height => "initial",
+                                    _ => "50%"
                                 }
                             }
                         })))
-                        .class_signal("hidden", reader.current_page.signal_cloned().map(clone!(reader, index, img => move |current_page| {
+                        .visible_signal(reader.current_page.signal_cloned().map(clone!(reader, index, img => move |current_page| {
                             let mut hidden = true;
                             if index.get().unwrap() == current_page {
                                 hidden = false;
@@ -509,7 +490,7 @@ impl Reader {
                                 }
                             }
                             
-                            hidden
+                            !hidden
                         })))
                         .event(clone!(reader, index => move |_: events::Load| {
                             let current_page = reader.current_page.get();
@@ -525,24 +506,20 @@ impl Reader {
 
     fn render_navigation(reader: Rc<Self>) -> Dom {
         html!("div", {
-            .class([
-                "fixed",
-                "flex",
-                "w-screen",
-                "h-screen",
-                "z-10",
-                "cursor-pointer",
-            ])
-            .class_signal("flex-row-reverse", reader.reader_settings.direction.signal_cloned().map(|x| match x {
-                Direction::LeftToRight => true,
-                Direction::RightToLeft => false,
+            .style("display", "flex")
+            .style("position", "fixed")
+            .style("width", "100vw")
+            .style("height", "100vh")
+            .style("z-index", "10")
+            .style("cursor", "pointer")
+            .style_signal("flex-direction", reader.reader_settings.direction.signal_cloned().map(|x| match x {
+                Direction::LeftToRight => "row-reverse",
+                Direction::RightToLeft => "row",
             }))
             .children(&mut [
                 html!("div", {
-                    .class([
-                        "h-full",
-                        "w-1/3",
-                    ])
+                    .style("height", "100%")
+                    .style("width", "33.3333%")
                     .attribute("id", "next")
                     .event(clone!(reader => move |_: events::Click| {
                         if let Some(next_page) = reader.next_page.get() {
@@ -551,20 +528,16 @@ impl Reader {
                     }))
                 }),
                 html!("div", {
-                    .class([
-                        "h-full",
-                        "w-1/3",
-                    ])
+                    .style("height", "100%")
+                    .style("width", "33.3333%")
                     .attribute("id", "hide-bar")
                     .event(clone!(reader => move |_: events::Click| {
                         reader.is_bar_visible.set_neq(!reader.is_bar_visible.get());
                     }))
                 }),
                 html!("div", {
-                    .class([
-                        "h-full",
-                        "w-1/3",
-                    ])
+                    .style("height", "100%")
+                    .style("width", "33.3333%")
                     .attribute("id", "prev")
                     .event(clone!(reader => move |_: events::Click| {
                         if let Some(prev_page) = reader.prev_page.get() {
@@ -577,8 +550,8 @@ impl Reader {
     }
 
     pub fn render(reader: Rc<Self>) -> Dom {
-        // Self::fetch_detail(reader.clone(), reader.chapter_id.get());
         html!("div", {
+            .class("reader")
             .future(reader.current_page.signal().for_each(clone!(reader => move |page| {
                 Self::update_page_read(reader.clone(), page);
                 Self::replace_state_with_url(reader.clone());
@@ -595,11 +568,7 @@ impl Reader {
 
                 async {}
             })))
-            .class_signal("bg-gray-50", reader.reader_settings.background.signal_cloned().map(|x| match x {
-                Background::White => true,
-                Background::Black => false,
-            }))
-            .class_signal("bg-gray-900", reader.reader_settings.background.signal_cloned().map(|x| match x {
+            .class_signal("dark", reader.reader_settings.background.signal_cloned().map(|x| match x {
                 Background::White => false,
                 Background::Black => true,
             }))

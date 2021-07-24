@@ -1,13 +1,11 @@
 use std::rc::Rc;
 
-use dominator::{Dom, clone, html, with_node};
-use dominator::{routing, text_signal};
-use futures_signals::signal::Mutable;
+use dominator::routing;
+use dominator::{clone, html, with_node, Dom};
+use futures_signals::signal::{Mutable, SignalExt};
 use web_sys::HtmlInputElement;
-use futures_signals::signal::SignalExt;
-use wasm_bindgen::UnwrapThrowExt;
 
-use crate::common::{Route, SettingCategory, events, snackbar};
+use crate::common::{events, snackbar, Route, SettingCategory};
 use crate::query;
 use crate::utils::AsyncLoader;
 
@@ -48,99 +46,109 @@ impl Login {
     }
 
     pub fn render(login: Rc<Self>) -> Dom {
-        html!("div", {
-            .class([
-                "flex",
-                "flex-col",
-                "max-w-lg",
-                "mx-auto",
-                "mt-safe-top",
-                "bg-white",
-                "dark:bg-gray-800",
-                "shadow",
-                "dark:shadow-none",
-                "rounded",
-                "p-2"
-            ])
+        html!("form", {
+            .style("display", "flex")
+            .style("flex-direction", "column")
+            .style("max-width", "1024px")
+            .style("margin", "auto")
+            // .class([
+            //     "flex",
+            //     "flex-col",
+            //     "max-w-lg",
+            //     "mx-auto",
+            //     "mt-safe-top",
+            //     "bg-white",
+            //     "dark:bg-gray-800",
+            //     "shadow",
+            //     "dark:shadow-none",
+            //     "rounded",
+            //     "p-2"
+            // ])
             .children(&mut [
-                html!("input", {
-                    .class([
-                        "m-2",
-                        "p-1",
-                        "focus:outline-none",
-                        "rounded",
-                        "bg-white",
-                        "dark:bg-gray-900",
-                        "text-black",
-                        "dark:text-white"
-                    ])
+                html!("input" => HtmlInputElement, {
+                    .style("margin", "0.5rem")
+                    .style("padding", "0.5rem")
+                    .style("border-radius", "0.5rem")
+                    // .class([
+                    //     "m-2",
+                    //     "p-1",
+                    //     "focus:outline-none",
+                    //     "rounded",
+                    //     "bg-white",
+                    //     "dark:bg-gray-900",
+                    //     "text-black",
+                    //     "dark:text-white"
+                    // ])
                     .attribute("type", "username")
                     .attribute("placeholder", "Username")
                     .property_signal("value", login.username.signal_cloned())
-                    .event(clone!(login => move |e: events::Input| {
-                        login.username.set(e.value().unwrap_or("".to_string()));
-                    }))
+                    .with_node!(input => {
+                        .event(clone!(login => move |_: events::Input| {
+                            login.username.set(input.value());
+                        }))
+                    })
                 }),
-                html!("input", {
-                    .class([
-                        "m-2",
-                        "p-1",
-                        "focus:outline-none",
-                        "rounded",
-                        "bg-white",
-                        "dark:bg-gray-900",
-                        "text-black",
-                        "dark:text-white"
-                    ])
+                html!("input" => HtmlInputElement, {
+                    .style("margin", "0.5rem")
+                    .style("padding", "0.5rem")
+                    .style("border-radius", "0.5rem")
+                    // .class([
+                    //     "m-2",
+                    //     "p-1",
+                    //     "focus:outline-none",
+                    //     "rounded",
+                    //     "bg-white",
+                    //     "dark:bg-gray-900",
+                    //     "text-black",
+                    //     "dark:text-white"
+                    // ])
                     .attribute("type", "password")
                     .attribute("placeholder", "Password")
                     .property_signal("value", login.password.signal_cloned())
-                    .event(clone!(login => move |e: events::Input| {
-                        login.password.set(e.value().unwrap_or("".to_string()));
-                    }))
+                    .with_node!(input => {
+                        .event(clone!(login => move |_: events::Input| {
+                            login.password.set(input.value());
+                        }))
+                    })
                 }),
-                html!("div", {
-                    .class([
-                        "flex",
-                        "items-center",
-                        "p-2"
-                    ])
+                html!("label", {
+                    .style("display", "flex")
+                    .style("align-items", "center")
+                    .style("padding", "0.5rem")
                     .children(&mut [
                         html!("input" => HtmlInputElement, {
                             .attribute("type", "checkbox")
+                            .attribute_signal("checked", login.is_admin.signal_cloned().map(|x| if x {Some("checked")} else {None}))
                             .with_node!(element => {
                                 .event(clone!(login => move |_: events::Change| {
                                     login.is_admin.set_neq(element.checked());
                                 }))
                             })
-                        }),
-                        html!("div", {
-                            .class("mx-2")
-                            .text("Admin")
-                        }),
+                        })
                     ])
+                    .text("Admin")
                 }),
                 html!("div", {
-                    .class([
-                        "flex",
-                        "justify-end",
-                        "m-2"
-                    ])
+                    .style("display", "flex")
+                    .style("align-items", "center")
+                    .style("padding", "0.5rem")
                     .children(&mut [
-                        html!("button", {
-                            .class([
-                                "bg-accent",
-                                "active:bg-accent-lighter",
-                                "hover:bg-accent-lighter",
-                                "focus:outline-none",
-                                "text-white",
-                                "px-2",
-                                "py-1",
-                                "rounded",
-                                "focus:outline-none"
-                            ])
+                        html!("input" => HtmlInputElement, {
+                            .attribute("type", "submit")
+                            // .class([
+                            //     "bg-accent",
+                            //     "active:bg-accent-lighter",
+                            //     "hover:bg-accent-lighter",
+                            //     "focus:outline-none",
+                            //     "text-white",
+                            //     "px-2",
+                            //     "py-1",
+                            //     "rounded",
+                            //     "focus:outline-none"
+                            // ])
                             .text("Create")
-                            .event(clone!(login => move |_: events::Click| {
+                            .event_preventable(clone!(login => move |e: events::Click| {
+                                e.prevent_default();
                                 Self::register(login.clone());
                             }))
                         })

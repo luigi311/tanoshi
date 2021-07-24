@@ -127,7 +127,7 @@ impl Catalogue {
                     local_storage().set("catalogue_cover_list", serde_json::to_string(&*cover_list).unwrap_or("".to_string()).as_str()).unwrap_throw();
                 }
                 Err(e) => {
-                    snackbar::show(format!("Login failed: {}", e))
+                    snackbar::show(format!("Fetch manga from source failed: {}", e))
                 }
             }
             
@@ -156,13 +156,12 @@ impl Catalogue {
 
     pub fn render_topbar(catalogue: Rc<Self>) -> Dom {
         html!("div", {
-            .class(css::TOPBAR_CLASS)
+            .class("topbar")
             .child_signal(catalogue.is_search.signal().map(|is_search| {
                 if is_search {
                     None
                 } else {
                     Some(html!("button", {
-                        .class("focus:outline-none")
                         .text("Filter")
                     }))
                 }
@@ -170,15 +169,7 @@ impl Catalogue {
             .child_signal(catalogue.is_search.signal().map(clone!(catalogue => move |is_search| {
                 if is_search {
                     Some(html!("input", {
-                        .class([
-                            "focus:outline-none",
-                            "w-full",
-                            "px-2",
-                            "mr-2",
-                            "bg-accent",
-                            "dark:bg-gray-900"
-                        ])
-                        .attribute("placeholder", "search")
+                        .attribute("placeholder", "Search")
                         .attribute("type", "text")
                         .property_signal("value", catalogue.keyword.signal_cloned())
                         .event(clone!(catalogue => move |event: events::Input| {
@@ -202,7 +193,6 @@ impl Catalogue {
             .child_signal(catalogue.is_search.signal().map(clone!(catalogue => move |is_search| {
                 if is_search {
                     Some(html!("button", {
-                        .class("focus:outline-none")
                         .text("Cancel")
                         .event(clone!(catalogue => move |_: events::Click| {
                             catalogue.is_search.set_neq(false);
@@ -216,7 +206,6 @@ impl Catalogue {
                     }))
                 } else {
                     Some(html!("button", {
-                        .class("focus:outline-none")
                         .text("Search")
                         .event(clone!(catalogue => move |_: events::Click| {
                             catalogue.is_search.set_neq(true);
@@ -229,6 +218,7 @@ impl Catalogue {
 
     pub fn render_search(catalogue: Rc<Self>) -> Dom {
         html!("div", {
+            .class("search-box")
             .class([
                 "w-full",
                 "mb-2",
@@ -265,7 +255,6 @@ impl Catalogue {
                     }))
                 }),
                 html!("button", {
-                    .class("focus:outline-none")
                     .text("Cancel")
                     .event(clone!(catalogue => move |_: events::Click| {
                         catalogue.is_search.set_neq(false);
@@ -286,35 +275,17 @@ impl Catalogue {
             .set("catalogue_id", catalogue.source_id.get().to_string().as_str())
             .unwrap_throw();
         html!("div", {
-            .class("px-2")
-            .class("ml-0")
-            .class("xl:ml-2")
-            .class("xl:pr-2")
-            .class("xl:pl-48")
-            .class("pb-safe-bottom-scroll")
-            .class("transition-all")
             .children(&mut [
                 html!("div", {
-                    .class("w-full")
-                    .class("grid")
-                    .class("grid-cols-3")
-                    .class("md:grid-cols-4")
-                    .class("lg:grid-cols-6")
-                    .class("xl:grid-cols-12")
-                    .class("gap-2")
+                    .class("manga-grid")
                     .children_signal_vec(catalogue.cover_list.signal_vec_cloned().map(clone!(catalogue => move |cover| cover.render())))
                 }),
                 html!("div", {
+                    .class("load-more-btn")
                     .child_signal(catalogue.spinner.signal().map(clone!(catalogue => move |x| if x {
                         Some(Spinner::render(&catalogue.spinner))
                     } else {
                         Some(html!("button", {
-                            .class([
-                                "w-full",
-                                "text-gray-900",
-                                "dark:text-gray-50",
-                                "focus:outline-none"
-                            ])
                             .text("Load More")
                             .event(clone!(catalogue => move |_: events::Click| {
                                 catalogue.page.set(catalogue.page.get() + 1);
@@ -328,67 +299,29 @@ impl Catalogue {
     }
 
     pub fn render_select(catalogue: Rc<Self>) -> Dom {
-        html!("div", {
-            .class([
-                "ml-0",
-                "xl:ml-48",
-                "pb-safe-bottom-scroll",
-            ])
-            .children(&mut [
-                html!("div", {
-                    .class([
-                        "flex",
-                        "flex-col",
-                        "w-full",
-                        "text-gray-900",
-                        "dark:text-gray-100",
-                        "divide-y",
-                        "divide-gray-200",
-                        "dark:divide-gray-800"
-                    ])
-                    .children_signal_vec(catalogue.sources.signal_vec_cloned().map(clone!(catalogue => move |source| html!("div", {
-                        .class([
-                            "w-full",
-                            "flex",
-                            "justify-between"
-                        ])
+        html!("ul", {
+            .class("list")
+            .children_signal_vec(catalogue.sources.signal_vec_cloned().map(clone!(catalogue => move |source| html!("li", {
+                .class("list-item")
+                .children(&mut [
+                    link!(Route::Catalogue{id: source.id, latest: false}.url(), {
+                        .class("source-item")
                         .children(&mut [
-                            link!(Route::Catalogue{id: source.id, latest: false}.url(), {
-                                .class([
-                                    "flex",
-                                    "flex-grow",
-                                    "p-2"
-                                ])
-                                .children(&mut [
-                                    html!("img", {
-                                        .class(["h-6", "w-6", "mr-2"])
-                                        .class_signal("invisible", Mutable::new(source.icon.clone()).signal_cloned().map(|icon| icon.is_empty()))
-                                        .attribute("src", &source.icon)
-                                    }),
-                                    html!("div", {
-                                        .text(&source.name)
-                                    }),
-                                ])
+                            html!("img", {
+                                .class_signal("invisible", Mutable::new(source.icon.clone()).signal_cloned().map(|icon| icon.is_empty()))
+                                .attribute("src", &source.icon)
                             }),
-                            link!(Route::Catalogue{id: source.id, latest: true}.url(), {
-                                .class([
-                                    "flex-grow-0", 
-                                    "mx-4",
-                                    "p-2"
-                                ])
-                                .text("latest")
+                            html!("span", {
+                                .text(&source.name)
                             }),
                         ])
-                    }))))
-                }),
-                html!("div", {
-                    .child_signal(catalogue.spinner.signal().map(clone!(catalogue => move |x| if x {
-                        Some(Spinner::render(&catalogue.spinner))
-                    } else {
-                        None
-                    })))
-                })
-            ])
+                    }),
+                    link!(Route::Catalogue{id: source.id, latest: true}.url(), {
+                        .class("source-action")
+                        .text("latest")
+                    }),
+                ])
+            }))))
         })
     }
 
@@ -419,17 +352,23 @@ impl Catalogue {
         }
 
         html!("div", {
-            .class([
-                "main"
-            ])
+            .class("page")
             .children(&mut [
                 Self::render_topbar(catalogue.clone()),
+                html!("div", {
+                    .class("topbar-spacing")
+                })
             ])
             .child_signal(catalogue.source_id.signal().map(clone!(catalogue => move |x| if x > 0 {
                 Some(Self::render_main(catalogue.clone()))
             } else {
                 Some(Self::render_select(catalogue.clone()))
             })))
+            .children(&mut [
+                html!("div", {
+                    .class("bottombar-spacing")
+                })
+            ])
         })
     }
 }

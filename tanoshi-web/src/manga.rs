@@ -1,12 +1,12 @@
 use crate::common::{css, snackbar};
 use crate::query;
-use crate::utils::{AsyncLoader, local_storage, proxied_image_url};
+use crate::utils::{local_storage, proxied_image_url, AsyncLoader};
 use crate::{
     app::App,
     common::{Route, Spinner},
 };
 use chrono::NaiveDateTime;
-use dominator::{clone, events, html, link, routing, svg, Dom};
+use dominator::{clone, events, html, link, routing, svg, text_signal, Dom};
 use futures_signals::signal::{Signal, SignalExt};
 use futures_signals::{
     signal::Mutable,
@@ -140,21 +140,18 @@ impl Manga {
 
     pub fn render_topbar(manga: Rc<Self>) -> Dom {
         html!("div", {
-            .class(css::TOPBAR_CLASS)
+            .class("topbar")
             .children(&mut [
                 html!("button", {
-                    .class([
-                        "flex",
-                        "items-center",
-                        "focus:outline-none"
-                    ])
+                    .style("display", "flex")
+                    .style("align-items", "center")
                     .children(&mut [
                         svg!("svg", {
                             .attribute("xmlns", "http://www.w3.org/2000/svg")
                             .attribute("fill", "none")
                             .attribute("viewBox", "0 0 24 24")
                             .attribute("stroke", "currentColor")
-                            .class(["w-6", "h-6"])
+                            .class("icon")
                             .children(&mut [
                                 svg!("path", {
                                     .attribute("stroke-linecap", "round")
@@ -188,11 +185,11 @@ impl Manga {
                     ))
                 }),
                 html!("span", {
-                    .class(["text-gray-50", "truncate", "mx-auto", "px-2"])
+                    .style("overflow", "hidden")
+                    .style("text-overflow", "ellipsis")
                     .text_signal(manga.title.signal_cloned().map(|x| x.unwrap_or("".to_string())))
                 }),
                 html!("button", {
-                    .class("focus:outline-none")
                     .text("Refresh")
                     .event(clone!(manga => move |_: events::Click| {
                         if manga.id.get() != 0 {
@@ -215,58 +212,59 @@ impl Manga {
 
     pub fn render_header(manga: Rc<Self>) -> Dom {
         html!("div", {
+            .class("manga-detail-header")
             .attribute("id", "detail")
-            .class([
-                "flex",
-                "flex-col",
-                "justify-center",
-                "p-2",
-                "mb-2",
-                "rounded"
-            ])
             .children(&mut [
                 html!("div", {
-                    .class("flex")
-                    .class_signal("animate-pulse", manga.loader.is_loading())
+                    .style("display", "flex")
+                    // .class_signal("animate-pulse", manga.loader.is_loading())
                     .children(&mut [
                         html!("div", {
-                            .class(["pb-7/6", "mr-2"])
                             .child_signal(manga.cover_url.signal_cloned().map(|x| {
                                 if let Some(cover_url) = x {
                                     Some(html!("img", {
-                                        .class(["w-32", "rounded", "object-cover"])
+                                        .style("border-radius", "0.5rem")
+                                        .style("width", "8rem")
+                                        .style("height", "auto")
                                         .attribute("src", &proxied_image_url(&cover_url))
-                                        .attribute("loading", "lazy")
                                     }))
                                 } else {
                                     Some(html!("div", {
-                                        .class(["w-32", "h-44", "rounded", "bg-gray-200", "dark:bg-gray-800"])
+                                        // .class(["w-32", "h-44", "rounded", "bg-gray-200", "dark:bg-gray-800"])
                                     }))
                                 }
                             }))
                         }),
                         html!("div", {
-                            .class(["flex", "flex-col"])
+                            .style("display", "flex")
+                            .style("flex-direction", "column")
                             .children(&mut [
                                 html!("div", {
-                                    .child_signal(manga.title.signal_cloned().map(|x| {
+                                    .style("margin-left", "0.5rem")
+                                    .style("margin-bottom", "0.5rem")
+                                    .style("font-size", "large")
+                                    .text_signal(manga.title.signal_cloned().map(|x| {
                                         if let Some(title) = x {
-                                            Some(html!("span", {
-                                                .class(["md:text-xl", "sm:text-md", "text-gray-900", "dark:text-gray-300", "mr-2"])
-                                                .text(title.as_str())
-                                            }))
+                                            // Some(html!("span", {
+                                            //     .class(["md:text-xl", "sm:text-md", "text-gray-900", "dark:text-gray-300", "mr-2"])
+                                            //     .text(title.as_str())
+                                            // }))
+                                            title
                                         } else {
-                                            Some(html!("div", {
-                                                .class(["w-32", "md:w-48", "lg:w-64", "xl:w-72", "h-6", "mb-2", "rounded", "bg-gray-200", "dark:bg-gray-800"])
-                                            }))
+                                            // Some(html!("div", {
+                                                // .class(["w-32", "md:w-48", "lg:w-64", "xl:w-72", "h-6", "mb-2", "rounded", "bg-gray-200", "dark:bg-gray-800"])
+                                            // }))
+                                            "".to_string()
                                         }
                                     }))
                                 }),
                                 html!("div", {
+                                    .style("margin-left", "0.5rem")
+                                    .style("margin-bottom", "0.5rem")
                                     .child_signal(manga.loader.is_loading().map(|x| {
                                         if x {
                                             Some(html!("div", {
-                                                .class(["w-32", "md:w-48", "lg:w-64", "xl:w-72", "h-6", "mb-2", "rounded", "bg-gray-200", "dark:bg-gray-800"])
+                                                // .class(["w-32", "md:w-48", "lg:w-64", "xl:w-72", "h-6", "mb-2", "rounded", "bg-gray-200", "dark:bg-gray-800"])
                                             }))
                                         } else {
                                             None
@@ -274,24 +272,32 @@ impl Manga {
                                     }))
                                     .children_signal_vec(manga.author.signal_vec_cloned().map(|x| {
                                         html!("span", {
-                                            .class(["md:text-lg", "sm:text-sm", "text-gray-900", "dark:text-gray-300", "mr-2"])
+                                            // .class(["md:text-lg", "sm:text-sm", "text-gray-900", "dark:text-gray-300", "mr-2"])
                                             .text(&x)
                                         })
                                     }))
                                 }),
                                 html!("div", {
-                                    .child_signal(manga.status.signal_cloned().map(|x|
-                                        if let Some(status) = x {
-                                            Some(html!("span", {
-                                                .class(["md:text-lg", "sm:text-sm", "text-gray-900", "dark:text-gray-300", "mr-2"])
-                                                .text(&status)
-                                            }))
-                                        } else {
-                                            Some(html!("div", {
-                                                .class(["w-32", "md:w-48", "lg:w-64", "xl:w-72", "h-6", "mb-2", "rounded", "bg-gray-200", "dark:bg-gray-800"])
-                                            }))
-                                        }
-                                    ))
+                                    .style("margin-left", "0.5rem")
+                                    .style("margin-bottom", "0.5rem")
+                                    .text_signal(manga.status.signal_cloned().map(|x| if let Some(status) = x {
+                                        status
+                                    } else {
+                                        "".to_string()
+                                    }))
+                                    .class_signal("skeleton", manga.status.signal_cloned().map(|x| x.is_none()))
+                                    // .child_signal(manga.status.signal_cloned().map(|x|
+                                    //     if let Some(status) = x {
+                                    //         Some(html!("span", {
+                                    //             .class(["md:text-lg", "sm:text-sm", "text-gray-900", "dark:text-gray-300", "mr-2"])
+                                    //             .text(&status)
+                                    //         }))
+                                    //     } else {
+                                    //         Some(html!("div", {
+                                    //             .class(["w-32", "md:w-48", "lg:w-64", "xl:w-72", "h-6", "mb-2", "rounded", "bg-gray-200", "dark:bg-gray-800"])
+                                    //         }))
+                                    //     }
+                                    // ))
                                 })
                             ])
                         })
@@ -301,39 +307,22 @@ impl Manga {
         })
     }
 
-    pub fn render_description(manga: Rc<Self>) -> Dom {
+    pub fn render_action(manga: Rc<Self>) -> Dom {
         html!("div", {
-            .attribute("id", "description")
-            .class([
-                "flex",
-                "flex-col",
-                "justify-center",
-                "p-2",
-                "mb-2",
-                "rounded"
-            ])
-            .class_signal("animate-pulse", manga.loader.is_loading())
+            .style("display", "flex")
+            .style("width", "100%")
             .children(&mut [
                 html!("button", {
-                    .class([
-                        "rounded", 
-                        "p-2", 
-                        "w-10", 
-                        "h-10", 
-                        "bg-white", 
-                        "dark:bg-gray-900", 
-                        "shadow", 
-                        "dark:shadow-none", 
-                        "text-gray-900", 
-                        "dark:text-gray-100",
-                        "focus:outline-none"
-                    ])
+                    .style("display", "flex")
+                    .style("padding", "0.5rem")
+                    .style("align-items", "center")
                     .children(&mut [
                         svg!("svg", {
                             .attribute("xmlns", "http://www.w3.org/2000/svg")
                             .attribute_signal("fill", manga.is_favorite.signal().map(|x| if x { "currentColor" } else { "none" }))
                             .attribute("viewBox", "0 0 24 24")
                             .attribute("stroke", "currentColor")
+                            .class("icon")
                             .children(&mut [
                                 svg!("path", {
                                     .attribute("stroke-linecap", "round")
@@ -342,21 +331,35 @@ impl Manga {
                                     .attribute("d", "M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z")
                                 })
                             ])
+                        }),
+                        html!("span", {
+                            .text("Favorite")
                         })
                     ])
                     .event(clone!(manga => move |_: events::Click| {
                         Self::add_to_or_remove_from_library(manga.clone());
                     }))
-                }),
+                })
+            ])
+        })
+    }
+
+    pub fn render_description(manga: Rc<Self>) -> Dom {
+        html!("div", {
+            .attribute("id", "description")
+            .style("display", "flex")
+            .style("flex-direction", "column")
+            .style("margin", "0.5rem")
+            // .class_signal("animate-pulse", manga.loader.is_loading())
+            .children(&mut [
                 html!("span", {
-                    .class(["md:text-xl", "sm:text-base", "font-bold", "text-gray-900", "dark:text-gray-300"])
+                    .class("header")
                     .text("Description")
                 })
             ])
             .child_signal(manga.description.signal_cloned().map(|x| {
                 if let Some(description) = x {
                     Some(html!("p", {
-                        .class(["break-normal", "md:text-base", "sm:text-xs", "text-gray-900", "dark:text-gray-300"])
                         .text(&description)
                     }))
                 } else {
@@ -377,11 +380,12 @@ impl Manga {
                 }
             }))
             .children(&mut [
-                html!("div", {
-                    .class(["w-full", "flex", "flex-wrap"])
+                html!("botton", {
+                    .style("display", "flex")
+                    .style("flex-wrap", "wrap")
                     .children_signal_vec(manga.genre.signal_vec_cloned().map(|x| {
                         html!("span", {
-                            .class(["md:text-base", "sm:text-xs", "text-gray-900", "dark:text-gray-300", "mr-2", "rounded-full", "border", "border-gray-900", "dark:border-gray-300", "px-2", "mt-2"])
+                            .class("chip")
                             .text(&x)
                         })
                     }))
@@ -392,23 +396,16 @@ impl Manga {
 
     pub fn render_chapters(manga: Rc<Self>) -> Dom {
         html!("div", {
-            .attribute("id", "description")
-            .class([
-                "flex",
-                "justify-center",
-                "p-2",
-                "rounded"
-            ])
+            .attribute("id", "chapters")
             .children(&mut [
-                html!("div", {
-                    .class(["flex", "flex-col", "w-full", "divide-y", "dark:divide-gray-800", "divide-gray-300"])
-                    .class_signal("animate-pulse", manga.loader.is_loading())
-                    .children(&mut [
-                        html!("span", {
-                            .class(["md:text-xl", "sm:text-base", "font-bold", "text-gray-900", "dark:text-gray-300"])
-                            .text("Chapters")
-                        }),
-                    ])
+                html!("span", {
+                    .class("header")
+                    .style("margin", "0.5rem")
+                    .text("Chapters")
+                }),
+                html!("ul", {
+                    .class("list")
+                    // .class_signal("animate-pulse", manga.loader.is_loading())
                     .child_signal(manga.loader.is_loading().map(|x| {
                         if x {
                             Some(html!("div", {
@@ -429,59 +426,71 @@ impl Manga {
                             None
                         }
                     }))
-                    .children_signal_vec(manga.chapters.signal_vec_cloned().map(|chapter| {
-                        link!(Route::Chapter(chapter.id, 0).url(), {
-                            .class(["flex", "inline-flex", "hover:bg-gray-200", "dark:hover:bg-gray-700", "p-2", "text-gray-900", "dark:text-gray-300"])
-                            .class_signal("text-opacity-50", chapter.read_at.signal().map(|x| x.is_some()))
-                            .children(&mut [
-                                html!("div", {
-                                    .class(["flex", "justify-between", "items-center", "w-full"])
-                                    .children(&mut [
-                                        html!("div", {
-                                            .class(["flex", "flex-col"])
-                                            .children(&mut [
-                                                html!("span", {
-                                                    .class(["text-md", "font-semibold"])
-                                                    .text(&chapter.title)
-                                                }),
-                                                html!("div", {
-                                                    .children(&mut [
-                                                        html!("span", {
-                                                            .class("text-sm")
-                                                            .text(&chapter.uploaded.date().to_string())
-                                                        }),
-                                                    ])
-                                                    .child_signal(chapter.last_page_read.signal().map(|x| match x {
-                                                        None => None,
-                                                        Some(page) => Some(html!("span", {
-                                                            .class(["mx-2", "text-sm"])
-                                                            .text(format!("Page: {}", page + 1).as_str())
+                    .children_signal_vec(manga.chapters.signal_vec_cloned().map(|chapter| html!("li", {
+                        .class("list-item")
+                        .children(&mut [
+                            link!(Route::Chapter(chapter.id, 0).url(), {
+                                .style("display", "inline-flex")
+                                .style("padding", "0.5rem")
+                                .style("width", "100%")
+                                .style_signal("opacity", chapter.read_at.signal().map(|x| if x.is_some() {"0.5"} else {"1"}))
+                                .children(&mut [
+                                    html!("div", {
+                                        .style("display", "flex")
+                                        .style("justify-content", "space-between")
+                                        .style("align-items", "center")
+                                        .style("width", "100%")
+                                        .children(&mut [
+                                            html!("div", {
+                                                .style("display", "flex")
+                                                .style("flex-direction", "column")
+                                                .children(&mut [
+                                                    html!("span", {
+                                                        .style("font-weight", "500")
+                                                        .style("margin-bottom", "0.5rem")
+                                                        .text(&chapter.title)
+                                                    }),
+                                                    html!("div", {
+                                                        .children(&mut [
+                                                            html!("span", {
+                                                                .style("font-size", "small")
+                                                                .style("font-weight", "400")
+                                                                .style("margin-right", "0.5rem")
+                                                                .text(&chapter.uploaded.date().to_string())
+                                                            }),
+                                                        ])
+                                                        .child_signal(chapter.last_page_read.signal().map(|x| match x {
+                                                            None => None,
+                                                            Some(page) => Some(html!("span", {
+                                                                .style("font-size", "small")
+                                                                .style("font-weight", "400")
+                                                                .text(format!("Page: {}", page + 1).as_str())
+                                                            }))
                                                         }))
-                                                    }))
-                                                })
-                                            ])
-                                        }),
-                                        svg!("svg", {
-                                            .attribute("xmlns", "http://www.w3.org/2000/svg")
-                                            .attribute("fill", "none")
-                                            .attribute("viewBox", "0 0 24 24")
-                                            .attribute("stroke", "currentColor")
-                                            .class("w-6")
-                                            .class("h-6")
-                                            .children(&mut [
-                                                svg!("path", {
-                                                    .attribute("stroke-linecap", "round")
-                                                    .attribute("stroke-linejoin", "round")
-                                                    .attribute("stroke-width", "2")
-                                                    .attribute("d", "M9 5l7 7-7 7")
-                                                })
-                                            ])
-                                        })
-                                    ])
-                                })
-                            ])
-                        })
-                    }))
+                                                    })
+                                                ])
+                                            }),
+                                            svg!("svg", {
+                                                .attribute("xmlns", "http://www.w3.org/2000/svg")
+                                                .attribute("fill", "none")
+                                                .attribute("viewBox", "0 0 24 24")
+                                                .attribute("stroke", "currentColor")
+                                                .class("icon")
+                                                .children(&mut [
+                                                    svg!("path", {
+                                                        .attribute("stroke-linecap", "round")
+                                                        .attribute("stroke-linejoin", "round")
+                                                        .attribute("stroke-width", "2")
+                                                        .attribute("d", "M9 5l7 7-7 7")
+                                                    })
+                                                ])
+                                            })
+                                        ])
+                                    })
+                                ])
+                            })
+                        ])
+                    })))
                 })
             ])
         })
@@ -495,17 +504,17 @@ impl Manga {
         }
 
         html!("div", {
-            .class(["main", "w-full", "2xl:w-1/2", "mx-auto", "px-2", "flex", "flex-col"])
+            .style("display", "flex")
+            .style("flex-direction", "column")
             .children(&mut [
                 Self::render_topbar(manga_page.clone()),
                 html!("div", {
-                    .class(["animate__animated", "animate__fadeIn"])
-                    .children(&mut [
-                        Self::render_header(manga_page.clone()),
-                        Self::render_description(manga_page.clone()),
-                        Self::render_chapters(manga_page.clone())
-                    ])
-                })
+                   .class("topbar-spacing")
+                }),
+                Self::render_header(manga_page.clone()),
+                Self::render_action(manga_page.clone()),
+                Self::render_description(manga_page.clone()),
+                Self::render_chapters(manga_page.clone())
             ])
         })
     }

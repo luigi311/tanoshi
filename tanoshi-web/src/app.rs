@@ -78,8 +78,15 @@ impl App {
             })))
             .child_signal(Route::signal().map(|x| {
                 match x {
-                    Route::Login | Route::Chapter(_, _) => None,
-                    _ => Some(Bottombar::render()),
+                    Route::Login | Route::Manga(_) | Route::MangaBySourcePath(_, _) | Route::Chapter(_, _) => None,
+                    _ => Some(html!("div", {
+                        .children(&mut [
+                            html!("div", {
+                                .class("bottombar-spacing")
+                            }),
+                            Bottombar::render(),
+                        ])
+                    })),
                 }
             }))
             .children(&mut [

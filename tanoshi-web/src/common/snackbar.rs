@@ -1,4 +1,4 @@
-use std::{cell::Ref, rc::Rc};
+use std::rc::Rc;
 
 use dominator::{clone, html, svg, Dom};
 use futures_signals::signal::{Mutable, SignalExt};
@@ -34,14 +34,12 @@ impl Snackbar {
 
     pub fn render(snackbar: Rc<Self>) -> Dom {
         html!("div", {
-            .class(["fixed", "inset-x-0", "bottom-0", "mb-14", "pl-2", "pr-2", "xl:pl-52"])
+            .class("snackbar")
             .visible_signal(snackbar.message.signal_cloned().map(|message| message.is_some()))
             .children(&mut [
                 html!("div", {
-                    .class(["p-2", "w-full", "rounded", "shadow", "bg-black", "text-white", "flex", "z-50"])
                     .child_signal(snackbar.message.signal_cloned().map(|message| match message {
-                        Some(msg) => Some(html!("div", {
-                            .class("flex-grow")
+                        Some(msg) => Some(html!("span", {
                             .text(msg.as_str())
                         })),
                         None => None
@@ -55,18 +53,12 @@ impl Snackbar {
                                     .attribute("viewBox", "0 0 24 24")
                                     .attribute("stroke", "currentColor")
                                     .attribute("fill", "none")
-                                    .class([
-                                        "w-6",
-                                        "h-6",
-                                        "my-0",
-                                        "xl:my-2",
-                                        "flex-grow-0"
-                                    ])
+                                    .class("icon")
                                     .children(&mut [
                                         svg!("path", {
                                             .attribute("stroke-linecap", "round")
                                             .attribute("stroke-linejoin", "round")
-                                            .attribute("stroke-width", "1")
+                                            .attribute("stroke-width", "2")
                                             .class("heroicon-ui")
                                             .attribute("d", "M6 18L18 6M6 6l12 12")
                                         }),

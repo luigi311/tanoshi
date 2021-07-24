@@ -1,11 +1,8 @@
 use crate::{common::{Login, Profile, ReaderSettings, Route, SettingCategory, Source, User, css, events, snackbar}, query, utils::AsyncLoader};
 use dominator::svg;
 use dominator::{clone, html, link, routing, Dom};
-use futures_signals::{
-    signal::{Mutable, SignalExt},
-    signal_vec::MutableVec,
-    signal_vec::SignalVecExt,
-};
+use futures_signals::{signal::{Mutable, SignalExt}, signal_vec::{MutableSignalVec, MutableVec}, signal_vec::SignalVecExt};
+use wasm_bindgen::UnwrapThrowExt;
 use std::rc::Rc;
 use web_sys::window;
 
@@ -43,6 +40,7 @@ impl Settings {
                         icon: s.icon.clone(),
                         need_login: s.need_login,
                         has_update: s.has_update,
+                        installed: true,
                     }).collect());
 
                     settings.available_sources.lock_mut().replace_cloned(result.available_sources.iter().map(|s| Source {
@@ -52,6 +50,7 @@ impl Settings {
                         icon: s.icon.clone(),
                         need_login: s.need_login,
                         has_update: s.has_update,
+                        installed: false,
                     }).collect());                    
                 },
                 Err(err) => {
@@ -114,6 +113,7 @@ impl Settings {
                         icon: s.icon.clone(),
                         need_login: s.need_login,
                         has_update: s.has_update,
+                        installed: true,
                     }).collect());
 
                     settings.available_sources.lock_mut().replace_cloned(result.available_sources.iter().map(|s| Source {
@@ -123,6 +123,7 @@ impl Settings {
                         icon: s.icon.clone(),
                         need_login: s.need_login,
                         has_update: s.has_update,
+                        installed: false,
                     }).collect());
                 },
                 Err(err) => {
@@ -151,6 +152,7 @@ impl Settings {
                         icon: s.icon.clone(),
                         need_login: s.need_login,
                         has_update: s.has_update,
+                        installed: true,
                     }).collect());
 
                     settings.available_sources.lock_mut().replace_cloned(result.available_sources.iter().map(|s| Source {
@@ -160,6 +162,7 @@ impl Settings {
                         icon: s.icon.clone(),
                         need_login: s.need_login,
                         has_update: s.has_update,
+                        installed: false,
                     }).collect());
                 },
                 Err(err) => {
@@ -185,31 +188,29 @@ impl Settings {
 
     pub fn render_topbar(settings: Rc<Self>) -> Dom {
         html!("div", {
-            .class(css::TOPBAR_CLASS)
+            .class("topbar")
             .children(&mut [
                 html!("button", {
-                    .class("focus:outline-none")
-                    .class_signal("invisible", settings.page.signal_cloned().map(|x|
+                    .style("justify-self", "start")
+                    .style_signal("visibility", settings.page.signal_cloned().map(|x|
                         match x {
-                            SettingCategory::None => true,
-                            _ => false
+                            SettingCategory::None => "hidden",
+                            _ => "visible"
                         }
                     ))
                     .child_signal(settings.page.signal_cloned().map(|x|
                         match x {
                             SettingCategory::None => None,
                             _ => Some(html!("div", {
-                                .class([
-                                    "flex",
-                                    "items-center"
-                                ])
+                                .style("display", "flex")
+                                .style("align-items", "center")
                                 .children(&mut [
                                     svg!("svg", {
+                                        .class("icon")
                                         .attribute("xmlns", "http://www.w3.org/2000/svg")
                                         .attribute("fill", "none")
                                         .attribute("viewBox", "0 0 24 24")
                                         .attribute("stroke", "currentColor")
-                                        .class(["w-6", "h-6"])
                                         .children(&mut [
                                             svg!("path", {
                                                 .attribute("stroke-linecap", "round")
@@ -236,7 +237,8 @@ impl Settings {
                     })
                 }),
                 html!("span", {
-                    .class(["text-gray-50", "truncate", "mx-auto"])
+                    .style("overflow", "hidden")
+                    .style("text-overflow", "ellipsis")
                     .text_signal(settings.page.signal_cloned().map(|x|
                         match x {
                             SettingCategory::None => "Settings",
@@ -248,8 +250,8 @@ impl Settings {
                         }
                     ))
                 }),
-                html!("div", {
-                    .class("justify-self-end")
+                html!("button", {
+                    .style("justify-self", "end")
                     .child_signal(settings.page.signal_cloned().map(move |page| {
                         match page {
                             SettingCategory::Reader => {
@@ -271,38 +273,15 @@ impl Settings {
     }
 
     pub fn render_categories(settings: Rc<Self>) -> Dom {
-        html!("div", {
-            .class([
-                "w-full",
-                "mx-auto",
-                "flex",
-                "flex-col",
-                "justify-start",
-                "rounded",
-                "bg-white",
-                "dark:bg-gray-900",
-                "shadow",
-                "dark:shadow-none",
-                "divide-y",
-                "divide-gray-200",
-                "dark:divide-gray-800",
-                "px-2",
-                "text-gray-900",
-                "dark:text-gray-100",
-            ])
+        html!("ul", {
+            .class(["list", "group"])
             .children(&mut [
                 link!(Route::Settings(SettingCategory::Reader).url(), {
-                    .class([
-                        "p-2",
-                        "text-left"
-                    ])
+                    .class("list-item")
                     .text("Reader")
                 }),
                 link!(Route::Settings(SettingCategory::Source(0)).url(), {
-                    .class([
-                        "p-2",
-                        "text-left"
-                    ])
+                    .class("list-item")
                     .text("Source")
                 })
             ])
@@ -310,10 +289,7 @@ impl Settings {
                 if let Some(me) = me {
                     if me.is_admin {
                         Some(link!(Route::Settings(SettingCategory::Users).url(), {
-                            .class([
-                                "p-2",
-                                "text-left"
-                            ])
+                            .class("list-item")
                             .text("Users")
                         }))
                     } else {
@@ -326,153 +302,62 @@ impl Settings {
         })
     }
 
-    fn render_source_list(settings: Rc<Self>) -> Dom {
+    fn render_source_list(title: &str, settings: Rc<Self>, sources_signal: MutableSignalVec<Source>) -> Dom {
         html!("div", {
-            .class([
-                "w-full",
-                "mx-auto"
-            ])
             .children(&mut [
                 html!("h1", {
-                    .class([
-                        "text-gray-900",
-                        "dark:text-gray-100",
-                    ])
-                    .text("Installed")
+                    .text(title)
                 }),
-                html!("div", {
+                html!("ul", {
                     .class([
-                        "rounded",
-                        "bg-white",
-                        "dark:bg-gray-900",
-                        "shadow",
-                        "dark:shadow-none",
-                        "divide-y",
-                        "divide-gray-200",
-                        "dark:divide-gray-800",
-                        "px-2"
+                        "list",
+                        "group"
                     ])
-                    .children_signal_vec(settings.installed_sources.signal_vec_cloned().map(clone!(settings => move |x|
-                        html!("div", {
-                            .class([
-                                "p-2",
-                                "flex",
-                                "justify-between"
-                            ])
+                    .children_signal_vec(sources_signal.map(clone!(settings => move |x|
+                        html!("li", {
+                            .class("list-item")
                             .children(&mut [
                                 link!(Route::Settings(SettingCategory::Source(x.id)).url(), {
-                                    .class("flex")
+                                    .style("display", "flex")
+                                    .style("width", "100%")
                                     .children(&mut [
                                         html!("img", {
-                                            .class([
-                                                "w-10",
-                                                "h-10",
-                                                "mr-2"
-                                            ])
+                                            .style("width", "2.5rem")
+                                            .style("height", "2.5rem")
+                                            .style("margin-right", "0.5rem")
                                             .attribute("src", &x.icon)
                                         }),
                                         html!("div", {
+                                            .style("display", "flex")
+                                            .style("flex-direction", "column")
                                             .children(&mut [
-                                                html!("div", {
-                                                    .class([
-                                                        "text-gray-900",
-                                                        "dark:text-gray-50",
-                                                    ])
+                                                html!("span", {
                                                     .text(&x.name)
                                                 }),
-                                                html!("div", {
-                                                    .class([
-                                                        "text-gray-800",
-                                                        "dark:text-gray-200",
-                                                        "text-sm"
-                                                    ])
+                                                html!("span", {
                                                     .text(&x.version)
                                                 })
                                             ])
                                         })
                                     ])
                                 }),
-                                if x.has_update {
+                                if x.installed && x.has_update {
                                     html!("button", {
-                                        .class("focus:outline-none")
                                         .text("Update")
                                         .event(clone!(settings => move |_: events::Click| {
                                             Self::update_source(settings.clone(), x.id);
                                         }))
                                     })
+                                } else if !x.installed {
+                                    html!("button", {
+                                        .text("Install")
+                                        .event(clone!(settings => move |_: events::Click| {
+                                            Self::install_source(settings.clone(), x.id);
+                                        }))
+                                    })
                                 } else {
                                     html!("div", {})
                                 }
-                            ])
-                        })
-                    )))
-                }),
-                html!("h1", {
-                    .class([
-                        "text-gray-900",
-                        "dark:text-gray-100",
-                    ])
-                    .text("Available")
-                }),
-                html!("div", {
-                    .class([
-                        "rounded",
-                        "bg-white",
-                        "dark:bg-gray-900",
-                        "shadow",
-                        "dark:shadow-none",
-                        "divide-y",
-                        "divide-gray-200",
-                        "dark:divide-gray-800",
-                        "px-2"
-                    ])
-                    .children_signal_vec(settings.available_sources.signal_vec_cloned().map(clone!(settings => move |x|
-                        html!("div", {
-                            .class([
-                                "p-2",
-                                "flex",
-                                "justify-between"
-                            ])
-                            .children(&mut [
-                                html!("div", {
-                                    .class("flex")
-                                    .children(&mut [
-                                        html!("img", {
-                                            .class([
-                                                "w-10",
-                                                "h-10",
-                                                "mr-2"
-                                            ])
-                                            .attribute("src", &x.icon)
-                                        }),
-                                        html!("div", {
-                                            .children(&mut [
-                                                html!("div", {
-                                                    .class([
-                                                        "text-gray-900",
-                                                        "dark:text-gray-50",
-                                                    ])
-                                                    .text(&x.name)
-                                                }),
-                                                html!("div", {
-                                                    .class([
-                                                        "text-gray-800",
-                                                        "dark:text-gray-200",
-                                                        "text-sm"
-                                                    ])
-                                                    .text(&x.version)
-                                                })
-                                            ])
-                                        }),
-                                    ])
-                                }),
-                                html!("button", {
-                                    .class("focus:outline-none")
-                                    .text("Install")
-                                    .event(clone!(settings => move |_: events::Click| {
-                                        Self::install_source(settings.clone(), x.id);
-                                    }))
-                                })
                             ])
                         })
                     )))
@@ -483,62 +368,44 @@ impl Settings {
 
     pub fn render_source_settings(settings: Rc<Self>, source_id: i64) -> Dom {
         if source_id == 0 {
-            Self::render_source_list(settings.clone())
-        } else {
-            let source = {
-                let sources = settings.installed_sources.lock_ref();
-                sources
-                    .iter()
-                    .find(|s| (*s).id == source_id)
-                    .map(|s| s.clone())
-                    .unwrap()
-            };
-
             html!("div", {
-                .class([
-                    "flex",
-                    "flex-col",
-                    "items-center"
-                ])
                 .children(&mut [
+                    Self::render_source_list("Installed", settings.clone(), settings.installed_sources.signal_vec_cloned()),
+                    Self::render_source_list("Available", settings.clone(), settings.available_sources.signal_vec_cloned()),
+                ])
+            })
+        } else {
+            html!("div", {
+                .style("display", "flex")
+                .style("flex-direction", "column")
+                .style("align-items", "center")
+                .children_signal_vec(settings.installed_sources.signal_vec_cloned().map(move |source| if source.id == source_id {
                     html!("div", {
-                        .class([
-                            "flex",
-                            "flex-col",
-                            "items-center"
-                        ])
+                        .style("display", "flex")
+                        .style("flex-direction", "column")
+                        .style("align-items", "center")
                         .children(&mut [
                             html!("img", {
-                                .class([
-                                    "w-12",
-                                    "h-12"
-                                ])
+                                .style("width", "3rem")
+                                .style("height", "3rem")
                                 .attribute("src", &source.icon)
                             }),
-                            html!("div", {
+                            html!("span", {
                                 .text(&source.name)
                             }),
-                            html!("div", {
+                            html!("span", {
                                 .text(&source.version)
                             })
                         ])
-                    }),
+                    })
+                } else {
+                    html!("div", {})
+                }))
+                .children(&mut [
                     html!("button", {
-                        .class([
-                            "rounded",
-                            "bg-gray-50",
-                            "dark:bg-gray-900",
-                            "text-red",
-                            "w-full",
-                            "p-2",
-                            "focus:outline-none"
-                        ])
+                        .class("uninstall-btn")
                         .children(&mut [
                             html!("span", {
-                                .class([
-                                    "text-red-500",
-                                    "mx-auto"
-                                ])
                                 .text("Uninstall")
                                 .event(clone!(settings => move |_: events::Click| {
                                     Self::uninstall_source(settings.clone(), source_id);
@@ -552,18 +419,8 @@ impl Settings {
     }
 
     pub fn render_users_management(settings: Rc<Self>) -> Dom {
-        html!("div", {
-            .class([
-                "rounded",
-                "bg-white",
-                "dark:bg-gray-900",
-                "shadow",
-                "dark:shadow-none",
-                "divide-y",
-                "divide-gray-200",
-                "dark:divide-gray-800",
-                "px-2"
-            ])
+        html!("ul", {
+            .class(["list", "group"])
             .visible_signal(settings.me.signal_cloned().map(|me| {
                 if let Some(me) = me {
                     if me.is_admin {
@@ -576,14 +433,10 @@ impl Settings {
                 }
             }))
             .children_signal_vec(settings.users.signal_vec_cloned().map(|x|
-                html!("div", {
-                    .class([
-                        "p-2",
-                        "flex",
-                        "justify-between",
-                        "text-black",
-                        "dark:text-white",
-                    ])
+                html!("li", {
+                    .class("list-item")
+                    .style("display", "flex")
+                    .style("justify-content", "space-between")
                     .children(&mut [
                         html!("span", {
                             .text(&x.username)
@@ -599,33 +452,14 @@ impl Settings {
 
     pub fn render_user(settings: Rc<Self>) -> Dom {
         link!(Route::Settings(SettingCategory::User).url(), {
-            .class([
-                "rounded",
-                "bg-white",
-                "dark:bg-gray-900",
-                "shadow",
-                "dark:shadow-none",
-                "p-2",
-                "flex",
-                "mb-2",
-                "items-center",
-                "justify-between"
-            ])
+            .class("me")
             .children(&mut [
                 svg!("svg", {
+                    .class("me-icon")
                     .attribute("xmlns", "http://www.w3.org/2000/svg")
                     .attribute("viewBox", "0 0 24 24")
                     .attribute("stroke", "currentColor")
                     .attribute("fill", "none")
-                    .class([
-                        "w-12",
-                        "h-12", 
-                        "rounded-full",
-                        "bg-gray-100",
-                        "p-2",
-                        "mr-2",
-                        "flex-shrink-0"
-                    ])
                     .children(&mut [
                         svg!("path", {
                             .attribute("stroke-linecap", "round")
@@ -636,45 +470,33 @@ impl Settings {
                         })
                     ])
                 }),
-                html!("div", {
-                    .class([
-                        "w-full"
-                    ])
-                    .child_signal(settings.me.signal_cloned().map(|me| {
-                        if let Some(me) = me {
-                            Some(html!("div", {
-                                .class([
-                                    "flex",
-                                    "flex-col",
-                                    "text-black",
-                                    "dark:text-white",
-                                ])
-                                .children(&mut [
-                                    html!("span",{
-                                        .text(&me.username)
-                                    }),
-                                    html!("span", {
-                                        .class("text-sm")
-                                        .text(format!("{}", if me.is_admin { "Admin" } else { "" }).as_str())
-                                    })
-                                ])
-                            }))
-                        } else {
-                            None
-                        }
+            ])
+            .child_signal(settings.me.signal_cloned().map(|me| {
+                if let Some(me) = me {
+                    Some(html!("div", {
+                        .class("me-detail")
+                        .children(&mut [
+                            html!("span",{
+                                .class("me-name")
+                                .text(&me.username)
+                            }),
+                            html!("span", {
+                                .class("me-role")
+                                .text(format!("{}", if me.is_admin { "Admin" } else { "" }).as_str())
+                            })
+                        ])
                     }))
-                }),
+                } else {
+                    None
+                }
+            }))
+            .children(&mut [
                 svg!("svg", {
+                    .class("icon")
                     .attribute("xmlns", "http://www.w3.org/2000/svg")
                     .attribute("fill", "none")
                     .attribute("viewBox", "0 0 24 24")
                     .attribute("stroke", "currentColor")
-                    .class([
-                        "w-6",
-                        "h-6",
-                        "text-gray-900",
-                        "dark:text-gray-50"
-                    ])
                     .children(&mut [
                         svg!("path", {
                             .attribute("stroke-linecap", "round")
@@ -697,37 +519,28 @@ impl Settings {
             _ => {}
         }
         html!("div", {
-            .class([
-                "main",
-                "w-full",
-                "xl:flex"
-            ])
+            .class("page")
             .children(&mut [
                 Self::render_topbar(settings.clone()),
                 html!("div", {
-                    .class([
-                        "w-full",
-                        "p-2",
-                        "ml-0",
-                        "xl:ml-48"
-                    ])
-                    .child_signal(settings.page.signal_cloned().map(clone!(settings => move |x|
-                        match x {
-                            SettingCategory::None => Some(html!("div", {
-                                .children(&mut [
-                                    Self::render_user(settings.clone()),
-                                    Self::render_categories(settings.clone())
-                                ])
-                            })),
-                            SettingCategory::Reader => Some(ReaderSettings::render(settings.reader_settings.clone())),
-                            SettingCategory::Source(source_id) => Some(Self::render_source_settings(settings.clone(), source_id)),
-                            SettingCategory::Users => Some(Self::render_users_management(settings.clone())),
-                            SettingCategory::User => Some(Profile::render(Profile::new())),
-                            SettingCategory::CreateUser => Some(Login::render(Login::new())),
-                        }
-                    )))
-                })
+                    .class("topbar-spacing")
+                }),
             ])
+            .child_signal(settings.page.signal_cloned().map(clone!(settings => move |x|
+                match x {
+                    SettingCategory::None => Some(html!("div", {
+                        .children(&mut [
+                            Self::render_user(settings.clone()),
+                            Self::render_categories(settings.clone())
+                        ])
+                    })),
+                    SettingCategory::Reader => Some(ReaderSettings::render(settings.reader_settings.clone())),
+                    SettingCategory::Source(source_id) => Some(Self::render_source_settings(settings.clone(), source_id)),
+                    SettingCategory::Users => Some(Self::render_users_management(settings.clone())),
+                    SettingCategory::User => Some(Profile::render(Profile::new())),
+                    SettingCategory::CreateUser => Some(Login::render(Login::new())),
+                }
+            )))                
         })
     }
 }

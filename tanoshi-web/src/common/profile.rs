@@ -1,9 +1,10 @@
 use std::rc::Rc;
 
-use dominator::routing;
+use dominator::{routing, with_node};
 use dominator::{clone, html, Dom};
 use futures_signals::signal::Mutable;
 use futures_signals::signal::SignalExt;
+use web_sys::HtmlInputElement;
 
 use crate::common::{Route, SettingCategory, events, snackbar};
 use crate::query;
@@ -42,36 +43,23 @@ impl Profile {
     }
 
     pub fn render(profile: Rc<Self>) -> Dom {
-        html!("div", {
-            .class([
-                "flex",
-                "flex-col",
-                "max-w-lg",
-                "mx-auto",
-                "bg-white",
-                "dark:bg-gray-800",
-                "shadow",
-                "dark:shadow-none",
-                "rounded"
-            ])
+        html!("form", {
+            .style("display", "flex")
+            .style("flex-direction", "column")
+            .style("max-width", "1024px")
+            .style("margin-left", "auto")
+            .style("margin-right", "auto")
+            .style("border-radius", "0.5rem")
             .children(&mut [
-                html!("input", {
-                    .class([
-                        "m-2",  
-                        "p-1",
-                        "focus:outline-none",
-                        "rounded",
-                        "bg-white",
-                        "dark:bg-gray-900",
-                        "text-black",
-                        "dark:text-white"
-                    ])
+                html!("input" => HtmlInputElement, {
                     .attribute("type", "password")
                     .attribute("placeholder", "Current Password")
                     .property_signal("value", profile.old_password.signal_cloned())
-                    .event(clone!(profile => move |e: events::Input| {
-                        profile.old_password.set(e.value().unwrap_or("".to_string()));
-                    }))
+                    .with_node!(input => {
+                        .event(clone!(profile => move |_: events::Input| {
+                            profile.old_password.set(input.value());
+                        }))
+                    })
                 }),
                 html!("span", {
                     .visible_signal(profile.confirm_password.signal_cloned().map(clone!(profile => move |x| {
@@ -81,11 +69,10 @@ impl Profile {
                             false
                         }
                     })))
-                    .class([
-                        "text-sm",
-                        "mx-2",
-                        "text-red-500"
-                    ])
+                    .style("font-size", "small")
+                    .style("margin-left", "0.5rem")
+                    .style("margin-right", "0.5rem")
+                    .style("color", "red")
                     .text("Password do not match")
                 }),
 
@@ -97,25 +84,14 @@ impl Profile {
                             false
                         }
                     }))
-                    .class([
-                        "text-sm",
-                        "mx-2",
-                        "text-red-500"
-                    ])
+                    .style("font-size", "small")
+                    .style("margin-left", "0.5rem")
+                    .style("margin-right", "0.5rem")
+                    .style("color", "red")
                     .text("Minimum password length is 8")
                 }),
-                html!("input", {
-                    .class([
-                        "m-2",
-                        "p-1",
-                        "focus:outline-none",
-                        "rounded",
-                        "bg-white",
-                        "dark:bg-gray-900",
-                        "text-black",
-                        "dark:text-white"
-                    ])
-                    .class_signal(["ring-1", "ring-red-500"], profile.confirm_password.signal_cloned().map(clone!(profile => move |x| {
+                html!("input" => HtmlInputElement, {
+                    .class_signal("error", profile.confirm_password.signal_cloned().map(clone!(profile => move |x| {
                         if x != profile.new_password.get_cloned() {
                             true
                         } else {
@@ -125,22 +101,14 @@ impl Profile {
                     .attribute("type", "password")
                     .attribute("placeholder", "New Password")
                     .property_signal("value", profile.new_password.signal_cloned())
-                    .event(clone!(profile => move |e: events::Input| {
-                        profile.new_password.set(e.value().unwrap_or("".to_string()));
-                    }))
+                    .with_node!(input => {
+                        .event(clone!(profile => move |_: events::Input| {
+                            profile.new_password.set(input.value());
+                        }))
+                    })
                 }),
-                html!("input", {
-                    .class([
-                        "m-2",
-                        "p-1",
-                        "focus:outline-none",
-                        "rounded",
-                        "bg-white",
-                        "dark:bg-gray-900",
-                        "text-black",
-                        "dark:text-white"
-                    ])
-                    .class_signal(["ring-1", "ring-red-500"], profile.confirm_password.signal_cloned().map(clone!(profile => move |x| {
+                html!("input" => HtmlInputElement, {
+                    .class_signal("error", profile.confirm_password.signal_cloned().map(clone!(profile => move |x| {
                         if x != profile.new_password.get_cloned() {
                             true
                         } else {
@@ -150,30 +118,19 @@ impl Profile {
                     .attribute("type", "password")
                     .attribute("placeholder", "Confirm Password")
                     .property_signal("value", profile.confirm_password.signal_cloned())
-                    .event(clone!(profile => move |e: events::Input| {
-                        profile.confirm_password.set(e.value().unwrap_or("".to_string()));
-                    }))
+                    .with_node!(input => {
+                        .event(clone!(profile => move |_: events::Input| {
+                            profile.confirm_password.set(input.value());
+                        }))
+                    })
                 }),
                 html!("div", {
-                    .class([
-                        "flex",
-                        "justify-end",
-                        "m-2"
-                    ])
+                    .style("display", "flex")
+                    .style("justify-content", "flex-end")
+                    .style("margin", "0.5rem")
                     .children(&mut [
-                        html!("button", {
-                            .class([
-                                "bg-accent",
-                                "active:bg-accent-lighter",
-                                "hover:shadow-lg",
-                                "dark:hover:bg-accent-lighter",
-                                "focus:outline-none",
-                                "text-white",
-                                "px-2",
-                                "py-1",
-                                "rounded",
-                                "focus:outline-none"
-                            ])
+                        html!("input", {
+                            .attribute("type", "submit")
                             .attribute_signal("disabled", profile.confirm_password.signal_cloned().map(clone!(profile => move |x| {
                                 if x != profile.new_password.get_cloned() || x.len() < 8 {
                                     Some("true")
@@ -182,7 +139,8 @@ impl Profile {
                                 }
                             })))
                             .text("Submit")
-                            .event(clone!(profile => move |_: events::Click| {
+                            .event_preventable(clone!(profile => move |e: events::Click| {
+                                e.prevent_default();
                                 Self::change_password(profile.clone());
                             }))
                         })

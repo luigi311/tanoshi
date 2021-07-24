@@ -69,115 +69,57 @@ impl Updates {
 
     pub fn render_topbar() -> Dom {
         html!("div", {
-            .class(css::TOPBAR_CLASS)
+            .class("topbar")
             .children(&mut [
+                html!("div", {
+                }),
                 html!("span", {
-                    .class([
-                        "mx-auto",
-                        "text-gray-50"
-                    ])
                     .text("Updates")
+                }),
+                html!("div", {
                 })
             ])
         })
     }
 
     pub fn render_main(updates: Rc<Self>) -> Dom {
-        html!("div", {
-            .class([
-                "px-2",
-                "xl:pr-2",
-                "xl:pl-52",
-            ])
-            .children(&mut [
-                html!("div", {
-                    .class([
-                        "divide-y",
-                        "divide-gray-200",
-                        "dark:divide-gray-900",
-                        "truncate"
-                    ])
-                    .children_signal_vec(updates.entries.signal_vec_cloned().map(|entry| {
-                        link!(Route::Chapter(entry.chapter_id, 0).url(), {
-                            .class([
-                                "flex",
-                                "p-2",
-                                "m-2"
-                            ])
-                            .children(&mut [
-                                html!("div", {
-                                    .class([
-                                        "pb-7/6",
-                                        "mr-2",
-                                        "flex-shrink-0"
-                                    ])
-                                    .children(&mut [
-                                        html!("img", {
-                                            .class([
-                                                "w-16",
-                                                "rounded",
-                                                "object-cover"
-                                            ])
-                                            .attribute("src", &proxied_image_url(&entry.cover_url))
-                                        })
-                                    ])
-                                }),
-                                html!("div", {
-                                    .class(["flex-col"])
-                                    .children(&mut [
-                                        html!("h1", {
-                                            .class([
-                                                "text-gray-900",
-                                                "dark:text-gray-50",
-                                            ])
-                                            .text(&entry.manga_title)
-                                        }),
-                                        html!("h2", {
-                                            .class([
-                                                "text-gray-900",
-                                                "dark:text-gray-50",
-                                            ])
-                                            .text(&entry.chapter_title)
-                                        }),
-                                        html!("h2", {
-                                            .class([
-                                                "text-gray-900",
-                                                "dark:text-gray-50",
-                                            ])
-                                            .text(&Self::calculate_days(entry.uploaded))
-                                        })
-                                    ])
-                                })
-                            ])
-                        })
-                    }))
-                }),
-                html!("div", {
-                    .child_signal(updates.spinner.signal().map(clone!(updates => move |x| if x {
-                        Some(Spinner::render(&updates.spinner))
-                    } else {
-                        Some(html!("button", {
-                            .class([
-                                "w-full",
-                                "text-gray-900",
-                                "dark:text-gray-50",
-                                "focus:outline-none"
-                            ])
-                            .class_signal("disabled", updates.is_entries_empty.signal())
-                            .text_signal(updates.is_entries_empty.signal().map(|x|
-                                if x {
-                                    "No recent updates, favorite manga to see recent updates"
-                                } else {
-                                    "Load More"
-                                }
-                            ))
-                            .event(clone!(updates => move |_: events::Click| {
-                                Self::fetch_recent_chapters(updates.clone());
-                            }))
-                        }))
-                    })))
-                })
-            ])
+        html!("ul", {
+            .class("list")
+            .children_signal_vec(updates.entries.signal_vec_cloned().map(|entry| html!("li", {
+                .class("list-item")
+                .children(&mut [
+                    link!(Route::Chapter(entry.chapter_id, 0).url(), {
+                        .class("update-item")
+                        .children(&mut [
+                            html!("div", {
+                                .class("update-item-thumbnail")
+                                .children(&mut [
+                                    html!("img", {
+                                        .attribute("src", &proxied_image_url(&entry.cover_url))
+                                    })
+                                ])
+                            }),
+                            html!("div", {
+                                .class("update-item-detail")
+                                .children(&mut [
+                                    html!("span", {
+                                        .class("manga-title")
+                                        .text(&entry.manga_title)
+                                    }),
+                                    html!("span", {
+                                        .class("last-chapter")
+                                        .text(&entry.chapter_title)
+                                    }),
+                                    html!("span", {
+                                        .class("date-updated")
+                                        .text(&Self::calculate_days(entry.uploaded))
+                                    })
+                                ])
+                            })
+                        ])
+                    })
+                ])
+            })))
         })
     }
 
@@ -204,12 +146,32 @@ impl Updates {
     pub fn render(updates: Rc<Self>, _app: Rc<App>) -> Dom {
         Self::fetch_recent_chapters(updates.clone());
         html! {"div", {
-            .class([
-                "main",
-            ])
             .children(&mut [
                 Self::render_topbar(),
-                Self::render_main(updates.clone())
+                html!("div", {
+                    .class("topbar-spacing")
+                }),
+                Self::render_main(updates.clone()),
+                html!("div", {
+                    .class("load-more-btn")
+                    .child_signal(updates.spinner.signal().map(clone!(updates => move |x| if x {
+                        Some(Spinner::render(&updates.spinner))
+                    } else {
+                        Some(html!("button", {
+                            .class_signal("disabled", updates.is_entries_empty.signal())
+                            .text_signal(updates.is_entries_empty.signal().map(|x|
+                                if x {
+                                    "No recent updates, favorite manga to see recent updates"
+                                } else {
+                                    "Load More"
+                                }
+                            ))
+                            .event(clone!(updates => move |_: events::Click| {
+                                Self::fetch_recent_chapters(updates.clone());
+                            }))
+                        }))
+                    })))
+                })
             ])
         }}
     }
