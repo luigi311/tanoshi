@@ -23,11 +23,11 @@ RUN apt upgrade -y && \
     zlib1g-dev \
     libxml2-dev
 RUN npm install -g yarn
-RUN cargo install wasm-pack
+RUN cargo install trunk
 
 COPY . .
 
-RUN yarn --cwd tanoshi-web && yarn --cwd tanoshi-web build
+RUN cd tanoshi-web && trunk build --relese
 RUN cargo build -p tanoshi --release
 
 FROM debian:buster-slim
