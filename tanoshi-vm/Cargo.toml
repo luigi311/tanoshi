@@ -1,6 +1,6 @@
 [package]
 name = "tanoshi-vm"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Muhammad Fadhlika <fadhlika@gmail.com>"]
 edition = "2018"
 description = "Tanoshi VM"
@@ -16,7 +16,7 @@ wasmer-wasi = "2.0.0"
 wasmer-compiler-cranelift = "2.0.0"
 serde = { version="1.0", features=["derive"] }
 ron = "0.6.4"
-tanoshi-lib = { path = "../tanoshi-lib", version = "0.23.1" }
+tanoshi-lib = "0.23.2"
 bytes = "1"
 ureq = { version = "2", features = ["json"] }
 log = "0.4.14"
