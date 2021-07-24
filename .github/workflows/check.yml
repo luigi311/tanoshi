@@ -62,9 +62,4 @@ jobs:
         run: cargo build -p tanoshi
         env:
           LIBCLANG_PATH: C:\Program Files\LLVM\bin
-      - name: 'Upload Artifact'
-        uses: actions/upload-artifact@v2
-        with:
-          name: ${{ matrix.filename }}
-          path: ${{ github.workspace }}/target/debug/${{ matrix.filename }}
           retention-days: 7
