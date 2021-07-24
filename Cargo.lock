@@ -3083,7 +3083,7 @@ dependencies = [
  "serde_json",
  "serde_yaml",
  "tanoshi-lib 0.23.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "tanoshi-vm 0.1.1",
+ "tanoshi-vm 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "tokio",
  "ureq",
  "wasmer",
@@ -3119,9 +3119,7 @@ dependencies = [
 
 [[package]]
 name = "tanoshi-vm"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2ecfb5b27890d813609df359935e80b05af131c62b027fa03b981fb7c356effa"
+version = "0.1.2"
 dependencies = [
  "bytes",
  "env_logger",
@@ -3139,6 +3137,8 @@ dependencies = [
 [[package]]
 name = "tanoshi-vm"
 version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "986c20067e2895479bb094b198e9643e3ab60ce454a3656ff48c6d9dbeb5c73c"
 dependencies = [
  "bytes",
  "env_logger",
