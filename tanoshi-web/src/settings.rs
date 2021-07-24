@@ -64,7 +64,13 @@ impl Settings {
         settings.loader.load(clone!(settings => async move {
             match query::fetch_users().await {
                 Ok(result) => {
-                    settings.users.lock_mut().replace_cloned(result.iter().map(|u| User{
+                    settings.me.set(Some(User{
+                        id: result.0.id,
+                        username: result.0.username,
+                        is_admin: result.0.is_admin,
+                    }));
+
+                    settings.users.lock_mut().replace_cloned(result.1.iter().map(|u| User{
                         id: u.id,
                         username: u.username.clone(),
                         is_admin: u.is_admin,
@@ -421,17 +427,7 @@ impl Settings {
     pub fn render_users_management(settings: Rc<Self>) -> Dom {
         html!("ul", {
             .class(["list", "group"])
-            .visible_signal(settings.me.signal_cloned().map(|me| {
-                if let Some(me) = me {
-                    if me.is_admin {
-                        true
-                    } else {
-                        false
-                    }
-                } else {
-                    false
-                }
-            }))
+            .visible_signal(settings.me.signal_cloned().map(|me| me.map(|me| me.is_admin).unwrap_or(false)))
             .children_signal_vec(settings.users.signal_vec_cloned().map(|x|
                 html!("li", {
                     .class("list-item")
@@ -511,9 +507,9 @@ impl Settings {
     }
 
     pub fn render(settings: Rc<Self>, category: SettingCategory) -> Dom {
-        Self::fetch_me(settings.clone());
         settings.page.set(category.clone());
         match category {
+            SettingCategory::None => Self::fetch_me(settings.clone()),
             SettingCategory::Source(_) => Self::fetch_sources(settings.clone()),
             SettingCategory::Users => Self::fetch_user_list(settings.clone()),
             _ => {}

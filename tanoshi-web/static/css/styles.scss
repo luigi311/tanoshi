@@ -35,7 +35,6 @@ $divide-color-dark-1: $color-gray-700;
 :root {
     --animate-duration:  0.5s;
     --background-color: white;
-    --list-group-background-color: var(--background-color);
     --background-color-100: #{$color-gray-200};
     --background-color-200: #{$color-gray-300};
     --topbar-background-color: #{$topbar-background-light};
@@ -44,13 +43,13 @@ $divide-color-dark-1: $color-gray-700;
     --divider-color: #{$divide-color-light};
     --divider-color-1: #{$divide-color-light-1};
     --shadow: #{$shadow};
+    --list-group-background-color: var(--background-color);
     --list-group-border: 1px solid var(--background-color-200);
     --primary-color: #{$primary-color};
 }
 
 body.dark {
     --background-color: black;
-    --list-group-background-color: #{$color-gray-900};
     --background-color-100: #{$color-gray-800};
     --background-color-200: #{$color-gray-700};
     --topbar-background-color: #{$topbar-background-dark};
@@ -58,13 +57,14 @@ body.dark {
     --color: #{$text-color-dark};
     --divider-color: #{$divide-color-dark};
     --divider-color-1: #{$divide-color-dark-1};
-    --shadow: none
+    --list-group-background-color: #{$color-gray-800};
     --list-group-border: none;
+    --shadow: none
 }
 
 body {
     font: 100% $font-stack;
-    background-color: var(--body-background-color);
+    background-color: var(--background-color);
     color: var(--color);
     padding: 0;
     margin: 0;
@@ -460,10 +460,12 @@ $manga-grid: (
 
         &-name {
             font-size: large;
+            color: var(--color);
         }
 
         &-role {
             font-size: medium;
+            color: var(--color);
         }
     }
 

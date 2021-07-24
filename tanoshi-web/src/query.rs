@@ -562,7 +562,7 @@ pub async fn user_login(username: String, password: String) -> Result<String, Bo
 )]
 pub struct FetchUserList;
 
-pub async fn fetch_users() -> Result<Vec<fetch_user_list::FetchUserListUsers>, Box<dyn Error>> {
+pub async fn fetch_users() -> Result<(fetch_user_list::FetchUserListMe, Vec<fetch_user_list::FetchUserListUsers>), Box<dyn Error>> {
     let token = local_storage()
         .get("token")
         .unwrap_throw()
@@ -578,7 +578,8 @@ pub async fn fetch_users() -> Result<Vec<fetch_user_list::FetchUserListUsers>, B
         .await?;
 
     let response_body: Response<fetch_user_list::ResponseData> = res.json().await?;
-    Ok(response_body.data.ok_or("no data")?.users)
+    let result = response_body.data.ok_or("no data")?;
+    Ok((result.me, result.users))
 }
 
 #[derive(GraphQLQuery)]

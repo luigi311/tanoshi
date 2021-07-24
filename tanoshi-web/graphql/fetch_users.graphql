@@ -1,4 +1,10 @@
 query FetchUserList {
+  me {
+    id
+    username
+    isAdmin
+  }
+  
   users {
     id
     username
