@@ -2,11 +2,9 @@ FROM rust:latest AS builder
 
 WORKDIR /app
 
-RUN apt install -y curl
-RUN curl -fsSL https://deb.nodesource.com/setup_16.x | bash -
-RUN apt upgrade -y && \
+RUN apt update && \
+    apt upgrade -y && \
     apt-get install -y \
-    nodejs \
     libssl-dev \
     libarchive-dev \
     build-essential \
@@ -22,13 +20,12 @@ RUN apt upgrade -y && \
     libbz2-dev \
     zlib1g-dev \
     libxml2-dev
-RUN npm install -g yarn
-RUN cargo install trunk
+RUN cargo install trunk wasm-bindgen-cli
 RUN rustup target add wasm32-unknown-unknown
 
 COPY . .
 
-RUN cd tanoshi-web && trunk build --relese
+RUN cd tanoshi-web && trunk build --release
 RUN cargo build -p tanoshi --release
 
 FROM debian:buster-slim
