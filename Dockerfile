@@ -24,6 +24,7 @@ RUN apt upgrade -y && \
     libxml2-dev
 RUN npm install -g yarn
 RUN cargo install trunk
+RUN rustup target add wasm32-unknown-unknown
 
 COPY . .
 

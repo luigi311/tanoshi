@@ -60,9 +60,11 @@ jobs:
           vcpkg install --only-downloads libarchive:x64-windows-static-md
           vcpkg install libarchive:x64-windows-static-md
       - name: Install trunk
-        run: cargo install trunk
+        run: |
+          cargo install trunk
+          rustup target add wasm32-unknown-unknown
       - name: Build tanoshi-web
-        run: trunk build --release
+        run: cd tanoshi-web && trunk build --release
       - name: Build tanoshi
         if: ${{ matrix.os == 'ubuntu-latest' }}
         run: cargo build -p tanoshi --release
