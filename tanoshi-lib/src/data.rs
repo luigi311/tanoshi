@@ -1,6 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-
+use std::collections::{BTreeMap, HashMap};
 /// A type represent source
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Source {
@@ -10,6 +9,22 @@ pub struct Source {
     pub version: String,
     pub icon: String,
     pub need_login: bool,
+    #[serde(default = "Vec::new")]
+    pub languages: Vec<String>,
+}
+
+impl Default for Source {
+    fn default() -> Self {
+        Source {
+            id: 0,
+            name: "".to_string(),
+            url: "".to_string(),
+            version: "".to_string(),
+            icon: "".to_string(),
+            need_login: false,
+            languages: Vec::new(),
+        }
+    }
 }
 
 /// A type represent manga details, normalized across source
@@ -81,8 +96,6 @@ impl Default for SortOrderParam {
     }
 }
 
-pub type Headers = HashMap<String, Vec<String>>;
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Param {
     pub keyword: Option<String>,
@@ -93,6 +106,44 @@ pub struct Param {
     pub auth: Option<String>,
 }
 
+impl Default for Param {
+    fn default() -> Self {
+        Param {
+            keyword: None,
+            genres: None,
+            page: Some(1),
+            sort_by: Some(SortByParam::Views),
+            sort_order: Some(SortOrderParam::Desc),
+            auth: None,
+        }
+    }
+}
+
+pub type ParamFilterValue = HashMap<String, Vec<String>>;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Filters {
+    pub default: String,
+    pub fields: BTreeMap<String, FilterField>
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FilterField {
+    pub name: String,
+    pub values: Option<Vec<FilterValue>>,
+    #[serde(default)]
+    pub multi: bool,
+    pub description: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FilterValue {
+    pub title: String,
+    pub value: Option<String>,
+    pub related: Option<HashMap<String, String>>
+}
+
+pub type Headers = HashMap<String, Vec<String>>;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Request {
     pub method: String,
@@ -113,7 +164,7 @@ pub struct ExtensionResult<T> {
     pub error: Option<String>
 }
 
-impl<T> ExtensionResult<T> {
+impl<T: Clone> ExtensionResult<T> {
     pub fn ok(data: T) -> Self {
         Self {
             data: Some(data),
@@ -125,6 +176,16 @@ impl<T> ExtensionResult<T> {
         Self {
             data: None,
             error: Some(msg.to_string())
+        }
+    }
+
+    pub fn result(&self) -> Result<T, Box<dyn std::error::Error>> {
+        if let Some(data) = &self.data {
+            Ok(data.clone())
+        } else if let Some(err) = &self.error {
+            Err(err.clone().into())
+        } else {
+            Err("neither data or error exists".into())
         }
     }
 }

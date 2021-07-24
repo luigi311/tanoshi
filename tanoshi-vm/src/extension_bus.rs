@@ -1,16 +1,15 @@
 use bytes::Bytes;
-use std::{collections::HashMap, path::PathBuf, time::Duration};
-use tanoshi_lib::prelude::{
-    Chapter, Extension, ExtensionResult, Manga, Param, Request, Response, Source,
-};
+use std::{path::PathBuf, time::Duration};
+use tanoshi_lib::prelude::{Chapter, Extension, ExtensionResult, Filters, Manga, Param, Source};
 use tokio::{
     sync::{
-        mpsc::{UnboundedReceiver, UnboundedSender},
+        mpsc::{UnboundedSender},
         oneshot::Sender,
     },
-    task::JoinHandle,
     time::timeout,
 };
+
+pub type ExtensionResultSender<T> = Sender<ExtensionResult<T>>;
 
 #[derive(Debug)]
 pub enum Command {
@@ -20,10 +19,11 @@ pub enum Command {
     Exist(i64, Sender<bool>),
     List(Sender<Vec<Source>>),
     Detail(i64, Sender<Source>),
-    GetMangaList(i64, Param, Sender<Vec<Manga>>),
-    GetMangaInfo(i64, String, Sender<Manga>),
-    GetChapters(i64, String, Sender<Vec<Chapter>>),
-    GetPages(i64, String, Sender<Vec<String>>),
+    Filters(i64, ExtensionResultSender<Option<Filters>>),
+    GetMangaList(i64, Param, ExtensionResultSender<Vec<Manga>>),
+    GetMangaInfo(i64, String, ExtensionResultSender<Manga>),
+    GetChapters(i64, String, ExtensionResultSender<Vec<Chapter>>),
+    GetPages(i64, String, ExtensionResultSender<Vec<String>>),
 }
 
 #[derive(Debug, Clone)]
@@ -91,6 +91,13 @@ impl ExtensionBus {
         Ok(source)
     }
 
+    pub async fn filters(&self, source_id: i64) -> Result<Option<Filters>, Box<dyn std::error::Error>> {
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        self.tx.send(Command::Filters(source_id, tx))?;
+
+        timeout(Duration::from_secs(30), rx).await??.result()
+    }
+
     pub async fn get_manga_list(
         &self,
         source_id: i64,
@@ -99,8 +106,7 @@ impl ExtensionBus {
         let (tx, rx) = tokio::sync::oneshot::channel();
         self.tx.send(Command::GetMangaList(source_id, param, tx))?;
 
-        let manga = timeout(Duration::from_secs(30), rx).await??;
-        Ok(manga)
+        timeout(Duration::from_secs(30), rx).await??.result()
     }
 
     pub async fn get_manga_info(
@@ -111,8 +117,7 @@ impl ExtensionBus {
         let (tx, rx) = tokio::sync::oneshot::channel();
         self.tx.send(Command::GetMangaInfo(source_id, path, tx))?;
 
-        let manga = timeout(Duration::from_secs(30), rx).await??;
-        Ok(manga)
+        timeout(Duration::from_secs(30), rx).await??.result()
     }
 
     pub async fn get_chapters(
@@ -123,8 +128,7 @@ impl ExtensionBus {
         let (tx, rx) = tokio::sync::oneshot::channel();
         self.tx.send(Command::GetChapters(source_id, path, tx))?;
 
-        let manga = timeout(Duration::from_secs(30), rx).await??;
-        Ok(manga)
+        timeout(Duration::from_secs(30), rx).await??.result()
     }
 
     pub async fn get_pages(
@@ -135,7 +139,6 @@ impl ExtensionBus {
         let (tx, rx) = tokio::sync::oneshot::channel();
         self.tx.send(Command::GetPages(source_id, path, tx))?;
 
-        let manga = timeout(Duration::from_secs(30), rx).await??;
-        Ok(manga)
+        timeout(Duration::from_secs(30), rx).await??.result()
     }
 }

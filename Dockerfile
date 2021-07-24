@@ -23,6 +23,7 @@ RUN apt upgrade -y && \
     zlib1g-dev \
     libxml2-dev
 RUN npm install -g yarn
+RUN cargo install wasm-pack
 
 COPY . .
 
@@ -38,7 +39,7 @@ RUN chmod +x tanoshi
 
 RUN apt update && apt upgrade -y && apt install --reinstall -y ca-certificates
 
-ENV RUST_LOG=tanoshi=info
+ENV TANOSHI_LOG=info
 ENV TANOSHI_HOME=/tanoshi
 
 EXPOSE 80

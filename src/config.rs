@@ -17,6 +17,8 @@ pub struct Config {
     pub plugin_path: String,
     #[serde(default = "default_local_path")]
     pub local_path: String,
+    #[serde(default)]
+    pub enable_playground: bool
 }
 
 impl Default for Config {
@@ -28,6 +30,7 @@ impl Default for Config {
             update_interval: default_update_interval(),
             plugin_path: default_plugin_path(),
             local_path: default_local_path(),
+            enable_playground: false
         }
     }
 }

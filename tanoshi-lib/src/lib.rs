@@ -22,6 +22,12 @@ macro_rules! register_extension {
         }
 
         #[no_mangle]
+        fn filters() {
+            let res = EXT.with(|ext| ext.borrow_mut().filters());
+            $crate::shim::write_object(&res);
+        }
+
+        #[no_mangle]
         fn get_manga_list() {
             let res = EXT.with(|ext| ext.borrow_mut().get_manga_list($crate::shim::read_object()));
             $crate::shim::write_object(&res);
@@ -53,4 +59,12 @@ macro_rules! register_extension {
     };
 }
 
+#[macro_export]
+macro_rules! hashmap {
+    ($( $key: expr => $val: expr ),*) => {{
+         let mut map = ::std::collections::HashMap::new();
+         $( map.insert($key.to_string(), $val.to_string()); )*
+         map
+    }}
+}
 

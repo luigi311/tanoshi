@@ -21,7 +21,13 @@ struct Opts {
 #[derive(Clap)]
 enum SubCommand {
     GenerateJson,
-    TestExtension
+    TestExtension(TestExtension),
+}
+
+#[derive(Clap)]
+struct TestExtension {
+    #[clap(long)]
+    selector: Option<String>,
 }
 
 #[tokio::main]
@@ -44,10 +50,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         SubCommand::GenerateJson => {
             generate::generate_json(extension_bus).await?;
         }
-        SubCommand::TestExtension => {
-            test::test(extension_bus).await?;
-        },
+        SubCommand::TestExtension(config) => {
+            test::test(extension_bus, config.selector).await?;
+        }
     }
-    
+
     Ok(())
 }

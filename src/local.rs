@@ -3,7 +3,7 @@ use std::{fs::DirEntry, path::PathBuf, time::UNIX_EPOCH};
 use chrono::NaiveDateTime;
 use fancy_regex::Regex;
 use libarchive_rs;
-use tanoshi_lib::prelude::{Chapter, Extension, ExtensionResult, Manga, Source};
+use tanoshi_lib::prelude::{Chapter, Extension, ExtensionResult, Filters, Manga, Source};
 
 pub static ID: i64 = 1;
 
@@ -71,10 +71,15 @@ impl Extension for Local {
             version: "1.0.0".to_string(),
             icon: "/icons/192.png".to_string(),
             need_login: false,
+            languages: vec![]
         }
     }
 
-    fn get_manga_list(&self, param: tanoshi_lib::prelude::Param) -> ExtensionResult<Vec<Manga>> {
+    fn filters(&self) -> ExtensionResult<Option<Filters>> {
+        ExtensionResult::ok(None)
+    }
+
+    fn get_manga_list(&self, _param: tanoshi_lib::prelude::Param) -> ExtensionResult<Vec<Manga>> {
         let read_dir = match std::fs::read_dir(&self.path) {
             Ok(read_dir) => read_dir,
             Err(e) => {

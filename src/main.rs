@@ -10,6 +10,7 @@ mod db;
 mod library;
 mod local;
 mod proxy;
+mod routes;
 mod schema;
 mod status;
 mod user;
@@ -43,6 +44,10 @@ struct Opts {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    if let Ok(tanoshi_log) = std::env::var("TANOSHI_LOG") {
+        std::env::set_var("RUST_LOG", format!("tanoshi={}", tanoshi_log));
+    }
+
     env_logger::init();
 
     let opts: Opts = Opts::parse();
@@ -57,7 +62,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let extension_bus = ExtensionBus::new(config.plugin_path, extension_tx);
 
-    extension_bus.insert(local::ID, local::Local::new(config.local_path)).await?;
+    extension_bus
+        .insert(local::ID, local::Local::new(config.local_path))
+        .await?;
 
     let schema: TanoshiSchema = Schema::build(
         QueryRoot::default(),
@@ -88,35 +95,31 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             },
         );
 
-    // let graphql_playground = warp::path!("graphql").and(warp::get()).map(|| {
-    //     HttpResponse::builder()
-    //         .header("content-type", "text/html")
-    //         .body(playground_source(GraphQLPlaygroundConfig::new("/graphql")))
-    // });
-
     let static_files = assets::filter::static_files();
+    let image_proxy = proxy::proxy();
 
-    let cors = warp::cors().allow_any_origin().allow_method("POST");
-    let routes = proxy::proxy()
-        // .or(graphql_playground)
-        .or(static_files)
-        .or(graphql_post)
-        .recover(|err: Rejection| async move {
-            if let Some(BadRequest(err)) = err.find() {
-                return Ok::<_, Infallible>(warp::reply::with_status(
-                    err.to_string(),
-                    StatusCode::BAD_REQUEST,
-                ));
-            }
-
-            Ok(warp::reply::with_status(
-                "INTERNAL_SERVER_ERROR".to_string(),
-                StatusCode::INTERNAL_SERVER_ERROR,
-            ))
-        })
-        .with(cors);
-
-    warp::serve(routes).run(([0, 0, 0, 0], config.port)).await;
+    if config.enable_playground {
+        info!("enable graphql playground");
+        let graphql_playground = warp::path!("graphql").and(warp::get()).map(|| {
+            HttpResponse::builder()
+                .header("content-type", "text/html")
+                .body(playground_source(GraphQLPlaygroundConfig::new("/graphql")))
+        });
+        bind_routes!(
+            config.port,
+            image_proxy,
+            graphql_playground,
+            static_files,
+            graphql_post
+        );
+    } else {
+        bind_routes!(
+            config.port,
+            image_proxy,
+            static_files,
+            graphql_post
+        );
+    }
 
     return Ok(());
 }

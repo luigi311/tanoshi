@@ -17,6 +17,13 @@ jobs:
           - ubuntu-latest
           - macos-latest
           - windows-latest
+        include:
+          - os: ubuntu-latest
+            filename: tanoshi
+          - os: macos-latest
+            filename: tanoshi
+          - os: windows-latest
+            filename: tanoshi.exe
     steps:
       - uses: actions/checkout@v2
       - name: Install deps
@@ -53,3 +60,9 @@ jobs:
         run: cargo build -p tanoshi
         env:
           LIBCLANG_PATH: C:\Program Files\LLVM\bin
+      - name: 'Upload Artifact'
+        uses: actions/upload-artifact@v2
+        with:
+          name: ${{ matrix.filename }}
+          path: ${{ github.workspace }}/target/debug/${{ matrix.filename }}
+          retention-days: 7

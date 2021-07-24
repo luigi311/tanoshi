@@ -34,7 +34,6 @@ jobs:
           - os: ubuntu-latest
             filename: tanoshi
             asset: tanoshi-linux
-            env: {}
           - os: macos-latest
             filename: tanoshi
             asset: tanoshi-macos

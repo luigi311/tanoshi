@@ -1,8 +1,12 @@
-use std::fmt::Display;
+use std::{
+    collections::{BTreeMap, HashMap},
+    fmt::Display,
+};
 
 use crate::{context::GlobalContext, local, user};
-use async_graphql::{Context, Object, Result, SimpleObject};
-use serde::Deserialize;
+use async_graphql::{Context, Json, Object, Result, SimpleObject};
+use serde::{Deserialize, Serialize};
+use tanoshi_lib::prelude::FilterField;
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct Version {
@@ -96,8 +100,22 @@ impl Into<Source> for SourceIndex {
         }
     }
 }
+#[derive(Debug, Serialize, Deserialize, SimpleObject)]
+pub struct Filters {
+    default: String,
+    fields: Json<BTreeMap<String, FilterField>>,
+}
 
-#[derive(Clone, SimpleObject)]
+impl From<tanoshi_lib::data::Filters> for Filters {
+    fn from(v: tanoshi_lib::data::Filters) -> Self {
+        Self {
+            default: v.default,
+            fields: Json(v.fields),
+        }
+    }
+}
+
+#[derive(Clone)]
 pub struct Source {
     pub id: i64,
     pub name: String,
@@ -116,6 +134,37 @@ impl From<tanoshi_lib::data::Source> for Source {
             icon: s.icon,
             need_login: s.need_login,
             has_update: false,
+        }
+    }
+}
+
+#[Object]
+impl Source {
+    async fn id(&self) -> i64 {
+        self.id.clone()
+    }
+    async fn name(&self) -> String {
+        self.name.clone()
+    }
+    async fn version(&self) -> String {
+        self.version.clone()
+    }
+    async fn icon(&self) -> String {
+        self.icon.clone()
+    }
+    async fn need_login(&self) -> bool {
+        self.need_login
+    }
+    async fn has_update(&self) -> bool {
+        self.has_update
+    }
+
+    async fn filters(&self, ctx: &Context<'_>) -> Result<Option<Filters>> {
+        let extensions = ctx.data::<GlobalContext>()?.extensions.clone();
+        if let Some(res) = extensions.filters(self.id).await? {
+            Ok(Some(res.into()))
+        } else {
+            Ok(None)
         }
     }
 }
