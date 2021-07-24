@@ -61,7 +61,7 @@ jobs:
           vcpkg install libarchive:x64-windows-static-md
       - name: Install trunk
         run: |
-          cargo install trunk
+          cargo install trunk wasm-bindgen-cli
           rustup target add wasm32-unknown-unknown
       - name: Build tanoshi-web
         run: cd tanoshi-web && trunk build --release
