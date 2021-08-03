@@ -25,6 +25,14 @@ type Chapter {
   ): [String!]!
 }
 
+type Filters {
+  default: String!
+  fields: JSON!
+}
+
+# A scalar that can represent any JSON value.
+scalar JSON
+
 type Manga {
   id: Int!
   sourceId: Int!
@@ -48,9 +56,21 @@ type Manga {
 }
 
 type MutationRoot {
-  installSource(sourceId: Int!): Int!
-  uninstallSource(sourceId: Int!): Int!
-  updateSource(sourceId: Int!): Int!
+  addToLibrary(
+    # manga id
+    mangaId: Int!
+  ): Int!
+  deleteFromLibrary(
+    # manga id
+    mangaId: Int!
+  ): Int!
+  updatePageReadAt(
+    # chapter id
+    chapterId: Int!
+
+    # page
+    page: Int!
+  ): Int!
   register(
     # username
     username: String!
@@ -68,21 +88,9 @@ type MutationRoot {
     # new password
     newPassword: String!
   ): Int!
-  addToLibrary(
-    # manga id
-    mangaId: Int!
-  ): Int!
-  deleteFromLibrary(
-    # manga id
-    mangaId: Int!
-  ): Int!
-  updatePageReadAt(
-    # chapter id
-    chapterId: Int!
-
-    # page
-    page: Int!
-  ): Int!
+  installSource(sourceId: Int!): Int!
+  uninstallSource(sourceId: Int!): Int!
+  updateSource(sourceId: Int!): Int!
 }
 
 scalar NaiveDateTime
@@ -103,32 +111,9 @@ type PageInfo {
 }
 
 type QueryRoot {
-  serverStatus: Status!
-  login(
-    # username
-    username: String!
-
-    # password
-    password: String!
-  ): String!
-  users: [User!]!
-  me: User!
-  library(
-    # refresh data from source
-    refresh: Boolean! = false
-  ): [Manga!]!
-  recentUpdates(
-    after: String
-    before: String
-    first: Int
-    last: Int
-  ): RecentUpdateConnection!
-  recentChapters(
-    after: String
-    before: String
-    first: Int
-    last: Int
-  ): RecentChapterConnection!
+  installedSources: [Source!]!
+  availableSources: [Source!]!
+  source(sourceId: Int!): Source!
   browseSource(
     # source id
     sourceId: Int!
@@ -166,9 +151,32 @@ type QueryRoot {
     # chapter id
     id: Int!
   ): Chapter
-  installedSources: [Source!]!
-  availableSources: [Source!]!
-  source(sourceId: Int!): Source!
+  library(
+    # refresh data from source
+    refresh: Boolean! = false
+  ): [Manga!]!
+  recentUpdates(
+    after: String
+    before: String
+    first: Int
+    last: Int
+  ): RecentUpdateConnection!
+  recentChapters(
+    after: String
+    before: String
+    first: Int
+    last: Int
+  ): RecentChapterConnection!
+  login(
+    # username
+    username: String!
+
+    # password
+    password: String!
+  ): String!
+  users: [User!]!
+  me: User!
+  serverStatus: Status!
 }
 
 type RecentChapter {
@@ -245,6 +253,7 @@ type Source {
   icon: String!
   needLogin: Boolean!
   hasUpdate: Boolean!
+  filters: Filters
 }
 
 type Status {
