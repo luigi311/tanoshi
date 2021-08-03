@@ -1,12 +1,10 @@
 use serde::{de::DeserializeOwned, Serialize};
-use std::{collections::HashMap, path::PathBuf};
+use std::{collections::HashMap, fmt::Debug, path::PathBuf};
 use tanoshi_lib::prelude::{
     Chapter, Extension, ExtensionResult, Filters, Manga, Param, Request, Response, Source,
 };
 use tokio::{
-    sync::{
-        mpsc::{UnboundedReceiver, UnboundedSender},
-    },
+    sync::mpsc::{UnboundedReceiver, UnboundedSender},
     task::JoinHandle,
 };
 use wasmer::{
@@ -24,7 +22,6 @@ struct ExtensionEnv {
 
 struct ExtensionProxy {
     instance: Instance,
-    path: String,
     env: ExtensionEnv,
 }
 
@@ -57,11 +54,7 @@ impl ExtensionProxy {
 
         let instance = Instance::new(&module, &tanoshi.chain_back(import_object))?;
 
-        Ok(Box::new(ExtensionProxy {
-            instance,
-            path,
-            env,
-        }))
+        Ok(Box::new(ExtensionProxy { instance, env }))
     }
 
     fn call<T>(&self, name: &str) -> Result<T, Box<dyn std::error::Error>>
@@ -75,13 +68,10 @@ impl ExtensionProxy {
         Ok(ron::from_str(&object_str)?)
     }
 
-    fn call_with_args<T>(
-        &self,
-        name: &str,
-        param: &impl Serialize,
-    ) -> Result<T, Box<dyn std::error::Error>>
+    fn call_with_args<T, U>(&self, name: &str, param: &U) -> Result<T, Box<dyn std::error::Error>>
     where
         T: DeserializeOwned,
+        U: Serialize + Debug,
     {
         let res = self.instance.exports.get_function(name)?;
         if let Err(e) = wasi_write(&self.env, &param) {
@@ -89,7 +79,7 @@ impl ExtensionProxy {
         }
         res.call(&[])?;
         let object_str = wasi_read(&self.env)?;
-        debug!("call {} => {}", name, object_str);
+        debug!("call {}({:?}) => {}", name, param, object_str);
         Ok(ron::from_str(&object_str)?)
     }
 }
