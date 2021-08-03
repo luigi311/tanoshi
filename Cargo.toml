@@ -28,7 +28,7 @@ serde_yaml = "0.8"
 warp = { version = "0.3.1", features = ["compression", "tls"] }
 rand = { version = "^0.8" }
 log = { version = "*" }
-env_logger = "0.8.4"
+env_logger = "0.9.0"
 jsonwebtoken = { version = "7" }
 chrono = { version = "0.4", features = ["serde"] }
 anyhow = "1"
@@ -57,7 +57,7 @@ ureq = { version = "2", features = ["json"] }
 futures = "^0.3"
 rust-argon2 = "0.8"
 ron = "0.6.4"
-fancy-regex = "0.6"
+fancy-regex = "0.7"
 libarchive-rs = { git = "https://github.com/faldez/libarchive-rs", features = [
     "static",
 ] }

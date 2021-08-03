@@ -291,7 +291,7 @@ dependencies = [
  "cexpr",
  "clang-sys",
  "clap 2.33.3",
- "env_logger",
+ "env_logger 0.8.4",
  "lazy_static",
  "lazycell",
  "log",
@@ -986,6 +986,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "env_logger"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0b2cf0344971ee6c64c31be0d530793fba457d322dfec2810c453d0ef228f9c3"
+dependencies = [
+ "atty",
+ "humantime",
+ "log",
+ "regex",
+ "termcolor",
+]
+
+[[package]]
 name = "erased-serde"
 version = "0.3.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1030,9 +1043,9 @@ checksum = "4443176a9f2c162692bd3d352d745ef9413eec5782a80d8fd6f8a1ac692a07f7"
 
 [[package]]
 name = "fancy-regex"
-version = "0.6.0"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3a3371ac125221b609ce0cf587a53fbb624fb56267bbe85cf1929350043bf360"
+checksum = "87e7d1e641426bab86eb4c5eb3bc5998ac3e15f9ba761fe0da3061ecd3ff0e9f"
 dependencies = [
  "bit-set",
  "regex",
@@ -3042,7 +3055,7 @@ dependencies = [
  "chrono",
  "clap 3.0.0-beta.2",
  "dirs",
- "env_logger",
+ "env_logger 0.9.0",
  "fancy-regex",
  "futures",
  "jsonwebtoken",
@@ -3076,7 +3089,7 @@ version = "0.2.1"
 dependencies = [
  "anyhow",
  "clap 3.0.0-beta.2",
- "env_logger",
+ "env_logger 0.8.4",
  "log",
  "ron",
  "serde",
@@ -3122,11 +3135,11 @@ name = "tanoshi-vm"
 version = "0.1.2"
 dependencies = [
  "bytes",
- "env_logger",
+ "env_logger 0.9.0",
  "log",
  "ron",
  "serde",
- "tanoshi-lib 0.23.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tanoshi-lib 0.23.2",
  "tokio",
  "ureq",
  "wasmer",
@@ -3141,7 +3154,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "986c20067e2895479bb094b198e9643e3ab60ce454a3656ff48c6d9dbeb5c73c"
 dependencies = [
  "bytes",
- "env_logger",
+ "env_logger 0.8.4",
  "log",
  "ron",
  "serde",
