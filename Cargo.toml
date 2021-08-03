@@ -10,7 +10,7 @@ members = [
 
 [package]
 name = "tanoshi"
-version = "0.24.5"
+version = "0.24.6"
 authors = ["fadhlika"]
 edition = "2018"
 description = "Tanoshi"
