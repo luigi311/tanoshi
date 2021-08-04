@@ -1,19 +1,19 @@
-use std::{fs::DirEntry, path::PathBuf, time::UNIX_EPOCH};
+use std::{fs::DirEntry, path::{Path, PathBuf}, time::UNIX_EPOCH};
 
 use chrono::NaiveDateTime;
 use fancy_regex::Regex;
-use libarchive_rs;
 use tanoshi_lib::prelude::{Chapter, Extension, ExtensionResult, Filters, Manga, Source};
 
 pub static ID: i64 = 1;
 
 pub struct Local {
-    path: String,
+    path: PathBuf,
 }
 
 impl Local {
-    pub fn new(path: String) -> Box<dyn Extension> {
-        Box::new(Self { path })
+    pub fn new<P: AsRef<Path>>(path: P) -> Self {
+        let path = PathBuf::new().join(path);
+        Self { path }
     }
 
     fn default_cover_url() -> String {
@@ -33,10 +33,10 @@ impl Local {
         }
     }
 
-    fn find_cover_url(entry: &PathBuf) -> String {
+    fn find_cover_url(entry: &Path) -> String {
         let entry_read_dir = match entry.read_dir() {
             Ok(entry_read_dir) => entry_read_dir,
-            Err(e) => {
+            Err(_) => {
                 return Self::default_cover_url();
             }
         };
@@ -67,11 +67,11 @@ impl Extension for Local {
         Source {
             id: ID,
             name: "local".to_string(),
-            url: self.path.clone(),
+            url: format!("{}", self.path.display()),
             version: "1.0.0".to_string(),
             icon: "/icons/192.png".to_string(),
             need_login: false,
-            languages: vec![]
+            languages: vec![],
         }
     }
 

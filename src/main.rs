@@ -63,7 +63,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let extension_bus = ExtensionBus::new(config.plugin_path, extension_tx);
 
     extension_bus
-        .insert(local::ID, local::Local::new(config.local_path))
+        .insert(local::ID, Box::new(local::Local::new(config.local_path)))
         .await?;
 
     let schema: TanoshiSchema = Schema::build(
@@ -121,5 +121,5 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         );
     }
 
-    return Ok(());
+    Ok(())
 }

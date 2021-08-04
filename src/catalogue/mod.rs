@@ -56,8 +56,8 @@ impl CatalogueRoot {
                     source_id,
                     Param {
                         keyword,
-                        page,
                         genres,
+                        page,
                         sort_by,
                         sort_order,
                         ..Default::default()
@@ -65,7 +65,7 @@ impl CatalogueRoot {
                 )
                 .await?
                 .iter()
-                .map(|m| Manga::from(m))
+                .map(Manga::from)
                 .collect()
         };
 

@@ -25,7 +25,7 @@ pub mod filter {
     ) -> impl Filter<Extract = (static_files::Encoding,), Error = warp::reject::Rejection> + Clone
     {
         warp::header::header("accept-encoding").map(move |encoding: String| {
-            if encoding == "" {
+            if encoding.is_empty() {
                 static_files::Encoding::None
             } else if encoding.contains("br") {
                 static_files::Encoding::Br
@@ -66,7 +66,7 @@ mod static_files {
 
     pub fn serve_impl(path: &str, _encoding: Encoding) -> Result<impl Reply, Rejection> {
         let asset = Asset::get(path).ok_or_else(warp::reject::not_found)?;
-        let mut res = Response::new(asset.into());
+        let mut res = Response::new(asset.data.into());
 
         let mime = mime_guess::from_path(path).first_or_octet_stream();
         res.headers_mut().insert(

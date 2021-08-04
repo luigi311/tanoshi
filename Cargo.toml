@@ -18,7 +18,7 @@ repository = "https://github.com/faldez/tanoshi"
 license = "MIT"
 
 [dependencies]
-tanoshi-lib = { path = "./tanoshi-lib", version = "0.23.1" }
+tanoshi-lib = { path = "./tanoshi-lib" }
 tanoshi-vm = { path = "./tanoshi-vm" }
 tokio = { version = "1", features = ["full"] }
 tokio-stream = "0.1.5"
@@ -35,7 +35,7 @@ anyhow = "1"
 wasmer = "2.0.0"
 wasmer-wasi = "2.0.0"
 wasmer-compiler-cranelift = "2.0.0"
-rust-embed = { version = "5.9", features = ["interpolate-folder-path"] }
+rust-embed = { version = "6.0", features = ["interpolate-folder-path"] }
 mime_guess = "2"
 clap = "3.0.0-beta.1"
 bytes = "1"

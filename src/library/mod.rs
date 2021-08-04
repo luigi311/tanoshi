@@ -94,11 +94,11 @@ impl LibraryRoot {
                     )
                     .await
                 };
-                let edges = edges.unwrap_or(vec![]);
+                let edges = edges.unwrap_or_default();
 
                 let mut has_previous_page = false;
                 let mut has_next_page = false;
-                if edges.len() > 0 {
+                if !edges.is_empty() {
                     if let Some(e) = edges.first() {
                         has_previous_page = db
                             .get_chapter_has_before_page(
@@ -178,11 +178,11 @@ impl LibraryRoot {
                     db.get_read_chapters(after_timestamp, after_id, before_timestamp, before_id)
                         .await
                 };
-                let edges = edges.unwrap_or(vec![]);
+                let edges = edges.unwrap_or_default();
 
                 let mut has_previous_page = false;
                 let mut has_next_page = false;
-                if edges.len() > 0 {
+                if !edges.is_empty() {
                     if let Some(e) = edges.first() {
                         has_previous_page = db
                             .get_read_chapter_has_before_page(
@@ -216,12 +216,12 @@ impl LibraryRoot {
     }
 }
 
-fn decode_cursor(cursor: &String) -> std::result::Result<(i64, i64), base64::DecodeError> {
+fn decode_cursor(cursor: &str) -> std::result::Result<(i64, i64), base64::DecodeError> {
     match base64::decode(cursor) {
         Ok(res) => {
             let cursor = String::from_utf8(res).unwrap();
             let decoded = cursor
-                .split("#")
+                .split('#')
                 .map(|s| s.parse::<i64>().unwrap())
                 .collect::<Vec<i64>>();
             Ok((decoded[0], decoded[1]))

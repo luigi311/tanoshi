@@ -33,7 +33,7 @@ pub trait Extension: Send + Sync {
     fn get_pages(&self, path: String) -> ExtensionResult<Vec<String>>;
 
     // /// Proxy image
-    // fn get_page(&self, url: &String) -> Result<Vec<u8>, Box<dyn Error>> {
+    // fn get_page(&self, url: &str) -> Result<Vec<u8>, Box<dyn Error>> {
     //     let bytes = {
     //         let resp = ureq::get(url).call()?;
     //         let mut reader = resp.into_reader();

@@ -110,7 +110,7 @@ impl Manga {
         ctx: &Context<'_>,
         #[graphql(desc = "refresh data from source", default = false)] refresh: bool,
     ) -> Result<Vec<Chapter>> {
-        let manga_id = self.id.clone();
+        let manga_id = self.id;
         let ctx = ctx.data::<GlobalContext>()?;
         let db = ctx.mangadb.clone();
 

@@ -154,12 +154,7 @@ impl UserMutationRoot {
 }
 
 pub fn get_claims(ctx: &Context<'_>) -> Option<Claims> {
-    let token = if let Some(token) = ctx.data_opt::<String>() {
-        token
-    } else {
-        return None;
-    };
-
+    let token = ctx.data_opt::<String>()?;
     let secret = ctx.data_unchecked::<GlobalContext>().secret.clone();
     if let Ok(data) = jsonwebtoken::decode::<Claims>(
         token,

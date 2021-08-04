@@ -1,7 +1,4 @@
-use std::{
-    collections::{BTreeMap, HashMap},
-    fmt::Display,
-};
+use std::{collections::BTreeMap, fmt::Display};
 
 use crate::{context::GlobalContext, local, user};
 use async_graphql::{Context, Json, Object, Result, SimpleObject};
@@ -17,7 +14,7 @@ pub struct Version {
 
 impl Version {
     pub fn new(v: String) -> Version {
-        let split = v.split(".").into_iter().collect::<Vec<&str>>();
+        let split = v.split('.').into_iter().collect::<Vec<&str>>();
         match split.len() {
             0 => Version {
                 major: 0,
@@ -88,18 +85,19 @@ pub struct SourceIndex {
     pub icon: String,
 }
 
-impl Into<Source> for SourceIndex {
-    fn into(self) -> Source {
-        Source {
-            id: self.id,
-            name: self.name.clone(),
-            version: self.version.clone(),
-            icon: self.icon,
+impl From<SourceIndex> for Source {
+    fn from(index: SourceIndex) -> Self {
+        Self {
+            id: index.id,
+            name: index.name,
+            version: index.version,
+            icon: index.icon,
             need_login: false,
             has_update: false,
         }
     }
 }
+
 #[derive(Debug, Serialize, Deserialize, SimpleObject)]
 pub struct Filters {
     default: String,
@@ -141,7 +139,7 @@ impl From<tanoshi_lib::data::Source> for Source {
 #[Object]
 impl Source {
     async fn id(&self) -> i64 {
-        self.id.clone()
+        self.id
     }
     async fn name(&self) -> String {
         self.name.clone()

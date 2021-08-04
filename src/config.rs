@@ -1,6 +1,7 @@
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
 use serde::{Deserialize, Serialize};
+use std::path::Path;
 use std::{iter, path::PathBuf};
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -84,9 +85,9 @@ fn default_local_path() -> String {
 }
 
 impl Config {
-    pub fn open(path: Option<String>) -> Result<Config, Box<dyn std::error::Error>> {
+    pub fn open<P: AsRef<Path>>(path: Option<P>) -> Result<Config, Box<dyn std::error::Error>> {
         let config_path = match path {
-            Some(p) => PathBuf::from(p.clone()),
+            Some(p) => PathBuf::new().join(p),
             None => tanoshi_home().join("config.yml"),
         };
 

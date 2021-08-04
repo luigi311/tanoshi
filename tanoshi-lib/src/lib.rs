@@ -51,7 +51,7 @@ macro_rules! register_extension {
             $crate::shim::write_object(&res);
         }
 
-        // fn get_page(&self, url: &String) -> Result<Vec<u8>, Box<dyn Error>> {
+        // fn get_page(&self, url: &str) -> Result<Vec<u8>, Box<dyn Error>> {
         // }
 
         // fn login(&self, _: SourceLogin) -> Result<SourceLoginResult, Box<dyn Error>> {

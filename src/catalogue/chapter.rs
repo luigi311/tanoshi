@@ -82,7 +82,7 @@ impl Chapter {
     }
 
     async fn uploaded(&self) -> NaiveDateTime {
-        self.uploaded.clone()
+        self.uploaded
     }
 
     async fn date_added(&self) -> chrono::NaiveDateTime {

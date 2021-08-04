@@ -22,25 +22,21 @@ impl Db {
             .await
             .ok();
 
-        if let Some(row) = stream {
-            Some(Manga {
-                id: row.get(0),
-                source_id: row.get(1),
-                title: row.get(2),
-                author: serde_json::from_str(row.get::<String, _>(3).as_str()).unwrap_or(vec![]),
-                genre: serde_json::from_str(row.get::<String, _>(4).as_str()).unwrap_or(vec![]),
-                status: row.get(5),
-                description: row.get(6),
-                path: row.get(7),
-                cover_url: row.get(8),
-                date_added: row.get(9),
-            })
-        } else {
-            None
-        }
+        stream.map(|row| Manga {
+            id: row.get(0),
+            source_id: row.get(1),
+            title: row.get(2),
+            author: serde_json::from_str(row.get::<String, _>(3).as_str()).unwrap_or_default(),
+            genre: serde_json::from_str(row.get::<String, _>(4).as_str()).unwrap_or_default(),
+            status: row.get(5),
+            description: row.get(6),
+            path: row.get(7),
+            cover_url: row.get(8),
+            date_added: row.get(9),
+        })
     }
 
-    pub async fn get_manga_by_source_path(&self, source_id: i64, path: &String) -> Option<Manga> {
+    pub async fn get_manga_by_source_path(&self, source_id: i64, path: &str) -> Option<Manga> {
         let stream = sqlx::query(r#"SELECT * FROM manga WHERE source_id = ? AND path = ?"#)
             .bind(source_id)
             .bind(path)
@@ -48,22 +44,18 @@ impl Db {
             .await
             .ok();
 
-        if let Some(row) = stream {
-            Some(Manga {
-                id: row.get(0),
-                source_id: row.get(1),
-                title: row.get(2),
-                author: serde_json::from_str(row.get::<String, _>(3).as_str()).unwrap_or(vec![]),
-                genre: serde_json::from_str(row.get::<String, _>(4).as_str()).unwrap_or(vec![]),
-                status: row.get(5),
-                description: row.get(6),
-                path: row.get(7),
-                cover_url: row.get(8),
-                date_added: row.get(9),
-            })
-        } else {
-            None
-        }
+        stream.map(|row| Manga {
+            id: row.get(0),
+            source_id: row.get(1),
+            title: row.get(2),
+            author: serde_json::from_str(row.get::<String, _>(3).as_str()).unwrap_or_default(),
+            genre: serde_json::from_str(row.get::<String, _>(4).as_str()).unwrap_or_default(),
+            status: row.get(5),
+            description: row.get(6),
+            path: row.get(7),
+            cover_url: row.get(8),
+            date_added: row.get(9),
+        })
     }
 
     pub async fn get_library(&self, user_id: i64) -> Result<Vec<Manga>> {
@@ -82,8 +74,8 @@ impl Db {
                 id: row.get(0),
                 source_id: row.get(1),
                 title: row.get(2),
-                author: serde_json::from_str(row.get::<String, _>(3).as_str()).unwrap_or(vec![]),
-                genre: serde_json::from_str(row.get::<String, _>(4).as_str()).unwrap_or(vec![]),
+                author: serde_json::from_str(row.get::<String, _>(3).as_str()).unwrap_or_default(),
+                genre: serde_json::from_str(row.get::<String, _>(4).as_str()).unwrap_or_default(),
                 status: row.get(5),
                 description: row.get(6),
                 path: row.get(7),
@@ -320,6 +312,7 @@ impl Db {
         count > 0
     }
 
+    #[allow(dead_code)]
     pub async fn get_chapter_len(&self) -> Result<i64> {
         let stream = sqlx::query(
             r#"
@@ -577,7 +570,8 @@ impl Db {
     }
 
     pub async fn insert_manga(&self, manga: &Manga) -> Result<i64> {
-        let row_id = sqlx::query(r#"
+        let row_id = sqlx::query(
+            r#"
             INSERT INTO manga(
                 source_id, 
                 title, 
@@ -598,11 +592,12 @@ impl Db {
                 description=excluded.description,
                 date_added=excluded.date_added,
                 cover_url=excluded.cover_url
-        "#)
+        "#,
+        )
         .bind(manga.source_id)
         .bind(&manga.title)
-        .bind(serde_json::to_string(&manga.author).unwrap_or("[]".to_string()))
-        .bind(serde_json::to_string(&manga.genre).unwrap_or("[]".to_string()))
+        .bind(serde_json::to_string(&manga.author).unwrap_or_else(|_| "[]".to_string()))
+        .bind(serde_json::to_string(&manga.genre).unwrap_or_else(|_| "[]".to_string()))
         .bind(&manga.status)
         .bind(&manga.description)
         .bind(&manga.path)
@@ -618,22 +613,24 @@ impl Db {
         Ok(row_id)
     }
 
+    #[allow(dead_code)]
     pub async fn insert_mangas(&self, _manga: Vec<Manga>) -> Result<()> {
         todo!()
     }
 
+    #[allow(dead_code)]
     pub async fn update_manga_info(&self, manga: &Manga) -> Result<u64> {
         let mut column_to_update = vec![];
         if manga.source_id > 0 {
             column_to_update.push("source_id = ?");
         }
-        if manga.title != "" {
+        if !manga.title.is_empty() {
             column_to_update.push("title = ?");
         }
-        if manga.author.len() > 0 {
+        if !manga.author.is_empty() {
             column_to_update.push("author = ?");
         }
-        if manga.genre.len() > 0 {
+        if !manga.genre.is_empty() {
             column_to_update.push("genre = ?");
         }
         if manga.status.is_some() {
@@ -642,14 +639,14 @@ impl Db {
         if manga.description.is_some() {
             column_to_update.push("description = ?");
         }
-        if manga.path != "" {
+        if !manga.path.is_empty() {
             column_to_update.push("path = ?");
         }
-        if manga.cover_url != "" {
+        if !manga.cover_url.is_empty() {
             column_to_update.push("cover_url = ?");
         }
 
-        if column_to_update.len() == 0 {
+        if column_to_update.is_empty(){
             return Err(anyhow!("Nothing to update"));
         }
 
@@ -663,8 +660,8 @@ impl Db {
         let rows_affected = sqlx::query(&query)
             .bind(manga.source_id)
             .bind(&manga.title)
-            .bind(serde_json::to_string(&manga.author).unwrap_or("[]".to_string()))
-            .bind(serde_json::to_string(&manga.genre).unwrap_or("[]".to_string()))
+            .bind(serde_json::to_string(&manga.author).unwrap_or_else(|_| "[]".to_string()))
+            .bind(serde_json::to_string(&manga.genre).unwrap_or_else(|_| "[]".to_string()))
             .bind(&manga.status)
             .bind(&manga.description)
             .bind(&manga.path)
@@ -690,32 +687,25 @@ impl Db {
         .await
         .ok();
 
-        if let Some(row) = stream {
-            Some(Chapter {
-                id: row.get(0),
-                source_id: row.get(1),
-                manga_id: row.get(2),
-                title: row.get(3),
-                path: row.get(4),
-                number: row.get(5),
-                scanlator: row.get(6),
-                uploaded: row.get(7),
-                date_added: row.get(8),
-                pages: serde_json::from_str(row.get(9)).unwrap_or(vec![]),
-                prev: row.get(10),
-                next: row.get(11),
-                last_page_read: None,
-            })
-        } else {
-            None
-        }
+        stream.map(|row| Chapter {
+            id: row.get(0),
+            source_id: row.get(1),
+            manga_id: row.get(2),
+            title: row.get(3),
+            path: row.get(4),
+            number: row.get(5),
+            scanlator: row.get(6),
+            uploaded: row.get(7),
+            date_added: row.get(8),
+            pages: serde_json::from_str(row.get(9)).unwrap_or_default(),
+            prev: row.get(10),
+            next: row.get(11),
+            last_page_read: None,
+        })
     }
 
-    pub async fn get_chapter_by_source_path(
-        &self,
-        source_id: i64,
-        path: &String,
-    ) -> Option<Chapter> {
+    #[allow(dead_code)]
+    pub async fn get_chapter_by_source_path(&self, source_id: i64, path: &str) -> Option<Chapter> {
         let stream = sqlx::query(
             r#"
             SELECT *,
@@ -729,25 +719,21 @@ impl Db {
         .await
         .ok();
 
-        if let Some(row) = stream {
-            Some(Chapter {
-                id: row.get(0),
-                source_id: row.get(1),
-                manga_id: row.get(2),
-                title: row.get(3),
-                path: row.get(4),
-                number: row.get(5),
-                scanlator: row.get(6),
-                uploaded: row.get(7),
-                date_added: row.get(8),
-                pages: serde_json::from_str(row.get(9)).unwrap_or(vec![]),
-                prev: row.get(10),
-                next: row.get(11),
-                last_page_read: None,
-            })
-        } else {
-            None
-        }
+        stream.map(|row| Chapter {
+            id: row.get(0),
+            source_id: row.get(1),
+            manga_id: row.get(2),
+            title: row.get(3),
+            path: row.get(4),
+            number: row.get(5),
+            scanlator: row.get(6),
+            uploaded: row.get(7),
+            date_added: row.get(8),
+            pages: serde_json::from_str(row.get(9)).unwrap_or_default(),
+            prev: row.get(10),
+            next: row.get(11),
+            last_page_read: None,
+        })
     }
 
     pub async fn get_chapters_by_manga_id(&self, manga_id: i64) -> Result<Vec<Chapter>> {
@@ -773,19 +759,20 @@ impl Db {
                 scanlator: row.get(6),
                 uploaded: row.get(7),
                 date_added: row.get(8),
-                pages: serde_json::from_str(row.get(9)).unwrap_or(vec![]),
+                pages: serde_json::from_str(row.get(9)).unwrap_or_default(),
                 prev: row.get(10),
                 next: row.get(11),
                 last_page_read: None,
             });
         }
-        if chapters.len() == 0 {
+        if chapters.is_empty() {
             Err(anyhow::anyhow!("Chapters not found"))
         } else {
             Ok(chapters)
         }
     }
 
+    #[allow(dead_code)]
     pub async fn insert_chapter(&self, chapter: &Chapter) -> Result<i64> {
         let row_id = sqlx::query(
             r#"INSERT INTO chapter(
@@ -817,8 +804,8 @@ impl Db {
         Ok(row_id)
     }
 
-    pub async fn insert_chapters(&self, chapters: &Vec<Chapter>) -> Result<()> {
-        if chapters.len() == 0 {
+    pub async fn insert_chapters(&self, chapters: &[Chapter]) -> Result<()> {
+        if chapters.is_empty() {
             return Err(anyhow!("no chapters to insert"));
         }
         let mut query_str = r#"INSERT OR IGNORE INTO chapter(
@@ -834,9 +821,7 @@ impl Db {
             .to_string();
 
         let mut values = vec![];
-        for _ in chapters {
-            values.push("(?, ?, ?, ?, ?, ?, ?, ?)");
-        }
+        values.resize(chapters.len(), "(?, ?, ?, ?, ?, ?, ?, ?)");
 
         query_str.push_str(values.join(",").as_str());
         let mut query = sqlx::query(&query_str);
@@ -855,7 +840,7 @@ impl Db {
                     0,
                 ));
         }
-        
+
         query.execute(&self.pool).await?;
 
         Ok(())
@@ -864,7 +849,7 @@ impl Db {
     pub async fn update_page_by_chapter_id(
         &self,
         chapter_id: i64,
-        pages: &Vec<String>,
+        pages: &[String],
     ) -> Result<i64> {
         let row_id = sqlx::query(
             r#"UPDATE chapter

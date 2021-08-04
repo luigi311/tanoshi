@@ -12,8 +12,8 @@ impl GlobalContext {
     pub fn new(userdb: UserDatabase, mangadb: MangaDatabase, secret: String, extensions: ExtensionBus) -> Self {
         Self {
             userdb,
-            mangadb,
             secret,
+            mangadb,
             extensions,
         }
     }

@@ -47,6 +47,7 @@ impl Db {
         Ok(row_id)
     }
 
+    #[allow(dead_code)]
     pub async fn update_user_is_admin(&self, id: i64, is_admin: bool) -> Result<u64> {
         let row_id = sqlx::query(
             r#"UPDATE user

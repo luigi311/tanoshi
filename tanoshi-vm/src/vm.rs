@@ -1,5 +1,5 @@
 use serde::{de::DeserializeOwned, Serialize};
-use std::{collections::HashMap, fmt::Debug, path::PathBuf};
+use std::{collections::HashMap, fmt::Debug, path::{Path, PathBuf}};
 use tanoshi_lib::prelude::{
     Chapter, Extension, ExtensionResult, Filters, Manga, Param, Request, Response, Source,
 };
@@ -26,9 +26,9 @@ struct ExtensionProxy {
 }
 
 impl ExtensionProxy {
-    pub fn load(
+    pub fn load<P: AsRef<Path>>(
         store: &Store,
-        path: String,
+        path: P,
     ) -> Result<Box<dyn Extension>, Box<dyn std::error::Error>> {
         let input = Pipe::new();
         let output = Pipe::new();
@@ -37,7 +37,7 @@ impl ExtensionProxy {
             .stdout(Box::new(output))
             .finalize()?;
 
-        let extension_path = PathBuf::from(path.clone());
+        let extension_path = PathBuf::new().join(path);
 
         let wasm_bytes = std::fs::read(extension_path)?;
         let module = Module::new(&store, wasm_bytes)?;
@@ -134,32 +134,32 @@ pub fn start() -> (JoinHandle<()>, UnboundedSender<Command>) {
     (handle, tx)
 }
 
-pub async fn load(
-    extention_dir_path: String,
+pub async fn load<P: AsRef<Path>>(
+    path: P,
     tx: UnboundedSender<Command>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    match std::fs::read_dir(extention_dir_path.clone()) {
+    match std::fs::read_dir(&path) {
         Ok(_) => {}
         Err(_) => {
-            let _ = std::fs::create_dir_all(extention_dir_path.clone());
+            let _ = std::fs::create_dir_all(&path);
         }
     }
 
-    for entry in std::fs::read_dir(extention_dir_path.clone())?
+    for entry in std::fs::read_dir(&path)?
         .into_iter()
         .filter(move |path| {
             if let Ok(p) = path {
                 let ext = p
-                    .clone()
                     .path()
                     .extension()
-                    .unwrap_or("".as_ref())
+                    .unwrap_or_else(|| "".as_ref())
                     .to_owned();
                 if ext == "wasm" {
                     return true;
                 }
             }
-            return false;
+
+            false
         })
     {
         let path = entry?.path();
@@ -202,7 +202,7 @@ async fn thread(extension_receiver: UnboundedReceiver<Command>) {
                 }
                 Command::Exist(source_id, tx) => {
                     let exist = extension_map.get(&source_id).is_some();
-                    if let Err(_) = tx.send(exist) {
+                    if tx.send(exist).is_err() {
                         error!("receiver dropped");
                     }
                 }
@@ -212,14 +212,14 @@ async fn thread(extension_receiver: UnboundedReceiver<Command>) {
                         .map(|(_, ext)| ext.detail())
                         .collect::<Vec<Source>>();
 
-                    if let Err(_) = tx.send(sources) {
+                    if tx.send(sources).is_err() {
                         error!("receiver dropped");
                     }
                 }
                 Command::Detail(source_id, tx) => match extension_map.get(&source_id) {
                     Some(proxy) => {
                         let res = proxy.detail();
-                        if let Err(_) = tx.send(res) {
+                        if tx.send(res).is_err() {
                             error!("receiver dropped");
                         }
                     }
@@ -266,7 +266,7 @@ fn process<F, T>(
     match extension_map.get(&source_id) {
         Some(proxy) => {
             let res = f(proxy);
-            if let Err(_) = tx.send(res) {
+            if tx.send(res).is_err() {
                 error!("receiver dropped");
             }
         }
@@ -292,7 +292,7 @@ fn wasi_write(
     let wasm_stdout = state.fs.stdin_mut()?.as_mut().ok_or("no wasi stdin")?;
 
     let buf = ron::to_string(param)?;
-    wasm_stdout.write_all(&mut buf.as_bytes())?;
+    wasm_stdout.write_all(buf.as_bytes())?;
 
     Ok(())
 }
