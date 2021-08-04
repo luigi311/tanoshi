@@ -21,7 +21,7 @@ use crate::{
     schema::{MutationRoot, QueryRoot, TanoshiSchema},
 };
 use clap::Clap;
-use tanoshi_vm::{extension_bus::ExtensionBus, extension_thread};
+use tanoshi_vm::{bus::ExtensionBus, vm};
 
 use async_graphql::{
     extensions::ApolloTracing,
@@ -53,8 +53,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let opts: Opts = Opts::parse();
     let config = Config::open(opts.config)?;
 
-    let (_, extension_tx) = extension_thread::start();
-    extension_thread::load(config.plugin_path.clone(), extension_tx.clone()).await?;
+    let (_, extension_tx) = vm::start();
+    vm::load(config.plugin_path.clone(), extension_tx.clone()).await?;
 
     let pool = db::establish_connection(config.database_path).await;
     let mangadb = db::MangaDatabase::new(pool.clone());

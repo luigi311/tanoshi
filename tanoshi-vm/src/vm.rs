@@ -13,7 +13,7 @@ use wasmer::{
 use wasmer_compiler_cranelift::Cranelift;
 use wasmer_wasi::{Pipe, WasiEnv, WasiState};
 
-use crate::extension_bus::{Command, ExtensionResultSender};
+use crate::bus::{Command, ExtensionResultSender};
 
 #[derive(WasmerEnv, Clone)]
 struct ExtensionEnv {

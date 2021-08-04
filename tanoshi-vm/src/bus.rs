@@ -1,5 +1,5 @@
 use bytes::Bytes;
-use std::{path::PathBuf, time::Duration};
+use std::{path::{Path, PathBuf}, time::Duration};
 use tanoshi_lib::prelude::{Chapter, Extension, ExtensionResult, Filters, Manga, Param, Source};
 use tokio::{
     sync::{
@@ -28,14 +28,14 @@ pub enum Command {
 
 #[derive(Debug, Clone)]
 pub struct ExtensionBus {
-    extension_dir_path: String,
+    path: PathBuf,
     tx: UnboundedSender<Command>,
 }
 
 impl ExtensionBus {
-    pub fn new(extension_dir_path: String, tx: UnboundedSender<Command>) -> Self {
+    pub fn new<P: AsRef<Path>>(path: P, tx: UnboundedSender<Command>) -> Self {
         Self {
-            extension_dir_path,
+            path: PathBuf::new().join(path),
             tx,
         }
     }
@@ -53,10 +53,10 @@ impl ExtensionBus {
         name: String,
         contents: &Bytes,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        let path = PathBuf::from(self.extension_dir_path.clone())
+        let path = self.path
             .join(name)
             .with_extension("wasm");
-        std::fs::write(path.clone(), contents)?;
+        std::fs::write(&path, contents)?;
 
         Ok(self.tx.send(Command::Load(
             path.to_str().ok_or("path can't to string")?.to_string(),
