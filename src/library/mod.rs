@@ -22,6 +22,22 @@ impl LibraryRoot {
         let ctx = ctx.data_unchecked::<GlobalContext>();
         let manga = ctx.mangadb.get_library(user.sub).await?;
 
+        if refresh {
+            let db = &ctx.mangadb;
+            for favorite_manga in manga.iter() {
+                let mut m: Manga = {
+                    let extensions = ctx.extensions.clone();
+                    extensions
+                        .get_manga_info(favorite_manga.source_id, favorite_manga.path.clone())
+                        .await?
+                        .into()
+                };
+
+                m.id = favorite_manga.id;
+                db.insert_manga(&m).await?;
+            }
+        }
+
         Ok(manga)
     }
 
