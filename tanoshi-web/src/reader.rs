@@ -134,20 +134,7 @@ impl Reader {
 
     pub fn render_topbar(reader: Rc<Self>) -> Dom {
         html!("div", {
-            .style("display", "flex")
-            .style("justify-content", "space-between")
-            .style("align-items", "center")
-            .style("position", "fixed")
-            .style("left", "0")
-            .style("right", "0")
-            .style("top", "0")
-            .style("background-color", "var(--background-color-100")
-            .style("align-content", "flex-end")
-            .style("padding-top", "calc(env(safe-area-inset-top) + 0.5rem)")
-            .style("padding-bottom", "0.5rem")
-            .style("color", "var(--color)")
-            .style("z-index", "50")
-            .class("animate__animated")
+            .class(["animate__animated", "topbar"])
             .class_signal("animate__slideInDown", reader.is_bar_visible.signal())
             .class_signal("animate__slideOutUp", reader.is_bar_visible.signal().map(|x| !x))
             .children(&mut [
@@ -239,7 +226,7 @@ impl Reader {
             .style("left", "0")
             .style("right", "0")
             .style("bottom", "0")
-            .style("background-color", "var(--background-color-100")
+            .style("background-color", "var(--bottombar-background-color)")
             .style("align-content", "flex-end")
             .style("padding-top", "0.5rem")
             .style("padding-bottom", "calc(env(safe-area-inset-bottom) + 0.5rem)")
@@ -394,7 +381,7 @@ impl Reader {
                         _ => "100vw"
                     }))
                     .style_signal("height", reader.reader_settings.fit.signal().map(|x| match x {
-                        crate::common::Fit::Width => "inittial",
+                        crate::common::Fit::Width => "initial",
                         _ => "100vh"
                     }))
                     .visible_signal(reader.current_page.signal_cloned().map(clone!(reader => move |x| {

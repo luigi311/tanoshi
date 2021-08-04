@@ -1,4 +1,4 @@
-use dominator::{Dom, class, clone, events, html};
+use dominator::{class, clone, events, html, Dom};
 use futures_signals::signal::{Mutable, Signal, SignalExt};
 use serde::{Deserialize, Serialize};
 use std::rc::Rc;
@@ -57,7 +57,7 @@ impl Default for Background {
 pub enum Fit {
     Height,
     Width,
-    All
+    All,
 }
 
 impl Default for Fit {
@@ -114,7 +114,7 @@ impl ReaderSettings {
             display_mode: Mutable::new(settings.display_mode),
             direction: Mutable::new(settings.direction),
             background: Mutable::new(settings.background),
-            fit: Mutable::new(settings.fit)
+            fit: Mutable::new(settings.fit),
         })
     }
 
@@ -412,6 +412,13 @@ impl ReaderSettings {
                         Self::render_background(reader.clone()),
                         Self::render_fit_screen(reader.clone()),
                     ])
+                    .child_signal(reader.use_modal.signal().map(|use_modal| if use_modal { 
+                        Some(html!("div", {
+                            .class("bottombar-spacing")
+                        })) 
+                    } else { 
+                        None 
+                    }))
                 })
             ])
         })
