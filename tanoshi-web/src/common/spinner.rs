@@ -8,6 +8,15 @@ pub struct Spinner {
     fullscreen: Mutable<bool>,
 }
 
+impl Default for Spinner {
+    fn default() -> Self {
+        Self {
+            active: Mutable::new(false),
+            fullscreen: Mutable::new(false),
+        }
+    }
+}
+
 impl Spinner {
     pub fn new() -> Rc<Self> {
         Rc::new(Self {

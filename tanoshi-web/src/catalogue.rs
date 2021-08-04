@@ -4,6 +4,7 @@ use dominator::{clone, events, html, link, Dom};
 use futures_signals::signal::{Mutable, SignalExt};
 use futures_signals::signal_vec::{MutableVec, SignalVecExt};
 use wasm_bindgen::prelude::*;
+use serde::{Deserialize, Serialize};
 
 use crate::common::{snackbar};
 use crate::{
@@ -19,7 +20,7 @@ use crate::{
     utils::AsyncLoader,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default, Deserialize, Serialize)]
 pub struct Source {
     id: i64,
     name: String,
@@ -28,6 +29,8 @@ pub struct Source {
     need_login: bool,
 }
 
+#[derive(Deserialize, Serialize)]
+#[serde(default)]
 pub struct Catalogue {
     pub source_id: Mutable<i64>,
     keyword: Mutable<String>,
@@ -36,66 +39,44 @@ pub struct Catalogue {
     sort_order: Mutable<SortOrderParam>,
     is_search: Mutable<bool>,
     cover_list: MutableVec<Cover>,
+    #[serde(skip)]
     sources: MutableVec<Source>,
+    #[serde(skip)]
     loader: AsyncLoader,
+    #[serde(skip)]
     spinner: Rc<Spinner>,
+}
+
+impl Default for Catalogue {
+    fn default() -> Self {
+        Self {
+            source_id: Mutable::new(0),
+            keyword: Mutable::new("".to_string()),
+            page: Mutable::new(1),
+            sort_by: Mutable::new(SortByParam::VIEWS),
+            sort_order: Mutable::new(SortOrderParam::DESC),
+            is_search: Mutable::new(false),
+            cover_list: MutableVec::new(),
+            spinner: Spinner::new(),
+            sources: MutableVec::new(),
+            loader: AsyncLoader::new(),
+        }
+    }
 }
 
 impl Catalogue {
     pub fn new() -> Rc<Self> {
-        let source_id = local_storage()
-            .get("catalogue_id")
+        let catalogue = local_storage()
+            .get("catalogue")
             .unwrap_throw()
-            .unwrap_or("0".to_string())
-            .parse::<i64>()
-            .unwrap_or(0);
-        let keyword = match local_storage().get("catalogue_keyword").unwrap_throw() {
-            Some(value) => value,
-            None => "".to_string()
-        };
-        let page = match local_storage().get("catalogue_page").unwrap_throw() {
-            Some(value) => value.parse::<i64>().unwrap_or(1),
-            None => 1
-        };
-        let sort_by = match local_storage().get("catalogue_sort_by").unwrap_throw() {
-            Some(value) => serde_json::from_str(&value).unwrap_or(SortByParam::VIEWS),
-            None => SortByParam::VIEWS
-        };
-        let sort_order = match local_storage().get("catalogue_sort_order").unwrap_throw() {
-            Some(value) => serde_json::from_str(&value).unwrap_or(SortOrderParam::DESC),
-            None => SortOrderParam::DESC
-        };
-        let is_search = match local_storage().get("catalogue_is_search").unwrap_throw() {
-            Some(value) => value.parse::<bool>().unwrap_or(false),
-            None => false
-        };
-        let cover_list = match local_storage().get("catalogue_cover_list").unwrap_throw() {
-            Some(value) => serde_json::from_str(&value).unwrap_or_default(),
-            None => MutableVec::new()
-        };
-
-        Rc::new(Catalogue {
-            source_id: Mutable::new(source_id),
-            keyword: Mutable::new(keyword),
-            page: Mutable::new(page),
-            sort_by: Mutable::new(sort_by),
-            sort_order: Mutable::new(sort_order),
-            is_search: Mutable::new(is_search),
-            cover_list,
-            spinner: Spinner::new(),
-            sources: MutableVec::new(),
-            loader: AsyncLoader::new(),
-        })
+            .and_then(|object_str| serde_json::from_str(&object_str).ok())
+            .unwrap_or_default();
+        
+        Rc::new(catalogue)
     }
 
     pub fn reset(&self) {
-        local_storage().delete("catalogue_id").unwrap_throw();
-        local_storage().delete("catalogue_keyword").unwrap_throw();
-        local_storage().delete("catalogue_page").unwrap_throw();
-        local_storage().delete("catalogue_sort_by").unwrap_throw();
-        local_storage().delete("catalogue_sort_order").unwrap_throw();
-        local_storage().delete("catalogue_is_search").unwrap_throw();
-        local_storage().delete("catalogue_cover_list").unwrap_throw();
+        local_storage().delete("catalogue").unwrap_throw();
 
         self.source_id.set(0);
         self.keyword.set("".to_string());
@@ -105,6 +86,10 @@ impl Catalogue {
         self.is_search.set(false);
         self.cover_list.lock_mut().clear();
         self.sources.lock_mut().clear();
+    }
+
+    pub fn into_json_string(&self) -> String {
+        serde_json::to_string(self).unwrap_throw()
     }
 
     pub fn fetch_mangas(catalogue: Rc<Self>) {
@@ -119,18 +104,14 @@ impl Catalogue {
                         cover_list.extend(covers);
                     }
 
-                    local_storage().set("catalogue_keyword", &catalogue.keyword.lock_ref()).unwrap_throw();
-                    local_storage().set("catalogue_page", &catalogue.page.lock_ref().to_string()).unwrap_throw();
-                    local_storage().set("catalogue_sort_by", &serde_json::to_string(&*catalogue.sort_by.lock_ref()).unwrap_throw()).unwrap_throw();
-                    local_storage().set("catalogue_sort_order", &serde_json::to_string(&*catalogue.sort_order.lock_ref()).unwrap_throw()).unwrap_throw();
-                    local_storage().set("catalogue_is_search", &serde_json::to_string(&*catalogue.is_search.lock_ref()).unwrap_throw()).unwrap_throw();
-                    local_storage().set("catalogue_cover_list", serde_json::to_string(&*cover_list).unwrap_or_else(|_| "".to_string()).as_str()).unwrap_throw();
                 }
                 Err(e) => {
                     snackbar::show(format!("Fetch manga from source failed: {}", e))
                 }
             }
             
+            let state =  catalogue.into_json_string();
+            local_storage().set("catalogue", state.as_str()).unwrap_throw();
             catalogue.spinner.set_active(false);
         }));
     }
@@ -272,9 +253,6 @@ impl Catalogue {
     }
 
     pub fn render_main(catalogue: Rc<Self>) -> Dom {
-        local_storage()
-            .set("catalogue_id", catalogue.source_id.get().to_string().as_str())
-            .unwrap_throw();
         html!("div", {
             .children(&mut [
                 html!("div", {
@@ -327,17 +305,7 @@ impl Catalogue {
     }
 
     pub fn render(catalogue: Rc<Self>, source_id: i64, latest: bool) -> Dom {
-        let saved_source_id = local_storage()
-            .get("catalogue_id")
-            .unwrap_throw()
-            .unwrap_or_else(|| "0".to_string())
-            .parse::<i64>()
-            .unwrap_or(0);
-
-        if source_id > 0 && source_id != saved_source_id {
-            local_storage()
-                .set("catalogue_id", &source_id.to_string())
-                .unwrap_throw();
+        if source_id > 0 && source_id != catalogue.source_id.get() {
             catalogue.source_id.set(source_id);
             let (sort_by, sort_order) = if latest {
                 (SortByParam::LAST_UPDATED, SortOrderParam::DESC)

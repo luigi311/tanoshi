@@ -33,6 +33,12 @@ pub struct AsyncLoader {
     loading: Mutable<Option<AsyncState>>,
 }
 
+impl Default for AsyncLoader {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AsyncLoader {
     pub fn new() -> Self {
         Self {

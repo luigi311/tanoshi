@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use crate::common::route::Route;
 use crate::utils::proxied_image_url;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Cover {
     pub id: i64,
     pub source_id: i64,
