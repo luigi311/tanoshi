@@ -1,5 +1,5 @@
 use crate::data::Source;
-use tanoshi_vm::extension_bus::ExtensionBus;
+use tanoshi_vm::bus::ExtensionBus;
 
 pub async fn generate_json(bus: ExtensionBus) -> Result<(), Box<dyn std::error::Error>> {
     let path = std::path::Path::new("repo");

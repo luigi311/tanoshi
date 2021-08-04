@@ -1,5 +1,5 @@
 use tanoshi_lib::prelude::Param;
-use tanoshi_vm::extension_bus::ExtensionBus;
+use tanoshi_vm::bus::ExtensionBus;
 
 pub async fn test(
     bus: ExtensionBus,

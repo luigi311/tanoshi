@@ -1,4 +1,3 @@
-#[macro_use]
 extern crate log;
 
 mod data;
@@ -6,7 +5,7 @@ mod generate;
 mod test;
 
 use clap::{AppSettings, Clap};
-use tanoshi_vm::{extension_bus::ExtensionBus, extension_thread};
+use tanoshi_vm::{bus::ExtensionBus, vm};
 
 #[derive(Clap)]
 #[clap(version = "0.1.1", author = "Muhammad Fadhlika <fadhlika@gmail.com>")]
@@ -41,8 +40,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         None => "target/wasm32-wasi/release".to_string(),
     };
 
-    let (_, extension_tx) = extension_thread::start();
-    extension_thread::load(extension_path, extension_tx.clone()).await?;
+    let (_, extension_tx) = vm::start();
+    vm::load(extension_path, extension_tx.clone()).await?;
 
     let extension_bus = ExtensionBus::new("target/wasm32-wasi/release".to_string(), extension_tx);
 
