@@ -1,10 +1,11 @@
 use std::rc::Rc;
 
-use dominator::{clone, events, html, link, Dom};
+use dominator::{Dom, clone, events, html, link, with_node};
 use futures_signals::signal::{Mutable, SignalExt};
 use futures_signals::signal_vec::{MutableVec, SignalVecExt};
 use wasm_bindgen::prelude::*;
 use serde::{Deserialize, Serialize};
+use web_sys::HtmlInputElement;
 
 use crate::common::{snackbar};
 use crate::{
@@ -88,7 +89,7 @@ impl Catalogue {
         self.sources.lock_mut().clear();
     }
 
-    pub fn into_json_string(&self) -> String {
+    pub fn serialize_into_json(&self) -> String {
         serde_json::to_string(self).unwrap_throw()
     }
 
@@ -110,7 +111,7 @@ impl Catalogue {
                 }
             }
             
-            let state =  catalogue.into_json_string();
+            let state =  catalogue.serialize_into_json();
             local_storage().set("catalogue", state.as_str()).unwrap_throw();
             catalogue.spinner.set_active(false);
         }));
@@ -149,21 +150,23 @@ impl Catalogue {
             }))
             .child_signal(catalogue.is_search.signal().map(clone!(catalogue => move |is_search| {
                 if is_search {
-                    Some(html!("input", {
+                    Some(html!("input" => HtmlInputElement, {
                         .attribute("placeholder", "Search")
                         .attribute("type", "text")
                         .property_signal("value", catalogue.keyword.signal_cloned())
-                        .event(clone!(catalogue => move |event: events::Input| {
-                            catalogue.keyword.set_neq(event.value().unwrap_throw());
-                        }))
-                        .event_preventable(clone!(catalogue => move |event: events::KeyDown| {
-                            if event.key() == "Enter" {
-                                event.prevent_default();
-                                catalogue.cover_list.lock_mut().clear();
-                                catalogue.page.set_neq(1);
-                                Self::fetch_mangas(catalogue.clone());
-                            }
-                        }))
+                        .with_node!(input => {
+                            .event(clone!(catalogue => move |_: events::Input| {
+                                catalogue.keyword.set_neq(input.value());
+                            }))
+                            .event_preventable(clone!(catalogue => move |event: events::KeyDown| {
+                                if event.key() == "Enter" {
+                                    event.prevent_default();
+                                    catalogue.cover_list.lock_mut().clear();
+                                    catalogue.page.set_neq(1);
+                                    Self::fetch_mangas(catalogue.clone());
+                                }
+                            }))
+                        })
                     }))
                 } else {
                     Some(html!("span", {
@@ -212,7 +215,7 @@ impl Catalogue {
             ])
             .visible_signal(catalogue.is_search.signal())
             .children(&mut [
-                html!("input", {
+                html!("input" => HtmlInputElement, {
                     .class([
                         "border",
                         "rounded",
@@ -224,17 +227,19 @@ impl Catalogue {
                     .attribute("placeholder", "Search")
                     .attribute("type", "text")
                     .property_signal("value", catalogue.keyword.signal_cloned())
-                    .event(clone!(catalogue => move |event: events::Input| {
-                        catalogue.keyword.set_neq(event.value().unwrap_throw());
-                    }))
-                    .event_preventable(clone!(catalogue => move |event: events::KeyDown| {
-                        if event.key() == "Enter" {
-                            event.prevent_default();
-                            catalogue.cover_list.lock_mut().clear();
-                            catalogue.page.set_neq(1);
-                            Self::fetch_mangas(catalogue.clone());
-                        }
-                    }))
+                    .with_node!(input => {
+                        .event(clone!(catalogue => move |_: events::Input| {
+                            catalogue.keyword.set_neq(input.value());
+                        }))
+                        .event_preventable(clone!(catalogue => move |event: events::KeyDown| {
+                            if event.key() == "Enter" {
+                                event.prevent_default();
+                                catalogue.cover_list.lock_mut().clear();
+                                catalogue.page.set_neq(1);
+                                Self::fetch_mangas(catalogue.clone());
+                            }
+                        }))
+                    })
                 }),
                 html!("button", {
                     .text("Cancel")
