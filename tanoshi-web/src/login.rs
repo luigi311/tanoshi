@@ -84,7 +84,7 @@ impl Login {
         }));
     }
 
-    pub fn render_topbar(login: Rc<Self>) -> Dom {
+    pub fn render_topbar(_login: Rc<Self>) -> Dom {
         html!("div", {
             .class("topbar")
         })
@@ -143,7 +143,7 @@ impl Login {
                             .attribute("placeholder", "Password")
                             .property_signal("value", login.password.signal_cloned())
                             .with_node!(input => {
-                                .event(clone!(login => move |e: events::Input| {
+                                .event(clone!(login => move |_: events::Input| {
                                     login.password.set(input.value());
                                 }))
                             })
@@ -188,7 +188,7 @@ impl Login {
                 html!("div", {
                     .class("topbar-spacing")
                 }),
-                Self::render_main(login.clone()),
+                Self::render_main(login),
             ])
         })
     }

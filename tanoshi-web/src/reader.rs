@@ -1,11 +1,11 @@
-use crate::common::{ReaderSettings, events, snackbar};
+use crate::common::{events, snackbar, ReaderSettings};
 use crate::utils::{document, proxied_image_url, window, AsyncLoader};
 use crate::{
     common::{Background, Direction, DisplayMode, ReaderMode},
     query,
     utils::history,
 };
-use dominator::{clone, html, routing, svg, Dom, with_node};
+use dominator::{clone, html, routing, svg, with_node, Dom};
 use futures_signals::signal::{Mutable, SignalExt};
 use futures_signals::signal_vec::{MutableVec, SignalVecExt};
 use std::rc::Rc;
@@ -15,7 +15,7 @@ use web_sys::HtmlImageElement;
 enum Nav {
     None,
     Prev,
-    Next
+    Next,
 }
 
 pub struct Reader {
@@ -65,8 +65,8 @@ impl Reader {
                     reader.next_chapter.set_neq(result.next);
                     reader.prev_chapter.set_neq(result.prev);
                     reader.pages_len.set_neq(result.pages.len());
-                    reader.pages.lock_mut().replace_cloned(result.pages.iter().map(|x| x.clone()).collect());
-                    
+                    reader.pages.lock_mut().replace_cloned(result.pages.to_vec());
+
                     reader.reader_settings.load_manga_reader_setting(result.manga.id);
 
                     match nav {
@@ -107,17 +107,19 @@ impl Reader {
 
     fn replace_state_with_url(reader: Rc<Self>) {
         history()
-        .replace_state_with_url(
-            &JsValue::null(), 
-            "", 
-            Some(
-                format!(
-                    "/chapter/{}/{}", 
-                    reader.chapter_id.get(), 
-                    reader.current_page.get() + 1
-                ).as_str()
+            .replace_state_with_url(
+                &JsValue::null(),
+                "",
+                Some(
+                    format!(
+                        "/chapter/{}/{}",
+                        reader.chapter_id.get(),
+                        reader.current_page.get() + 1
+                    )
+                    .as_str(),
+                ),
             )
-        ).unwrap_throw();
+            .unwrap_throw();
     }
 
     fn update_page_read(reader: Rc<Self>, page: usize) {
@@ -468,15 +470,13 @@ impl Reader {
                                     } else {
                                         reader.next_page.set_neq(None);
                                     }
+                                } else if current_page + 1 < reader.pages_len.get() {
+                                    reader.next_page.set_neq(Some(current_page + 1));
                                 } else {
-                                    if current_page + 1 < reader.pages_len.get() {
-                                        reader.next_page.set_neq(Some(current_page + 1));
-                                    } else {
-                                        reader.next_page.set_neq(None);
-                                    }
+                                    reader.next_page.set_neq(None);
                                 }
                             }
-                            
+
                             !hidden
                         })))
                         .event(clone!(reader, index => move |_: events::Load| {

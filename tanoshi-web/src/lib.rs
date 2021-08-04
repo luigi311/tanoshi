@@ -8,6 +8,7 @@ mod histories;
 mod library;
 mod login;
 mod manga;
+#[allow(dead_code)]
 mod query;
 mod reader;
 mod settings;

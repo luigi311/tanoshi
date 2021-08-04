@@ -5,7 +5,7 @@ use futures_signals::signal::{Mutable, SignalExt};
 use futures_signals::signal_vec::{MutableVec, SignalVecExt};
 use wasm_bindgen::prelude::*;
 
-use crate::common::{css, snackbar};
+use crate::common::{snackbar};
 use crate::{
     common::Route,
     query::{
@@ -50,7 +50,7 @@ impl Catalogue {
             .parse::<i64>()
             .unwrap_or(0);
         let keyword = match local_storage().get("catalogue_keyword").unwrap_throw() {
-            Some(value) => value.to_string(),
+            Some(value) => value,
             None => "".to_string()
         };
         let page = match local_storage().get("catalogue_page").unwrap_throw() {
@@ -70,7 +70,7 @@ impl Catalogue {
             None => false
         };
         let cover_list = match local_storage().get("catalogue_cover_list").unwrap_throw() {
-            Some(value) => serde_json::from_str(&value).unwrap_or(MutableVec::new()),
+            Some(value) => serde_json::from_str(&value).unwrap_or_default(),
             None => MutableVec::new()
         };
 
@@ -124,7 +124,7 @@ impl Catalogue {
                     local_storage().set("catalogue_sort_by", &serde_json::to_string(&*catalogue.sort_by.lock_ref()).unwrap_throw()).unwrap_throw();
                     local_storage().set("catalogue_sort_order", &serde_json::to_string(&*catalogue.sort_order.lock_ref()).unwrap_throw()).unwrap_throw();
                     local_storage().set("catalogue_is_search", &serde_json::to_string(&*catalogue.is_search.lock_ref()).unwrap_throw()).unwrap_throw();
-                    local_storage().set("catalogue_cover_list", serde_json::to_string(&*cover_list).unwrap_or("".to_string()).as_str()).unwrap_throw();
+                    local_storage().set("catalogue_cover_list", serde_json::to_string(&*cover_list).unwrap_or_else(|_| "".to_string()).as_str()).unwrap_throw();
                 }
                 Err(e) => {
                     snackbar::show(format!("Fetch manga from source failed: {}", e))
@@ -216,6 +216,7 @@ impl Catalogue {
         })
     }
 
+    #[allow(dead_code)]
     pub fn render_search(catalogue: Rc<Self>) -> Dom {
         html!("div", {
             .class("search-box")
@@ -278,7 +279,7 @@ impl Catalogue {
             .children(&mut [
                 html!("div", {
                     .class("manga-grid")
-                    .children_signal_vec(catalogue.cover_list.signal_vec_cloned().map(clone!(catalogue => move |cover| cover.render())))
+                    .children_signal_vec(catalogue.cover_list.signal_vec_cloned().map(|cover| cover.render()))
                 }),
                 html!("div", {
                     .class("load-more-btn")
@@ -301,7 +302,7 @@ impl Catalogue {
     pub fn render_select(catalogue: Rc<Self>) -> Dom {
         html!("ul", {
             .class("list")
-            .children_signal_vec(catalogue.sources.signal_vec_cloned().map(clone!(catalogue => move |source| html!("li", {
+            .children_signal_vec(catalogue.sources.signal_vec_cloned().map(|source| html!("li", {
                 .class("list-item")
                 .children(&mut [
                     link!(Route::Catalogue{id: source.id, latest: false}.url(), {
@@ -321,7 +322,7 @@ impl Catalogue {
                         .text("latest")
                     }),
                 ])
-            }))))
+            })))
         })
     }
 
@@ -329,7 +330,7 @@ impl Catalogue {
         let saved_source_id = local_storage()
             .get("catalogue_id")
             .unwrap_throw()
-            .unwrap_or("0".to_string())
+            .unwrap_or_else(|| "0".to_string())
             .parse::<i64>()
             .unwrap_or(0);
 

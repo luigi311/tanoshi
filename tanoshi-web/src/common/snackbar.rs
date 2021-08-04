@@ -38,12 +38,10 @@ impl Snackbar {
             .visible_signal(snackbar.message.signal_cloned().map(|message| message.is_some()))
             .children(&mut [
                 html!("div", {
-                    .child_signal(snackbar.message.signal_cloned().map(|message| match message {
-                        Some(msg) => Some(html!("span", {
+                    .child_signal(snackbar.message.signal_cloned().map(|message| message.map(|msg| html!("span", {
                             .text(msg.as_str())
-                        })),
-                        None => None
-                    }))
+                        })
+                    )))
                     .children(&mut [
                         html!("button", {
                             .event(clone!(snackbar => move |_: events::Click| snackbar.message.set(None)))

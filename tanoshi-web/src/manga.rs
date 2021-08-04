@@ -1,13 +1,10 @@
-use crate::common::{css, snackbar};
+use crate::common::snackbar;
+use crate::common::Route;
 use crate::query;
-use crate::utils::{local_storage, proxied_image_url, AsyncLoader};
-use crate::{
-    app::App,
-    common::{Route, Spinner},
-};
+use crate::utils::{proxied_image_url, AsyncLoader};
 use chrono::NaiveDateTime;
-use dominator::{clone, events, html, link, routing, svg, text_signal, Dom};
-use futures_signals::signal::{Signal, SignalExt};
+use dominator::{clone, events, html, link, routing, svg, Dom};
+use futures_signals::signal::SignalExt;
 use futures_signals::{
     signal::Mutable,
     signal_vec::{MutableVec, SignalVecExt},
@@ -187,7 +184,7 @@ impl Manga {
                 html!("span", {
                     .style("overflow", "hidden")
                     .style("text-overflow", "ellipsis")
-                    .text_signal(manga.title.signal_cloned().map(|x| x.unwrap_or("".to_string())))
+                    .text_signal(manga.title.signal_cloned().map(|x| x.unwrap_or_else(|| "".to_string())))
                 }),
                 html!("button", {
                     .text("Refresh")
@@ -459,14 +456,11 @@ impl Manga {
                                                                 .text(&chapter.uploaded.date().to_string())
                                                             }),
                                                         ])
-                                                        .child_signal(chapter.last_page_read.signal().map(|x| match x {
-                                                            None => None,
-                                                            Some(page) => Some(html!("span", {
-                                                                .style("font-size", "small")
-                                                                .style("font-weight", "400")
-                                                                .text(format!("Page: {}", page + 1).as_str())
-                                                            }))
-                                                        }))
+                                                        .child_signal(chapter.last_page_read.signal().map(|x| x.map(|page| html!("span", {
+                                                            .style("font-size", "small")
+                                                            .style("font-weight", "400")
+                                                            .text(format!("Page: {}", page + 1).as_str())
+                                                        }))))
                                                     })
                                                 ])
                                             }),
@@ -514,7 +508,7 @@ impl Manga {
                 Self::render_header(manga_page.clone()),
                 Self::render_action(manga_page.clone()),
                 Self::render_description(manga_page.clone()),
-                Self::render_chapters(manga_page.clone())
+                Self::render_chapters(manga_page)
             ])
         })
     }

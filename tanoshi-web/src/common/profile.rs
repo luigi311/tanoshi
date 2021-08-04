@@ -62,13 +62,7 @@ impl Profile {
                     })
                 }),
                 html!("span", {
-                    .visible_signal(profile.confirm_password.signal_cloned().map(clone!(profile => move |x| {
-                        if x != profile.new_password.get_cloned() {
-                            true
-                        } else {
-                            false
-                        }
-                    })))
+                    .visible_signal(profile.confirm_password.signal_cloned().map(clone!(profile => move |x| x != profile.new_password.get_cloned())))
                     .style("font-size", "small")
                     .style("margin-left", "0.5rem")
                     .style("margin-right", "0.5rem")
@@ -77,13 +71,7 @@ impl Profile {
                 }),
 
                 html!("span", {
-                    .visible_signal(profile.new_password.signal_cloned().map(|x| {
-                        if x.len() < 8 {
-                            true
-                        } else {
-                            false
-                        }
-                    }))
+                    .visible_signal(profile.new_password.signal_cloned().map(|x| x.len() < 8))
                     .style("font-size", "small")
                     .style("margin-left", "0.5rem")
                     .style("margin-right", "0.5rem")
@@ -91,13 +79,7 @@ impl Profile {
                     .text("Minimum password length is 8")
                 }),
                 html!("input" => HtmlInputElement, {
-                    .class_signal("error", profile.confirm_password.signal_cloned().map(clone!(profile => move |x| {
-                        if x != profile.new_password.get_cloned() {
-                            true
-                        } else {
-                            false
-                        }
-                    })))
+                    .class_signal("error", profile.confirm_password.signal_cloned().map(clone!(profile => move |x| x != profile.new_password.get_cloned())))
                     .attribute("type", "password")
                     .attribute("placeholder", "New Password")
                     .property_signal("value", profile.new_password.signal_cloned())
@@ -108,13 +90,7 @@ impl Profile {
                     })
                 }),
                 html!("input" => HtmlInputElement, {
-                    .class_signal("error", profile.confirm_password.signal_cloned().map(clone!(profile => move |x| {
-                        if x != profile.new_password.get_cloned() {
-                            true
-                        } else {
-                            false
-                        }
-                    })))
+                    .class_signal("error", profile.confirm_password.signal_cloned().map(clone!(profile => move |x| x != profile.new_password.get_cloned())))
                     .attribute("type", "password")
                     .attribute("placeholder", "Confirm Password")
                     .property_signal("value", profile.confirm_password.signal_cloned())

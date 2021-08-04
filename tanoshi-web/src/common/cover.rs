@@ -1,6 +1,5 @@
 use dominator::{html, link, Dom};
 use futures_signals::signal::Mutable;
-use futures_signals::signal::Signal;
 use serde::{Deserialize, Serialize};
 
 use crate::common::route::Route;
@@ -36,6 +35,7 @@ impl Cover {
         }
     }
 
+    #[allow(dead_code)]
     pub fn set_favorite(&self, favorite: bool) {
         self.is_favorite.set(favorite);
     }
@@ -43,7 +43,7 @@ impl Cover {
     fn link(&self) -> String {
         if self.id != 0 {
             Route::Manga(self.id).url()
-        } else if self.source_id != 0 && self.path != "" {
+        } else if self.source_id != 0 && !self.path.is_empty() {
             Route::MangaBySourcePath(self.source_id, self.path.clone()).url()
         } else {
             Route::NotFound.url()

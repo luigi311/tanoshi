@@ -1,4 +1,4 @@
-use std::{cell::RefCell, sync::atomic::{AtomicUsize, Ordering}};
+use std::{ sync::atomic::{AtomicUsize, Ordering}};
 
 use futures::{Future, future::{abortable, AbortHandle}};
 use futures_signals::signal::{Mutable, Signal};
@@ -40,6 +40,7 @@ impl AsyncLoader {
         }
     }
 
+    #[allow(dead_code)]
     pub fn cancel(&self) {
         self.replace(None)
     }
@@ -73,7 +74,9 @@ impl AsyncLoader {
                         }
                     }
                 }
-                Err(_) => {}
+                Err(e) => {
+                    error!("failed to swpan task: {}", e);
+                }
             }
         });
     }

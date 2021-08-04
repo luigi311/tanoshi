@@ -1,9 +1,9 @@
-use dominator::{class, clone, events, html, Dom};
-use futures_signals::signal::{Mutable, Signal, SignalExt};
+use dominator::{clone, events, html, Dom};
+use futures_signals::signal::{Mutable, SignalExt};
 use serde::{Deserialize, Serialize};
 use std::rc::Rc;
 
-use crate::{manga, utils::local_storage};
+use crate::{utils::local_storage};
 
 #[derive(PartialEq, Copy, Clone, Serialize, Deserialize)]
 pub enum ReaderMode {
@@ -95,19 +95,15 @@ pub struct ReaderSettings {
 
 impl ReaderSettings {
     pub fn new(show: bool, use_modal: bool) -> Rc<Self> {
-        let settings = if let Ok(settings) = local_storage().get_item("settings:reader") {
-            if let Some(settings) = settings {
-                serde_json::from_str::<Settings>(&settings).unwrap_or_default()
-            } else {
-                Settings::default()
-            }
+        let settings = if let Ok(Some(settings)) = local_storage().get_item("settings:reader") {
+            serde_json::from_str::<Settings>(&settings).unwrap_or_default()
         } else {
             Settings::default()
         };
 
         Rc::new(ReaderSettings {
             use_modal: Mutable::new(use_modal),
-            first_render: Mutable::new(if use_modal { true } else { false }),
+            first_render: Mutable::new(use_modal),
             show: Mutable::new(show),
             manga_id: Mutable::new(0),
             reader_mode: Mutable::new(settings.reader_mode),
@@ -126,12 +122,8 @@ impl ReaderSettings {
         self.manga_id.replace(manga_id);
 
         let key = ["settings:reader", &manga_id.to_string()].join(":");
-        let settings = if let Ok(settings) = local_storage().get_item(&key) {
-            if let Some(settings) = settings {
-                serde_json::from_str::<Settings>(&settings).unwrap_or_default()
-            } else {
-                return;
-            }
+        let settings = if let Ok(Some(settings)) = local_storage().get_item(&key) {
+            serde_json::from_str::<Settings>(&settings).unwrap_or_default()
         } else {
             return;
         };
@@ -183,7 +175,7 @@ impl ReaderSettings {
                     .style("font-size", "large")
                     .text("Settings")
                 }),
-                Self::render_apply_button(reader.clone())
+                Self::render_apply_button(reader)
             ])
         })
     }
@@ -412,12 +404,12 @@ impl ReaderSettings {
                         Self::render_background(reader.clone()),
                         Self::render_fit_screen(reader.clone()),
                     ])
-                    .child_signal(reader.use_modal.signal().map(|use_modal| if use_modal { 
+                    .child_signal(reader.use_modal.signal().map(|use_modal| if use_modal {
                         Some(html!("div", {
                             .class("bottombar-spacing")
-                        })) 
-                    } else { 
-                        None 
+                        }))
+                    } else {
+                        None
                     }))
                 })
             ])

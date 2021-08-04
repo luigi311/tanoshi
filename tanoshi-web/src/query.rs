@@ -5,7 +5,7 @@ use web_sys::window;
 
 type NaiveDateTime = String;
 
-use crate::{common::Cover, utils::local_storage};
+use crate::{common::{Cover, snackbar}, utils::local_storage};
 
 fn graphql_url() -> String {
     [
@@ -330,7 +330,7 @@ pub async fn fetch_recent_updates(
     let client = reqwest::Client::new();
     let var = fetch_recent_updates::Variables {
         first: Some(20),
-        cursor: cursor,
+        cursor,
     };
     let request_body = FetchRecentUpdates::build_query(var);
     let res = client
@@ -362,7 +362,7 @@ pub async fn fetch_histories(
     let client = reqwest::Client::new();
     let var = fetch_histories::Variables {
         first: Some(20),
-        cursor: cursor,
+        cursor,
     };
     let request_body = FetchHistories::build_query(var);
     let res = client
@@ -429,6 +429,7 @@ pub async fn fetch_all_sources() -> Result<fetch_all_sources::ResponseData, Box<
 )]
 pub struct FetchSourceDetail;
 
+#[allow(dead_code)]
 pub async fn fetch_source(
     source_id: i64,
 ) -> Result<fetch_source_detail::FetchSourceDetailSource, Box<dyn Error>> {
@@ -680,7 +681,10 @@ pub async fn change_password(
                 .join(";");
             return Err(e.into());
         }
-        None => {}
+        None => {
+            error!("failed to change user password");
+            snackbar::show("failed to change user password".to_string());
+        }
     }
 
     let _ = response_body.data.ok_or("no data")?.change_password;

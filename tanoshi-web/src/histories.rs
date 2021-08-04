@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use crate::common::{css, snackbar};
+use crate::common::{snackbar};
 use crate::query;
 use crate::utils::{proxied_image_url, AsyncLoader};
 use crate::{

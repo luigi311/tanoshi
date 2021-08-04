@@ -25,5 +25,3 @@ mod profile;
 pub use profile::Profile;
 
 pub mod snackbar;
-
-pub mod css;

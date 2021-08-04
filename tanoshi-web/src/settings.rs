@@ -1,8 +1,7 @@
-use crate::{common::{Login, Profile, ReaderSettings, Route, SettingCategory, Source, User, css, events, snackbar}, query, utils::AsyncLoader};
+use crate::{common::{Login, Profile, ReaderSettings, Route, SettingCategory, Source, User, events, snackbar}, query, utils::AsyncLoader};
 use dominator::svg;
 use dominator::{clone, html, link, routing, Dom};
 use futures_signals::{signal::{Mutable, SignalExt}, signal_vec::{MutableSignalVec, MutableVec}, signal_vec::SignalVecExt};
-use wasm_bindgen::UnwrapThrowExt;
 use std::rc::Rc;
 use web_sys::window;
 
@@ -18,7 +17,7 @@ pub struct Settings {
 
 impl Settings {
     pub fn new() -> Rc<Self> {
-        return Rc::new(Settings {
+        Rc::new(Settings {
             page: Mutable::new(SettingCategory::None),
             installed_sources: MutableVec::new(),
             available_sources: MutableVec::new(),
@@ -26,7 +25,7 @@ impl Settings {
             users: MutableVec::new(),
             reader_settings: ReaderSettings::new(true, false),
             loader: AsyncLoader::new(),
-        });
+        })
     }
 
     fn fetch_sources(settings: Rc<Self>) {
@@ -186,7 +185,6 @@ impl Settings {
                 },
                 Err(err) => {
                     snackbar::show(format!("{}", err));
-                    return;
                 }
             }
         });
@@ -438,7 +436,7 @@ impl Settings {
                             .text(&x.username)
                         }),
                         html!("span", {
-                            .text(format!("{}", if x.is_admin { "Admin" } else { "" }).as_str())
+                            .text(if x.is_admin { "Admin" } else { "" })
                         })
                     ])
                 })
@@ -478,7 +476,7 @@ impl Settings {
                             }),
                             html!("span", {
                                 .class("me-role")
-                                .text(format!("{}", if me.is_admin { "Admin" } else { "" }).as_str())
+                                .text(if me.is_admin { "Admin" } else { "" })
                             })
                         ])
                     }))

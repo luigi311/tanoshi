@@ -7,6 +7,7 @@ use super::{Route, SettingCategory};
 pub struct Bottombar {}
 
 impl Bottombar {
+    #[allow(dead_code)]
     pub fn new() -> Rc<Self> {
         Rc::new(Bottombar {})
     }
@@ -17,10 +18,7 @@ impl Bottombar {
             .children(&mut [
                 link!(Route::Library.url(), {
                     // .class(LINK_CLASS)
-                    .class_signal("active", Route::signal().map(|x| match x {
-                        Route::Library => true,
-                        _ => false,
-                    }))
+                    .class_signal("active", Route::signal().map(|x| matches!(x, Route::Library)))
                     .children(&mut [
                         svg!("svg", {
                             .attribute("xmlns", "http://www.w3.org/2000/svg")
@@ -44,10 +42,7 @@ impl Bottombar {
                 }),
                 link!(Route::Catalogue{id: 0, latest: false}.url(), {
                     // .class(LINK_CLASS)
-                    .class_signal("active", Route::signal().map(|x| match x {
-                        Route::Catalogue{id, latest} => true,
-                        _ => false,
-                    }))
+                    .class_signal("active", Route::signal().map(|x| matches!(x, Route::Catalogue{id: _, latest: _})))
                     .children(&mut [
                         svg!("svg", {
                             .attribute("xmlns", "http://www.w3.org/2000/svg")
@@ -71,10 +66,7 @@ impl Bottombar {
                 }),
                 link!(Route::Updates.url(), {
                     // .class(LINK_CLASS)
-                    .class_signal("active", Route::signal().map(|x| match x {
-                        Route::Updates => true,
-                        _ => false,
-                    }))
+                    .class_signal("active", Route::signal().map(|x| matches!(x, Route::Updates)))
                     .children(&mut [
                         svg!("svg", {
                             .attribute("xmlns", "http://www.w3.org/2000/svg")
@@ -98,10 +90,7 @@ impl Bottombar {
                 }),
                 link!(Route::Histories.url(), {
                     // .class(LINK_CLASS)
-                    .class_signal("active", Route::signal().map(|x| match x {
-                        Route::Histories => true,
-                        _ => false,
-                    }))
+                    .class_signal("active", Route::signal().map(|x| matches!(x, Route::Histories)))
                     .children(&mut [
                         svg!("svg", {
                             .attribute("xmlns", "http://www.w3.org/2000/svg")
@@ -125,10 +114,7 @@ impl Bottombar {
                 }),
                 link!(Route::Settings(SettingCategory::None).url(), {
                     // .class(LINK_CLASS)
-                    .class_signal("active", Route::signal().map(|x| match x {
-                        Route::Settings(_) => true,
-                        _ => false,
-                    }))
+                    .class_signal("active", Route::signal().map(|x| matches!(x, Route::Settings(_))))
                     .children(&mut [
                         svg!("svg", {
                             .attribute("xmlns", "http://www.w3.org/2000/svg")

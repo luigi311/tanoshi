@@ -34,8 +34,8 @@ impl Route {
             .signal_ref(|url| Url::new(&url).unwrap_throw())
             .map(|url| {
                 let pathname = url.pathname();
-                let mut paths = pathname.split("/").collect::<Vec<_>>();
-                paths.retain(|path| *path != "");
+                let mut paths = pathname.split('/').collect::<Vec<_>>();
+                paths.retain(|path| !path.is_empty());
 
                 match paths.as_slice() {
                     ["login"] => Route::Login,
@@ -108,10 +108,7 @@ impl Route {
                         "user" => Route::Settings(SettingCategory::User),
                         _ => Route::NotFound,
                     },
-                    ["settings", "users", cat] => match *cat {
-                        "create" => Route::Settings(SettingCategory::CreateUser),
-                        _ => Route::NotFound,
-                    },
+                    ["settings", "users", "create"] => Route::Settings(SettingCategory::CreateUser),
                     ["settings", "sources", id] => {
                         if let Ok(id) = id.parse() {
                             Route::Settings(SettingCategory::Source(id))

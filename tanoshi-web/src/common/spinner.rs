@@ -1,6 +1,6 @@
 use dominator::{html, Dom};
 use futures_signals::signal::Mutable;
-use futures_signals::signal::{SignalExt, Signal};
+use futures_signals::signal::Signal;
 use std::rc::Rc;
 
 pub struct Spinner {
@@ -27,6 +27,7 @@ impl Spinner {
         self.active.set_neq(active);
     }
 
+    #[allow(dead_code)]
     pub fn set_fullscreen(&self, fullscreen: bool) {
         self.fullscreen.set_neq(fullscreen);
     }
