@@ -10,9 +10,9 @@ pub use manga::Db as MangaDatabase;
 mod user;
 pub use user::Db as UserDatabase;
 
-pub async fn establish_connection(database_path: &str) -> SqlitePool {
-    if !Sqlite::database_exists(database_path).await.unwrap() {
-        Sqlite::create_database(database_path).await.unwrap();
+pub async fn establish_connection(database_path: &str) -> Result<SqlitePool, Box<dyn std::error::Error>> {
+    if !Sqlite::database_exists(database_path).await? {
+        Sqlite::create_database(database_path).await?;
     }
 
     let pool = SqlitePoolOptions::new()
@@ -20,6 +20,6 @@ pub async fn establish_connection(database_path: &str) -> SqlitePool {
         .connect(&database_path)
         .await
         .unwrap();
-    sqlx::migrate!("./migrations").run(&pool).await.unwrap();
-    pool
+    sqlx::migrate!("./migrations").run(&pool).await?;
+    Ok(pool)
 }

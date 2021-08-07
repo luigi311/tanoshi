@@ -57,7 +57,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (_, extension_tx) = vm::start();
     vm::load(&config.plugin_path, extension_tx.clone()).await?;
 
-    let pool = db::establish_connection(&config.database_path).await;
+    let pool = db::establish_connection(&config.database_path).await?;
     let mangadb = db::MangaDatabase::new(pool.clone());
     let userdb = db::UserDatabase::new(pool.clone());
 
