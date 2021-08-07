@@ -5,6 +5,12 @@ use std::path::Path;
 use std::{iter, path::PathBuf};
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct TelegramConfig {
+    pub name: String,
+    pub token:String,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct Config {
     #[serde(default = "default_port")]
     pub port: u16,
@@ -19,7 +25,8 @@ pub struct Config {
     #[serde(default = "default_local_path")]
     pub local_path: String,
     #[serde(default)]
-    pub enable_playground: bool
+    pub enable_playground: bool,
+    pub telegram: Option<TelegramConfig>
 }
 
 impl Default for Config {
@@ -31,7 +38,8 @@ impl Default for Config {
             update_interval: default_update_interval(),
             plugin_path: default_plugin_path(),
             local_path: default_local_path(),
-            enable_playground: false
+            enable_playground: false,
+            telegram: None,
         }
     }
 }

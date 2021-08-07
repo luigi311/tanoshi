@@ -129,16 +129,14 @@ impl Worker {
     }
 }
 
-pub async fn start(
+pub fn start(
     period: u64,
     mangadb: MangaDatabase,
     extension_bus: ExtensionBus,
-) -> Result<(), Box<dyn std::error::Error>> {
+) {
     let worker = Worker::new(period, mangadb, extension_bus);
 
     tokio::spawn(async move {
         worker.run().await;
     });
-
-    Ok(())
 }

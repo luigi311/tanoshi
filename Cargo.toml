@@ -61,6 +61,7 @@ fancy-regex = "0.7"
 libarchive-rs = { git = "https://github.com/faldez/libarchive-rs", features = [
     "static",
 ] }
+teloxide = { version = "0.4", features = ["auto-send", "macros"] }
 
 [profile.release]
 lto = true

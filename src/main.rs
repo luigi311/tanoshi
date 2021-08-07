@@ -9,6 +9,7 @@ mod context;
 mod db;
 mod library;
 mod local;
+mod notifier;
 mod proxy;
 mod routes;
 mod schema;
@@ -30,6 +31,7 @@ use async_graphql::{
     EmptySubscription, Schema,
 };
 use async_graphql_warp::{BadRequest, Response};
+use teloxide::prelude::RequesterExt;
 use std::convert::Infallible;
 use warp::{
     http::{Response as HttpResponse, StatusCode},
@@ -71,8 +73,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         config.update_interval,
         mangadb.clone(),
         extension_bus.clone(),
-    )
-    .await?;
+    );
+
+    if let Some(telegram_config) = config.telegram {
+        let bot = teloxide::Bot::new(telegram_config.token).auto_send();
+        notifier::telegram::start(telegram_config.name, bot);
+    }
 
     let schema: TanoshiSchema = Schema::build(
         QueryRoot::default(),
