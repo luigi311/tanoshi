@@ -4,6 +4,7 @@ use async_graphql::{Context, Object, Result};
 use chrono::NaiveDateTime;
 
 /// A type represent chapter, normalized across source
+#[derive(Debug, Clone)]
 pub struct Chapter {
     pub id: i64,
     pub source_id: i64,

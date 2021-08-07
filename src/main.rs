@@ -14,6 +14,7 @@ mod routes;
 mod schema;
 mod status;
 mod user;
+mod worker;
 
 use crate::{
     config::Config,
@@ -54,17 +55,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config = Config::open(opts.config)?;
 
     let (_, extension_tx) = vm::start();
-    vm::load(config.plugin_path.clone(), extension_tx.clone()).await?;
+    vm::load(&config.plugin_path, extension_tx.clone()).await?;
 
-    let pool = db::establish_connection(config.database_path).await;
+    let pool = db::establish_connection(&config.database_path).await;
     let mangadb = db::MangaDatabase::new(pool.clone());
     let userdb = db::UserDatabase::new(pool.clone());
 
-    let extension_bus = ExtensionBus::new(config.plugin_path, extension_tx);
+    let extension_bus = ExtensionBus::new(&config.plugin_path, extension_tx);
 
     extension_bus
         .insert(local::ID, Box::new(local::Local::new(config.local_path)))
         .await?;
+
+    worker::start(
+        config.update_interval,
+        mangadb.clone(),
+        extension_bus.clone(),
+    )
+    .await?;
 
     let schema: TanoshiSchema = Schema::build(
         QueryRoot::default(),
@@ -113,12 +121,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             graphql_post
         );
     } else {
-        bind_routes!(
-            config.port,
-            image_proxy,
-            static_files,
-            graphql_post
-        );
+        bind_routes!(config.port, image_proxy, static_files, graphql_post);
     }
 
     Ok(())

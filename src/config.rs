@@ -48,7 +48,7 @@ fn default_port() -> u16 {
 }
 
 fn default_update_interval() -> u64 {
-    1
+    3600
 }
 
 fn default_secret() -> String {

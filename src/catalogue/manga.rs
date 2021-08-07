@@ -94,7 +94,7 @@ impl Manga {
             }
         }
 
-        if let Ok(fav) = mangadb.get_user_library(user.sub, id).await {
+        if let Ok(fav) = mangadb.is_user_library(user.sub, id).await {
             Ok(fav)
         } else {
             Err("error query".into())

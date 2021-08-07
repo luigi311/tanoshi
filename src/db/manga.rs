@@ -86,7 +86,36 @@ impl Db {
         Ok(mangas)
     }
 
-    pub async fn get_user_library(&self, user_id: i64, manga_id: i64) -> Result<bool> {
+    pub async fn get_all_library(&self) -> Result<Vec<(i64, Manga)>> {
+        let mut stream = sqlx::query(
+            r#"SELECT manga.*, user_library.user_id FROM manga JOIN user_library ON user_library.manga_id = manga.id"#,
+        )
+        .fetch(&self.pool);
+
+        let mut mangas = vec![];
+        while let Some(row) = stream.try_next().await? {
+            mangas.push((
+                row.get(10),
+                Manga {
+                    id: row.get(0),
+                    source_id: row.get(1),
+                    title: row.get(2),
+                    author: serde_json::from_str(row.get::<String, _>(3).as_str())
+                        .unwrap_or_default(),
+                    genre: serde_json::from_str(row.get::<String, _>(4).as_str())
+                        .unwrap_or_default(),
+                    status: row.get(5),
+                    description: row.get(6),
+                    path: row.get(7),
+                    cover_url: row.get(8),
+                    date_added: row.get(9),
+                },
+            ));
+        }
+        Ok(mangas)
+    }
+
+    pub async fn is_user_library(&self, user_id: i64, manga_id: i64) -> Result<bool> {
         let stream =
             sqlx::query(r#"SELECT true FROM user_library WHERE user_id = ? AND manga_id = ?"#)
                 .bind(user_id)
@@ -646,7 +675,7 @@ impl Db {
             column_to_update.push("cover_url = ?");
         }
 
-        if column_to_update.is_empty(){
+        if column_to_update.is_empty() {
             return Err(anyhow!("Nothing to update"));
         }
 
@@ -772,6 +801,36 @@ impl Db {
         }
     }
 
+    pub async fn get_last_uploaded_chapters_by_manga_id(&self, manga_id: i64) -> Option<Chapter> {
+        let stream = sqlx::query(
+            r#"
+            SELECT *,
+            (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number < chapter.number ORDER BY c.number DESC LIMIT 1) prev,
+            (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number > chapter.number ORDER BY c.number ASC LIMIT 1) next 
+            FROM chapter WHERE manga_id = ? ORDER BY uploaded DESC LIMIT 1"#
+        )
+        .bind(manga_id)
+        .fetch_one(&self.pool)
+        .await
+        .ok();
+
+        stream.map(|row| Chapter {
+            id: row.get(0),
+            source_id: row.get(1),
+            manga_id: row.get(2),
+            title: row.get(3),
+            path: row.get(4),
+            number: row.get(5),
+            scanlator: row.get(6),
+            uploaded: row.get(7),
+            date_added: row.get(8),
+            pages: serde_json::from_str(row.get(9)).unwrap_or_default(),
+            prev: row.get(10),
+            next: row.get(11),
+            last_page_read: None,
+        })
+    }
+
     #[allow(dead_code)]
     pub async fn insert_chapter(&self, chapter: &Chapter) -> Result<i64> {
         let row_id = sqlx::query(
@@ -808,7 +867,12 @@ impl Db {
         if chapters.is_empty() {
             return Err(anyhow!("no chapters to insert"));
         }
-        let mut query_str = r#"INSERT OR IGNORE INTO chapter(
+
+        let mut values = vec![];
+        values.resize(chapters.len(), "(?, ?, ?, ?, ?, ?, ?, ?)");
+
+        let query_str = format!(
+            r#"INSERT INTO chapter(
             source_id,
             manga_id,
             title, 
@@ -817,15 +881,18 @@ impl Db {
             scanlator,
             uploaded, 
             date_added
-        ) VALUES "#
-            .to_string();
+        ) VALUES {} ON CONFLICT(source_id, path) DO UPDATE SET
+            manga_id=excluded.manga_id,
+            title=excluded.title, 
+            number=excluded.number,
+            scanlator=excluded.scanlator,
+            uploaded=excluded.uploaded, 
+            date_added=excluded.date_added
+        "#,
+            values.join(",")
+        );
 
-        let mut values = vec![];
-        values.resize(chapters.len(), "(?, ?, ?, ?, ?, ?, ?, ?)");
-
-        query_str.push_str(values.join(",").as_str());
         let mut query = sqlx::query(&query_str);
-
         for chapter in chapters {
             query = query
                 .bind(chapter.source_id)
