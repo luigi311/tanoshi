@@ -19,6 +19,6 @@ macro_rules! bind_routes {
         })
         .with(cors);
 
-        warp::serve(routes).run(([0, 0, 0, 0], $port as u16)).await;
+        warp::serve(routes).run(([0, 0, 0, 0], $port as u16))
     }};
 }

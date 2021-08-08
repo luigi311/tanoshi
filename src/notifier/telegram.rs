@@ -1,4 +1,4 @@
-use teloxide::{prelude::*, utils::command::BotCommand};
+use teloxide::{adaptors::DefaultParseMode, prelude::*, utils::command::BotCommand};
 
 #[derive(BotCommand)]
 #[command(rename = "lowercase", description = "These commands are supported:")]
@@ -10,7 +10,7 @@ enum TelegramCommand {
 }
 
 async fn answer(
-    cx: UpdateWithCx<AutoSend<Bot>, Message>,
+    cx: UpdateWithCx<DefaultParseMode<AutoSend<Bot>>, Message>,
     command: TelegramCommand,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     match command {
@@ -27,17 +27,11 @@ async fn answer(
     Ok(())
 }
 
-pub fn start(name: String, bot: AutoSend<Bot>) {
-    tokio::spawn(async move {
-        run(name, bot).await;
-    });
-}
-
-async fn run(name: String, bot: AutoSend<Bot>) {
+pub async fn run(name: String, bot: DefaultParseMode<AutoSend<Bot>>) {
+    info!("start telegram bot");
     teloxide::commands_repl(
         bot,
         name,
-        |cx, command| async move { answer(cx, command).await },
-    )
-    .await;
+        answer,
+    ).await;
 }

@@ -23,6 +23,7 @@ use crate::{
     schema::{MutationRoot, QueryRoot, TanoshiSchema},
 };
 use clap::Clap;
+use futures::future::OptionFuture;
 use tanoshi_vm::{bus::ExtensionBus, vm};
 
 use async_graphql::{
@@ -31,8 +32,8 @@ use async_graphql::{
     EmptySubscription, Schema,
 };
 use async_graphql_warp::{BadRequest, Response};
-use teloxide::prelude::RequesterExt;
 use std::convert::Infallible;
+use teloxide::prelude::RequesterExt;
 use warp::{
     http::{Response as HttpResponse, StatusCode},
     Filter, Rejection,
@@ -56,12 +57,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let opts: Opts = Opts::parse();
     let config = Config::open(opts.config)?;
 
-    let (_, extension_tx) = vm::start();
-    vm::load(&config.plugin_path, extension_tx.clone()).await?;
-
     let pool = db::establish_connection(&config.database_path).await?;
     let mangadb = db::MangaDatabase::new(pool.clone());
     let userdb = db::UserDatabase::new(pool.clone());
+
+    let (_, extension_tx) = vm::start();
+    vm::load(&config.plugin_path, extension_tx.clone()).await?;
 
     let extension_bus = ExtensionBus::new(&config.plugin_path, extension_tx);
 
@@ -69,16 +70,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .insert(local::ID, Box::new(local::Local::new(config.local_path)))
         .await?;
 
+    let mut telegram_bot = None;
+    let mut telegram_bot_fut: OptionFuture<_> = None.into();
+    if let Some(telegram_config) = config.telegram {
+        let bot = teloxide::Bot::new(telegram_config.token)
+            .auto_send()
+            .parse_mode(teloxide::types::ParseMode::MarkdownV2);
+        telegram_bot_fut = Some(notifier::telegram::run(telegram_config.name, bot.clone())).into();
+        telegram_bot = Some(bot);
+    }
+
     worker::start(
         config.update_interval,
         mangadb.clone(),
         extension_bus.clone(),
+        telegram_bot,
     );
-
-    if let Some(telegram_config) = config.telegram {
-        let bot = teloxide::Bot::new(telegram_config.token).auto_send();
-        notifier::telegram::start(telegram_config.name, bot);
-    }
 
     let schema: TanoshiSchema = Schema::build(
         QueryRoot::default(),
@@ -119,15 +126,32 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .header("content-type", "text/html")
                 .body(playground_source(GraphQLPlaygroundConfig::new("/graphql")))
         });
-        bind_routes!(
+        let server_fut = bind_routes!(
             config.port,
             image_proxy,
             graphql_playground,
             static_files,
             graphql_post
         );
+
+        tokio::select! {
+            _ = server_fut => {
+
+            }
+            Some(_) = telegram_bot_fut => {
+
+            }
+        }
     } else {
-        bind_routes!(config.port, image_proxy, static_files, graphql_post);
+        let server_fut = bind_routes!(config.port, image_proxy, static_files, graphql_post);
+        tokio::select! {
+            _ = server_fut => {
+
+            }
+            Some(_) = telegram_bot_fut => {
+
+            }
+        }
     }
 
     Ok(())

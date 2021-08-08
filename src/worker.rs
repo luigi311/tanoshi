@@ -1,6 +1,7 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt::Display};
 
 use tanoshi_vm::prelude::ExtensionBus;
+use teloxide::{Bot, adaptors::{AutoSend, DefaultParseMode}, prelude::Requester};
 use tokio::time::{self, Instant};
 
 use crate::{catalogue::Chapter, db::MangaDatabase};
@@ -12,14 +13,21 @@ struct ChapterUpdate {
     title: String,
 }
 
+impl Display for ChapterUpdate {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "*{}*\n{}", self.manga_title, self.title)
+    }
+}
+
 struct Worker {
     period: u64,
     mangadb: MangaDatabase,
     extension_bus: ExtensionBus,
+    telegram_bot: Option<DefaultParseMode<AutoSend<Bot>>>
 }
 
 impl Worker {
-    fn new(period: u64, mangadb: MangaDatabase, extension_bus: ExtensionBus) -> Self {
+    fn new(period: u64, mangadb: MangaDatabase, extension_bus: ExtensionBus, telegram_bot: Option<DefaultParseMode<AutoSend<Bot>>>) -> Self {
         #[cfg(not(debug_assertions))]
         let period = if period < 3600 { 3600 } else { period };
         info!("periodic updates every {} secons", period);
@@ -27,6 +35,7 @@ impl Worker {
             period,
             mangadb,
             extension_bus,
+            telegram_bot
         }
     }
 
@@ -39,7 +48,7 @@ impl Worker {
             start = interval.tick().await;
             info!("start periodic updates");
 
-            let manga_in_library = match self.mangadb.get_all_library().await {
+            let manga_in_library = match self.mangadb.get_all_user_library().await {
                 Ok(manga) => manga,
                 Err(e) => {
                     error!("error get manga in library, reason: {}", e);
@@ -50,14 +59,16 @@ impl Worker {
             let mut new_manga_chapter: HashMap<i64, Vec<ChapterUpdate>> = HashMap::new();
             let mut new_users_chapters: HashMap<i64, Vec<ChapterUpdate>> = HashMap::new();
 
-            for (user_id, manga) in manga_in_library {
+            for (telegram_chat_id, manga) in manga_in_library {
                 if let Some(chapters) = new_manga_chapter.get(&manga.id) {
-                    match new_users_chapters.get_mut(&user_id) {
-                        Some(user_chapters) => {
-                            user_chapters.extend_from_slice(chapters);
-                        }
-                        None => {
-                            new_users_chapters.insert(user_id, chapters.clone());
+                    if let Some(telegram_chat_id) = telegram_chat_id {
+                        match new_users_chapters.get_mut(&telegram_chat_id) {
+                            Some(user_chapters) => {
+                                user_chapters.extend_from_slice(chapters);
+                            }
+                            None => {
+                                new_users_chapters.insert(telegram_chat_id, chapters.clone());
+                            }
                         }
                     }
                     continue;
@@ -113,17 +124,30 @@ impl Worker {
                     .collect();
 
                 new_manga_chapter.insert(manga.id, chapters.clone());
-                match new_users_chapters.get_mut(&user_id) {
-                    Some(user_chapters) => {
-                        user_chapters.extend_from_slice(&chapters);
-                    }
-                    None => {
-                        new_users_chapters.insert(user_id, chapters);
+                if let Some(telegram_chat_id) = telegram_chat_id {
+                    match new_users_chapters.get_mut(&telegram_chat_id) {
+                        Some(user_chapters) => {
+                            user_chapters.extend_from_slice(&chapters);
+                        }
+                        None => {
+                            new_users_chapters.insert(telegram_chat_id, chapters);
+                        }
                     }
                 }
             }
 
             info!("users' new chapters: {:?}", new_users_chapters);
+
+            if let Some(bot) = self.telegram_bot.as_ref() {
+                for (chat_id, chapters) in new_users_chapters.into_iter() {
+                    for chapter in chapters {
+                        if let Err(e) = bot.send_message(chat_id, chapter.to_string()).await {
+                            error!("failed to send message, reason: {}", e);
+                        }
+                    }
+                }
+            }
+
             info!("periodic updates done in {:?}", Instant::now() - start);
         }
     }
@@ -133,8 +157,9 @@ pub fn start(
     period: u64,
     mangadb: MangaDatabase,
     extension_bus: ExtensionBus,
+    telegram_bot: Option<DefaultParseMode<AutoSend<Bot>>>
 ) {
-    let worker = Worker::new(period, mangadb, extension_bus);
+    let worker = Worker::new(period, mangadb, extension_bus, telegram_bot);
 
     tokio::spawn(async move {
         worker.run().await;

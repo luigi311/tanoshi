@@ -86,9 +86,11 @@ impl Db {
         Ok(mangas)
     }
 
-    pub async fn get_all_library(&self) -> Result<Vec<(i64, Manga)>> {
+    pub async fn get_all_user_library(&self) -> Result<Vec<(Option<i64>, Manga)>> {
         let mut stream = sqlx::query(
-            r#"SELECT manga.*, user_library.user_id FROM manga JOIN user_library ON user_library.manga_id = manga.id"#,
+            r#"SELECT manga.*, user.telegram_chat_id FROM manga
+            JOIN user_library ON user_library.manga_id = manga.id
+            JOIN user ON user.id = user_library.user_id"#,
         )
         .fetch(&self.pool);
 
