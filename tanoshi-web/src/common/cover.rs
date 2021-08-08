@@ -53,29 +53,18 @@ impl Cover {
     pub fn render(&self) -> Dom {
         link!(self.link(), {
             .class("manga-cover")
-            .class_signal(["filter", "brightness-50"], self.is_favorite.signal())
+            .class_signal("favorite", self.is_favorite.signal())
             .children(&mut [
                 html!("img", {
                     .attribute("src", &self.cover_url)
                     .attribute("loading", "lazy")
                 }),
-                html!("span", {
-                    // .class("absolute")
-                    // .class("bottom-0")
-                    // .class("sm:text-sm")
-                    // .class("text-xs")
-                    // .class("bg-gradient-to-t")
-                    // .class("from-gray-900")
-                    // .class("to-transparent")
-                    // .class("w-full")
-                    // .class("opacity-75")
-                    // .class("text-gray-50")
-                    // .class("px-1")
-                    // .class("pb-1")
-                    // .class("pt-4")
-                    // .class("truncate")
-                    // .class("rounded-b-md")
-                    .text(&self.title)
+                html!("div", {
+                    .children(&mut [
+                        html!("span", {
+                            .text(&self.title)
+                        })
+                    ])
                 })
             ])
         })
