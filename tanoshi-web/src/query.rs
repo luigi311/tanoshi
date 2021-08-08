@@ -149,8 +149,7 @@ pub async fn fetch_manga_by_source_path(
     let manga = response_body
         .data
         .ok_or("no data")?
-        .manga_by_source_path
-        .unwrap_throw();
+        .manga_by_source_path;
 
     Ok(manga)
 }
@@ -184,7 +183,7 @@ pub async fn fetch_manga_detail(
         .send()
         .await?;
     let response_body: Response<fetch_manga_detail::ResponseData> = res.json().await?;
-    let manga = response_body.data.ok_or("no data")?.manga.unwrap_throw();
+    let manga = response_body.data.ok_or("no data")?.manga;
 
     Ok(manga)
 }
@@ -216,7 +215,7 @@ pub async fn fetch_chapter(
         .send()
         .await?;
     let response_body: Response<fetch_chapter::ResponseData> = res.json().await?;
-    let manga = response_body.data.ok_or("no data")?.chapter.unwrap_throw();
+    let manga = response_body.data.ok_or("no data")?.chapter;
 
     Ok(manga)
 }

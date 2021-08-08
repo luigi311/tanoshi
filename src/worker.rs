@@ -1,10 +1,14 @@
 use std::{collections::HashMap, fmt::Display};
 
 use tanoshi_vm::prelude::ExtensionBus;
-use teloxide::{Bot, adaptors::{AutoSend, DefaultParseMode}, prelude::Requester};
+use teloxide::{
+    adaptors::{AutoSend, DefaultParseMode},
+    prelude::Requester,
+    Bot,
+};
 use tokio::time::{self, Instant};
 
-use crate::{catalogue::Chapter, db::MangaDatabase};
+use crate::db::{model::Chapter, MangaDatabase};
 
 #[derive(Debug, Clone)]
 struct ChapterUpdate {
@@ -23,11 +27,16 @@ struct Worker {
     period: u64,
     mangadb: MangaDatabase,
     extension_bus: ExtensionBus,
-    telegram_bot: Option<DefaultParseMode<AutoSend<Bot>>>
+    telegram_bot: Option<DefaultParseMode<AutoSend<Bot>>>,
 }
 
 impl Worker {
-    fn new(period: u64, mangadb: MangaDatabase, extension_bus: ExtensionBus, telegram_bot: Option<DefaultParseMode<AutoSend<Bot>>>) -> Self {
+    fn new(
+        period: u64,
+        mangadb: MangaDatabase,
+        extension_bus: ExtensionBus,
+        telegram_bot: Option<DefaultParseMode<AutoSend<Bot>>>,
+    ) -> Self {
         #[cfg(not(debug_assertions))]
         let period = if period < 3600 { 3600 } else { period };
         info!("periodic updates every {} secons", period);
@@ -35,7 +44,7 @@ impl Worker {
             period,
             mangadb,
             extension_bus,
-            telegram_bot
+            telegram_bot,
         }
     }
 
@@ -157,7 +166,7 @@ pub fn start(
     period: u64,
     mangadb: MangaDatabase,
     extension_bus: ExtensionBus,
-    telegram_bot: Option<DefaultParseMode<AutoSend<Bot>>>
+    telegram_bot: Option<DefaultParseMode<AutoSend<Bot>>>,
 ) {
     let worker = Worker::new(period, mangadb, extension_bus, telegram_bot);
 

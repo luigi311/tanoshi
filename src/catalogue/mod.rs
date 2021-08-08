@@ -77,21 +77,21 @@ impl CatalogueRoot {
         ctx: &Context<'_>,
         #[graphql(desc = "source id")] source_id: i64,
         #[graphql(desc = "path to manga in source")] path: String,
-    ) -> Result<Option<Manga>> {
+    ) -> Result<Manga> {
         let ctx = ctx.data::<GlobalContext>()?;
 
         let db = ctx.mangadb.clone();
-        if let Some(manga) = db.get_manga_by_source_path(source_id, &path).await {
-            Ok(Some(manga))
+        if let Ok(manga) = db.get_manga_by_source_path(source_id, &path).await {
+            Ok(manga.into())
         } else {
-            let mut m: Manga = {
+            let mut m: crate::db::model::Manga = {
                 let extensions = ctx.extensions.clone();
                 extensions.get_manga_info(source_id, path).await?.into()
             };
 
-            m.id = db.insert_manga(&m).await?;
+            db.insert_manga(&mut m).await?;
 
-            Ok(Some(m))
+            Ok(m.into())
         }
     }
 
@@ -100,28 +100,24 @@ impl CatalogueRoot {
         ctx: &Context<'_>,
         #[graphql(desc = "manga id")] id: i64,
         #[graphql(desc = "refresh data from source", default = false)] refresh: bool,
-    ) -> Result<Option<Manga>> {
+    ) -> Result<Manga> {
         let ctx = ctx.data::<GlobalContext>()?;
         let db = ctx.mangadb.clone();
-        if let Some(manga) = db.get_manga_by_id(id).await {
-            if refresh {
-                let mut m: Manga = {
-                    let extensions = ctx.extensions.clone();
-                    extensions
-                        .get_manga_info(manga.source_id, manga.path)
-                        .await?
-                        .into()
-                };
+        let manga = db.get_manga_by_id(id).await?;
+        if refresh {
+            let mut m: crate::db::model::Manga = {
+                let extensions = ctx.extensions.clone();
+                extensions
+                    .get_manga_info(manga.source_id, manga.path)
+                    .await?
+                    .into()
+            };
 
-                m.id = id;
-                db.insert_manga(&m).await?;
+            db.insert_manga(&mut m).await?;
 
-                Ok(Some(m))
-            } else {
-                Ok(Some(manga))
-            }
+            Ok(m.into())
         } else {
-            Ok(None)
+            Ok(manga.into())
         }
     }
 
@@ -129,8 +125,8 @@ impl CatalogueRoot {
         &self,
         ctx: &Context<'_>,
         #[graphql(desc = "chapter id")] id: i64,
-    ) -> Option<Chapter> {
+    ) -> Result<Chapter> {
         let db = ctx.data_unchecked::<GlobalContext>().mangadb.clone();
-        db.get_chapter_by_id(id).await
+        Ok(db.get_chapter_by_id(id).await?.into())
     }
 }

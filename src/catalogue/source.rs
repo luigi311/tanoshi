@@ -222,7 +222,7 @@ pub struct SourceMutationRoot;
 #[Object]
 impl SourceMutationRoot {
     async fn install_source(&self, ctx: &Context<'_>, source_id: i64) -> Result<i64> {
-        if !user::check_is_admin(ctx) {
+        if !user::check_is_admin(ctx)? {
             return Err("Forbidden".into());
         }
 
@@ -253,7 +253,7 @@ impl SourceMutationRoot {
     }
 
     async fn uninstall_source(&self, ctx: &Context<'_>, source_id: i64) -> Result<i64> {
-        if !user::check_is_admin(ctx) {
+        if !user::check_is_admin(ctx)? {
             return Err("Forbidden".into());
         }
 
@@ -266,7 +266,7 @@ impl SourceMutationRoot {
     }
 
     async fn update_source(&self, ctx: &Context<'_>, source_id: i64) -> Result<i64> {
-        if !user::check_is_admin(ctx) {
+        if !user::check_is_admin(ctx)? {
             return Err("Forbidden".into());
         }
 

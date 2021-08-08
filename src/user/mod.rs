@@ -2,9 +2,6 @@ use crate::context::GlobalContext;
 use async_graphql::{Context, Object, Result};
 use rand::RngCore;
 
-mod user;
-pub use user::User;
-
 use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
 
@@ -15,6 +12,40 @@ pub struct Claims {
     pub username: String,
     pub is_admin: bool,
     pub exp: usize,
+}
+
+use async_graphql::SimpleObject;
+
+#[derive(Debug, SimpleObject)]
+pub struct User {
+    pub id: i64,
+    pub username: String,
+    #[graphql(skip)]
+    pub password: String,
+    pub is_admin: bool,
+}
+
+impl From<crate::db::model::User> for User {
+    fn from(val: crate::db::model::User) -> Self {
+        Self {
+            id: val.id,
+            username: val.username,
+            password: val.password,
+            is_admin: val.is_admin,
+        }
+    }
+}
+
+impl From<User> for crate::db::model::User {
+    fn from(val: User) -> Self {
+        Self {
+            id: val.id,
+            username: val.username,
+            password: val.password,
+            is_admin: val.is_admin,
+            ..Default::default()
+        }
+    }
 }
 
 #[derive(Default)]
@@ -54,25 +85,25 @@ impl UserRoot {
     }
 
     async fn users(&self, ctx: &Context<'_>) -> Result<Vec<User>> {
-        let is_admin = check_is_admin(&ctx);
+        let is_admin = check_is_admin(&ctx)?;
         if !is_admin {
             return Err("Forbidden".into());
         };
 
         let users = ctx.data::<GlobalContext>()?.userdb.get_users().await?;
 
-        Ok(users)
+        Ok(users.into_iter().map(|user| user.into()).collect())
     }
 
     async fn me(&self, ctx: &Context<'_>) -> Result<User> {
-        let user = get_claims(ctx).ok_or("no token")?;
+        let user = get_claims(ctx)?;
         let user = ctx
             .data::<GlobalContext>()?
             .userdb
             .get_user_by_id(user.sub)
             .await?;
 
-        Ok(user)
+        Ok(user.into())
     }
 }
 
@@ -92,7 +123,7 @@ impl UserMutationRoot {
 
         let user_count = userdb.get_users_count().await?;
 
-        if !check_is_admin(&ctx) && user_count > 0 {
+        if !check_is_admin(&ctx)? && user_count > 0 {
             return Err("Forbidden".into());
         };
 
@@ -109,11 +140,12 @@ impl UserMutationRoot {
         // If first user, make it admin else make it reader by default
         let is_admin = if user_count == 0 { true } else { is_admin };
 
-        let user = User {
+        let user = crate::db::model::User {
             id: 0,
             username,
             password: hash,
             is_admin,
+            ..Default::default()
         };
 
         let user_id = userdb.insert_user(user).await?;
@@ -127,7 +159,7 @@ impl UserMutationRoot {
         #[graphql(desc = "old password")] old_password: String,
         #[graphql(desc = "new password")] new_password: String,
     ) -> Result<u64> {
-        let claims = get_claims(ctx).ok_or("no_token")?;
+        let claims = get_claims(ctx)?;
 
         let userdb = &ctx.data::<GlobalContext>()?.userdb;
 
@@ -153,24 +185,26 @@ impl UserMutationRoot {
     }
 }
 
-pub fn get_claims(ctx: &Context<'_>) -> Option<Claims> {
-    let token = ctx.data_opt::<String>()?;
-    let secret = ctx.data_unchecked::<GlobalContext>().secret.clone();
-    if let Ok(data) = jsonwebtoken::decode::<Claims>(
+pub fn get_claims(ctx: &Context<'_>) -> Result<Claims> {
+    let token = ctx.data::<String>()?;
+    let secret = ctx.data::<GlobalContext>()?.secret.clone();
+    let claims = jsonwebtoken::decode::<Claims>(
         token,
         &DecodingKey::from_secret(secret.as_bytes()),
         &Validation::default(),
-    ) {
-        Some(data.claims)
+    )
+    .map_err(|e| format!("failed to decode token, reason: {}", e))?;
+    if check_is_expired(&claims.claims) {
+        Err("Token expired".into())
     } else {
-        None
+        Ok(claims.claims)
     }
 }
 
-pub fn check_is_admin(ctx: &Context<'_>) -> bool {
-    if let Some(claims) = get_claims(ctx) {
-        claims.is_admin
-    } else {
-        false
-    }
+pub fn check_is_expired(claims: &Claims) -> bool {
+    chrono::Utc::now().timestamp() > claims.exp as i64
+}
+
+pub fn check_is_admin(ctx: &Context<'_>) -> Result<bool> {
+    Ok(get_claims(ctx)?.is_admin)
 }

@@ -1,4 +1,4 @@
-use crate::catalogue::{Chapter, Manga};
+use super::model::{Chapter, Manga};
 use crate::library::{RecentChapter, RecentUpdate};
 use anyhow::{anyhow, Result};
 use sqlx::sqlite::SqlitePool;
@@ -15,14 +15,13 @@ impl Db {
         Db { pool }
     }
 
-    pub async fn get_manga_by_id(&self, id: i64) -> Option<Manga> {
+    pub async fn get_manga_by_id(&self, id: i64) -> Result<Manga> {
         let stream = sqlx::query(r#"SELECT * FROM manga WHERE id = ?"#)
             .bind(id)
             .fetch_one(&self.pool)
-            .await
-            .ok();
+            .await;
 
-        stream.map(|row| Manga {
+        Ok(stream.map(|row| Manga {
             id: row.get(0),
             source_id: row.get(1),
             title: row.get(2),
@@ -33,18 +32,17 @@ impl Db {
             path: row.get(7),
             cover_url: row.get(8),
             date_added: row.get(9),
-        })
+        })?)
     }
 
-    pub async fn get_manga_by_source_path(&self, source_id: i64, path: &str) -> Option<Manga> {
+    pub async fn get_manga_by_source_path(&self, source_id: i64, path: &str) -> Result<Manga> {
         let stream = sqlx::query(r#"SELECT * FROM manga WHERE source_id = ? AND path = ?"#)
             .bind(source_id)
             .bind(path)
             .fetch_one(&self.pool)
-            .await
-            .ok();
+            .await;
 
-        stream.map(|row| Manga {
+        Ok(stream.map(|row| Manga {
             id: row.get(0),
             source_id: row.get(1),
             title: row.get(2),
@@ -55,7 +53,7 @@ impl Db {
             path: row.get(7),
             cover_url: row.get(8),
             date_added: row.get(9),
-        })
+        })?)
     }
 
     pub async fn get_library(&self, user_id: i64) -> Result<Vec<Manga>> {
@@ -600,7 +598,7 @@ impl Db {
         count > 0
     }
 
-    pub async fn insert_manga(&self, manga: &Manga) -> Result<i64> {
+    pub async fn insert_manga(&self, manga: &mut Manga) -> Result<()> {
         let row_id = sqlx::query(
             r#"
             INSERT INTO manga(
@@ -641,7 +639,8 @@ impl Db {
         .await?
         .last_insert_rowid();
 
-        Ok(row_id)
+        manga.id = row_id;
+        Ok(())
     }
 
     #[allow(dead_code)]
@@ -705,7 +704,7 @@ impl Db {
         Ok(rows_affected)
     }
 
-    pub async fn get_chapter_by_id(&self, id: i64) -> Option<Chapter> {
+    pub async fn get_chapter_by_id(&self, id: i64) -> Result<Chapter> {
         let stream = sqlx::query(
             r#"
             SELECT *, 
@@ -715,10 +714,9 @@ impl Db {
         )
         .bind(id)
         .fetch_one(&self.pool)
-        .await
-        .ok();
+        .await;
 
-        stream.map(|row| Chapter {
+        Ok(stream.map(|row| Chapter {
             id: row.get(0),
             source_id: row.get(1),
             manga_id: row.get(2),
@@ -732,7 +730,7 @@ impl Db {
             prev: row.get(10),
             next: row.get(11),
             last_page_read: None,
-        })
+        })?)
     }
 
     #[allow(dead_code)]

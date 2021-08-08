@@ -18,14 +18,14 @@ impl LibraryRoot {
         ctx: &Context<'_>,
         #[graphql(desc = "refresh data from source", default = false)] refresh: bool,
     ) -> Result<Vec<Manga>> {
-        let user = user::get_claims(ctx).ok_or("no token")?;
+        let user = user::get_claims(ctx)?;
         let ctx = ctx.data_unchecked::<GlobalContext>();
         let manga = ctx.mangadb.get_library(user.sub).await?;
 
         if refresh {
             let db = &ctx.mangadb;
             for favorite_manga in manga.iter() {
-                let mut m: Manga = {
+                let mut m: crate::db::model::Manga = {
                     let extensions = ctx.extensions.clone();
                     extensions
                         .get_manga_info(favorite_manga.source_id, favorite_manga.path.clone())
@@ -34,11 +34,11 @@ impl LibraryRoot {
                 };
 
                 m.id = favorite_manga.id;
-                db.insert_manga(&m).await?;
+                db.insert_manga(&mut m).await?;
             }
         }
 
-        Ok(manga)
+        Ok(manga.into_iter().map(|m| m.into()).collect())
     }
 
     async fn recent_updates(
@@ -49,7 +49,7 @@ impl LibraryRoot {
         first: Option<i32>,
         last: Option<i32>,
     ) -> Result<Connection<String, RecentUpdate, EmptyFields, EmptyFields>> {
-        let user = user::get_claims(ctx).ok_or("no token")?;
+        let user = user::get_claims(ctx)?;
         let db = ctx.data_unchecked::<GlobalContext>().mangadb.clone();
         query(
             after,
@@ -139,7 +139,7 @@ impl LibraryRoot {
         first: Option<i32>,
         last: Option<i32>,
     ) -> Result<Connection<String, RecentChapter, EmptyFields, EmptyFields>> {
-        let user = user::get_claims(ctx).ok_or("no token")?;
+        let user = user::get_claims(ctx)?;
         let db = ctx.data_unchecked::<GlobalContext>().mangadb.clone();
         query(
             after,
@@ -244,7 +244,7 @@ impl LibraryMutationRoot {
         ctx: &Context<'_>,
         #[graphql(desc = "manga id")] manga_id: i64,
     ) -> Result<u64> {
-        let user = user::get_claims(ctx).ok_or("no token")?;
+        let user = user::get_claims(ctx)?;
         match ctx
             .data_unchecked::<GlobalContext>()
             .mangadb
@@ -261,7 +261,7 @@ impl LibraryMutationRoot {
         ctx: &Context<'_>,
         #[graphql(desc = "manga id")] manga_id: i64,
     ) -> Result<u64> {
-        let user = user::get_claims(ctx).ok_or("no token")?;
+        let user = user::get_claims(ctx)?;
         match ctx
             .data_unchecked::<GlobalContext>()
             .mangadb
@@ -279,7 +279,7 @@ impl LibraryMutationRoot {
         #[graphql(desc = "chapter id")] chapter_id: i64,
         #[graphql(desc = "page")] page: i64,
     ) -> Result<u64> {
-        let user = user::get_claims(ctx).ok_or("no token")?;
+        let user = user::get_claims(ctx)?;
         match ctx
             .data_unchecked::<GlobalContext>()
             .mangadb

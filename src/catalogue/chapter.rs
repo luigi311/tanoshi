@@ -41,6 +41,66 @@ impl From<tanoshi_lib::data::Chapter> for Chapter {
     }
 }
 
+impl From<crate::db::model::Chapter> for Chapter {
+    fn from(val: crate::db::model::Chapter) -> Self {
+        Self {
+            id: val.id,
+            source_id: val.source_id,
+            manga_id: val.manga_id,
+            title: val.title,
+            path: val.path,
+            number: val.number,
+            scanlator: val.scanlator,
+            prev: val.prev,
+            next: val.next,
+            uploaded: val.uploaded,
+            date_added: val.date_added,
+            last_page_read: val.last_page_read,
+            pages: val.pages,
+        }
+    }
+}
+
+impl From<tanoshi_lib::data::Chapter> for crate::db::model::Chapter {
+    fn from(ch: tanoshi_lib::data::Chapter) -> Self {
+        Self {
+            id: 0,
+            source_id: ch.source_id,
+            manga_id: 0,
+            title: ch.title,
+            path: ch.path,
+            number: ch.number,
+            scanlator: ch.scanlator,
+            prev: None,
+            next: None,
+            uploaded: ch.uploaded,
+            date_added: chrono::NaiveDateTime::from_timestamp(chrono::Local::now().timestamp(), 0),
+            last_page_read: None,
+            pages: vec![],
+        }
+    }
+}
+
+impl From<Chapter> for crate::db::model::Chapter {
+    fn from(val: Chapter) -> Self {
+        Self {
+            id: val.id,
+            source_id: val.source_id,
+            manga_id: val.manga_id,
+            title: val.title,
+            path: val.path,
+            number: val.number,
+            scanlator: val.scanlator,
+            prev: val.prev,
+            next: val.next,
+            uploaded: val.uploaded,
+            date_added: val.date_added,
+            last_page_read: val.last_page_read,
+            pages: val.pages,
+        }
+    }
+}
+
 #[Object]
 impl Chapter {
     async fn id(&self) -> i64 {
@@ -72,7 +132,7 @@ impl Chapter {
     }
 
     async fn read_at(&self, ctx: &Context<'_>) -> Result<Option<chrono::NaiveDateTime>> {
-        let user = user::get_claims(ctx).ok_or("no token")?;
+        let user = user::get_claims(ctx)?;
         let read_at = ctx
             .data_unchecked::<GlobalContext>()
             .mangadb
@@ -91,7 +151,7 @@ impl Chapter {
     }
 
     async fn last_page_read(&self, ctx: &Context<'_>) -> Result<Option<i64>> {
-        let user = user::get_claims(ctx).ok_or("no token")?;
+        let user = user::get_claims(ctx)?;
         let last_page = ctx
             .data::<GlobalContext>()?
             .mangadb
@@ -101,12 +161,13 @@ impl Chapter {
         Ok(last_page)
     }
 
-    async fn manga(&self, ctx: &Context<'_>) -> Manga {
-        ctx.data_unchecked::<GlobalContext>()
+    async fn manga(&self, ctx: &Context<'_>) -> Result<Manga> {
+        Ok(ctx
+            .data_unchecked::<GlobalContext>()
             .mangadb
             .get_manga_by_id(self.manga_id)
-            .await
-            .unwrap()
+            .await?
+            .into())
     }
 
     async fn pages(

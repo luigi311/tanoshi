@@ -1,7 +1,6 @@
-use crate::user::User;
-use anyhow::{anyhow, Result};
-use sqlx::sqlite::SqlitePool;
-use sqlx::Row;
+use super::model::User;
+use anyhow::Result;
+use sqlx::{sqlite::SqlitePool, Row};
 use tokio_stream::StreamExt;
 
 #[derive(Debug, Clone)]
@@ -73,6 +72,9 @@ impl Db {
                 username: row.get(1),
                 password: row.get(2),
                 is_admin: row.get(3),
+                created_at: row.get(4),
+                updated_at: row.get(5),
+                telegram_chat_id: row.get(6),
             })
         }
 
@@ -82,51 +84,42 @@ impl Db {
     pub async fn get_users_count(&self) -> Result<i64> {
         let stream = sqlx::query(r#"SELECT COUNT(1) FROM user"#)
             .fetch_one(&self.pool)
-            .await
-            .ok();
+            .await;
 
-        if let Some(row) = stream {
-            Ok(row.get(0))
-        } else {
-            Err(anyhow!("Not found"))
-        }
+        Ok(stream.map(|row| row.get(0))?)
     }
 
     pub async fn get_user_by_id(&self, id: i64) -> Result<User> {
         let stream = sqlx::query(r#"SELECT * FROM user WHERE id = ?"#)
             .bind(id)
             .fetch_one(&self.pool)
-            .await
-            .ok();
+            .await;
 
-        if let Some(row) = stream {
-            Ok(User {
-                id: row.get(0),
-                username: row.get(1),
-                password: row.get(2),
-                is_admin: row.get(3),
-            })
-        } else {
-            Err(anyhow!("Not found"))
-        }
+        Ok(stream.map(|row| User {
+            id: row.get(0),
+            username: row.get(1),
+            password: row.get(2),
+            is_admin: row.get(3),
+            created_at: row.get(4),
+            updated_at: row.get(5),
+            telegram_chat_id: row.get(6),
+        })?)
     }
 
     pub async fn get_user_by_username(&self, username: String) -> Result<User> {
         let stream = sqlx::query(r#"SELECT * FROM user WHERE username = ?"#)
             .bind(&username)
             .fetch_one(&self.pool)
-            .await
-            .ok();
+            .await;
 
-        if let Some(row) = stream {
-            Ok(User {
-                id: row.get(0),
-                username: row.get(1),
-                password: row.get(2),
-                is_admin: row.get(3),
-            })
-        } else {
-            Err(anyhow!("Not found"))
-        }
+        Ok(stream.map(|row| User {
+            id: row.get(0),
+            username: row.get(1),
+            password: row.get(2),
+            is_admin: row.get(3),
+            created_at: row.get(4),
+            updated_at: row.get(5),
+            telegram_chat_id: row.get(6),
+        })?)
     }
 }
