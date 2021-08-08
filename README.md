@@ -12,7 +12,7 @@ Selfhosted web manga reader with extensions.
 
 ## Features
 ### Currently working
-- Browse, search, and read manga from local, mangadex and [more](https://github.com/fadhlika/tanoshi-extensions)
+- Browse, search, and read manga from local, mangasee and [more](https://github.com/fadhlika/tanoshi-extensions)
 - Favorite mangas
 - Reading history across devices
 - See chapter updates
@@ -39,14 +39,13 @@ docker create --name=tanoshi -p 8080:80 --mount type=bind,source=/path/to/data,t
 docker start tanoshi
 ```
 
-### Plugins
-To browse and read manga, tanoshi needs plugins. Plugins can be donwnloaded from [here](https://github.com/fadhlika/tanoshi-extensions) in `repo-<your operating system>` branch. 
-You can download individual plugins and store in on your selected `plugins_path` in `config.yml`, or clone `repo` branch and copy all of plugins to `plugins_path`.
+### Extensions
+By default tanoshi only support to read locally available manga specified in `local_path` in `config.yml`. To browse and read manga from external source, tanoshi needs extensions. Extensions can be donwnloaded from [here](https://github.com/fadhlika/tanoshi-extensions) in `repo` branch. 
 
-Or you can install from web and restart tanoshi afterward.
+You can download individual plugins and store in on your selected `plugins_path` in `config.yml`, or clone `repo` branch and copy all of plugins to `plugins_path`, or you can install from web.
 
 ### Account
-On first run, tanoshi will ask you create account, then you can you the account created to login. First user will always be admin, and can create new user
+On first run, tanoshi will ask you create account, then you can use the account to login. First user will always be admin, and can create new user.
 
 ## Usage
 ### CLI
@@ -79,7 +78,7 @@ plugin_path: /absolute/path/to/plugins
 local_path: /absolute/path/to/manga
 ```
 
-local manga have to be structured below
+local manga have to be structured below, it tested for `cbz` and `cbr` files
 ```
 /path/to/manga
 ├─── Series 1
@@ -93,19 +92,18 @@ local manga have to be structured below
 
 ```
 
-# Feedback/Questions/Discussion
+## Feedback/Questions/Discussion
 Feel free to create issue or ask in [Discord Server](https://discord.gg/wPSEftdDqB)
 
 
-# Build
+## Build
 Tanoshi backend use [rust-embed](https://github.com/pyros2097/rust-embed) to embed static files to the binary. Because of this, `tanoshi-web` need to be built first so `tanoshi` will be able to build successfully.
 
-## Steps
 ### Frontend
 1. Install Rust
-2. Install wasm-pack
+2. Install trunk and wasm-bindgen-cli
    ```
-   cargo install wasm-pack
+   cargo install trunk wasm-bindgen-cli
    ```
 3. Change directory into `tanoshi-web`
     ```
@@ -113,11 +111,7 @@ Tanoshi backend use [rust-embed](https://github.com/pyros2097/rust-embed) to emb
     ```
 3. Install all npm dependencies
     ```
-    yarn
-    ```
-4. Run
-    ```
-    yarn start
+    trunk build
     ```
 
 ### Backend
