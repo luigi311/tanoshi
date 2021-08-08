@@ -93,6 +93,10 @@ local manga have to be structured below
 
 ```
 
+# Feedback/Questions/Discussion
+Feel free to create issue or ask in [Discord Server](https://discord.gg/wPSEftdDqB)
+
+
 # Build
 Tanoshi backend use [rust-embed](https://github.com/pyros2097/rust-embed) to embed static files to the binary. Because of this, `tanoshi-web` need to be built first so `tanoshi` will be able to build successfully.
 
@@ -118,7 +122,8 @@ Tanoshi backend use [rust-embed](https://github.com/pyros2097/rust-embed) to emb
 
 ### Backend
 1. Change directory into `tanoshi` or root repository
-2. Build
+2. Install dependencies for https://github.com/faldez/libarchive-rs
+3. Build
     ```
     cargo build
     ```
