@@ -1,6 +1,9 @@
-use std::{collections::BTreeMap, fmt::Display};
+use std::{
+    collections::{BTreeMap, HashMap},
+    fmt::Display,
+};
 
-use crate::{context::GlobalContext, local, user};
+use crate::{context::GlobalContext, user};
 use async_graphql::{Context, Json, Object, Result, SimpleObject};
 use serde::{Deserialize, Serialize};
 use tanoshi_lib::prelude::FilterField;
@@ -173,24 +176,34 @@ pub struct SourceRoot;
 #[Object]
 impl SourceRoot {
     async fn installed_sources(&self, ctx: &Context<'_>) -> Result<Vec<Source>> {
-        let url = "https://raw.githubusercontent.com/faldez/tanoshi-extensions/repo/index.json"
-            .to_string();
-        let source_indexes = reqwest::get(url).await?.json::<Vec<SourceIndex>>().await?;
+        let available_sources_map = {
+            let url = "https://raw.githubusercontent.com/faldez/tanoshi-extensions/repo/index.json"
+                .to_string();
+            let available_sources = reqwest::get(url).await?.json::<Vec<SourceIndex>>().await?;
+            let mut available_sources_map = HashMap::new();
+            for source in available_sources {
+                available_sources_map.insert(source.id, source);
+            }
+            available_sources_map
+        };
 
-        let extensions = ctx.data::<GlobalContext>()?.extensions.clone();
+        let sources = {
+            let extensions = ctx.data::<GlobalContext>()?.extensions.clone();
+            let installed_sources = extensions.list().await?;
 
-        let local_source: Source = extensions.detail(local::ID).await?.into();
-        let mut sources: Vec<Source> = vec![local_source];
-
-        for index in source_indexes {
-            if extensions.exist(index.id).await? {
-                let mut source: Source = extensions.detail(index.id).await?.into();
-                source.has_update =
-                    Version::new(index.version) > Version::new(source.version.clone());
+            let mut sources: Vec<Source> = vec![];
+            for source in installed_sources {
+                let mut source: Source = source.into();
+                if let Some(index) = available_sources_map.get(&source.id) {
+                    source.has_update =
+                        Version::new(index.version.clone()) > Version::new(source.version.clone());
+                }
                 sources.push(source);
             }
-        }
-        sources.sort_by(|a, b| a.id.cmp(&b.id));
+            sources.sort_by(|a, b| a.id.cmp(&b.id));
+
+            sources
+        };
 
         Ok(sources)
     }
