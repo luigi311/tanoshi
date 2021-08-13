@@ -29,26 +29,34 @@ macro_rules! register_extension {
 
         #[no_mangle]
         fn get_manga_list() {
-            let res = EXT.with(|ext| ext.borrow_mut().get_manga_list($crate::shim::read_object()));
-            $crate::shim::write_object(&res);
+            if let Ok(obj) = $crate::shim::read_object() {
+                let res = EXT.with(|ext| ext.borrow_mut().get_manga_list(obj));
+                $crate::shim::write_object(&res);
+            }
         }
 
         #[no_mangle]
         fn get_manga_info() {
-            let res = EXT.with(|ext| ext.borrow_mut().get_manga_info($crate::shim::read_object()));
-            $crate::shim::write_object(&res);
+            if let Ok(obj) = $crate::shim::read_object() {
+                let res = EXT.with(|ext| ext.borrow_mut().get_manga_info(obj));
+                $crate::shim::write_object(&res);
+            }
         }
 
         #[no_mangle]
         fn get_chapters() {
-            let res = EXT.with(|ext| ext.borrow_mut().get_chapters($crate::shim::read_object()));
-            $crate::shim::write_object(&res);
+            if let Ok(obj) = $crate::shim::read_object() {
+                let res = EXT.with(|ext| ext.borrow_mut().get_chapters(obj));
+                $crate::shim::write_object(&res);
+            }
         }
 
         #[no_mangle]
         fn get_pages() {
-            let res = EXT.with(|ext| ext.borrow_mut().get_pages($crate::shim::read_object()));
-            $crate::shim::write_object(&res);
+            if let Ok(obj) = $crate::shim::read_object() {
+                let res = EXT.with(|ext| ext.borrow_mut().get_pages(obj));
+                $crate::shim::write_object(&res);
+            }
         }
 
         // fn get_page(&self, url: &str) -> Result<Vec<u8>, Box<dyn Error>> {
@@ -67,4 +75,3 @@ macro_rules! hashmap {
          map
     }}
 }
-
