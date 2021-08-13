@@ -5,7 +5,10 @@ use web_sys::window;
 
 type NaiveDateTime = String;
 
-use crate::{common::{Cover, snackbar}, utils::local_storage};
+use crate::{
+    common::{snackbar, Cover},
+    utils::local_storage,
+};
 
 fn graphql_url() -> String {
     [
@@ -57,7 +60,20 @@ pub async fn fetch_manga_from_source(
         .send()
         .await?;
     let response_body: Response<browse_source::ResponseData> = res.json().await?;
-    let list = response_body.data.ok_or("no data")?.browse_source;
+    let list = match (response_body.data, response_body.errors) {
+        (Some(data), _) => data.browse_source,
+        (_, Some(errors)) => {
+            return Err(errors
+                .iter()
+                .map(|e| format!("{}", e))
+                .collect::<Vec<String>>()
+                .join(", ")
+                .into());
+        }
+        _ => {
+            return Err("no data".into());
+        }
+    };
 
     let covers = list
         .iter()
@@ -100,7 +116,21 @@ pub async fn fetch_manga_from_favorite(refresh: bool) -> Result<Vec<Cover>, Box<
         .send()
         .await?;
     let response_body: Response<browse_favorites::ResponseData> = res.json().await?;
-    let list = response_body.data.ok_or("no data")?.library;
+
+    let list = match (response_body.data, response_body.errors) {
+        (Some(data), _) => data.library,
+        (_, Some(errors)) => {
+            return Err(errors
+                .iter()
+                .map(|e| format!("{}", e))
+                .collect::<Vec<String>>()
+                .join(", ")
+                .into());
+        }
+        _ => {
+            return Err("no data".into());
+        }
+    };
 
     Ok(list
         .iter()
@@ -146,10 +176,20 @@ pub async fn fetch_manga_by_source_path(
         .send()
         .await?;
     let response_body: Response<fetch_manga_by_source_path::ResponseData> = res.json().await?;
-    let manga = response_body
-        .data
-        .ok_or("no data")?
-        .manga_by_source_path;
+    let manga = match (response_body.data, response_body.errors) {
+        (Some(data), _) => data.manga_by_source_path,
+        (_, Some(errors)) => {
+            return Err(errors
+                .iter()
+                .map(|e| format!("{}", e))
+                .collect::<Vec<String>>()
+                .join(", ")
+                .into());
+        }
+        _ => {
+            return Err("no data".into());
+        }
+    };
 
     Ok(manga)
 }
@@ -183,7 +223,20 @@ pub async fn fetch_manga_detail(
         .send()
         .await?;
     let response_body: Response<fetch_manga_detail::ResponseData> = res.json().await?;
-    let manga = response_body.data.ok_or("no data")?.manga;
+    let manga = match (response_body.data, response_body.errors) {
+        (Some(data), _) => data.manga,
+        (_, Some(errors)) => {
+            return Err(errors
+                .iter()
+                .map(|e| format!("{}", e))
+                .collect::<Vec<String>>()
+                .join(", ")
+                .into());
+        }
+        _ => {
+            return Err("no data".into());
+        }
+    };
 
     Ok(manga)
 }
@@ -215,9 +268,22 @@ pub async fn fetch_chapter(
         .send()
         .await?;
     let response_body: Response<fetch_chapter::ResponseData> = res.json().await?;
-    let manga = response_body.data.ok_or("no data")?.chapter;
+    let chapter = match (response_body.data, response_body.errors) {
+        (Some(data), _) => data.chapter,
+        (_, Some(errors)) => {
+            return Err(errors
+                .iter()
+                .map(|e| format!("{}", e))
+                .collect::<Vec<String>>()
+                .join(", ")
+                .into());
+        }
+        _ => {
+            return Err("no data".into());
+        }
+    };
 
-    Ok(manga)
+    Ok(chapter)
 }
 
 #[derive(GraphQLQuery)]
@@ -246,7 +312,20 @@ pub async fn add_to_library(manga_id: i64) -> Result<(), Box<dyn Error>> {
         .await?;
 
     let response_body: Response<add_to_library::ResponseData> = res.json().await?;
-    let _ = response_body.data.ok_or("no data")?;
+    let _ = match (response_body.data, response_body.errors) {
+        (Some(_), _) => {}
+        (_, Some(errors)) => {
+            return Err(errors
+                .iter()
+                .map(|e| format!("{}", e))
+                .collect::<Vec<String>>()
+                .join(", ")
+                .into());
+        }
+        _ => {
+            return Err("no data".into());
+        }
+    };
 
     Ok(())
 }
@@ -277,7 +356,20 @@ pub async fn delete_from_library(manga_id: i64) -> Result<(), Box<dyn Error>> {
         .await?;
 
     let response_body: Response<delete_from_library::ResponseData> = res.json().await?;
-    let _ = response_body.data.ok_or("no data")?;
+    let _ = match (response_body.data, response_body.errors) {
+        (Some(_), _) => {}
+        (_, Some(errors)) => {
+            return Err(errors
+                .iter()
+                .map(|e| format!("{}", e))
+                .collect::<Vec<String>>()
+                .join(", ")
+                .into());
+        }
+        _ => {
+            return Err("no data".into());
+        }
+    };
 
     Ok(())
 }
@@ -340,7 +432,21 @@ pub async fn fetch_recent_updates(
         .await?;
 
     let response_body: Response<fetch_recent_updates::ResponseData> = res.json().await?;
-    Ok(response_body.data.ok_or("no data")?.recent_updates)
+    let recent_updates = match (response_body.data, response_body.errors) {
+        (Some(data), _) => data.recent_updates,
+        (_, Some(errors)) => {
+            return Err(errors
+                .iter()
+                .map(|e| format!("{}", e))
+                .collect::<Vec<String>>()
+                .join(", ")
+                .into());
+        }
+        _ => {
+            return Err("no data".into());
+        }
+    };
+    Ok(recent_updates)
 }
 
 #[derive(GraphQLQuery)]
@@ -372,7 +478,21 @@ pub async fn fetch_histories(
         .await?;
 
     let response_body: Response<fetch_histories::ResponseData> = res.json().await?;
-    Ok(response_body.data.ok_or("no data")?.recent_chapters)
+    let recent_chapters = match (response_body.data, response_body.errors) {
+        (Some(data), _) => data.recent_chapters,
+        (_, Some(errors)) => {
+            return Err(errors
+                .iter()
+                .map(|e| format!("{}", e))
+                .collect::<Vec<String>>()
+                .join(", ")
+                .into());
+        }
+        _ => {
+            return Err("no data".into());
+        }
+    };
+    Ok(recent_chapters)
 }
 
 #[derive(GraphQLQuery)]
@@ -395,7 +515,21 @@ pub async fn fetch_sources(
         .await?;
 
     let response_body: Response<fetch_sources::ResponseData> = res.json().await?;
-    Ok(response_body.data.ok_or("no data")?.installed_sources)
+    let installed_sources = match (response_body.data, response_body.errors) {
+        (Some(data), _) => data.installed_sources,
+        (_, Some(errors)) => {
+            return Err(errors
+                .iter()
+                .map(|e| format!("{}", e))
+                .collect::<Vec<String>>()
+                .join(", ")
+                .into());
+        }
+        _ => {
+            return Err("no data".into());
+        }
+    };
+    Ok(installed_sources)
 }
 
 #[derive(GraphQLQuery)]
@@ -417,7 +551,21 @@ pub async fn fetch_all_sources() -> Result<fetch_all_sources::ResponseData, Box<
         .await?;
 
     let response_body: Response<fetch_all_sources::ResponseData> = res.json().await?;
-    Ok(response_body.data.ok_or("no data")?)
+    let data = match (response_body.data, response_body.errors) {
+        (Some(data), _) => data,
+        (_, Some(errors)) => {
+            return Err(errors
+                .iter()
+                .map(|e| format!("{}", e))
+                .collect::<Vec<String>>()
+                .join(", ")
+                .into());
+        }
+        _ => {
+            return Err("no data".into());
+        }
+    };
+    Ok(data)
 }
 
 #[derive(GraphQLQuery)]
@@ -444,7 +592,16 @@ pub async fn fetch_source(
         .await?;
 
     let response_body: Response<fetch_source_detail::ResponseData> = res.json().await?;
-    Ok(response_body.data.ok_or("no data")?.source)
+    let source = match (response_body.data, response_body.errors) {
+        (Some(data), _) => data.source,
+        (_, Some(errors)) => {
+            return Err(errors.iter().map(|e| format!("{}", e)).collect::<Vec<String>>().join(", ").into());
+        }
+        _ => {
+            return Err("no data".into());
+        }
+    };
+    Ok(source)
 }
 
 #[derive(GraphQLQuery)]
@@ -473,7 +630,16 @@ pub async fn install_source(source_id: i64) -> Result<i64, Box<dyn Error>> {
         .await?;
 
     let response_body: Response<install_source::ResponseData> = res.json().await?;
-    Ok(response_body.data.ok_or("no data")?.install_source)
+    let install_source = match (response_body.data, response_body.errors) {
+        (Some(data), _) => data.install_source,
+        (_, Some(errors)) => {
+            return Err(errors.iter().map(|e| format!("{}", e)).collect::<Vec<String>>().join(", ").into());
+        }
+        _ => {
+            return Err("no data".into());
+        }
+    };
+    Ok(install_source)
 }
 
 #[derive(GraphQLQuery)]
@@ -502,7 +668,16 @@ pub async fn update_source(source_id: i64) -> Result<i64, Box<dyn Error>> {
         .await?;
 
     let response_body: Response<update_source::ResponseData> = res.json().await?;
-    Ok(response_body.data.ok_or("no data")?.update_source)
+    let update_source = match (response_body.data, response_body.errors) {
+        (Some(data), _) => data.update_source,
+        (_, Some(errors)) => {
+            return Err(errors.iter().map(|e| format!("{}", e)).collect::<Vec<String>>().join(", ").into());
+        }
+        _ => {
+            return Err("no data".into());
+        }
+    };
+    Ok(update_source)
 }
 
 #[derive(GraphQLQuery)]
@@ -526,7 +701,16 @@ pub async fn uninstall_source(source_id: i64) -> Result<i64, Box<dyn Error>> {
         .await?;
 
     let response_body: Response<uninstall_source::ResponseData> = res.json().await?;
-    Ok(response_body.data.ok_or("no data")?.uninstall_source)
+    let uninstall_source = match (response_body.data, response_body.errors) {
+        (Some(data), _) => data.uninstall_source,
+        (_, Some(errors)) => {
+            return Err(errors.iter().map(|e| format!("{}", e)).collect::<Vec<String>>().join(", ").into());
+        }
+        _ => {
+            return Err("no data".into());
+        }
+    };
+    Ok(uninstall_source)
 }
 
 #[derive(GraphQLQuery)]
@@ -551,7 +735,16 @@ pub async fn user_login(username: String, password: String) -> Result<String, Bo
         .await?;
 
     let response_body: Response<user_login::ResponseData> = res.json().await?;
-    Ok(response_body.data.ok_or("no data")?.login)
+    let login = match (response_body.data, response_body.errors) {
+        (Some(data), _) => data.login,
+        (_, Some(errors)) => {
+            return Err(errors.iter().map(|e| format!("{}", e)).collect::<Vec<String>>().join(", ").into());
+        }
+        _ => {
+            return Err("no data".into());
+        }
+    };
+    Ok(login)
 }
 
 #[derive(GraphQLQuery)]
@@ -562,7 +755,13 @@ pub async fn user_login(username: String, password: String) -> Result<String, Bo
 )]
 pub struct FetchUserList;
 
-pub async fn fetch_users() -> Result<(fetch_user_list::FetchUserListMe, Vec<fetch_user_list::FetchUserListUsers>), Box<dyn Error>> {
+pub async fn fetch_users() -> Result<
+    (
+        fetch_user_list::FetchUserListMe,
+        Vec<fetch_user_list::FetchUserListUsers>,
+    ),
+    Box<dyn Error>,
+> {
     let token = local_storage()
         .get("token")
         .unwrap_throw()
@@ -578,8 +777,16 @@ pub async fn fetch_users() -> Result<(fetch_user_list::FetchUserListMe, Vec<fetc
         .await?;
 
     let response_body: Response<fetch_user_list::ResponseData> = res.json().await?;
-    let result = response_body.data.ok_or("no data")?;
-    Ok((result.me, result.users))
+    let (me, users) = match (response_body.data, response_body.errors) {
+        (Some(data), _) => (data.me, data.users),
+        (_, Some(errors)) => {
+            return Err(errors.iter().map(|e| format!("{}", e)).collect::<Vec<String>>().join(", ").into());
+        }
+        _ => {
+            return Err("no data".into());
+        }
+    };
+    Ok((me, users))
 }
 
 #[derive(GraphQLQuery)]
@@ -606,7 +813,16 @@ pub async fn fetch_me() -> Result<fetch_me::FetchMeMe, Box<dyn Error>> {
         .await?;
 
     let response_body: Response<fetch_me::ResponseData> = res.json().await?;
-    Ok(response_body.data.ok_or("no data")?.me)
+    let me = match (response_body.data, response_body.errors) {
+        (Some(data), _) => data.me,
+        (_, Some(errors)) => {
+            return Err(errors.iter().map(|e| format!("{}", e)).collect::<Vec<String>>().join(", ").into());
+        }
+        _ => {
+            return Err("no data".into());
+        }
+    };
+    Ok(me)
 }
 
 #[derive(GraphQLQuery)]
@@ -637,7 +853,15 @@ pub async fn user_register(
     let res = req.json(&request_body).send().await?;
 
     let response_body: Response<user_register::ResponseData> = res.json().await?;
-    let _ = response_body.data.ok_or("no data")?.register;
+    let _ = match (response_body.data, response_body.errors) {
+        (Some(data), _) => data.register,
+        (_, Some(errors)) => {
+            return Err(errors.iter().map(|e| format!("{}", e)).collect::<Vec<String>>().join(", ").into());
+        }
+        _ => {
+            return Err("no data".into());
+        }
+    };
     Ok(())
 }
 
@@ -686,7 +910,15 @@ pub async fn change_password(
         }
     }
 
-    let _ = response_body.data.ok_or("no data")?.change_password;
+    let _ = match (response_body.data, response_body.errors) {
+        (Some(data), _) => data.change_password,
+        (_, Some(errors)) => {
+            return Err(errors.iter().map(|e| format!("{}", e)).collect::<Vec<String>>().join(", ").into());
+        }
+        _ => {
+            return Err("no data".into());
+        }
+    };
     Ok(())
 }
 
@@ -710,5 +942,14 @@ pub async fn server_status(
         .await?;
 
     let response_body: Response<fetch_server_status::ResponseData> = res.json().await?;
-    Ok(response_body.data.ok_or("no data")?.server_status)
+    let server_status = match (response_body.data, response_body.errors) {
+        (Some(data), _) => data.server_status,
+        (_, Some(errors)) => {
+            return Err(errors.iter().map(|e| format!("{}", e)).collect::<Vec<String>>().join(", ").into());
+        }
+        _ => {
+            return Err("no data".into());
+        }
+    };
+    Ok(server_status)
 }
