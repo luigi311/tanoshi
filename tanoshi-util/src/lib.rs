@@ -1,15 +1,22 @@
+use std::collections::HashMap;
+
 use tanoshi_lib::data::{Request, Response};
 
 pub fn http_request(req: Request) -> Response {
-    tanoshi_lib::shim::write_object(req);
-    unsafe { host_http_request() };
-    tanoshi_lib::shim::read_object()
-}
+    if let Err(err) = tanoshi_lib::shim::write_object(req) {
+        return Response {
+            headers: HashMap::new(),
+            body: format!("{}", err),
+            status: 9999,
+        };
+    }
 
-pub fn local_request(req: Request) -> Response {
-    tanoshi_lib::shim::write_object(req);
     unsafe { host_http_request() };
-    tanoshi_lib::shim::read_object()
+    tanoshi_lib::shim::read_object().unwrap_or_else(|err| Response {
+        headers: HashMap::new(),
+        body: format!("{}", err),
+        status: 9999,
+    })
 }
 
 #[link(wasm_import_module = "tanoshi")]
