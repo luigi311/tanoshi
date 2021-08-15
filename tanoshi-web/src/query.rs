@@ -5,10 +5,7 @@ use web_sys::window;
 
 type NaiveDateTime = String;
 
-use crate::{
-    common::{snackbar, Cover},
-    utils::local_storage,
-};
+use crate::{common::Cover, utils::local_storage};
 
 fn graphql_url() -> String {
     [
@@ -595,7 +592,12 @@ pub async fn fetch_source(
     let source = match (response_body.data, response_body.errors) {
         (Some(data), _) => data.source,
         (_, Some(errors)) => {
-            return Err(errors.iter().map(|e| format!("{}", e)).collect::<Vec<String>>().join(", ").into());
+            return Err(errors
+                .iter()
+                .map(|e| format!("{}", e))
+                .collect::<Vec<String>>()
+                .join(", ")
+                .into());
         }
         _ => {
             return Err("no data".into());
@@ -633,7 +635,12 @@ pub async fn install_source(source_id: i64) -> Result<i64, Box<dyn Error>> {
     let install_source = match (response_body.data, response_body.errors) {
         (Some(data), _) => data.install_source,
         (_, Some(errors)) => {
-            return Err(errors.iter().map(|e| format!("{}", e)).collect::<Vec<String>>().join(", ").into());
+            return Err(errors
+                .iter()
+                .map(|e| format!("{}", e))
+                .collect::<Vec<String>>()
+                .join(", ")
+                .into());
         }
         _ => {
             return Err("no data".into());
@@ -671,7 +678,12 @@ pub async fn update_source(source_id: i64) -> Result<i64, Box<dyn Error>> {
     let update_source = match (response_body.data, response_body.errors) {
         (Some(data), _) => data.update_source,
         (_, Some(errors)) => {
-            return Err(errors.iter().map(|e| format!("{}", e)).collect::<Vec<String>>().join(", ").into());
+            return Err(errors
+                .iter()
+                .map(|e| format!("{}", e))
+                .collect::<Vec<String>>()
+                .join(", ")
+                .into());
         }
         _ => {
             return Err("no data".into());
@@ -704,7 +716,12 @@ pub async fn uninstall_source(source_id: i64) -> Result<i64, Box<dyn Error>> {
     let uninstall_source = match (response_body.data, response_body.errors) {
         (Some(data), _) => data.uninstall_source,
         (_, Some(errors)) => {
-            return Err(errors.iter().map(|e| format!("{}", e)).collect::<Vec<String>>().join(", ").into());
+            return Err(errors
+                .iter()
+                .map(|e| format!("{}", e))
+                .collect::<Vec<String>>()
+                .join(", ")
+                .into());
         }
         _ => {
             return Err("no data".into());
@@ -738,7 +755,12 @@ pub async fn user_login(username: String, password: String) -> Result<String, Bo
     let login = match (response_body.data, response_body.errors) {
         (Some(data), _) => data.login,
         (_, Some(errors)) => {
-            return Err(errors.iter().map(|e| format!("{}", e)).collect::<Vec<String>>().join(", ").into());
+            return Err(errors
+                .iter()
+                .map(|e| format!("{}", e))
+                .collect::<Vec<String>>()
+                .join(", ")
+                .into());
         }
         _ => {
             return Err("no data".into());
@@ -780,7 +802,12 @@ pub async fn fetch_users() -> Result<
     let (me, users) = match (response_body.data, response_body.errors) {
         (Some(data), _) => (data.me, data.users),
         (_, Some(errors)) => {
-            return Err(errors.iter().map(|e| format!("{}", e)).collect::<Vec<String>>().join(", ").into());
+            return Err(errors
+                .iter()
+                .map(|e| format!("{}", e))
+                .collect::<Vec<String>>()
+                .join(", ")
+                .into());
         }
         _ => {
             return Err("no data".into());
@@ -816,7 +843,12 @@ pub async fn fetch_me() -> Result<fetch_me::FetchMeMe, Box<dyn Error>> {
     let me = match (response_body.data, response_body.errors) {
         (Some(data), _) => data.me,
         (_, Some(errors)) => {
-            return Err(errors.iter().map(|e| format!("{}", e)).collect::<Vec<String>>().join(", ").into());
+            return Err(errors
+                .iter()
+                .map(|e| format!("{}", e))
+                .collect::<Vec<String>>()
+                .join(", ")
+                .into());
         }
         _ => {
             return Err("no data".into());
@@ -856,7 +888,12 @@ pub async fn user_register(
     let _ = match (response_body.data, response_body.errors) {
         (Some(data), _) => data.register,
         (_, Some(errors)) => {
-            return Err(errors.iter().map(|e| format!("{}", e)).collect::<Vec<String>>().join(", ").into());
+            return Err(errors
+                .iter()
+                .map(|e| format!("{}", e))
+                .collect::<Vec<String>>()
+                .join(", ")
+                .into());
         }
         _ => {
             return Err("no data".into());
@@ -895,31 +932,56 @@ pub async fn change_password(
         .await?;
 
     let response_body: Response<change_user_password::ResponseData> = res.json().await?;
-    match response_body.errors {
-        Some(errors) => {
-            let e = errors
-                .iter()
-                .map(|e| e.to_string())
-                .collect::<Vec<String>>()
-                .join(";");
-            return Err(e.into());
-        }
-        None => {
-            error!("failed to change user password");
-            snackbar::show("failed to change user password".to_string());
-        }
-    }
-
-    let _ = match (response_body.data, response_body.errors) {
-        (Some(data), _) => data.change_password,
+    match (response_body.data, response_body.errors) {
+        (Some(_), _) => Ok(()),
         (_, Some(errors)) => {
-            return Err(errors.iter().map(|e| format!("{}", e)).collect::<Vec<String>>().join(", ").into());
+            return Err(errors
+                .iter()
+                .map(|e| format!("{}", e))
+                .collect::<Vec<String>>()
+                .join(", ")
+                .into());
         }
-        _ => {
-            return Err("no data".into());
+        _ => Err("no data".into()),
+    }
+}
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/schema.graphql",
+    query_path = "graphql/update_profile.graphql",
+    response_derives = "Debug"
+)]
+pub struct UpdateProfile;
+
+pub async fn update_profile(telegram_chat_id: Option<i64>) -> Result<(), Box<dyn Error>> {
+    let token = local_storage()
+        .get("token")
+        .unwrap_throw()
+        .ok_or("no token")?;
+    let client = reqwest::Client::new();
+    let var = update_profile::Variables { telegram_chat_id };
+    let request_body = UpdateProfile::build_query(var);
+    let res = client
+        .post(&graphql_url())
+        .header("Authorization", format!("Bearer {}", token))
+        .json(&request_body)
+        .send()
+        .await?;
+
+    let response_body: Response<update_profile::ResponseData> = res.json().await?;
+    match (response_body.data, response_body.errors) {
+        (Some(_), _) => Ok(()),
+        (_, Some(errors)) => {
+            return Err(errors
+                .iter()
+                .map(|e| format!("{}", e))
+                .collect::<Vec<String>>()
+                .join(", ")
+                .into());
         }
-    };
-    Ok(())
+        _ => Err("no data".into()),
+    }
 }
 
 #[derive(GraphQLQuery)]
@@ -945,7 +1007,12 @@ pub async fn server_status(
     let server_status = match (response_body.data, response_body.errors) {
         (Some(data), _) => data.server_status,
         (_, Some(errors)) => {
-            return Err(errors.iter().map(|e| format!("{}", e)).collect::<Vec<String>>().join(", ").into());
+            return Err(errors
+                .iter()
+                .map(|e| format!("{}", e))
+                .collect::<Vec<String>>()
+                .join(", ")
+                .into());
         }
         _ => {
             return Err("no data".into());

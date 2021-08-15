@@ -16,6 +16,11 @@ pub struct Claims {
 
 use async_graphql::SimpleObject;
 
+#[derive(Debug, Default, SimpleObject)]
+pub struct Settings {
+    telegram_chat_id: Option<i64>,
+}
+
 #[derive(Debug, SimpleObject)]
 pub struct User {
     pub id: i64,
@@ -23,6 +28,7 @@ pub struct User {
     #[graphql(skip)]
     pub password: String,
     pub is_admin: bool,
+    pub settings: Settings,
 }
 
 impl From<crate::db::model::User> for User {
@@ -32,6 +38,9 @@ impl From<crate::db::model::User> for User {
             username: val.username,
             password: val.password,
             is_admin: val.is_admin,
+            settings: Settings {
+                telegram_chat_id: val.telegram_chat_id,
+            },
         }
     }
 }
@@ -182,6 +191,27 @@ impl UserMutationRoot {
         let affected = userdb.update_password(user.id, hash).await?;
 
         Ok(affected)
+    }
+
+    async fn update_profile(
+        &self,
+        ctx: &Context<'_>,
+        #[graphql(desc = "telegram chat id")] telegram_chat_id: Option<i64>,
+    ) -> Result<u64> {
+        debug!("update_profile");
+        let claims = get_claims(ctx)?;
+        
+        let userdb = &ctx.data::<GlobalContext>()?.userdb;
+        let mut user = userdb.get_user_by_id(claims.sub).await?;
+        debug!("update_profile");
+
+        user.telegram_chat_id = telegram_chat_id;
+
+        let row = userdb.update_user_setting(&user).await?;
+
+        debug!("update_profile: {} rows affected", row);
+
+        Ok(row)
     }
 }
 

@@ -1,12 +1,12 @@
 use std::rc::Rc;
 
-use dominator::{routing, with_node};
 use dominator::{clone, html, Dom};
+use dominator::{routing, with_node};
 use futures_signals::signal::Mutable;
 use futures_signals::signal::SignalExt;
 use web_sys::HtmlInputElement;
 
-use crate::common::{Route, SettingCategory, events, snackbar};
+use crate::common::{events, snackbar, Route, SettingCategory};
 use crate::query;
 use crate::utils::AsyncLoader;
 
@@ -14,6 +14,7 @@ pub struct Profile {
     old_password: Mutable<String>,
     new_password: Mutable<String>,
     confirm_password: Mutable<String>,
+    telegram_chat_id: Mutable<Option<String>>,
     pub loader: AsyncLoader,
 }
 
@@ -23,6 +24,7 @@ impl Profile {
             old_password: Mutable::new("".to_string()),
             new_password: Mutable::new("".to_string()),
             confirm_password: Mutable::new("".to_string()),
+            telegram_chat_id: Mutable::new(None),
             loader: AsyncLoader::new(),
         })
     }
@@ -42,7 +44,21 @@ impl Profile {
         }));
     }
 
-    pub fn render(profile: Rc<Self>) -> Dom {
+    fn update_profile(profile: Rc<Self>) {
+        profile.loader.load(clone!(profile => async move {
+            let telegram_chat_id = profile.telegram_chat_id.get_cloned().and_then(|telegram_chat_id| telegram_chat_id.parse().ok());
+            match query::update_profile(telegram_chat_id).await {
+                Ok(_) => {
+                    routing::go_to_url(Route::Settings(SettingCategory::None).url().as_str());
+                },
+                Err(e) => {
+                    snackbar::show(format!("change password error: {}", e));
+                }
+            };
+        }));
+    }
+
+    pub fn render_change_password(profile: Rc<Self>) -> Dom {
         html!("form", {
             .style("display", "flex")
             .style("flex-direction", "column")
@@ -122,6 +138,53 @@ impl Profile {
                         })
                     ])
                 })
+            ])
+        })
+    }
+
+    pub fn render_telegram_setting(profile: Rc<Self>) -> Dom {
+        html!("form", {
+            .style("display", "flex")
+            .style("flex-direction", "column")
+            .style("max-width", "1024px")
+            .style("margin-left", "auto")
+            .style("margin-right", "auto")
+            .style("border-radius", "0.5rem")
+            .children(&mut [
+                html!("input" => HtmlInputElement, {
+                    .attribute("type", "text")
+                    .attribute("placeholder", "Telegram chat id, get from telegram bot")
+                    .property_signal("value", profile.telegram_chat_id.signal_cloned().map(|id| id.unwrap_or_else(|| "".to_string())))
+                    .with_node!(input => {
+                        .event(clone!(profile => move |_: events::Input| {
+                            profile.telegram_chat_id.set(Some(input.value()));
+                        }))
+                    })
+                }),
+                html!("div", {
+                    .style("display", "flex")
+                    .style("justify-content", "flex-end")
+                    .style("margin", "0.5rem")
+                    .children(&mut [
+                        html!("input", {
+                            .attribute("type", "submit")
+                            .text("Submit")
+                            .event_preventable(clone!(profile => move |e: events::Click| {
+                                e.prevent_default();
+                                Self::update_profile(profile.clone());
+                            }))
+                        })
+                    ])
+                })
+            ])
+        })
+    }
+
+    pub fn render(profile: Rc<Self>) -> Dom {
+        html!("div", {
+            .children(&mut [
+                Self::render_change_password(profile.clone()),
+                Self::render_telegram_setting(profile)
             ])
         })
     }

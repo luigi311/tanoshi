@@ -1,0 +1,3 @@
+mutation UpdateProfile($telegramChatId: Int) {
+  updateProfile(telegramChatId: $telegramChatId)
+}

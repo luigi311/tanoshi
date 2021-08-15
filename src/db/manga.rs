@@ -1,8 +1,8 @@
 use super::model::{Chapter, Manga};
 use crate::library::{RecentChapter, RecentUpdate};
 use anyhow::{anyhow, Result};
-use sqlx::sqlite::SqlitePool;
-use sqlx::Row;
+use sqlx::sqlite::{SqliteArguments, SqlitePool};
+use sqlx::{Arguments, Row};
 use tokio_stream::StreamExt;
 
 #[derive(Debug, Clone)]
@@ -651,29 +651,39 @@ impl Db {
     #[allow(dead_code)]
     pub async fn update_manga_info(&self, manga: &Manga) -> Result<u64> {
         let mut column_to_update = vec![];
+        let mut arguments = SqliteArguments::default();
         if manga.source_id > 0 {
             column_to_update.push("source_id = ?");
+            arguments.add(manga.source_id);
         }
         if !manga.title.is_empty() {
             column_to_update.push("title = ?");
+            arguments.add(&manga.title);
         }
         if !manga.author.is_empty() {
             column_to_update.push("author = ?");
+            arguments
+                .add(serde_json::to_string(&manga.author).unwrap_or_else(|_| "[]".to_string()));
         }
         if !manga.genre.is_empty() {
             column_to_update.push("genre = ?");
+            arguments.add(serde_json::to_string(&manga.genre).unwrap_or_else(|_| "[]".to_string()));
         }
         if manga.status.is_some() {
             column_to_update.push("status = ?");
+            arguments.add(&manga.status);
         }
         if manga.description.is_some() {
             column_to_update.push("description = ?");
+            arguments.add(&manga.description);
         }
         if !manga.path.is_empty() {
             column_to_update.push("path = ?");
+            arguments.add(&manga.path);
         }
         if !manga.cover_url.is_empty() {
             column_to_update.push("cover_url = ?");
+            arguments.add(&manga.cover_url);
         }
 
         if column_to_update.is_empty() {
@@ -687,16 +697,7 @@ impl Db {
             column_to_update.join(",")
         );
 
-        let rows_affected = sqlx::query(&query)
-            .bind(manga.source_id)
-            .bind(&manga.title)
-            .bind(serde_json::to_string(&manga.author).unwrap_or_else(|_| "[]".to_string()))
-            .bind(serde_json::to_string(&manga.genre).unwrap_or_else(|_| "[]".to_string()))
-            .bind(&manga.status)
-            .bind(&manga.description)
-            .bind(&manga.path)
-            .bind(&manga.cover_url)
-            .bind(manga.id)
+        let rows_affected = sqlx::query_with(&query, arguments)
             .execute(&self.pool)
             .await?
             .rows_affected();

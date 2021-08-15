@@ -1,6 +1,9 @@
 use super::model::User;
-use anyhow::Result;
-use sqlx::{sqlite::SqlitePool, Row};
+use anyhow::{anyhow, Result};
+use sqlx::{
+    sqlite::{SqliteArguments, SqlitePool},
+    Arguments, Row,
+};
 use tokio_stream::StreamExt;
 
 #[derive(Debug, Clone)]
@@ -121,5 +124,32 @@ impl Db {
             updated_at: row.get(5),
             telegram_chat_id: row.get(6),
         })?)
+    }
+
+    pub async fn update_user_setting(&self, user: &User) -> Result<u64> {
+        let mut column_to_update = vec![];
+        let mut arguments = SqliteArguments::default();
+        
+        column_to_update.push("telegram_chat_id = ?");
+        arguments.add(user.telegram_chat_id);
+        arguments.add(user.id);
+
+        if column_to_update.is_empty() {
+            return Err(anyhow!("Nothing to update"));
+        }
+
+        let query = format!(
+            r#"UPDATE user SET
+                {}
+                WHERE id = ?"#,
+            column_to_update.join(",")
+        );
+
+        let rows_affected = sqlx::query_with(&query, arguments)
+            .execute(&self.pool)
+            .await?
+            .rows_affected();
+
+        Ok(rows_affected)
     }
 }
