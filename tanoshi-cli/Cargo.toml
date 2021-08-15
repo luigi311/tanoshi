@@ -1,6 +1,6 @@
 [package]
 name = "tanoshi-cli"
-version = "0.2.2"
+version = "0.3.0"
 authors = ["Muhammad Fadhlika <fadhlika@gmail.com>"]
 edition = "2018"
 description = "Tanoshi CLI Utilities"
@@ -9,18 +9,17 @@ license = "MIT"
 readme = "README.md"
 exclude = [".github/*"]
 
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[features]
+default = []
+disable-compiler = ["tanoshi-vm/disable-compiler"]
 
 [dependencies]
-tanoshi-lib = "0.23.2"
-tanoshi-vm = "0.1.3"
+tanoshi-lib = { path = "../tanoshi-lib", version = "0.23.2" }
+tanoshi-vm = { path = "../tanoshi-vm", version = "0.2.0" }
 serde_yaml = "0.8"
 tokio = { version = "1", features = ["full"] }
 clap = "3.0.0-beta.2"
 anyhow = "1"
-wasmer = "2.0.0"
-wasmer-wasi = "2.0.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 log = { version = "0.4.14" }
