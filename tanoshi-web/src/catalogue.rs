@@ -151,6 +151,7 @@ impl Catalogue {
             .child_signal(catalogue.is_search.signal().map(clone!(catalogue => move |is_search| {
                 if is_search {
                     Some(html!("input" => HtmlInputElement, {
+                        .style("width", "100%")
                         .attribute("placeholder", "Search")
                         .attribute("type", "text")
                         .property_signal("value", catalogue.keyword.signal_cloned())

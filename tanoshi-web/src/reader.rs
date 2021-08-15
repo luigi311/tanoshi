@@ -167,22 +167,24 @@ impl Reader {
                     })
                 }),
                 html!("div", {
-                    .style("width", "100%")
+                    .style("display", "flex")
+                    .style("flex-direction", "column")
+                    .style("min-width", "0")
                     .children(&mut [
-                        html!("div", {
-                            .style("display", "flex")
-                            .style("flex-direction", "column")
+                        html!("span", {
+                            .style("flex", "1")
                             .style("overflow", "hidden")
                             .style("text-overflow", "ellipsis")
-                            .children(&mut [
-                                html!("span", {
-                                    .text_signal(reader.manga_title.signal_cloned())
-                                }),
-                                html!("span", {
-                                    .text_signal(reader.chapter_title.signal_cloned())
-                                }),
-                            ])
-                        })
+                            .style("white-space", "nowrap")
+                            .text_signal(reader.manga_title.signal_cloned())
+                        }),
+                        html!("span", {
+                            .style("flex", "1")
+                            .style("overflow", "hidden")
+                            .style("text-overflow", "ellipsis")
+                            .style("white-space", "nowrap")
+                            .text_signal(reader.chapter_title.signal_cloned())
+                        }),
                     ])
                 }),
                 html!("button", {

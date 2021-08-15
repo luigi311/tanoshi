@@ -79,7 +79,6 @@ impl Profile {
                 }),
                 html!("span", {
                     .visible_signal(profile.confirm_password.signal_cloned().map(clone!(profile => move |x| x != profile.new_password.get_cloned())))
-                    .style("font-size", "small")
                     .style("margin-left", "0.5rem")
                     .style("margin-right", "0.5rem")
                     .style("color", "red")
@@ -88,7 +87,6 @@ impl Profile {
 
                 html!("span", {
                     .visible_signal(profile.new_password.signal_cloned().map(|x| x.len() < 8))
-                    .style("font-size", "small")
                     .style("margin-left", "0.5rem")
                     .style("margin-right", "0.5rem")
                     .style("color", "red")

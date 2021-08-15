@@ -107,6 +107,7 @@ input {
     margin: 0.5rem;
     background-color: var(--background-color-100);
     border-radius: 0.25rem;
+    font-size: medium;
     -webkit-appearance: none;
 
     &[type="checkbox"]:checked {
@@ -133,6 +134,7 @@ input {
 .topbar {
     display: flex;
     justify-content: space-between;
+    align-items: center;
     position: fixed;
     background-color: var(--topbar-background-color);
     top: 0px;
@@ -146,9 +148,18 @@ input {
     padding-bottom: 0.5rem;
     border-bottom: var(--topbar-bottom-border);
     
-    span, button, input {
+    span {
         background-color: inherit;
         color: #ffffff;
+    }
+
+    button, input {
+        background-color: inherit;
+        color: var(--primary-color);
+
+        span {
+            color: var(--primary-color);
+        }
     }
 
     input {
