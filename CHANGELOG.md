@@ -22,11 +22,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Serialize and Deserialize from catalogue into local_storage instead of individual fields
 - Use `with_node` because `events:value` is deprecated
 - Implement clippy suggestion
+- Bigger fonts in input box
+- Use primary color for button inside topbar
+- Reduce memory consupmtion by separating compile and runtime for extension
 
 ### Fixed
 
 - cover image brightness not lowered in catalogue if favorited
 - refresh all libraries
+- manga title wrap
 
 ## [0.24.6] - 2021-08-03
 
