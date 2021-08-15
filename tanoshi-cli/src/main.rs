@@ -19,12 +19,14 @@ struct Opts {
 
 #[derive(Clap)]
 enum SubCommand {
+    #[cfg(not(feature = "disable-compiler"))]
+    Compile,
     GenerateJson,
-    TestExtension(TestExtension),
+    Test(TestOption),
 }
 
 #[derive(Clap)]
-struct TestExtension {
+struct TestOption {
     #[clap(long)]
     selector: Option<String>,
 }
@@ -41,15 +43,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     let (_, extension_tx) = vm::start();
-    vm::load(extension_path, extension_tx.clone()).await?;
+    #[cfg(not(feature = "disable-compiler"))]
+    if !matches!(opts.subcmd, SubCommand::Compile) {
+        vm::load(&extension_path, extension_tx.clone()).await?;
+    }
+    
+    #[cfg(feature = "disable-compiler")]
+    vm::load(&extension_path, extension_tx.clone()).await?;
 
     let extension_bus = ExtensionBus::new("target/wasm32-wasi/release".to_string(), extension_tx);
 
     match opts.subcmd {
+        #[cfg(not(feature = "disable-compiler"))]
+        SubCommand::Compile => {
+            vm::compile(&extension_path).await?;
+        }
         SubCommand::GenerateJson => {
             generate::generate_json(extension_bus).await?;
         }
-        SubCommand::TestExtension(config) => {
+        SubCommand::Test(config) => {
             test::test(extension_bus, config.selector).await?;
         }
     }

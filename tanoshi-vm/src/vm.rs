@@ -1,5 +1,5 @@
 use serde::{de::DeserializeOwned, Serialize};
-use std::{collections::HashMap, fmt::Debug, path::{Path, PathBuf}};
+use std::{collections::HashMap, fmt::Debug, path::Path};
 use tanoshi_lib::prelude::{
     Chapter, Extension, ExtensionResult, Filters, Manga, Param, Request, Response, Source,
 };
@@ -7,10 +7,8 @@ use tokio::{
     sync::mpsc::{UnboundedReceiver, UnboundedSender},
     task::JoinHandle,
 };
-use wasmer::{
-    imports, ChainableNamedResolver, Function, Instance, Module, Store, Universal, WasmerEnv,
-};
-use wasmer_compiler_cranelift::Cranelift;
+use wasmer::{imports, ChainableNamedResolver, Function, Instance, Module, Store, WasmerEnv};
+
 use wasmer_wasi::{Pipe, WasiEnv, WasiState};
 
 use crate::bus::{Command, ExtensionResultSender};
@@ -30,17 +28,15 @@ impl ExtensionProxy {
         store: &Store,
         path: P,
     ) -> Result<Box<dyn Extension>, Box<dyn std::error::Error>> {
+        let module = unsafe { Module::deserialize_from_file(&store, path)? };
+
         let input = Pipe::new();
         let output = Pipe::new();
+
         let mut wasi_env = WasiState::new("tanoshi")
             .stdin(Box::new(input))
             .stdout(Box::new(output))
             .finalize()?;
-
-        let extension_path = PathBuf::new().join(path);
-
-        let wasm_bytes = std::fs::read(extension_path)?;
-        let module = Module::new(&store, wasm_bytes)?;
 
         let import_object = wasi_env.import_object(&module)?;
 
@@ -57,6 +53,57 @@ impl ExtensionProxy {
         Ok(Box::new(ExtensionProxy { instance, env }))
     }
 
+    #[cfg(not(feature = "disable-compiler"))]
+    fn init_store() -> Store {
+        #[cfg(feature = "cranelift")]
+        let compiler = wasmer_compiler_cranelift::Cranelift::new();
+        #[cfg(all(feature = "llvm", not(feature = "cranelift")))]
+        let compiler = wasmer_compiler_llvm::LLVM::new();
+
+        #[cfg(feature = "universal")]
+        let engine = wasmer::Universal::new(compiler).engine();
+        #[cfg(all(feature = "dylib", not(feature = "universal")))]
+        let engine = wasmer_engine_dylib::Dylib::new(compiler).engine();
+
+        Store::new(&engine)
+    }
+
+    fn init_store_headless() -> Store {
+        #[cfg(feature = "dylib")]
+        let engine = wasmer_engine_dylib::Dylib::headless().engine();
+        #[cfg(feature = "universal")]
+        let engine = wasmer::Universal::headless().engine();
+
+        Store::new(&engine)
+    }
+
+    #[cfg(not(feature = "disable-compiler"))]
+    pub fn compile_from_file<P: AsRef<Path>>(path: P) -> Result<(), Box<dyn std::error::Error>> {
+        let wasm_bytes = std::fs::read(&path)?;
+
+        let output = std::path::PathBuf::new()
+            .join(&path)
+            .with_extension("tanoshi");
+        Self::compile(&wasm_bytes, output)?;
+
+        std::fs::remove_file(path)?;
+        Ok(())
+    }
+
+    #[cfg(not(feature = "disable-compiler"))]
+    pub fn compile<P: AsRef<Path>>(
+        wasm_bytes: &[u8],
+        output: P,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let store = Self::init_store();
+
+        debug!("compiling extension");
+        let module = Module::new(&store, wasm_bytes)?;
+        debug!("done");
+
+        debug!("remove wasm file");
+        Ok(module.serialize_to_file(output)?)
+    }
     fn call<T>(&self, name: &str) -> Result<T, Box<dyn std::error::Error>>
     where
         T: DeserializeOwned,
@@ -144,29 +191,46 @@ pub async fn load<P: AsRef<Path>>(
             let _ = std::fs::create_dir_all(&path);
         }
     }
+    
+    #[cfg(not(feature = "disable-compiler"))]
+    compile(&path).await?;
 
     for entry in std::fs::read_dir(&path)?
         .into_iter()
+        .filter_map(Result::ok)
         .filter(move |path| {
-            if let Ok(p) = path {
-                let ext = p
-                    .path()
-                    .extension()
-                    .unwrap_or_else(|| "".as_ref())
-                    .to_owned();
-                if ext == "wasm" {
-                    return true;
-                }
-            }
-
-            false
+            path.path()
+                .extension()
+                .map_or(false, |ext| ext == "tanoshi")
         })
     {
-        let path = entry?.path();
-        info!("load plugin from {:?}", path.clone());
+        let path = entry.path();
+        info!("found compiled plugin at {:?}", path.clone());
         tx.send(Command::Load(
             path.to_str().ok_or("no path str")?.to_string(),
         ))?;
+    }
+
+    Ok(())
+}
+
+#[cfg(not(feature = "disable-compiler"))]
+pub async fn compile<P: AsRef<Path>>(path: P) -> Result<(), Box<dyn std::error::Error>> {
+    match std::fs::read_dir(&path) {
+        Ok(_) => {}
+        Err(_) => {
+            let _ = std::fs::create_dir_all(&path);
+        }
+    }
+
+    for entry in std::fs::read_dir(&path)?
+        .into_iter()
+        .filter_map(Result::ok)
+        .filter(move |path| path.path().extension().map_or(false, |ext| ext == "wasm"))
+    {
+        let path = entry.path();
+        info!("found wasm file at {:?}", path.clone());
+        ExtensionProxy::compile_from_file(path).map_err(|e| format!("{}", e))?;
     }
 
     Ok(())
@@ -176,9 +240,7 @@ async fn thread(extension_receiver: UnboundedReceiver<Command>) {
     let mut recv = extension_receiver;
     let mut extension_map: HashMap<i64, Box<dyn Extension>> = HashMap::new();
 
-    let compiler = Cranelift::default();
-    let engine = Universal::new(compiler).engine();
-    let store = Store::new(&engine);
+    let store = ExtensionProxy::init_store_headless();
 
     loop {
         let cmd = recv.recv().await;
@@ -187,16 +249,19 @@ async fn thread(extension_receiver: UnboundedReceiver<Command>) {
                 Command::Insert(source_id, proxy) => {
                     extension_map.insert(source_id, proxy);
                 }
-                Command::Load(path) => match ExtensionProxy::load(&store, path) {
-                    Ok(proxy) => {
-                        let source = proxy.detail();
-                        info!("loaded: {:?}", source);
-                        extension_map.insert(source.id, proxy);
+                Command::Load(path) => {
+                    info!("load plugin from {:?}", path.clone());
+                    match ExtensionProxy::load(&store, path) {
+                        Ok(proxy) => {
+                            let source = proxy.detail();
+                            info!("loaded: {:?}", source);
+                            extension_map.insert(source.id, proxy);
+                        }
+                        Err(e) => {
+                            error!("error load extension: {}", e);
+                        }
                     }
-                    Err(e) => {
-                        error!("error load extension: {}", e);
-                    }
-                },
+                }
                 Command::Unload(source_id) => {
                     extension_map.remove(&source_id);
                 }
