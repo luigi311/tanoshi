@@ -878,7 +878,7 @@ dependencies = [
  "convert_case",
  "proc-macro2",
  "quote",
- "rustc_version",
+ "rustc_version 0.3.3",
  "syn",
 ]
 
@@ -1597,6 +1597,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "inkwell_internals"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c2e1f71330ccec54ee62533ae88574c4169b67fb4b95cbb1196a1322582abd11"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "input_buffer"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1641,6 +1652,15 @@ name = "ipnet"
 version = "2.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "68f2d64f2edebec4ce84ad108148e67e1064789bee435edc5b60ad398714a3a9"
+
+[[package]]
+name = "itertools"
+version = "0.10.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "69ddb889f9d0d08a67338271fa9b62996bc788c7796a5c18cf057420aaed5eaf"
+dependencies = [
+ "either",
+]
 
 [[package]]
 name = "itoa"
@@ -1753,6 +1773,19 @@ name = "linked-hash-map"
 version = "0.5.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7fb9b38af92608140b86b693604b9ffcc5824240a484d1ecd4795bacb2fe88f3"
+
+[[package]]
+name = "llvm-sys"
+version = "110.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "21ede189444b8c78907e5d36da5dabcf153170fcff9c1dba48afc4b33c7e19f0"
+dependencies = [
+ "cc",
+ "lazy_static",
+ "libc",
+ "regex",
+ "semver 0.11.0",
+]
 
 [[package]]
 name = "lock_api"
@@ -2716,11 +2749,20 @@ checksum = "08d43f7aa6b08d49f382cde6a7982047c3426db949b1424bc4b7ec9ae12c6ce2"
 
 [[package]]
 name = "rustc_version"
+version = "0.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "138e3e0acb6c9fb258b19b67cb8abd63c00679d2851805ea151465464fe9030a"
+dependencies = [
+ "semver 0.9.0",
+]
+
+[[package]]
+name = "rustc_version"
 version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f0dfe2087c51c460008730de8b57e6a320782fbfb312e1f4d520e6c6fae155ee"
 dependencies = [
- "semver",
+ "semver 0.11.0",
 ]
 
 [[package]]
@@ -2826,12 +2868,33 @@ dependencies = [
 
 [[package]]
 name = "semver"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1d7eb9ef2c18661902cc47e535f9bc51b78acd254da71d375c2f6720d9a40403"
+dependencies = [
+ "semver-parser 0.7.0",
+]
+
+[[package]]
+name = "semver"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f301af10236f6df4160f7c3f04eec6dbc70ace82d23326abad5edee88801c6b6"
 dependencies = [
- "semver-parser",
+ "semver-parser 0.10.2",
 ]
+
+[[package]]
+name = "semver"
+version = "1.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "568a8e6258aa33c13358f81fd834adb854c6f7c9468520910a9b1e8fac068012"
+
+[[package]]
+name = "semver-parser"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "388a1df253eca08550bef6c72392cfe7c30914bf41df5269b68cbd6ff8f570a3"
 
 [[package]]
 name = "semver-parser"
@@ -3213,8 +3276,8 @@ dependencies = [
  "serde_json",
  "serde_yaml",
  "sqlx",
- "tanoshi-lib 0.23.3",
- "tanoshi-vm 0.1.3",
+ "tanoshi-lib",
+ "tanoshi-vm",
  "teloxide",
  "tokio",
  "tokio-stream",
@@ -3227,7 +3290,7 @@ dependencies = [
 
 [[package]]
 name = "tanoshi-cli"
-version = "0.2.2"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "clap 3.0.0-beta.2",
@@ -3237,28 +3300,15 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml",
- "tanoshi-lib 0.23.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "tanoshi-vm 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tanoshi-lib",
+ "tanoshi-vm",
  "tokio",
  "ureq",
- "wasmer",
- "wasmer-wasi",
 ]
 
 [[package]]
 name = "tanoshi-lib"
 version = "0.23.3"
-dependencies = [
- "chrono",
- "ron",
- "serde",
-]
-
-[[package]]
-name = "tanoshi-lib"
-version = "0.23.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f017c96e7b9bc9f317f6f3ac944731ba6ac45984d99b534455e0530ae0a54657"
 dependencies = [
  "chrono",
  "ron",
@@ -3269,42 +3319,25 @@ dependencies = [
 name = "tanoshi-util"
 version = "0.1.2"
 dependencies = [
- "tanoshi-lib 0.23.3",
+ "tanoshi-lib",
 ]
 
 [[package]]
 name = "tanoshi-vm"
-version = "0.1.3"
+version = "0.2.1"
 dependencies = [
  "bytes",
  "env_logger 0.9.0",
  "log",
  "ron",
  "serde",
- "tanoshi-lib 0.23.3",
+ "tanoshi-lib",
  "tokio",
  "ureq",
  "wasmer",
  "wasmer-compiler-cranelift",
- "wasmer-wasi",
-]
-
-[[package]]
-name = "tanoshi-vm"
-version = "0.1.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9adffd84d721f1594815bc2cead5511dee7ff929e0d17361240bde74c787d9ce"
-dependencies = [
- "bytes",
- "env_logger 0.9.0",
- "log",
- "ron",
- "serde",
- "tanoshi-lib 0.23.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "tokio",
- "ureq",
- "wasmer",
- "wasmer-compiler-cranelift",
+ "wasmer-compiler-llvm",
+ "wasmer-engine-dylib",
  "wasmer-wasi",
 ]
 
@@ -4083,6 +4116,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "wasmer-compiler-llvm"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9ec5b3542941aaea793a51af9a7da2f9f7ed9edcc928f5c84e1bd84071818c39"
+dependencies = [
+ "byteorder",
+ "cc",
+ "itertools",
+ "lazy_static",
+ "libc",
+ "loupe",
+ "object 0.25.3",
+ "rayon",
+ "regex",
+ "rustc_version 0.2.3",
+ "semver 1.0.4",
+ "smallvec",
+ "target-lexicon",
+ "wasmer-compiler",
+ "wasmer-types",
+ "wasmer-vm",
+ "wasmer_inkwell",
+]
+
+[[package]]
 name = "wasmer-derive"
 version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4231,6 +4289,21 @@ dependencies = [
  "serde",
  "time",
  "wasmer-types",
+]
+
+[[package]]
+name = "wasmer_inkwell"
+version = "0.2.0-alpha.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5eca826323f39b29a38cd31c8eb33de76945c6193f30a2806c6cde6f6cd42cb1"
+dependencies = [
+ "either",
+ "inkwell_internals",
+ "libc",
+ "llvm-sys",
+ "once_cell",
+ "parking_lot 0.11.1",
+ "regex",
 ]
 
 [[package]]

@@ -65,3 +65,4 @@ teloxide = { version = "0.5.1", features = ["auto-send", "macros"] }
 
 [profile.release]
 lto = true
+opt-level = 3
