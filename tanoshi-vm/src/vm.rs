@@ -18,7 +18,7 @@ struct ExtensionEnv {
     wasi_env: WasiEnv,
 }
 
-struct ExtensionProxy {
+pub struct ExtensionProxy {
     instance: Instance,
     env: ExtensionEnv,
 }

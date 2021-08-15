@@ -1,13 +1,15 @@
 use bytes::Bytes;
-use std::{path::{Path, PathBuf}, time::Duration};
+use std::{
+    path::{Path, PathBuf},
+    time::Duration,
+};
 use tanoshi_lib::prelude::{Chapter, Extension, ExtensionResult, Filters, Manga, Param, Source};
 use tokio::{
-    sync::{
-        mpsc::{UnboundedSender},
-        oneshot::Sender,
-    },
+    sync::{mpsc::UnboundedSender, oneshot::Sender},
     time::timeout,
 };
+
+use crate::prelude::ExtensionProxy;
 
 pub type ExtensionResultSender<T> = Sender<ExtensionResult<T>>;
 
@@ -53,10 +55,8 @@ impl ExtensionBus {
         name: String,
         contents: &Bytes,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        let path = self.path
-            .join(name)
-            .with_extension("wasm");
-        std::fs::write(&path, contents)?;
+        let path = self.path.join(name).with_extension("tanoshi");
+        ExtensionProxy::compile(contents, &path)?;
 
         Ok(self.tx.send(Command::Load(
             path.to_str().ok_or("path can't to string")?.to_string(),
@@ -91,7 +91,10 @@ impl ExtensionBus {
         Ok(source)
     }
 
-    pub async fn filters(&self, source_id: i64) -> Result<Option<Filters>, Box<dyn std::error::Error>> {
+    pub async fn filters(
+        &self,
+        source_id: i64,
+    ) -> Result<Option<Filters>, Box<dyn std::error::Error>> {
         let (tx, rx) = tokio::sync::oneshot::channel();
         self.tx.send(Command::Filters(source_id, tx))?;
 
