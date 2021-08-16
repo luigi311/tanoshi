@@ -21,6 +21,7 @@ $background-color-dark: $color-gray-900;
 
 $topbar-background-light: $primary-color;
 $topbar-background-dark: $color-gray-900;
+
 $bottombar-background-light: $color-gray-100;
 $bottombar-background-dark: $color-gray-900;
 
@@ -37,15 +38,21 @@ $divide-color-dark-1: $color-gray-700;
     --background-color: white;
     --background-color-100: #{$color-gray-200};
     --background-color-200: #{$color-gray-300};
+
     --topbar-background-color: #{$topbar-background-light};
+    --topbar-button-color: white;
     --topbar-bottom-border: none;
+    
     --bottombar-background-color: #{$bottombar-background-light};
     --color: #{$text-color-light};
+    
     --divider-color: #{$divide-color-light};
     --divider-color-1: #{$divide-color-light-1};
+    
     --shadow: #{$shadow};
     --list-group-background-color: var(--background-color);
     --list-group-border: 1px solid var(--background-color-200);
+    
     --primary-color: #{$primary-color};
 }
 
@@ -53,14 +60,20 @@ body.dark {
     --background-color: black;
     --background-color-100: #{$color-gray-800};
     --background-color-200: #{$color-gray-700};
+
     --topbar-background-color: #{$topbar-background-dark};
+    --topbar-button-color: #{$primary-color};
     --topbar-bottom-border: 1px solid var(--background-color-100);
+
     --bottombar-background-color: #{$bottombar-background-dark};
     --color: #{$text-color-dark};
+
     --divider-color: #{$divide-color-dark};
     --divider-color-1: #{$divide-color-dark-1};
+
     --list-group-background-color: #{$color-gray-800};
     --list-group-border: none;
+
     --shadow: none
 }
 
@@ -148,17 +161,17 @@ input {
     padding-bottom: 0.5rem;
     border-bottom: var(--topbar-bottom-border);
     
-    span {
+    span, input {
         background-color: inherit;
         color: #ffffff;
     }
 
-    button, input {
+    button {
         background-color: inherit;
-        color: var(--primary-color);
+        color: var(--topbar-button-color);
 
         span {
-            color: var(--primary-color);
+            color: var(--topbar-button-color);
         }
     }
 
