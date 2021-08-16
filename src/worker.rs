@@ -19,7 +19,10 @@ struct ChapterUpdate {
 
 impl Display for ChapterUpdate {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "*{}*\n{}", self.manga_title, self.title)
+        let manga_title = html_escape::encode_safe(&self.manga_title).to_string();
+        let title = html_escape::encode_safe(&self.title).to_string();
+
+        write!(f, r#"<b>{}<\b><br>{}"#, manga_title, title)
     }
 }
 

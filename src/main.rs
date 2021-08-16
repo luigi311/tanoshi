@@ -75,7 +75,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     if let Some(telegram_config) = config.telegram {
         let bot = teloxide::Bot::new(telegram_config.token)
             .auto_send()
-            .parse_mode(teloxide::types::ParseMode::MarkdownV2);
+            .parse_mode(teloxide::types::ParseMode::Html);
         telegram_bot_fut = Some(notifier::telegram::run(telegram_config.name, bot.clone())).into();
         telegram_bot = Some(bot);
     }
