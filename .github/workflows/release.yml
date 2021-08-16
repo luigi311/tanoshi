@@ -52,7 +52,7 @@ jobs:
         if: ${{ matrix.os == 'windows-latest' }}
         uses: KyleMayes/install-llvm-action@v1
         with:
-          version: "12.0"
+          version: "11.1"
       - name: Install deps
         if: ${{ matrix.os == 'windows-latest' }}
         run: |
