@@ -1,4 +1,4 @@
-use graphql_client::{GraphQLQuery, Response};
+use graphql_client::GraphQLQuery;
 use std::error::Error;
 use wasm_bindgen::prelude::*;
 use web_sys::window;
@@ -7,8 +7,11 @@ type NaiveDateTime = String;
 
 use crate::{common::Cover, utils::local_storage};
 
-fn graphql_url() -> String {
-    [
+async fn post_graphql<Q>(var: Q::Variables) -> Result<Q::ResponseData, Box<dyn std::error::Error>>
+where
+    Q: GraphQLQuery,
+{
+    let url = [
         window()
             .unwrap()
             .document()
@@ -19,7 +22,34 @@ fn graphql_url() -> String {
             .unwrap(),
         "/graphql".to_string(),
     ]
-    .join("")
+    .join("");
+    let token = local_storage()
+        .get("token")
+        .unwrap_throw()
+        .unwrap_or_else(|| "".to_string());
+    let request_body = Q::build_query(var);
+    let client = reqwest::Client::new();
+    let res = client
+        .post(url)
+        .header("Authorization", format!("Bearer {}", token))
+        .json(&request_body)
+        .send()
+        .await?;
+    let response_body: graphql_client::Response<Q::ResponseData> = res.json().await?;
+    match (response_body.data, response_body.errors) {
+        (Some(data), _) => Ok(data) as Result<_, _>,
+        (_, Some(errors)) => {
+            return Err(errors
+                .iter()
+                .map(|e| format!("{}", e))
+                .collect::<Vec<String>>()
+                .join(", ")
+                .into());
+        }
+        _ => {
+            return Err("no data".into());
+        }
+    }
 }
 
 #[derive(GraphQLQuery)]
@@ -37,11 +67,6 @@ pub async fn fetch_manga_from_source(
     sort_by: browse_source::SortByParam,
     sort_order: browse_source::SortOrderParam,
 ) -> Result<Vec<Cover>, Box<dyn Error>> {
-    let token = local_storage()
-        .get("token")
-        .unwrap_throw()
-        .ok_or("no token")?;
-    let client = reqwest::Client::new();
     let var = browse_source::Variables {
         source_id: Some(source_id),
         keyword,
@@ -49,30 +74,10 @@ pub async fn fetch_manga_from_source(
         sort_by: Some(sort_by),
         sort_order: Some(sort_order),
     };
-    let request_body = BrowseSource::build_query(var);
-    let res = client
-        .post(&graphql_url())
-        .header("Authorization", format!("Bearer {}", token))
-        .json(&request_body)
-        .send()
-        .await?;
-    let response_body: Response<browse_source::ResponseData> = res.json().await?;
-    let list = match (response_body.data, response_body.errors) {
-        (Some(data), _) => data.browse_source,
-        (_, Some(errors)) => {
-            return Err(errors
-                .iter()
-                .map(|e| format!("{}", e))
-                .collect::<Vec<String>>()
-                .join(", ")
-                .into());
-        }
-        _ => {
-            return Err("no data".into());
-        }
-    };
+    let data: browse_source::ResponseData = post_graphql::<BrowseSource>(var).await?;
 
-    let covers = list
+    let covers = data
+        .browse_source
         .iter()
         .map(|item| {
             Cover::new(
@@ -97,39 +102,13 @@ pub async fn fetch_manga_from_source(
 pub struct BrowseFavorites;
 
 pub async fn fetch_manga_from_favorite(refresh: bool) -> Result<Vec<Cover>, Box<dyn Error>> {
-    let token = local_storage()
-        .get("token")
-        .unwrap_throw()
-        .ok_or("no token")?;
-    let client = reqwest::Client::new();
     let var = browse_favorites::Variables {
         refresh: Some(refresh),
     };
-    let request_body = BrowseFavorites::build_query(var);
-    let res = client
-        .post(&graphql_url())
-        .header("Authorization", format!("Bearer {}", token))
-        .json(&request_body)
-        .send()
-        .await?;
-    let response_body: Response<browse_favorites::ResponseData> = res.json().await?;
+    let data = post_graphql::<BrowseFavorites>(var).await?;
 
-    let list = match (response_body.data, response_body.errors) {
-        (Some(data), _) => data.library,
-        (_, Some(errors)) => {
-            return Err(errors
-                .iter()
-                .map(|e| format!("{}", e))
-                .collect::<Vec<String>>()
-                .join(", ")
-                .into());
-        }
-        _ => {
-            return Err("no data".into());
-        }
-    };
-
-    Ok(list
+    Ok(data
+        .library
         .iter()
         .map(|item| {
             Cover::new(
@@ -156,39 +135,13 @@ pub async fn fetch_manga_by_source_path(
     source_id: i64,
     path: String,
 ) -> Result<fetch_manga_by_source_path::FetchMangaBySourcePathMangaBySourcePath, Box<dyn Error>> {
-    let token = local_storage()
-        .get("token")
-        .unwrap_throw()
-        .ok_or("no token")?;
-    let client = reqwest::Client::new();
     let var = fetch_manga_by_source_path::Variables {
         source_id: Some(source_id),
         path: Some(path),
     };
-    let request_body = FetchMangaBySourcePath::build_query(var);
-    let res = client
-        .post(&graphql_url())
-        .header("Authorization", format!("Bearer {}", token))
-        .json(&request_body)
-        .send()
-        .await?;
-    let response_body: Response<fetch_manga_by_source_path::ResponseData> = res.json().await?;
-    let manga = match (response_body.data, response_body.errors) {
-        (Some(data), _) => data.manga_by_source_path,
-        (_, Some(errors)) => {
-            return Err(errors
-                .iter()
-                .map(|e| format!("{}", e))
-                .collect::<Vec<String>>()
-                .join(", ")
-                .into());
-        }
-        _ => {
-            return Err("no data".into());
-        }
-    };
+    let data = post_graphql::<FetchMangaBySourcePath>(var).await?;
 
-    Ok(manga)
+    Ok(data.manga_by_source_path)
 }
 
 #[derive(GraphQLQuery)]
@@ -203,39 +156,13 @@ pub async fn fetch_manga_detail(
     id: i64,
     refresh: bool,
 ) -> Result<fetch_manga_detail::FetchMangaDetailManga, Box<dyn Error>> {
-    let token = local_storage()
-        .get("token")
-        .unwrap_throw()
-        .ok_or("no token")?;
-    let client = reqwest::Client::new();
     let var = fetch_manga_detail::Variables {
         id: Some(id),
         refresh: Some(refresh),
     };
-    let request_body = FetchMangaDetail::build_query(var);
-    let res = client
-        .post(&graphql_url())
-        .header("Authorization", format!("Bearer {}", token))
-        .json(&request_body)
-        .send()
-        .await?;
-    let response_body: Response<fetch_manga_detail::ResponseData> = res.json().await?;
-    let manga = match (response_body.data, response_body.errors) {
-        (Some(data), _) => data.manga,
-        (_, Some(errors)) => {
-            return Err(errors
-                .iter()
-                .map(|e| format!("{}", e))
-                .collect::<Vec<String>>()
-                .join(", ")
-                .into());
-        }
-        _ => {
-            return Err("no data".into());
-        }
-    };
+    let data = post_graphql::<FetchMangaDetail>(var).await?;
 
-    Ok(manga)
+    Ok(data.manga)
 }
 
 #[derive(GraphQLQuery)]
@@ -249,38 +176,12 @@ pub struct FetchChapter;
 pub async fn fetch_chapter(
     chapter_id: i64,
 ) -> Result<fetch_chapter::FetchChapterChapter, Box<dyn Error>> {
-    let token = local_storage()
-        .get("token")
-        .unwrap_throw()
-        .ok_or("no token")?;
-    let client = reqwest::Client::new();
     let var = fetch_chapter::Variables {
         chapter_id: Some(chapter_id),
     };
-    let request_body = FetchChapter::build_query(var);
-    let res = client
-        .post(&graphql_url())
-        .header("Authorization", format!("Bearer {}", token))
-        .json(&request_body)
-        .send()
-        .await?;
-    let response_body: Response<fetch_chapter::ResponseData> = res.json().await?;
-    let chapter = match (response_body.data, response_body.errors) {
-        (Some(data), _) => data.chapter,
-        (_, Some(errors)) => {
-            return Err(errors
-                .iter()
-                .map(|e| format!("{}", e))
-                .collect::<Vec<String>>()
-                .join(", ")
-                .into());
-        }
-        _ => {
-            return Err("no data".into());
-        }
-    };
+    let data = post_graphql::<FetchChapter>(var).await?;
 
-    Ok(chapter)
+    Ok(data.chapter)
 }
 
 #[derive(GraphQLQuery)]
@@ -292,37 +193,10 @@ pub async fn fetch_chapter(
 pub struct AddToLibrary;
 
 pub async fn add_to_library(manga_id: i64) -> Result<(), Box<dyn Error>> {
-    let token = local_storage()
-        .get("token")
-        .unwrap_throw()
-        .ok_or("no token")?;
-    let client = reqwest::Client::new();
     let var = add_to_library::Variables {
         manga_id: Some(manga_id),
     };
-    let request_body = AddToLibrary::build_query(var);
-    let res = client
-        .post(&graphql_url())
-        .header("Authorization", format!("Bearer {}", token))
-        .json(&request_body)
-        .send()
-        .await?;
-
-    let response_body: Response<add_to_library::ResponseData> = res.json().await?;
-    let _ = match (response_body.data, response_body.errors) {
-        (Some(_), _) => {}
-        (_, Some(errors)) => {
-            return Err(errors
-                .iter()
-                .map(|e| format!("{}", e))
-                .collect::<Vec<String>>()
-                .join(", ")
-                .into());
-        }
-        _ => {
-            return Err("no data".into());
-        }
-    };
+    let _ = post_graphql::<AddToLibrary>(var).await?;
 
     Ok(())
 }
@@ -336,37 +210,10 @@ pub async fn add_to_library(manga_id: i64) -> Result<(), Box<dyn Error>> {
 pub struct DeleteFromLibrary;
 
 pub async fn delete_from_library(manga_id: i64) -> Result<(), Box<dyn Error>> {
-    let token = local_storage()
-        .get("token")
-        .unwrap_throw()
-        .ok_or("no token")?;
-    let client = reqwest::Client::new();
     let var = delete_from_library::Variables {
         manga_id: Some(manga_id),
     };
-    let request_body = DeleteFromLibrary::build_query(var);
-    let res = client
-        .post(&graphql_url())
-        .header("Authorization", format!("Bearer {}", token))
-        .json(&request_body)
-        .send()
-        .await?;
-
-    let response_body: Response<delete_from_library::ResponseData> = res.json().await?;
-    let _ = match (response_body.data, response_body.errors) {
-        (Some(_), _) => {}
-        (_, Some(errors)) => {
-            return Err(errors
-                .iter()
-                .map(|e| format!("{}", e))
-                .collect::<Vec<String>>()
-                .join(", ")
-                .into());
-        }
-        _ => {
-            return Err("no data".into());
-        }
-    };
+    let _ = post_graphql::<DeleteFromLibrary>(var).await?;
 
     Ok(())
 }
@@ -380,22 +227,11 @@ pub async fn delete_from_library(manga_id: i64) -> Result<(), Box<dyn Error>> {
 pub struct UpdatePageReadAt;
 
 pub async fn update_page_read_at(chapter_id: i64, page: i64) -> Result<(), Box<dyn Error>> {
-    let token = local_storage()
-        .get("token")
-        .unwrap_throw()
-        .ok_or("no token")?;
-    let client = reqwest::Client::new();
     let var = update_page_read_at::Variables {
         chapter_id: Some(chapter_id),
         page: Some(page),
     };
-    let request_body = UpdatePageReadAt::build_query(var);
-    let _ = client
-        .post(&graphql_url())
-        .header("Authorization", format!("Bearer {}", token))
-        .json(&request_body)
-        .send()
-        .await?;
+    let _ = post_graphql::<UpdatePageReadAt>(var).await?;
 
     Ok(())
 }
@@ -411,39 +247,12 @@ pub struct FetchRecentUpdates;
 pub async fn fetch_recent_updates(
     cursor: Option<String>,
 ) -> Result<fetch_recent_updates::FetchRecentUpdatesRecentUpdates, Box<dyn Error>> {
-    let token = local_storage()
-        .get("token")
-        .unwrap_throw()
-        .ok_or("no token")?;
-    let client = reqwest::Client::new();
     let var = fetch_recent_updates::Variables {
         first: Some(20),
         cursor,
     };
-    let request_body = FetchRecentUpdates::build_query(var);
-    let res = client
-        .post(&graphql_url())
-        .header("Authorization", format!("Bearer {}", token))
-        .json(&request_body)
-        .send()
-        .await?;
-
-    let response_body: Response<fetch_recent_updates::ResponseData> = res.json().await?;
-    let recent_updates = match (response_body.data, response_body.errors) {
-        (Some(data), _) => data.recent_updates,
-        (_, Some(errors)) => {
-            return Err(errors
-                .iter()
-                .map(|e| format!("{}", e))
-                .collect::<Vec<String>>()
-                .join(", ")
-                .into());
-        }
-        _ => {
-            return Err("no data".into());
-        }
-    };
-    Ok(recent_updates)
+    let data = post_graphql::<FetchRecentUpdates>(var).await?;
+    Ok(data.recent_updates)
 }
 
 #[derive(GraphQLQuery)]
@@ -457,39 +266,12 @@ pub struct FetchHistories;
 pub async fn fetch_histories(
     cursor: Option<String>,
 ) -> Result<fetch_histories::FetchHistoriesRecentChapters, Box<dyn Error>> {
-    let token = local_storage()
-        .get("token")
-        .unwrap_throw()
-        .ok_or("no token")?;
-    let client = reqwest::Client::new();
     let var = fetch_histories::Variables {
         first: Some(20),
         cursor,
     };
-    let request_body = FetchHistories::build_query(var);
-    let res = client
-        .post(&graphql_url())
-        .header("Authorization", format!("Bearer {}", token))
-        .json(&request_body)
-        .send()
-        .await?;
-
-    let response_body: Response<fetch_histories::ResponseData> = res.json().await?;
-    let recent_chapters = match (response_body.data, response_body.errors) {
-        (Some(data), _) => data.recent_chapters,
-        (_, Some(errors)) => {
-            return Err(errors
-                .iter()
-                .map(|e| format!("{}", e))
-                .collect::<Vec<String>>()
-                .join(", ")
-                .into());
-        }
-        _ => {
-            return Err("no data".into());
-        }
-    };
-    Ok(recent_chapters)
+    let data = post_graphql::<FetchHistories>(var).await?;
+    Ok(data.recent_chapters)
 }
 
 #[derive(GraphQLQuery)]
@@ -502,31 +284,9 @@ pub struct FetchSources;
 
 pub async fn fetch_sources(
 ) -> Result<std::vec::Vec<fetch_sources::FetchSourcesInstalledSources>, Box<dyn Error>> {
-    let client = reqwest::Client::new();
     let var = fetch_sources::Variables {};
-    let request_body = FetchSources::build_query(var);
-    let res = client
-        .post(&graphql_url())
-        .json(&request_body)
-        .send()
-        .await?;
-
-    let response_body: Response<fetch_sources::ResponseData> = res.json().await?;
-    let installed_sources = match (response_body.data, response_body.errors) {
-        (Some(data), _) => data.installed_sources,
-        (_, Some(errors)) => {
-            return Err(errors
-                .iter()
-                .map(|e| format!("{}", e))
-                .collect::<Vec<String>>()
-                .join(", ")
-                .into());
-        }
-        _ => {
-            return Err("no data".into());
-        }
-    };
-    Ok(installed_sources)
+    let data = post_graphql::<FetchSources>(var).await?;
+    Ok(data.installed_sources)
 }
 
 #[derive(GraphQLQuery)]
@@ -538,30 +298,8 @@ pub async fn fetch_sources(
 pub struct FetchAllSources;
 
 pub async fn fetch_all_sources() -> Result<fetch_all_sources::ResponseData, Box<dyn Error>> {
-    let client = reqwest::Client::new();
     let var = fetch_all_sources::Variables {};
-    let request_body = FetchAllSources::build_query(var);
-    let res = client
-        .post(&graphql_url())
-        .json(&request_body)
-        .send()
-        .await?;
-
-    let response_body: Response<fetch_all_sources::ResponseData> = res.json().await?;
-    let data = match (response_body.data, response_body.errors) {
-        (Some(data), _) => data,
-        (_, Some(errors)) => {
-            return Err(errors
-                .iter()
-                .map(|e| format!("{}", e))
-                .collect::<Vec<String>>()
-                .join(", ")
-                .into());
-        }
-        _ => {
-            return Err("no data".into());
-        }
-    };
+    let data = post_graphql::<FetchAllSources>(var).await?;
     Ok(data)
 }
 
@@ -577,33 +315,11 @@ pub struct FetchSourceDetail;
 pub async fn fetch_source(
     source_id: i64,
 ) -> Result<fetch_source_detail::FetchSourceDetailSource, Box<dyn Error>> {
-    let client = reqwest::Client::new();
     let var = fetch_source_detail::Variables {
         source_id: Some(source_id),
     };
-    let request_body = FetchSourceDetail::build_query(var);
-    let res = client
-        .post(&graphql_url())
-        .json(&request_body)
-        .send()
-        .await?;
-
-    let response_body: Response<fetch_source_detail::ResponseData> = res.json().await?;
-    let source = match (response_body.data, response_body.errors) {
-        (Some(data), _) => data.source,
-        (_, Some(errors)) => {
-            return Err(errors
-                .iter()
-                .map(|e| format!("{}", e))
-                .collect::<Vec<String>>()
-                .join(", ")
-                .into());
-        }
-        _ => {
-            return Err("no data".into());
-        }
-    };
-    Ok(source)
+    let data = post_graphql::<FetchSourceDetail>(var).await?;
+    Ok(data.source)
 }
 
 #[derive(GraphQLQuery)]
@@ -615,38 +331,11 @@ pub async fn fetch_source(
 pub struct InstallSource;
 
 pub async fn install_source(source_id: i64) -> Result<i64, Box<dyn Error>> {
-    let token = local_storage()
-        .get("token")
-        .unwrap_throw()
-        .ok_or("no token")?;
-    let client = reqwest::Client::new();
     let var = install_source::Variables {
         source_id: Some(source_id),
     };
-    let request_body = InstallSource::build_query(var);
-    let res = client
-        .post(&graphql_url())
-        .header("Authorization", format!("Bearer {}", token))
-        .json(&request_body)
-        .send()
-        .await?;
-
-    let response_body: Response<install_source::ResponseData> = res.json().await?;
-    let install_source = match (response_body.data, response_body.errors) {
-        (Some(data), _) => data.install_source,
-        (_, Some(errors)) => {
-            return Err(errors
-                .iter()
-                .map(|e| format!("{}", e))
-                .collect::<Vec<String>>()
-                .join(", ")
-                .into());
-        }
-        _ => {
-            return Err("no data".into());
-        }
-    };
-    Ok(install_source)
+    let data = post_graphql::<InstallSource>(var).await?;
+    Ok(data.install_source)
 }
 
 #[derive(GraphQLQuery)]
@@ -658,38 +347,11 @@ pub async fn install_source(source_id: i64) -> Result<i64, Box<dyn Error>> {
 pub struct UpdateSource;
 
 pub async fn update_source(source_id: i64) -> Result<i64, Box<dyn Error>> {
-    let token = local_storage()
-        .get("token")
-        .unwrap_throw()
-        .ok_or("no token")?;
-    let client = reqwest::Client::new();
     let var = update_source::Variables {
         source_id: Some(source_id),
     };
-    let request_body = UpdateSource::build_query(var);
-    let res = client
-        .post(&graphql_url())
-        .header("Authorization", format!("Bearer {}", token))
-        .json(&request_body)
-        .send()
-        .await?;
-
-    let response_body: Response<update_source::ResponseData> = res.json().await?;
-    let update_source = match (response_body.data, response_body.errors) {
-        (Some(data), _) => data.update_source,
-        (_, Some(errors)) => {
-            return Err(errors
-                .iter()
-                .map(|e| format!("{}", e))
-                .collect::<Vec<String>>()
-                .join(", ")
-                .into());
-        }
-        _ => {
-            return Err("no data".into());
-        }
-    };
-    Ok(update_source)
+    let data = post_graphql::<UpdateSource>(var).await?;
+    Ok(data.update_source)
 }
 
 #[derive(GraphQLQuery)]
@@ -701,33 +363,11 @@ pub async fn update_source(source_id: i64) -> Result<i64, Box<dyn Error>> {
 pub struct UninstallSource;
 
 pub async fn uninstall_source(source_id: i64) -> Result<i64, Box<dyn Error>> {
-    let client = reqwest::Client::new();
     let var = uninstall_source::Variables {
         source_id: Some(source_id),
     };
-    let request_body = UninstallSource::build_query(var);
-    let res = client
-        .post(&graphql_url())
-        .json(&request_body)
-        .send()
-        .await?;
-
-    let response_body: Response<uninstall_source::ResponseData> = res.json().await?;
-    let uninstall_source = match (response_body.data, response_body.errors) {
-        (Some(data), _) => data.uninstall_source,
-        (_, Some(errors)) => {
-            return Err(errors
-                .iter()
-                .map(|e| format!("{}", e))
-                .collect::<Vec<String>>()
-                .join(", ")
-                .into());
-        }
-        _ => {
-            return Err("no data".into());
-        }
-    };
-    Ok(uninstall_source)
+    let data = post_graphql::<UninstallSource>(var).await?;
+    Ok(data.uninstall_source)
 }
 
 #[derive(GraphQLQuery)]
@@ -739,34 +379,12 @@ pub async fn uninstall_source(source_id: i64) -> Result<i64, Box<dyn Error>> {
 pub struct UserLogin;
 
 pub async fn user_login(username: String, password: String) -> Result<String, Box<dyn Error>> {
-    let client = reqwest::Client::new();
     let var = user_login::Variables {
         username: Some(username),
         password: Some(password),
     };
-    let request_body = UserLogin::build_query(var);
-    let res = client
-        .post(&graphql_url())
-        .json(&request_body)
-        .send()
-        .await?;
-
-    let response_body: Response<user_login::ResponseData> = res.json().await?;
-    let login = match (response_body.data, response_body.errors) {
-        (Some(data), _) => data.login,
-        (_, Some(errors)) => {
-            return Err(errors
-                .iter()
-                .map(|e| format!("{}", e))
-                .collect::<Vec<String>>()
-                .join(", ")
-                .into());
-        }
-        _ => {
-            return Err("no data".into());
-        }
-    };
-    Ok(login)
+    let data = post_graphql::<UserLogin>(var).await?;
+    Ok(data.login)
 }
 
 #[derive(GraphQLQuery)]
@@ -784,36 +402,9 @@ pub async fn fetch_users() -> Result<
     ),
     Box<dyn Error>,
 > {
-    let token = local_storage()
-        .get("token")
-        .unwrap_throw()
-        .ok_or("no token")?;
-    let client = reqwest::Client::new();
     let var = fetch_user_list::Variables {};
-    let request_body = FetchUserList::build_query(var);
-    let res = client
-        .post(&graphql_url())
-        .header("Authorization", format!("Bearer {}", token))
-        .json(&request_body)
-        .send()
-        .await?;
-
-    let response_body: Response<fetch_user_list::ResponseData> = res.json().await?;
-    let (me, users) = match (response_body.data, response_body.errors) {
-        (Some(data), _) => (data.me, data.users),
-        (_, Some(errors)) => {
-            return Err(errors
-                .iter()
-                .map(|e| format!("{}", e))
-                .collect::<Vec<String>>()
-                .join(", ")
-                .into());
-        }
-        _ => {
-            return Err("no data".into());
-        }
-    };
-    Ok((me, users))
+    let data = post_graphql::<FetchUserList>(var).await?;
+    Ok((data.me, data.users))
 }
 
 #[derive(GraphQLQuery)]
@@ -825,36 +416,9 @@ pub async fn fetch_users() -> Result<
 pub struct FetchMe;
 
 pub async fn fetch_me() -> Result<fetch_me::FetchMeMe, Box<dyn Error>> {
-    let token = local_storage()
-        .get("token")
-        .unwrap_throw()
-        .ok_or("no token")?;
-    let client = reqwest::Client::new();
     let var = fetch_me::Variables {};
-    let request_body = FetchMe::build_query(var);
-    let res = client
-        .post(&graphql_url())
-        .header("Authorization", format!("Bearer {}", token))
-        .json(&request_body)
-        .send()
-        .await?;
-
-    let response_body: Response<fetch_me::ResponseData> = res.json().await?;
-    let me = match (response_body.data, response_body.errors) {
-        (Some(data), _) => data.me,
-        (_, Some(errors)) => {
-            return Err(errors
-                .iter()
-                .map(|e| format!("{}", e))
-                .collect::<Vec<String>>()
-                .join(", ")
-                .into());
-        }
-        _ => {
-            return Err("no data".into());
-        }
-    };
-    Ok(me)
+    let data = post_graphql::<FetchMe>(var).await?;
+    Ok(data.me)
 }
 
 #[derive(GraphQLQuery)]
@@ -870,35 +434,12 @@ pub async fn user_register(
     password: String,
     is_admin: bool,
 ) -> Result<(), Box<dyn Error>> {
-    let token = local_storage().get("token").unwrap_throw();
-    let client = reqwest::Client::new();
     let var = user_register::Variables {
         username: Some(username),
         password: Some(password),
         is_admin: Some(is_admin),
     };
-    let request_body = UserRegister::build_query(var);
-    let mut req = client.post(&graphql_url());
-    if let Some(token) = token {
-        req = req.header("Authorization", format!("Bearer {}", token));
-    }
-    let res = req.json(&request_body).send().await?;
-
-    let response_body: Response<user_register::ResponseData> = res.json().await?;
-    let _ = match (response_body.data, response_body.errors) {
-        (Some(data), _) => data.register,
-        (_, Some(errors)) => {
-            return Err(errors
-                .iter()
-                .map(|e| format!("{}", e))
-                .collect::<Vec<String>>()
-                .join(", ")
-                .into());
-        }
-        _ => {
-            return Err("no data".into());
-        }
-    };
+    let _ = post_graphql::<UserRegister>(var).await?;
     Ok(())
 }
 
@@ -914,36 +455,12 @@ pub async fn change_password(
     old_password: String,
     new_password: String,
 ) -> Result<(), Box<dyn Error>> {
-    let token = local_storage()
-        .get("token")
-        .unwrap_throw()
-        .ok_or("no token")?;
-    let client = reqwest::Client::new();
     let var = change_user_password::Variables {
         old_password: Some(old_password),
         new_password: Some(new_password),
     };
-    let request_body = ChangeUserPassword::build_query(var);
-    let res = client
-        .post(&graphql_url())
-        .header("Authorization", format!("Bearer {}", token))
-        .json(&request_body)
-        .send()
-        .await?;
-
-    let response_body: Response<change_user_password::ResponseData> = res.json().await?;
-    match (response_body.data, response_body.errors) {
-        (Some(_), _) => Ok(()),
-        (_, Some(errors)) => {
-            return Err(errors
-                .iter()
-                .map(|e| format!("{}", e))
-                .collect::<Vec<String>>()
-                .join(", ")
-                .into());
-        }
-        _ => Err("no data".into()),
-    }
+    let _ = post_graphql::<ChangeUserPassword>(var).await?;
+    Ok(())
 }
 
 #[derive(GraphQLQuery)]
@@ -955,33 +472,9 @@ pub async fn change_password(
 pub struct UpdateProfile;
 
 pub async fn update_profile(telegram_chat_id: Option<i64>) -> Result<(), Box<dyn Error>> {
-    let token = local_storage()
-        .get("token")
-        .unwrap_throw()
-        .ok_or("no token")?;
-    let client = reqwest::Client::new();
     let var = update_profile::Variables { telegram_chat_id };
-    let request_body = UpdateProfile::build_query(var);
-    let res = client
-        .post(&graphql_url())
-        .header("Authorization", format!("Bearer {}", token))
-        .json(&request_body)
-        .send()
-        .await?;
-
-    let response_body: Response<update_profile::ResponseData> = res.json().await?;
-    match (response_body.data, response_body.errors) {
-        (Some(_), _) => Ok(()),
-        (_, Some(errors)) => {
-            return Err(errors
-                .iter()
-                .map(|e| format!("{}", e))
-                .collect::<Vec<String>>()
-                .join(", ")
-                .into());
-        }
-        _ => Err("no data".into()),
-    }
+    let _ = post_graphql::<UpdateProfile>(var).await?;
+    Ok(())
 }
 
 #[derive(GraphQLQuery)]
@@ -994,29 +487,7 @@ pub struct FetchServerStatus;
 
 pub async fn server_status(
 ) -> Result<fetch_server_status::FetchServerStatusServerStatus, Box<dyn Error>> {
-    let client = reqwest::Client::new();
     let var = fetch_server_status::Variables {};
-    let request_body = FetchServerStatus::build_query(var);
-    let res = client
-        .post(&graphql_url())
-        .json(&request_body)
-        .send()
-        .await?;
-
-    let response_body: Response<fetch_server_status::ResponseData> = res.json().await?;
-    let server_status = match (response_body.data, response_body.errors) {
-        (Some(data), _) => data.server_status,
-        (_, Some(errors)) => {
-            return Err(errors
-                .iter()
-                .map(|e| format!("{}", e))
-                .collect::<Vec<String>>()
-                .join(", ")
-                .into());
-        }
-        _ => {
-            return Err("no data".into());
-        }
-    };
-    Ok(server_status)
+    let data = post_graphql::<FetchServerStatus>(var).await?;
+    Ok(data.server_status)
 }
