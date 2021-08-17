@@ -180,13 +180,13 @@ impl Reader {
                     .style("display", "flex")
                     .style("flex-direction", "column")
                     .style("min-width", "0")
+                    .style("width", "100%")
                     .children(&mut [
                         html!("span", {
                             .style("flex", "1")
                             .style("overflow", "hidden")
                             .style("text-overflow", "ellipsis")
                             .style("white-space", "nowrap")
-                            .style("margin", "auto")
                             .text_signal(reader.manga_title.signal_cloned())
                         }),
                         html!("span", {
@@ -194,7 +194,7 @@ impl Reader {
                             .style("overflow", "hidden")
                             .style("text-overflow", "ellipsis")
                             .style("white-space", "nowrap")
-                            .style("margin", "auto")
+                            .style("font-size", "smaller")
                             .text_signal(reader.chapter_title.signal_cloned())
                         }),
                     ])
@@ -399,6 +399,24 @@ impl Reader {
 
     pub fn render_vertical(reader: Rc<Self>) -> Dom {
         html!("div", {
+            .children(&mut [
+                html!("button", {
+                    .style("width", "100%")
+                    .style("height", "5rem")
+                    .style("border-width", "2px")
+                    .style("border-style", "dashed")
+                    .style("margin-top", "env(safe-area-inset-top)")
+                    .attribute_signal("disabled", reader.prev_chapter.signal().map(|prev_chapter| if prev_chapter.is_some() { None } else { Some("true") }))
+                    .text_signal(reader.prev_chapter.signal().map(|prev_chapter| if prev_chapter.is_some() { "Prev Chapter" } else { "No Prev Chapter" }))
+                    .event(clone!(reader => move |_: events::Click| {
+                        if let Some(prev_chapter) = reader.prev_chapter.get() {
+                            reader.chapter_id.set(prev_chapter);
+                        } else {
+                            info!("no prev_page or prev_chapter");
+                        }
+                    }))
+                })
+            ])
             .children_signal_vec(reader.pages.signal_vec_cloned().enumerate().map(clone!(reader => move |(index, page)|
                 html!("img", {
                     .style("margin-left", "auto")
@@ -430,6 +448,24 @@ impl Reader {
                     }))
                 })
             )))
+            .children(&mut [
+                html!("button", {
+                    .style("width", "100%")
+                    .style("height", "5rem")
+                    .style("border-width", "2px")
+                    .style("border-style", "dashed")
+                    .style("margin-bottom", "env(safe-area-inset-bottom)")
+                    .attribute_signal("disabled", reader.next_chapter.signal().map(|next_chapter| if next_chapter.is_some() { None } else { Some("true") }))
+                    .text_signal(reader.next_chapter.signal().map(|next_chapter| if next_chapter.is_some() { "Next Chapter" } else { "No Next Chapter" }))
+                    .event(clone!(reader => move |_: events::Click| {
+                        if let Some(next_chapter) = reader.next_chapter.get() {
+                            reader.chapter_id.set(next_chapter);
+                        } else {
+                            info!("no next_page or next_chapter");
+                        }
+                    }))
+                })
+            ])
             .global_event(clone!(reader => move |_: events::Scroll| {
                 let mut page_no = 0;
                 let body_top = window().scroll_y().unwrap_throw();
