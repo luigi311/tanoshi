@@ -59,10 +59,10 @@ impl LibraryRoot {
             |after, before, first, last| async move {
                 let (after_timestamp, after_id) = after
                     .and_then(|cursor: String| decode_cursor(&cursor).ok())
-                    .unwrap_or((Local::now().timestamp(), 1));
+                    .unwrap_or((Local::now().naive_local().timestamp(), 1));
                 let (before_timestamp, before_id) = before
                     .and_then(|cursor: String| decode_cursor(&cursor).ok())
-                    .unwrap_or((NaiveDateTime::from_timestamp(0, 0).timestamp(), 0));
+                    .unwrap_or((0, 0));
 
                 let edges = if let Some(first) = first {
                     db.get_first_recent_updates(

@@ -1,6 +1,6 @@
 use bytes::Bytes;
 use serde::Deserialize;
-use std::{convert::Infallible, path::PathBuf};
+use std::convert::Infallible;
 use warp::{filters::BoxedFilter, hyper::Response, Filter, Reply};
 
 #[derive(Deserialize)]
