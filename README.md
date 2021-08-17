@@ -76,20 +76,31 @@ secret: secret
 plugin_path: /absolute/path/to/plugins
 # Absolute path to manga
 local_path: /absolute/path/to/manga
+# Telegram token
+telegram:
+  name: <your bot name>
+  token: <your bot token>
 ```
 
 local manga have to be structured below, it tested for `cbz` and `cbr` files
 ```
 /path/to/manga
 ├─── Series 1
-│   ├─── Volume 1
-|   ├─── Volume 2
+│   ├─── Volume 1.cbz
+|   ├─── Volume 2.cbz
 |   └─── ...
 └─── Series 2
-    ├─── Volume 1
-    ├─── Volume 2
+|   ├─── Volume 1.cbr
+|   ├─── Volume 2.cbr
+|   └─── ...
+└─── Series 3
+    ├─── Volume 1.cbr
+    ├─── Volume 2.cbz
+    ├─── Volume 3
+    |    ├─── Page 1.png
+    |    ├─── Page 2.png
+    |    └─── Page 3.png
     └─── ...
-
 ```
 
 ## Feedback/Questions/Discussion
