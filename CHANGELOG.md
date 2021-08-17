@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Periodic background updates
 - Telegram bot notification
+- Support local manga chapter as directory
+- Navigate to prev/next chapter at start/end of chapter
+- Loading spinner when change chapter and installing extenstion
 
 ### Changed
 
@@ -25,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bigger fonts in input box
 - Use primary color for button inside topbar
 - Reduce memory consupmtion by separating compile and runtime for extension
+- Reduce code duplication on `query.rs` in `tanoshi-web`
 
 ### Fixed
 
