@@ -1,4 +1,4 @@
-use crate::common::{ReaderSettings, Spinner, events, snackbar};
+use crate::common::{events, snackbar, ReaderSettings, Spinner};
 use crate::utils::{document, proxied_image_url, window, AsyncLoader};
 use crate::{
     common::{Background, Direction, DisplayMode, ReaderMode},
@@ -72,11 +72,14 @@ impl Reader {
 
                     reader.reader_settings.load_manga_reader_setting(result.manga.id);
 
+                    let page;
                     match nav {
-                        Nav::None => {},
+                        Nav::None => {
+                            page = 0;
+                        },
                         Nav::Prev => {
                             let len = result.pages.len();
-                            let page = match reader.reader_settings.reader_mode.get() {
+                            page = match reader.reader_settings.reader_mode.get() {
                                 ReaderMode::Continous => len - 1,
                                 ReaderMode::Paged => {
                                     match reader.reader_settings.display_mode.get() {
@@ -92,50 +95,52 @@ impl Reader {
                                 }
                             };
 
-                            reader.current_page.set(page);
+                            reader.current_page.set_neq(page);
                         },
                         Nav::Next => {
-                            reader.current_page.set(0);
+                            page = 0;
+                            reader.current_page.set_neq(page);
                         },
                     }
 
-                    Self::replace_state_with_url(reader.clone());
+                    Self::replace_state_with_url(chapter_id, page + 1);
                 },
                 Err(err) => {
                     snackbar::show(format!("{}", err));
                 }
             }
-            
+
             reader.spinner.set_active(false);
         }));
     }
 
-    fn replace_state_with_url(reader: Rc<Self>) {
-        history()
-            .replace_state_with_url(
-                &JsValue::null(),
-                "",
-                Some(
-                    format!(
-                        "/chapter/{}/{}",
-                        reader.chapter_id.get(),
-                        reader.current_page.get() + 1
-                    )
-                    .as_str(),
-                ),
-            )
-            .unwrap_throw();
+    fn replace_state_with_url(chapter_id: i64, current_page: usize) {
+        if let Err(e) = history().replace_state_with_url(
+            &JsValue::null(),
+            "",
+            Some(format!("/chapter/{}/{}", chapter_id, current_page,).as_str()),
+        ) {
+            let message = if let Some(msg) = e.as_string() {
+                msg
+            } else {
+                "unknown reason".to_string()
+            };
+
+            error!("error replace_state_with_url: {}", message);
+            snackbar::show(format!("error replace_state_with_url: {:?}", message));
+        }
     }
 
     fn update_page_read(reader: Rc<Self>, page: usize) {
         let chapter_id = reader.chapter_id.get();
-        reader.loader.load(async move {
+        AsyncLoader::new().load(async move {
             match query::update_page_read_at(chapter_id, page as i64).await {
                 Ok(_) => {}
                 Err(err) => {
                     snackbar::show(format!("{}", err));
                 }
             }
+            Self::replace_state_with_url(chapter_id, page + 1);
         });
     }
 
@@ -358,7 +363,7 @@ impl Reader {
                     .attribute("id", "next")
                     .event(clone!(reader => move |_: events::Click| {
                         if let Some(next_page) = reader.next_page.get() {
-                            reader.current_page.set(next_page);
+                            reader.current_page.set_neq(next_page);
                         } else if let Some(next_chapter) = reader.next_chapter.get() {
                             reader.chapter_id.set(next_chapter);
                         } else {
@@ -380,7 +385,7 @@ impl Reader {
                     .attribute("id", "prev")
                     .event(clone!(reader => move |_: events::Click| {
                         if let Some(prev_page) = reader.prev_page.get() {
-                            reader.current_page.set(prev_page);
+                            reader.current_page.set_neq(prev_page);
                         } else if let Some(prev_chapter) = reader.prev_chapter.get() {
                             reader.chapter_id.set(prev_chapter);
                         } else {
@@ -440,7 +445,7 @@ impl Reader {
                         break;
                     }
                 }
-                reader.current_page.set(page_no as usize);
+                reader.current_page.set_neq(page_no as usize);
             }))
         })
     }
@@ -579,7 +584,6 @@ impl Reader {
             .class("reader")
             .future(reader.current_page.signal().for_each(clone!(reader => move |page| {
                 Self::update_page_read(reader.clone(), page);
-                Self::replace_state_with_url(reader.clone());
                 if page == 0 {
                     reader.prev_page.set(None);
                 } else if page + 1 == reader.pages_len.get() {

@@ -81,7 +81,7 @@ impl AsyncLoader {
                     }
                 }
                 Err(e) => {
-                    error!("failed to swpan task: {}", e);
+                    error!("failed to spawn task: {}", e);
                 }
             }
         });
