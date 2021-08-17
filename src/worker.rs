@@ -22,7 +22,7 @@ impl Display for ChapterUpdate {
         let manga_title = html_escape::encode_safe(&self.manga_title).to_string();
         let title = html_escape::encode_safe(&self.title).to_string();
 
-        write!(f, r#"<b>{}<\b>\n{}"#, manga_title, title)
+        write!(f, r#"<b>{}</b>\n{}"#, manga_title, title)
     }
 }
 
