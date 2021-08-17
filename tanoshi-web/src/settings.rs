@@ -1,4 +1,4 @@
-use crate::{common::{Login, Profile, ReaderSettings, Route, SettingCategory, Source, User, events, snackbar}, query, utils::AsyncLoader};
+use crate::{common::{Login, Profile, ReaderSettings, Route, SettingCategory, Source, Spinner, User, events, snackbar}, query, utils::AsyncLoader};
 use dominator::svg;
 use dominator::{clone, html, link, routing, Dom};
 use futures_signals::{signal::{Mutable, SignalExt}, signal_vec::{MutableSignalVec, MutableVec}, signal_vec::SignalVecExt};
@@ -520,6 +520,11 @@ impl Settings {
                     .class("topbar-spacing")
                 }),
             ])
+            .child_signal(settings.loader.is_loading().map(|x| if x {
+                Some(Spinner::render_spinner(true))
+            } else {
+                None
+            }))
             .child_signal(settings.page.signal_cloned().map(clone!(settings => move |x|
                 match x {
                     SettingCategory::None => Some(html!("div", {

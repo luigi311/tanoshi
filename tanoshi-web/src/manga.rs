@@ -186,6 +186,8 @@ impl Manga {
                     .style("overflow", "hidden")
                     .style("text-overflow", "ellipsis")
                     .style("white-space", "nowrap")
+                    .style("margin-left", "0.5rem")
+                    .style("margin-right", "0.5rem")
                     .text_signal(manga.title.signal_cloned().map(|x| x.unwrap_or_else(|| "".to_string())))
                 }),
                 html!("button", {
