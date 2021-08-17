@@ -1,4 +1,4 @@
-use crate::common::{events, snackbar, ReaderSettings};
+use crate::common::{ReaderSettings, Spinner, events, snackbar};
 use crate::utils::{document, proxied_image_url, window, AsyncLoader};
 use crate::{
     common::{Background, Direction, DisplayMode, ReaderMode},
@@ -33,6 +33,7 @@ pub struct Reader {
     reader_settings: Rc<ReaderSettings>,
     is_bar_visible: Mutable<bool>,
     loader: AsyncLoader,
+    spinner: Rc<Spinner>,
 }
 
 impl Reader {
@@ -52,10 +53,12 @@ impl Reader {
             reader_settings: ReaderSettings::new(false, true),
             is_bar_visible: Mutable::new(true),
             loader: AsyncLoader::new(),
+            spinner: Spinner::new_with_fullscreen(true),
         })
     }
 
     fn fetch_detail(reader: Rc<Self>, chapter_id: i64, nav: Nav) {
+        reader.spinner.set_active(true);
         reader.loader.load(clone!(reader => async move {
             match query::fetch_chapter(chapter_id).await {
                 Ok(result) => {
@@ -96,12 +99,14 @@ impl Reader {
                         },
                     }
 
-                    Self::replace_state_with_url(reader);
+                    Self::replace_state_with_url(reader.clone());
                 },
                 Err(err) => {
                     snackbar::show(format!("{}", err));
                 }
             }
+            
+            reader.spinner.set_active(false);
         }));
     }
 
@@ -616,6 +621,7 @@ impl Reader {
                 Self::render_page_indicator(reader.clone()),
                 Self::render_bottombar(reader.clone()),
                 ReaderSettings::render(reader.reader_settings.clone()),
+                Spinner::render(&reader.spinner)
             ])
         })
     }

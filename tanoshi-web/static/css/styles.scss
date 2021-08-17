@@ -136,7 +136,7 @@ input {
         background-color: transparent;
         color: #{$primary-color};
         
-        &:hover, &:active {
+        &:hover {
             opacity: 0.5;
         }
     }
@@ -153,13 +153,13 @@ input {
     top: 0px;
     left: 0px;
     right: 0px;
-    height: 1.75;
     z-index: 50;
     padding-top: calc(env(safe-area-inset-top) + 0.5rem);
     padding-left: 0.5rem;
     padding-right: 0.5rem;
     padding-bottom: 0.5rem;
     border-bottom: var(--topbar-bottom-border);
+    -webkit-padding-after: 0.5rem;
     
     span, input {
         background-color: inherit;
@@ -169,6 +169,10 @@ input {
     button {
         background-color: inherit;
         color: var(--topbar-button-color);
+        -webkit-padding-before: 0px;
+        -webkit-padding-end: 0px;
+        -webkit-padding-after: 0px;
+        -webkit-padding-start: 0px;
 
         span {
             color: var(--topbar-button-color);
@@ -648,7 +652,7 @@ $manga-grid: (
     display: flex;
     background-color: var(--background-color);
     opacity: 0.5;
-    z-index: 10;
+    z-index: 50;
     justify-content: center;
     width: 100%;
 
@@ -659,16 +663,19 @@ $manga-grid: (
         left: 0;
         right: 0;
     }
+
+    .loader {
+        border: 0.25rem solid #f3f3f3;
+        border-top: 0.25rem solid  #{$primary-color};
+        border-radius: 50%;
+        width: 1.5rem;
+        height: 1.5rem;
+        margin: auto;
+        animation: spin 2s linear infinite;
+      }
 }
 
-.loader {
-  border: 0.25rem solid #f3f3f3;
-  border-top: 0.25rem solid  #{$primary-color};
-  border-radius: 50%;
-  width: 1.5rem;
-  height: 1.5rem;
-  animation: spin 2s linear infinite;
-}
+
 
 @keyframes spin {
   0% { transform: rotate(0deg); }
