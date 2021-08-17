@@ -1,10 +1,20 @@
-use std::{fs::DirEntry, path::{Path, PathBuf}, time::UNIX_EPOCH};
+use std::{
+    fs::DirEntry,
+    path::{Path, PathBuf},
+    time::UNIX_EPOCH,
+};
 
 use chrono::NaiveDateTime;
 use fancy_regex::Regex;
+use phf::phf_set;
 use tanoshi_lib::prelude::{Chapter, Extension, ExtensionResult, Filters, Manga, Source};
 
 pub static ID: i64 = 1;
+// list of supported files, other archive may works but no tested
+static SUPPORTED_FILES: phf::Set<&'static str> = phf_set! {
+    "cbz",
+    "cbr",
+};
 
 pub struct Local {
     path: PathBuf,
@@ -20,16 +30,49 @@ impl Local {
         "/images/cover-placeholder.jpg".to_string()
     }
 
-    fn filter_file_only(entry: Result<DirEntry, std::io::Error>) -> Option<DirEntry> {
-        match entry {
-            Ok(res) => {
-                if res.path().is_file() {
-                    Some(res)
+    fn filter_supported_files_and_folders(
+        entry: Result<DirEntry, std::io::Error>,
+    ) -> Option<DirEntry> {
+        let entry = entry.ok()?;
+        if entry.file_type().ok()?.is_dir() {
+            Some(entry)
+        } else if let Some(ext) = entry.path().extension() {
+            if ext
+                .to_str()
+                .map(|ext| SUPPORTED_FILES.contains(&ext.to_lowercase()))
+                .unwrap_or(false)
+            {
+                Some(entry)
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
+
+    // find first image from an archvie
+    fn find_cover_from_archive(path: &PathBuf) -> String {
+        match libarchive_rs::list_archive_files(format!("{}", path.display()).as_str()) {
+            Ok(files) => files
+                .first()
+                .map(|first_page| format!("{}", path.join(first_page).display()))
+                .unwrap_or_else(Self::default_cover_url),
+            Err(_) => Self::default_cover_url(),
+        }
+    }
+
+    // find first image from a directory
+    fn find_cover_from_dir(path: &PathBuf) -> String {
+        match path.read_dir() {
+            Ok(dir) => {
+                if let Some(Ok(f)) = dir.into_iter().next() {
+                    f.path().display().to_string()
                 } else {
-                    None
+                    Self::default_cover_url()
                 }
             }
-            Err(_) => None,
+            Err(_) => return Self::default_cover_url(),
         }
     }
 
@@ -43,22 +86,58 @@ impl Local {
 
         let dir_entry = match entry_read_dir
             .into_iter()
-            .filter_map(Self::filter_file_only)
-            .next()
+            .find_map(Self::filter_supported_files_and_folders)
         {
             Some(entry) => entry,
             None => {
                 return Self::default_cover_url();
             }
         };
+
         let path = dir_entry.path();
-        match libarchive_rs::list_archive_files(format!("{}", path.display()).as_str()) {
-            Ok(files) => files
-                .first()
-                .map(|first_page| format!("{}", path.join(first_page).display()))
-                .unwrap_or_else(Self::default_cover_url),
-            Err(_) => Self::default_cover_url(),
+        if path.is_dir() {
+            Self::find_cover_from_dir(&path)
+        } else if path.is_file() {
+            Self::find_cover_from_archive(&path)
+        } else {
+            Self::default_cover_url()
         }
+    }
+
+    fn get_pages_from_archive(
+        path: &PathBuf,
+        filename: String,
+    ) -> Result<Vec<String>, Box<dyn std::error::Error>> {
+        match libarchive_rs::list_archive_files(&filename) {
+            Ok(files) => {
+                let pages = files
+                    .into_iter()
+                    .map(|p| format!("{}", path.clone().join(p).display()))
+                    .collect();
+                Ok(pages)
+            }
+            Err(e) => Err(e),
+        }
+    }
+
+    fn get_pages_from_dir(path: &PathBuf) -> Result<Vec<String>, Box<dyn std::error::Error>> {
+        let pages = path
+            .read_dir()?
+            .into_iter()
+            .filter_map(|f| {
+                if let Ok(f) = f.map(|f| f.path()) {
+                    if f.is_file() {
+                        Some(f.display().to_string())
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        Ok(pages)
     }
 }
 
@@ -185,15 +264,18 @@ impl Extension for Local {
 
     fn get_pages(&self, filename: String) -> ExtensionResult<Vec<String>> {
         let path = PathBuf::from(filename.clone());
-        match libarchive_rs::list_archive_files(&filename) {
-            Ok(files) => {
-                let pages = files
-                    .into_iter()
-                    .map(|p| format!("{}", path.clone().join(p).display()))
-                    .collect();
-                ExtensionResult::ok(pages)
+        if path.is_dir() {
+            match Self::get_pages_from_dir(&path) {
+                Ok(pages) => ExtensionResult::ok(pages),
+                Err(e) => ExtensionResult::err(format!("{}", e).as_str()),
             }
-            Err(e) => ExtensionResult::err(format!("{}", e).as_str()),
+        } else if path.is_file() {
+            match Self::get_pages_from_archive(&path, filename) {
+                Ok(pages) => ExtensionResult::ok(pages),
+                Err(e) => ExtensionResult::err(format!("{}", e).as_str()),
+            }
+        } else {
+            ExtensionResult::err("filename neither file or dir")
         }
     }
 }

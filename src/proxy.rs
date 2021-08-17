@@ -1,6 +1,6 @@
 use bytes::Bytes;
 use serde::Deserialize;
-use std::convert::Infallible;
+use std::{convert::Infallible, path::PathBuf};
 use warp::{filters::BoxedFilter, hyper::Response, Filter, Reply};
 
 #[derive(Deserialize)]
@@ -29,17 +29,33 @@ pub async fn get_image(image: Image) -> Result<impl warp::Reply, Infallible> {
 
 pub async fn get_image_from_file(file: String) -> Result<Response<Bytes>, Infallible> {
     let file = std::path::PathBuf::from(file);
-    let filename = file.parent().unwrap().to_str().unwrap();
-    let path = file.file_name().unwrap().to_str().unwrap();
-    match libarchive_rs::extract_archive_file(filename, path) {
-        Ok(buf) => Ok(warp::http::Response::builder()
-            .status(200)
-            .body(Bytes::from(buf))
-            .unwrap()),
-        Err(_) => Ok(warp::http::Response::builder()
-            .status(400)
-            .body(Bytes::new())
-            .unwrap()),
+    // if file is already a file, serve it
+    if file.is_file() {
+        match std::fs::read(file) {
+            Ok(buf) => Ok(warp::http::Response::builder()
+                .status(200)
+                .body(Bytes::from(buf))
+                .unwrap()),
+            Err(_) => Ok(warp::http::Response::builder()
+                .status(400)
+                .body(Bytes::new())
+                .unwrap()),
+        }
+    } else {
+        // else if its combination of archive files and path inside the archive
+        // extract the file from archive
+        let filename = file.parent().unwrap().to_str().unwrap();
+        let path = file.file_name().unwrap().to_str().unwrap();
+        match libarchive_rs::extract_archive_file(filename, path) {
+            Ok(buf) => Ok(warp::http::Response::builder()
+                .status(200)
+                .body(Bytes::from(buf))
+                .unwrap()),
+            Err(_) => Ok(warp::http::Response::builder()
+                .status(400)
+                .body(Bytes::new())
+                .unwrap()),
+        }
     }
 }
 

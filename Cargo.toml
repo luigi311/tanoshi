@@ -63,6 +63,7 @@ libarchive-rs = { git = "https://github.com/faldez/libarchive-rs", features = [
 ] }
 teloxide = { version = "0.5.1", features = ["auto-send", "macros"] }
 html-escape = "0.2.9"
+phf = { version = "0.9", features = ["macros"] }
 
 [profile.release]
 lto = true
