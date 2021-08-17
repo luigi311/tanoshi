@@ -621,7 +621,8 @@ $manga-grid: (
     bottom: 0;
     padding-left: 0.5rem;
     padding-right: 0.5rem;
-    margin-bottom: 4.5rem;
+    margin-bottom: 4.75rem;
+    z-index: 50;
 
     div {
         padding: 0.5rem;
@@ -630,7 +631,6 @@ $manga-grid: (
         color: white;
         background-color: var(--background-color-200);
         display: flex;
-        z-index: 50;
         align-items: center;
         
         span {

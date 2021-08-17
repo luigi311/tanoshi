@@ -1,3 +1,4 @@
+use crate::common::Spinner;
 use crate::common::snackbar;
 use crate::common::Route;
 use crate::query;
@@ -506,11 +507,20 @@ impl Manga {
                 html!("div", {
                    .class("topbar-spacing")
                 }),
-                Self::render_header(manga_page.clone()),
-                Self::render_action(manga_page.clone()),
-                Self::render_description(manga_page.clone()),
-                Self::render_chapters(manga_page)
+                
             ])
+            .child_signal(manga_page.loader.is_loading().map(clone!(manga_page => move |x| if x {
+                Some(Spinner::render_spinner(false))
+            } else {
+                Some(html!("div", {
+                    .children(&mut [
+                        Self::render_header(manga_page.clone()),
+                        Self::render_action(manga_page.clone()),
+                        Self::render_description(manga_page.clone()),
+                        Self::render_chapters(manga_page.clone())
+                    ])
+                }))
+            })))
         })
     }
 }

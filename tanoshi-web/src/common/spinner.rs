@@ -57,4 +57,26 @@ impl Spinner {
             ])
         })
     }
+
+    pub fn render_spinner(fullscreen: bool) -> Dom {
+        if fullscreen {
+            html!("div", {
+                .class(["spinner", "fullscreen"])
+                .children(&mut [
+                    html!("div", {
+                        .class("loader")
+                    })
+                ])
+            })
+        } else {
+            html!("div", {
+                .class(["spinner"])
+                .children(&mut [
+                    html!("div", {
+                        .class("loader")
+                    })
+                ])
+            })
+        }
+    }
 }
