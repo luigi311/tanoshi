@@ -14,15 +14,15 @@ default = []
 disable-compiler = ["tanoshi-vm/disable-compiler"]
 
 [dependencies]
-tanoshi-lib = { path = "../tanoshi-lib", version = "0.23.2" }
-tanoshi-vm = { path = "../tanoshi-vm", version = "0.2.0" }
+tanoshi-lib = { path = "../tanoshi-lib", version = "0.24" }
+tanoshi-vm = { path = "../tanoshi-vm", version = "0.3.0" }
 serde_yaml = "0.8"
 tokio = { version = "1", features = ["full"] }
-clap = "3.0.0-beta.2"
+clap = "3.0.0-beta.4"
 anyhow = "1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 log = { version = "0.4.14" }
-env_logger = "0.8.4"
+env_logger = "0.9.0"
 ron = "0.6.4"
 ureq = { version = "2", features = ["json"] }

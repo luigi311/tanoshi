@@ -47,7 +47,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     if !matches!(opts.subcmd, SubCommand::Compile) {
         vm::load(&extension_path, extension_tx.clone()).await?;
     }
-    
+
     #[cfg(feature = "disable-compiler")]
     vm::load(&extension_path, extension_tx.clone()).await?;
 
