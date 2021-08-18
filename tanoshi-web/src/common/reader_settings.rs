@@ -3,7 +3,7 @@ use futures_signals::signal::{Mutable, SignalExt};
 use serde::{Deserialize, Serialize};
 use std::rc::Rc;
 
-use crate::{utils::local_storage};
+use crate::utils::{local_storage, document};
 
 #[derive(PartialEq, Copy, Clone, Serialize, Deserialize)]
 pub enum ReaderMode {
@@ -21,11 +21,35 @@ impl Default for ReaderMode {
 pub enum DisplayMode {
     Single,
     Double,
-}
+    Auto,
+}   
 
 impl Default for DisplayMode {
     fn default() -> Self {
         DisplayMode::Single
+    }
+}
+
+impl DisplayMode {
+    fn is_landscape(&self) -> bool {
+        let client_width = document().document_element().map(|el| el.client_width()).unwrap_or(0_i32);
+        let client_height = document().document_element().map(|el| el.client_height()).unwrap_or(0_i32);
+
+        client_width > client_height
+    }
+
+    pub fn get(&self) -> Self {
+        match self {
+            DisplayMode::Single => DisplayMode::Single,
+            DisplayMode::Double => DisplayMode::Double,
+            DisplayMode::Auto => {
+                if self.is_landscape() {
+                    DisplayMode::Double
+                } else {
+                    DisplayMode::Single
+                }
+            }
+        }
     }
 }
 
@@ -233,22 +257,22 @@ impl ReaderSettings {
                     .class("reader-settings-row")
                     .children(&mut [
                         html!("button", {
-                            .style("width", "50%")
-                            .class_signal("active", reader.display_mode.signal_cloned().map(|x| match x {
-                                DisplayMode::Single => true,
-                                DisplayMode::Double => false,
-                            }))
+                            .style("width", "33%")
+                            .class_signal("active", reader.display_mode.signal_cloned().map(|x| matches!(x, DisplayMode::Single)))
                             .text("Single")
                             .event(clone!(reader => move |_: events::Click| reader.display_mode.set_neq(DisplayMode::Single)))
                         }),
                         html!("button", {
-                            .style("width", "50%")
-                            .class_signal("active", reader.display_mode.signal_cloned().map(|x| match x {
-                                DisplayMode::Single => false,
-                                DisplayMode::Double => true,
-                            }))
+                            .style("width", "33%")
+                            .class_signal("active", reader.display_mode.signal_cloned().map(|x| matches!(x, DisplayMode::Double)))
                             .text("Double")
                             .event(clone!(reader => move |_: events::Click| reader.display_mode.set_neq(DisplayMode::Double)))
+                        }),
+                        html!("button", {
+                            .style("width", "33%")
+                            .class_signal("active", reader.display_mode.signal_cloned().map(|x| matches!(x, DisplayMode::Auto)))
+                            .text("Auto")
+                            .event(clone!(reader => move |_: events::Click| reader.display_mode.set_neq(DisplayMode::Auto)))
                         }),
                     ])
                 })

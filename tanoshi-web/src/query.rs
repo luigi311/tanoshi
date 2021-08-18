@@ -1,11 +1,10 @@
 use graphql_client::GraphQLQuery;
 use std::error::Error;
 use wasm_bindgen::prelude::*;
-use web_sys::window;
 
 type NaiveDateTime = String;
 
-use crate::{common::Cover, utils::local_storage};
+use crate::{common::Cover, utils::{local_storage, window}};
 
 async fn post_graphql<Q>(var: Q::Variables) -> Result<Q::ResponseData, Box<dyn std::error::Error>>
 where
@@ -13,7 +12,6 @@ where
 {
     let url = [
         window()
-            .unwrap()
             .document()
             .unwrap()
             .location()

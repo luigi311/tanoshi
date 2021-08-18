@@ -1,9 +1,8 @@
-use crate::{common::{Login, Profile, ReaderSettings, Route, SettingCategory, Source, Spinner, User, events, snackbar}, query, utils::AsyncLoader};
+use crate::{common::{Login, Profile, ReaderSettings, Route, SettingCategory, Source, Spinner, User, events, snackbar}, query, utils::{AsyncLoader, window}};
 use dominator::svg;
 use dominator::{clone, html, link, routing, Dom};
 use futures_signals::{signal::{Mutable, SignalExt}, signal_vec::{MutableSignalVec, MutableVec}, signal_vec::SignalVecExt};
 use std::rc::Rc;
-use web_sys::window;
 
 pub struct Settings {
     page: Mutable<SettingCategory>,
@@ -232,7 +231,7 @@ impl Settings {
                         }
                     ))
                     .event(|_: events::Click| {
-                        let history = window().unwrap().history().unwrap();
+                        let history = window().history().unwrap();
                         if history.length().unwrap() > 1 {
                             let _ = history.back();
                         } else {

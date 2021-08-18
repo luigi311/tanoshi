@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use crate::common::{events, snackbar, ReaderSettings, Spinner};
 use crate::utils::{document, proxied_image_url, window, AsyncLoader};
 use crate::{
@@ -8,7 +10,6 @@ use crate::{
 use dominator::{clone, html, routing, svg, with_node, Dom};
 use futures_signals::signal::{Mutable, SignalExt};
 use futures_signals::signal_vec::{MutableVec, SignalVecExt};
-use std::rc::Rc;
 use wasm_bindgen::{JsCast, JsValue, UnwrapThrowExt};
 use web_sys::HtmlImageElement;
 
@@ -82,8 +83,9 @@ impl Reader {
                             page = match reader.reader_settings.reader_mode.get() {
                                 ReaderMode::Continous => len - 1,
                                 ReaderMode::Paged => {
-                                    match reader.reader_settings.display_mode.get() {
-                                        DisplayMode::Single => len - 1,
+                                    match reader.reader_settings.display_mode.get().get() {
+                                        // display_mode.get() shouldn't return auto, here to satisfy compiler
+                                        DisplayMode::Single | DisplayMode::Auto => len - 1,
                                         DisplayMode::Double => {
                                             if len % 2 == 0 {
                                                 len - 2
@@ -638,6 +640,7 @@ impl Reader {
 
                 async {}
             })))
+            .global_event(clone!(reader => move |_:events::Resize| reader.reader_settings.display_mode.set(reader.reader_settings.display_mode.get())))
             .class_signal("dark", reader.reader_settings.background.signal_cloned().map(|x| match x {
                 Background::White => false,
                 Background::Black => true,
@@ -651,9 +654,10 @@ impl Reader {
                     .children(&mut [
                         Self::render_navigation(reader.clone())
                     ])
-                    .child_signal(reader.reader_settings.display_mode.signal_cloned().map(clone!(reader => move |x| match x {
+                    .child_signal(reader.reader_settings.display_mode.signal_cloned().map(clone!(reader => move |x| match x.get() {
                         DisplayMode::Single => Some(Self::render_single(reader.clone())),
                         DisplayMode::Double => Some(Self::render_double(reader.clone())),
+                        DisplayMode::Auto => None // shouldn't return this
                     })))
                 }))
             })))

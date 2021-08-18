@@ -2,6 +2,7 @@ use crate::common::Spinner;
 use crate::common::snackbar;
 use crate::common::Route;
 use crate::query;
+use crate::utils::window;
 use crate::utils::{proxied_image_url, AsyncLoader};
 use chrono::NaiveDateTime;
 use dominator::{clone, events, html, link, routing, svg, Dom};
@@ -12,7 +13,6 @@ use futures_signals::{
 };
 use std::rc::Rc;
 use wasm_bindgen::prelude::*;
-use web_sys::window;
 
 #[derive(Clone)]
 struct Chapter {
@@ -171,7 +171,7 @@ impl Manga {
                             _ => Some(html!("span", {
                                 .text("Catalogue")
                                 .event(|_: events::Click| {
-                                    let history = window().unwrap().history().unwrap();
+                                    let history = window().history().unwrap();
                                     if history.length().unwrap() > 1 {
                                         let _ = history.back();
                                     } else {
