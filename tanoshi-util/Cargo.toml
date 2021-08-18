@@ -14,7 +14,11 @@ exclude = [".github/*"]
 [dependencies]
 tanoshi-lib = { path = "../tanoshi-lib", version = "0.23.3" }
 reqwest = { version = "0.11", features = ["blocking", "json"], optional = true }
+serde = { version = "1", features = ["derive"] }
+log = "0.4.14"
+env_logger = "0.9.0"
 
 [features]
+host = ["reqwest"]
 # internal feature used for testing (do not rely on this!):
 __test = ["reqwest"]
