@@ -1,8 +1,7 @@
 use serde::{de::DeserializeOwned, Serialize};
 use std::{collections::HashMap, fmt::Debug, path::Path};
-use tanoshi_lib::prelude::{
-    Chapter, Extension, ExtensionResult, Filters, Manga, Param, Request, Response, Source,
-};
+use tanoshi_lib::prelude::{Chapter, Extension, ExtensionResult, Filters, Manga, Param, Source};
+use tanoshi_util::http::Request;
 use tokio::{
     sync::mpsc::{UnboundedReceiver, UnboundedSender},
     task::JoinHandle,
@@ -191,7 +190,7 @@ pub async fn load<P: AsRef<Path>>(
             let _ = std::fs::create_dir_all(&path);
         }
     }
-    
+
     #[cfg(not(feature = "disable-compiler"))]
     compile(&path).await?;
 
@@ -363,48 +362,28 @@ fn wasi_write(
 }
 
 fn host_http_request(env: &ExtensionEnv) {
-    match do_http_request(env) {
-        Ok(()) => {}
+    let http_req_str = match wasi_read(env) {
+        Ok(http_req_str) => http_req_str,
         Err(e) => {
-            error!("error do_htp_request: {}", e);
+            error!("error wasi_read: {}", e);
+            return;
         }
-    }
-}
-
-fn do_http_request(env: &ExtensionEnv) -> Result<(), Box<dyn std::error::Error>> {
-    let http_req_str = wasi_read(env)?;
-    let http_req = ron::from_str::<Request>(&http_req_str)?;
-
-    let mut req = ureq::get(&http_req.url);
-    if let Some(headers) = http_req.headers {
-        for (name, values) in headers {
-            for value in values {
-                req = req.set(&name, &value);
-            }
-        }
-    }
-    let res = req.call()?;
-    let mut headers: HashMap<String, Vec<String>> = HashMap::new();
-    for name in res.headers_names() {
-        if let Some(header_value) = res.header(&name) {
-            if let Some(header) = headers.get_mut(&name) {
-                header.push(header_value.to_string());
-            } else {
-                headers.insert(name, vec![header_value.to_string()]);
-            }
-        }
-    }
-
-    let status = res.status() as i32;
-    let body = res.into_string()?;
-
-    let http_res = Response {
-        headers,
-        body,
-        status,
     };
 
-    wasi_write(env, &http_res)?;
+    let http_req = match ron::from_str::<Request>(&http_req_str) {
+        Ok(http_req) => http_req,
+        Err(e) => {
+            error!("error parsing http_req: {}", e);
+            return;
+        }
+    };
 
-    Ok(())
+    let http_res = tanoshi_util::http::http_request(http_req);
+
+    match wasi_write(env, &http_res) {
+        Ok(_) => {}
+        Err(e) => {
+            error!("error wasi_write: {}", e);
+        }
+    }
 }
