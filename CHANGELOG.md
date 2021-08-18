@@ -9,32 +9,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added 
 
-- Periodic background updates
-- Telegram bot notification
-- Support local manga chapter as directory
-- Navigate to prev/next chapter at start/end of chapter
-- Loading spinner when change chapter and installing extenstion
+- [tanoshi] Periodic background updates
+- [tanoshi] Telegram bot notification
+- [tanoshi] Support local manga chapter as directory instead of archive files
+- [tanoshi-web] Navigate to prev/next chapter at start/end of chapter
+- [tanoshi-web] Loading spinner when change chapter and installing extenstion
+- [tanoshi-util] implement `http_request` supporting http method other than  `GET`
+- [tanoshi-lib] move `Request` and `Response` to `tanoshi-util`
+- [tanoshi-vm] use `http_request` implementation from `tanoshi-util`
 
 ### Changed
 
-- Decouple db and graphql
-- Replace option with result
-- Check token expiration
-- `get_claims` return result
-- Establish database connection return result
-- Serialize and Deserialize from catalogue into local_storage instead of individual fields
-- Use `with_node` because `events:value` is deprecated
-- Implement clippy suggestion
-- Bigger fonts in input box
-- Use primary color for button inside topbar
-- Reduce memory consupmtion by separating compile and runtime for extension
-- Reduce code duplication on `query.rs` in `tanoshi-web`
+- [tanoshi] Decouple db and graphql
+- [tanoshi] Replace option with result
+- [tanoshi] Check token expiration
+- [tanoshi] `get_claims` return result
+- [tanoshi] Establish database connection return result
+- [tanoshi-web] Serialize and Deserialize from catalogue into local_storage instead of individual fields
+- [tanoshi-web] Use `with_node` because `events:value` is deprecated
+- [tanoshi] Implement clippy suggestion
+- [tanoshi-web] Bigger fonts in input box
+- [tanoshi-web] Use primary color for button inside topbar
+- [tanoshi-vm] Reduce memory consumption by separating compile and runtime for extension
+- [tanoshi-web] Reduce code duplication on `query.rs` 
 
 ### Fixed
 
-- cover image brightness not lowered in catalogue if favorited
-- refresh all libraries
-- manga title wrap
+- [tanoshi-web] cover image brightness not lowered in catalogue if favorited
+- [tanoshi] refresh all libraries
+- [tanoshi-web] manga title wrap
 
 ## [0.24.6] - 2021-08-03
 
