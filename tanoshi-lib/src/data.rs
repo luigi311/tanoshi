@@ -124,7 +124,7 @@ pub type ParamFilterValue = HashMap<String, Vec<String>>;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Filters {
     pub default: String,
-    pub fields: BTreeMap<String, FilterField>
+    pub fields: BTreeMap<String, FilterField>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -140,42 +140,27 @@ pub struct FilterField {
 pub struct FilterValue {
     pub title: String,
     pub value: Option<String>,
-    pub related: Option<HashMap<String, String>>
-}
-
-pub type Headers = HashMap<String, Vec<String>>;
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Request {
-    pub method: String,
-    pub url: String,
-    pub headers: Option<Headers>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Response {
-    pub headers: Headers,
-    pub body: String,
-    pub status: i32,
+    pub related: Option<HashMap<String, String>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExtensionResult<T> {
     pub data: Option<T>,
-    pub error: Option<String>
+    pub error: Option<String>,
 }
 
 impl<T: Clone> ExtensionResult<T> {
     pub fn ok(data: T) -> Self {
         Self {
             data: Some(data),
-            error: None
+            error: None,
         }
     }
-    
+
     pub fn err(msg: &str) -> Self {
         Self {
             data: None,
-            error: Some(msg.to_string())
+            error: Some(msg.to_string()),
         }
     }
 
