@@ -89,75 +89,50 @@ extern "C" {
 
 #[cfg(any(feature = "__test", feature = "host"))]
 pub fn http_request(req: Request) -> Response {
-    use std::str::FromStr;
-
     use log::debug;
-    use reqwest::Method;
 
-    let client = match reqwest::blocking::Client::builder()
-        .user_agent("Tanoshi/0.1.0")
-        .build()
-    {
-        Ok(method) => method,
-        Err(e) => {
-            return Response {
-                headers: HashMap::new(),
-                body: format!("failed to build client: {}", e),
-                status: 9999,
-            };
-        }
-    };
+    let agent = ureq::builder().user_agent("Tanoshi/0.1.0").build();
 
-    let method = match Method::from_str(&req.method) {
-        Ok(method) => method,
-        Err(e) => {
-            return Response {
-                headers: HashMap::new(),
-                body: format!("{} requests are not valid: {}", req.method, e),
-                status: 9999,
-            };
-        }
-    };
-
-    let mut request_builder = client.request(method, req.url);
+    let mut request = agent.request(&req.method, &req.url);
     if let Some(headers) = req.headers.as_ref() {
         for (key, values) in headers {
             for value in values {
-                request_builder = request_builder.header(key, value);
+                request = request.set(key, value);
             }
         }
     }
 
-    if let Some(body) = req.body {
-        request_builder = request_builder.body(body);
-    }
+    let res = if let Some(body) = req.body {
+        debug!("request => {:?}", request);
+        request.send_string(&body)
+    } else {
+        debug!("request => {:?}", request);
+        request.call()
+    };
 
-    debug!("request => {:?}", request_builder);
-
-    match request_builder.send() {
+    match res {
         Ok(response) => {
             debug!("response ok => {:?}", response);
 
             let status = response.status();
             Response {
                 headers: {
-                    let header_map = response.headers();
-                    header_map
-                        .keys()
-                        .map(|key| {
-                            (
-                                key.to_string(),
-                                header_map
-                                    .get_all(key)
-                                    .iter()
-                                    .flat_map(|value| value.to_str().ok().map(str::to_string))
-                                    .collect(),
-                            )
-                        })
-                        .collect()
+                    let mut headers = Headers::new();
+                    for name in response.headers_names() {
+                        headers.insert(
+                            name.clone(),
+                            response
+                                .all(&name)
+                                .iter()
+                                .map(|all| all.to_string())
+                                .collect(),
+                        );
+                    }
+
+                    headers
                 },
-                body: response.text().unwrap_or_else(|_| "".to_string()),
-                status: status.as_u16() as i32,
+                body: response.into_string().unwrap_or_else(|_| "".to_string()),
+                status: status as i32,
             }
         }
         Err(err) => {
