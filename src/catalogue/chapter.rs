@@ -180,12 +180,11 @@ impl Chapter {
             return Ok(self.pages.clone());
         }
 
-        let pages = {
-            let extensions = ctx.data::<GlobalContext>()?.extensions.clone();
-            extensions
-                .get_pages(self.source_id, self.path.clone())
-                .await?
-        };
+        let pages = ctx
+            .data::<GlobalContext>()?
+            .extensions
+            .get_pages(self.source_id, self.path.clone())
+            .await?;
 
         ctx.data::<GlobalContext>()?
             .mangadb
