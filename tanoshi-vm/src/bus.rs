@@ -1,6 +1,7 @@
 use bytes::Bytes;
 use std::{
     path::{Path, PathBuf},
+    sync::Arc,
     time::Duration,
 };
 use tanoshi_lib::prelude::{Chapter, Extension, ExtensionResult, Filters, Manga, Param, Source};
@@ -15,7 +16,7 @@ pub type ExtensionResultSender<T> = Sender<ExtensionResult<T>>;
 
 #[derive(Debug)]
 pub enum Command {
-    Insert(i64, Box<dyn Extension>),
+    Insert(i64, Arc<dyn Extension>),
     Load(String),
     Unload(i64),
     Exist(i64, Sender<bool>),
@@ -45,7 +46,7 @@ impl ExtensionBus {
     pub async fn insert(
         &self,
         source_id: i64,
-        proxy: Box<dyn Extension>,
+        proxy: Arc<dyn Extension>,
     ) -> Result<(), Box<dyn std::error::Error>> {
         Ok(self.tx.send(Command::Insert(source_id, proxy))?)
     }

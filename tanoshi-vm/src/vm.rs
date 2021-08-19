@@ -1,5 +1,5 @@
 use serde::{de::DeserializeOwned, Serialize};
-use std::{collections::HashMap, fmt::Debug, path::Path};
+use std::{collections::HashMap, fmt::Debug, path::Path, sync::Arc};
 use tanoshi_lib::prelude::{Chapter, Extension, ExtensionResult, Filters, Manga, Param, Source};
 use tanoshi_util::http::Request;
 use tokio::{
@@ -26,7 +26,7 @@ impl ExtensionProxy {
     pub fn load<P: AsRef<Path>>(
         store: &Store,
         path: P,
-    ) -> Result<Box<dyn Extension>, Box<dyn std::error::Error>> {
+    ) -> Result<Arc<dyn Extension>, Box<dyn std::error::Error>> {
         let module = unsafe { Module::deserialize_from_file(&store, path)? };
 
         let input = Pipe::new();
@@ -49,7 +49,7 @@ impl ExtensionProxy {
 
         let instance = Instance::new(&module, &tanoshi.chain_back(import_object))?;
 
-        Ok(Box::new(ExtensionProxy { instance, env }))
+        Ok(Arc::new(ExtensionProxy { instance, env }))
     }
 
     #[cfg(not(feature = "disable-compiler"))]
@@ -237,7 +237,7 @@ pub async fn compile<P: AsRef<Path>>(path: P) -> Result<(), Box<dyn std::error::
 
 async fn thread(extension_receiver: UnboundedReceiver<Command>) {
     let mut recv = extension_receiver;
-    let mut extension_map: HashMap<i64, Box<dyn Extension>> = HashMap::new();
+    let mut extension_map: HashMap<i64, Arc<dyn Extension>> = HashMap::new();
 
     let store = ExtensionProxy::init_store_headless();
 
@@ -296,23 +296,21 @@ async fn thread(extension_receiver: UnboundedReceiver<Command>) {
                 }
                 Command::GetMangaList(source_id, param, tx) => {
                     process(&extension_map, source_id, tx, |proxy| {
-                        proxy.get_manga_list(param.clone())
+                        proxy.get_manga_list(param)
                     });
                 }
                 Command::GetMangaInfo(source_id, path, tx) => {
                     process(&extension_map, source_id, tx, |proxy| {
-                        proxy.get_manga_info(path.clone())
+                        proxy.get_manga_info(path)
                     });
                 }
                 Command::GetChapters(source_id, path, tx) => {
                     process(&extension_map, source_id, tx, |proxy| {
-                        proxy.get_chapters(path.clone())
+                        proxy.get_chapters(path)
                     });
                 }
                 Command::GetPages(source_id, path, tx) => {
-                    process(&extension_map, source_id, tx, |proxy| {
-                        proxy.get_pages(path.clone())
-                    });
+                    process(&extension_map, source_id, tx, |proxy| proxy.get_pages(path));
                 }
             }
         }
@@ -320,19 +318,23 @@ async fn thread(extension_receiver: UnboundedReceiver<Command>) {
 }
 
 fn process<F, T>(
-    extension_map: &HashMap<i64, Box<dyn Extension>>,
+    extension_map: &HashMap<i64, Arc<dyn Extension>>,
     source_id: i64,
     tx: ExtensionResultSender<T>,
     f: F,
 ) where
-    F: Fn(&Box<dyn Extension>) -> ExtensionResult<T>,
+    F: FnOnce(Arc<dyn Extension>) -> ExtensionResult<T> + Send + 'static,
+    T: Send + 'static,
 {
     match extension_map.get(&source_id) {
         Some(proxy) => {
-            let res = f(proxy);
-            if tx.send(res).is_err() {
-                error!("receiver dropped");
-            }
+            let proxy = proxy.clone();
+            tokio::spawn(async move {
+                let res = f(proxy);
+                if tx.send(res).is_err() {
+                    error!("receiver dropped");
+                }
+            });
         }
         None => {
             error!("extension with id {} not found", source_id);
