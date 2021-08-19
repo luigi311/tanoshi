@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.25.0]
 
 ### Added 
 
@@ -40,6 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [tanoshi-web] cover image brightness not lowered in catalogue if favorited
 - [tanoshi] refresh all libraries
 - [tanoshi-web] manga title wrap
+- [tanoshi] failed to register first time because backend check non existent token
 
 ## [0.24.6] - 2021-08-03
 
@@ -81,7 +82,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - fix panic when using local source
 
-[unreleased]: https://github.com/faldez/tanoshi/compare/v0.24.6...HEAD
+[0.25.0]: https://github.com/faldez/tanoshi/compare/v0.24.6...v0.25.0
 [0.24.6]: https://github.com/faldez/tanoshi/compare/v0.24.5...v0.24.6
 [0.24.5]: https://github.com/faldez/tanoshi/compare/v0.24.4...v0.24.5
 [0.24.4]: https://github.com/faldez/tanoshi/compare/v0.24.3...v0.24.4
