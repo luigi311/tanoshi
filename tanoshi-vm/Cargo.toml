@@ -17,7 +17,7 @@ disable-compiler = []
 
 [dependencies]
 tanoshi-lib = { path = "../tanoshi-lib", version = "0.24.0" }
-tanoshi-util = { path = "../tanoshi-util", version = "0.2.0", features = [
+tanoshi-util = { path = "../tanoshi-util", version = "0.2.1", features = [
     "host",
 ] }
 tokio = { version = "1", features = ["full"] }
