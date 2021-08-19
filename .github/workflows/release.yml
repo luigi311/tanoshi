@@ -27,6 +27,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
+      - name: Set env
+        run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
       - name: Set up Docker Buildx
@@ -42,7 +44,7 @@ jobs:
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: faldez/tanoshi:latest,faldez/tanoshi:${{ github.ref }}
+          tags: faldez/tanoshi:latest,faldez/tanoshi:${{ env.RELEASE_VERSION }}
   build:
     runs-on: ${{ matrix.os }}
     needs: create-release
