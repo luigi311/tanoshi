@@ -132,7 +132,7 @@ impl UserMutationRoot {
 
         let user_count = userdb.get_users_count().await?;
 
-        if !check_is_admin(&ctx)? && user_count > 0 {
+        if user_count > 0 && !check_is_admin(&ctx)? {
             return Err("Forbidden".into());
         };
 
@@ -200,7 +200,7 @@ impl UserMutationRoot {
     ) -> Result<u64> {
         debug!("update_profile");
         let claims = get_claims(ctx)?;
-        
+
         let userdb = &ctx.data::<GlobalContext>()?.userdb;
         let mut user = userdb.get_user_by_id(claims.sub).await?;
         debug!("update_profile");

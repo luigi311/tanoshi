@@ -35,7 +35,7 @@ impl App {
 
     pub fn render(app: Rc<Self>) -> Dom {
         match local_storage().get("token").unwrap_throw() {
-            Some(_) => {},
+            Some(_) => {}
             None => routing::go_to_url(&Route::Login.url()),
         };
 

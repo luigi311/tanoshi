@@ -12,7 +12,7 @@ use crate::query;
 use crate::utils::local_storage;
 use crate::utils::AsyncLoader;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 struct ServerStatus {
     activated: bool,
     version: String,
@@ -21,7 +21,7 @@ struct ServerStatus {
 pub struct Login {
     username: Mutable<String>,
     password: Mutable<String>,
-    server_status: Mutable<Option<ServerStatus>>,
+    server_status: Mutable<ServerStatus>,
     loader: AsyncLoader,
 }
 
@@ -30,15 +30,15 @@ impl Login {
         Rc::new(Self {
             username: Mutable::new("".to_string()),
             password: Mutable::new("".to_string()),
-            server_status: Mutable::new(None),
+            server_status: Mutable::new(ServerStatus::default()),
             loader: AsyncLoader::new(),
         })
     }
 
     pub fn login(login: Rc<Self>) {
-        login.loader.load(clone!(login => async move {
-            let username = login.username.get_cloned();
-            let password = login.password.get_cloned();
+        let username = login.username.get_cloned();
+        let password = login.password.get_cloned();
+        login.loader.load(async move {
             match query::user_login(username, password).await {
                 Ok(token) => {
                     local_storage().set("token", &token).unwrap_throw();
@@ -48,21 +48,20 @@ impl Login {
                     snackbar::show(format!("Login failed: {}", e));
                 }
             }
-        }));
+        });
     }
 
     pub fn register(login: Rc<Self>) {
+        let username = login.username.get_cloned();
+        let password = login.password.get_cloned();
         login.loader.load(clone!(login => async move {
-            let username = login.username.get_cloned();
-            let password = login.password.get_cloned();
             match query::user_register(username, password, true).await {
                 Ok(_) => {
                     login.username.set("".to_string());
                     login.password.set("".to_string());
-                    Self::fetch_server_status(login.clone());
                 }
                 Err(e) => {
-                    snackbar::show(format!("error: {:?}", e));
+                    snackbar::show(format!("Register failed: {:?}", e));
                 }
             }
         }));
@@ -72,10 +71,10 @@ impl Login {
         login.loader.load(clone!(login => async move {
             match query::server_status().await {
                 Ok(server_status) => {
-                login.server_status.set(Some(ServerStatus{
-                    activated: server_status.activated,
-                    version: server_status.version,
-                }));
+                    login.server_status.set_neq(ServerStatus{
+                        activated: server_status.activated,
+                        version: server_status.version,
+                    });
                 }
                 Err(e) => {
                     snackbar::show(format!("error check server status: {}", e));
@@ -105,20 +104,22 @@ impl Login {
                     .style("margin", "auto")
                     .attribute("src", "/icons/512.png")
                 }),
-                html!("div", {
-                    .style("color", "white")
-                    .style("background-color", "var(--primary-color)")
-                    .style("border-radius", "0.5rem")
-                    .style("padding", "0.25rem")
-                    .visible_signal(login.server_status.signal_cloned().map(|x| {
-                        if let Some(status) = x {
-                            !status.activated
-                        } else {
-                            false
-                        }
+            ])
+            .child_signal(login.server_status.signal_cloned().map(|status| {
+                if !status.activated {
+                    Some(html!("div", {
+                        .style("color", "white")
+                        .style("background-color", "var(--primary-color)")
+                        .style("border-radius", "0.5rem")
+                        .style("padding", "0.5rem")
+                        .style("margin", "0.5rem")
+                        .text("Server is not activated, activate by create an account")
                     }))
-                    .text("Server is not activated, activate by create an account")
-                }),
+                } else {
+                    None
+                }
+            }))
+            .children(&mut [
                 html!("form", {
                     .style("display", "flex")
                     .style("flex-direction", "column")
@@ -152,7 +153,7 @@ impl Login {
                             .style("display", "flex")
                             .style("justify-content", "flex-end")
                             .child_signal(login.server_status.signal_cloned().map(clone!(login => move |x| {
-                                if x.map(|status| status.activated).unwrap_or(false) {
+                                if x.activated {
                                     Some(html!("button", {
                                         .text("Login")
                                         .event_preventable(clone!(login => move |e: events::Click| {

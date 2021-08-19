@@ -4,7 +4,10 @@ use wasm_bindgen::prelude::*;
 
 type NaiveDateTime = String;
 
-use crate::{common::Cover, utils::{local_storage, window}};
+use crate::{
+    common::Cover,
+    utils::{local_storage, window},
+};
 
 async fn post_graphql<Q>(var: Q::Variables) -> Result<Q::ResponseData, Box<dyn std::error::Error>>
 where
@@ -13,9 +16,9 @@ where
     let url = [
         window()
             .document()
-            .unwrap()
+            .unwrap_throw()
             .location()
-            .unwrap()
+            .unwrap_throw()
             .origin()
             .unwrap(),
         "/graphql".to_string(),
@@ -27,12 +30,11 @@ where
         .unwrap_or_else(|| "".to_string());
     let request_body = Q::build_query(var);
     let client = reqwest::Client::new();
-    let res = client
-        .post(url)
-        .header("Authorization", format!("Bearer {}", token))
-        .json(&request_body)
-        .send()
-        .await?;
+    let mut req = client.post(url);
+    if !token.is_empty() {
+        req = req.header("Authorization", format!("Bearer {}", token));
+    }
+    let res = req.json(&request_body).send().await?;
     let response_body: graphql_client::Response<Q::ResponseData> = res.json().await?;
     match (response_body.data, response_body.errors) {
         (Some(data), _) => Ok(data) as Result<_, _>,
