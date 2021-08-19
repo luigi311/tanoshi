@@ -59,9 +59,8 @@ impl Db {
     pub async fn get_library(&self, user_id: i64) -> Result<Vec<Manga>> {
         let mut stream = sqlx::query(
             r#"SELECT manga.* FROM manga
-                 JOIN user_library ON 
-                 manga.id = user_library.manga_id AND
-                  user_library.user_id = ?"#,
+                    JOIN user_library ON manga.id = user_library.manga_id AND user_library.user_id = ?
+                    ORDER BY title"#,
         )
         .bind(user_id)
         .fetch(&self.pool);
