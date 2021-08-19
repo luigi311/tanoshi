@@ -33,6 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [tanoshi-vm] Reduce memory consumption by separating compile and runtime for extension
 - [tanoshi-web] Reduce code duplication on `query.rs` 
 - [tanoshi] library now default to sorted by title
+- [tanoshi-vm] process will spawn task for concurrency
 
 ### Fixed
 
