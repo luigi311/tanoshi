@@ -32,7 +32,7 @@ use async_graphql::{
     EmptySubscription, Schema,
 };
 use async_graphql_warp::{BadRequest, Response};
-use std::convert::Infallible;
+use std::{convert::Infallible, sync::Arc};
 use teloxide::prelude::RequesterExt;
 use warp::{
     http::{Response as HttpResponse, StatusCode},
@@ -67,7 +67,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let extension_bus = ExtensionBus::new(&config.plugin_path, extension_tx);
 
     extension_bus
-        .insert(local::ID, Box::new(local::Local::new(config.local_path)))
+        .insert(local::ID, Arc::new(local::Local::new(config.local_path)))
         .await?;
 
     let mut telegram_bot = None;
