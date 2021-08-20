@@ -15,3 +15,9 @@ pub struct User {
     pub username: String,
     pub is_admin: bool,
 }
+
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
+pub struct ServerStatus {
+    pub activated: bool,
+    pub version: String,
+}
