@@ -7,21 +7,15 @@ use futures_signals::signal::SignalExt;
 use wasm_bindgen::UnwrapThrowExt;
 use web_sys::HtmlInputElement;
 
+use crate::app::App;
 use crate::common::{events, snackbar, Route};
 use crate::query;
 use crate::utils::local_storage;
 use crate::utils::AsyncLoader;
 
-#[derive(Debug, Default, Clone, PartialEq, Eq)]
-struct ServerStatus {
-    activated: bool,
-    version: String,
-}
-
 pub struct Login {
     username: Mutable<String>,
     password: Mutable<String>,
-    server_status: Mutable<ServerStatus>,
     loader: AsyncLoader,
 }
 
@@ -30,7 +24,6 @@ impl Login {
         Rc::new(Self {
             username: Mutable::new("".to_string()),
             password: Mutable::new("".to_string()),
-            server_status: Mutable::new(ServerStatus::default()),
             loader: AsyncLoader::new(),
         })
     }
@@ -51,7 +44,7 @@ impl Login {
         });
     }
 
-    pub fn register(login: Rc<Self>) {
+    pub fn register(login: Rc<Self>, app: Rc<App>) {
         let username = login.username.get_cloned();
         let password = login.password.get_cloned();
         login.loader.load(clone!(login => async move {
@@ -59,25 +52,10 @@ impl Login {
                 Ok(_) => {
                     login.username.set("".to_string());
                     login.password.set("".to_string());
+                    App::fetch_server_status(app);
                 }
                 Err(e) => {
                     snackbar::show(format!("Register failed: {:?}", e));
-                }
-            }
-        }));
-    }
-
-    pub fn fetch_server_status(login: Rc<Self>) {
-        login.loader.load(clone!(login => async move {
-            match query::server_status().await {
-                Ok(server_status) => {
-                    login.server_status.set_neq(ServerStatus{
-                        activated: server_status.activated,
-                        version: server_status.version,
-                    });
-                }
-                Err(e) => {
-                    snackbar::show(format!("error check server status: {}", e));
                 }
             }
         }));
@@ -89,7 +67,7 @@ impl Login {
         })
     }
 
-    pub fn render_main(login: Rc<Self>) -> Dom {
+    pub fn render_main(login: Rc<Self>, app: Rc<App>) -> Dom {
         html!("div", {
             .style("display", "flex")
             .style("flex-direction", "column")
@@ -105,16 +83,20 @@ impl Login {
                     .attribute("src", "/icons/512.png")
                 }),
             ])
-            .child_signal(login.server_status.signal_cloned().map(|status| {
-                if !status.activated {
-                    Some(html!("div", {
-                        .style("color", "white")
-                        .style("background-color", "var(--primary-color)")
-                        .style("border-radius", "0.5rem")
-                        .style("padding", "0.5rem")
-                        .style("margin", "0.5rem")
-                        .text("Server is not activated, activate by create an account")
-                    }))
+            .child_signal(app.server_status.signal_cloned().map(|status| {
+                if let Some(status) = status {
+                    if !status.activated {
+                        Some(html!("div", {
+                            .style("color", "white")
+                            .style("background-color", "var(--primary-color)")
+                            .style("border-radius", "0.5rem")
+                            .style("padding", "0.5rem")
+                            .style("margin", "0.5rem")
+                            .text("Server is not activated, activate by create an account")
+                        }))
+                    } else {
+                        None
+                    }
                 } else {
                     None
                 }
@@ -152,22 +134,27 @@ impl Login {
                         html!("div", {
                             .style("display", "flex")
                             .style("justify-content", "flex-end")
-                            .child_signal(login.server_status.signal_cloned().map(clone!(login => move |x| {
-                                if x.activated {
-                                    Some(html!("button", {
-                                        .text("Login")
-                                        .event_preventable(clone!(login => move |e: events::Click| {
-                                            e.prevent_default();
-                                            Self::login(login.clone());
+                            .child_signal(app.server_status.signal_cloned().map(clone!(login, app => move |x| {
+                                if let Some(x) = x {
+                                    if x.activated {
+                                        Some(html!("button", {
+                                            .text("Login")
+                                            .event_preventable(clone!(login => move |e: events::Click| {
+                                                e.prevent_default();
+                                                Self::login(login.clone());
+                                            }))
                                         }))
-                                    }))
+                                    } else {
+                                        Some(html!("button", {
+                                            .text("Create Account")
+                                            .event_preventable(clone!(login, app => move |e: events::Click| {
+                                                e.prevent_default();
+                                                Self::register(login.clone(), app.clone());
+                                            }))
+                                        }))
+                                    }
                                 } else {
-                                    Some(html!("button", {
-                                        .text("Create Account")
-                                        .event(clone!(login => move |_: events::Click| {
-                                            Self::register(login.clone());
-                                        }))
-                                    }))
+                                    None
                                 }
                             })))
                         })
@@ -177,9 +164,7 @@ impl Login {
         })
     }
 
-    pub fn render(login: Rc<Self>) -> Dom {
-        Self::fetch_server_status(login.clone());
-
+    pub fn render(login: Rc<Self>, app: Rc<App>) -> Dom {
         html!("div", {
             .class([
                 "main",
@@ -189,7 +174,7 @@ impl Login {
                 html!("div", {
                     .class("topbar-spacing")
                 }),
-                Self::render_main(login),
+                Self::render_main(login, app),
             ])
         })
     }

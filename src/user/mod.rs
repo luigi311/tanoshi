@@ -110,7 +110,8 @@ impl UserRoot {
             .data::<GlobalContext>()?
             .userdb
             .get_user_by_id(user.sub)
-            .await?;
+            .await
+            .map_err(|_| "user not exist, please relogin")?;
 
         Ok(user.into())
     }
@@ -216,7 +217,9 @@ impl UserMutationRoot {
 }
 
 pub fn get_claims(ctx: &Context<'_>) -> Result<Claims> {
-    let token = ctx.data::<String>()?;
+    let token = ctx
+        .data::<String>()
+        .map_err(|_| "token not exists, please login")?;
     let secret = ctx.data::<GlobalContext>()?.secret.clone();
     let claims = jsonwebtoken::decode::<Claims>(
         token,
