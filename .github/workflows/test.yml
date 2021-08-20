@@ -21,12 +21,26 @@ jobs:
         include:
           - os: ubuntu-latest
             filename: tanoshi
+          - os: ubuntu-latest
+            arch: arm64
+            filename: tanoshi-arm64
           - os: macos-latest
             filename: tanoshi
           - os: windows-latest
             filename: tanoshi.exe
     steps:
       - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        if: ${{ matrix.arch != 'arm64' }}
+        with:
+          toolchain: stable
+          override: true
+      - uses: actions-rs/toolchain@v1
+        if: ${{ matrix.os == 'ubuntu-latest' && matrix.arch == 'arm64' }}
+        with:
+          toolchain: stable
+          target: aarch64-unknown-linux-gnu
+          override: true
       - name: Install deps
         if: ${{ matrix.os == 'ubuntu-latest' }}
         run: sudo apt update && sudo apt install -y libssl-dev libarchive-dev build-essential cmake llvm clang libicu-dev nettle-dev libacl1-dev liblzma-dev libzstd-dev liblz4-dev libbz2-dev zlib1g-dev libxml2-dev
@@ -50,17 +64,30 @@ jobs:
           rustup target add wasm32-unknown-unknown
       - name: Build tanoshi-web
         run: cd tanoshi-web && trunk build
-      - name: Build tanoshi
+      - name: Test
         if: ${{ matrix.os == 'ubuntu-latest' }}
-        run: cargo build -p tanoshi
-      - name: Build tanoshi
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+      - name: Test
+        if: ${{ matrix.os == 'ubuntu-latest' && matrix.arch == 'arm64' }}
+        uses: actions-rs/cargo@v1
+        with:
+          use-cross: true
+          command: test
+          args: --target aarch64-unknown-linux-gnu
+      - name: Test
         if: ${{ matrix.os == 'macos-latest' }}
         run: cargo build -p tanoshi
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
         env:
           PKG_CONFIG_PATH: /usr/local/opt/icu4c/lib/pkgconfig:/usr/local/opt/libarchive/lib/pkgconfig:/usr/local/opt/zlib/lib/pkgconfig:/usr/local/opt/expat/lib/pkgconfig
-      - name: Build tanoshi
+      - name: Test
         if: ${{ matrix.os == 'windows-latest' }}
-        run: cargo build -p tanoshi
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
         env:
           LIBCLANG_PATH: C:\Program Files\LLVM\bin
-          retention-days: 7
