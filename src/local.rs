@@ -119,7 +119,6 @@ impl Local {
             .filter_map(Result::ok)
             .filter_map(|f| (f.path().is_file()).then(|| f.path().display().to_string()))
             .collect();
-
         Ok(pages)
     }
 
@@ -182,7 +181,7 @@ impl Extension for Local {
         ExtensionResult::ok(None)
     }
 
-    fn get_manga_list(&self, _param: tanoshi_lib::prelude::Param) -> ExtensionResult<Vec<Manga>> {
+    fn get_manga_list(&self, param: tanoshi_lib::prelude::Param) -> ExtensionResult<Vec<Manga>> {
         let read_dir = match std::fs::read_dir(&self.path) {
             Ok(read_dir) => read_dir,
             Err(e) => {
@@ -190,14 +189,9 @@ impl Extension for Local {
             }
         };
 
-        let mut files = read_dir
+        let data = read_dir
             .into_iter()
             .filter_map(Self::filter_supported_files_and_folders)
-            .collect::<Vec<_>>();
-        files.sort_by(|a, b| a.file_name().cmp(&b.file_name()));
-
-        let data = files
-            .into_iter()
             .map(|entry| Manga {
                 source_id: ID,
                 title: entry
@@ -213,9 +207,20 @@ impl Extension for Local {
                 path: entry.path().to_str().unwrap_or("").to_string(),
                 cover_url: Self::find_cover_url(&entry.path()),
             })
-            .collect();
+            .collect::<Vec<_>>();
 
-        ExtensionResult::ok(data)
+        let page = param.page.map(|p| p as usize).unwrap_or(1);
+        let offset = (page - 1) * 20;
+        if offset >= data.len() {
+            return ExtensionResult::err("no page");
+        }
+
+        let mangas = match data[offset..].len() {
+            0..=20 => &data[offset..],
+            _ => &data[offset..offset + 20],
+        };
+
+        ExtensionResult::ok(mangas.to_vec())
     }
 
     fn get_manga_info(&self, path: String) -> ExtensionResult<Manga> {
@@ -253,30 +258,36 @@ impl Extension for Local {
             }
         };
 
-        let data = read_dir
+        let mut data: Vec<Chapter> = read_dir
             .into_iter()
             .filter_map(Result::ok)
             .filter_map(|entry| Self::map_entry_to_chapter(&entry.path()))
             .collect();
 
+        data.sort_by(|a, b| a.number.partial_cmp(&b.number).unwrap());
+        data.reverse();
         ExtensionResult::ok(data)
     }
 
     fn get_pages(&self, filename: String) -> ExtensionResult<Vec<String>> {
         let path = PathBuf::from(filename.clone());
-        if path.is_dir() {
+        let mut pages = if path.is_dir() {
             match Self::get_pages_from_dir(&path) {
-                Ok(pages) => ExtensionResult::ok(pages),
-                Err(e) => ExtensionResult::err(format!("{}", e).as_str()),
+                Ok(pages) => pages,
+                Err(e) => return ExtensionResult::err(format!("{}", e).as_str()),
             }
         } else if path.is_file() {
             match Self::get_pages_from_archive(&path, filename) {
-                Ok(pages) => ExtensionResult::ok(pages),
-                Err(e) => ExtensionResult::err(format!("{}", e).as_str()),
+                Ok(pages) => pages,
+                Err(e) => return ExtensionResult::err(format!("{}", e).as_str()),
             }
         } else {
-            ExtensionResult::err("filename neither file or dir")
-        }
+            return ExtensionResult::err("filename neither file or dir");
+        };
+
+        pages.sort_by(|a, b| human_sort::compare(a, b));
+
+        ExtensionResult::ok(pages)
     }
 }
 
@@ -339,6 +350,18 @@ mod test {
     fn test_negative_get_manga_list() {
         let local = Local::new("./test/data/not_manga");
         let manga = local.get_manga_list(Param::default());
+
+        assert!(manga.data.is_none());
+        assert!(manga.error.is_some());
+    }
+
+    #[test]
+    fn test_positive_get_manga_list_with_page() {
+        let local = Local::new("./test/data/manga");
+        let manga = local.get_manga_list(Param {
+            page: Some(2),
+            ..Default::default()
+        });
 
         assert!(manga.data.is_none());
         assert!(manga.error.is_some());
@@ -421,29 +444,29 @@ mod test {
             assert_eq!(data.len(), 2);
 
             assert_eq!(data[0].source_id, 1);
-            assert_eq!(data[0].title, "Space_Adventures_001__c2c__diff_ver");
+            assert_eq!(data[0].title, "Space_Adventures_004__c2c__diff_ver");
             #[cfg(target_family = "windows")]
             assert_eq!(
                 data[0].path,
-                "./test/data/manga\\Space Adventures\\Space_Adventures_001__c2c__diff_ver.cbz"
-            );
-            #[cfg(target_family = "unix")]
-            assert_eq!(
-                data[0].path,
-                "./test/data/manga/Space Adventures/Space_Adventures_001__c2c__diff_ver.cbz"
-            );
-
-            assert_eq!(data[1].source_id, 1);
-            assert_eq!(data[1].title, "Space_Adventures_004__c2c__diff_ver");
-            #[cfg(target_family = "windows")]
-            assert_eq!(
-                data[1].path,
                 "./test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver"
             );
             #[cfg(target_family = "unix")]
             assert_eq!(
-                data[1].path,
+                data[0].path,
                 "./test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver"
+            );
+
+            assert_eq!(data[1].source_id, 1);
+            assert_eq!(data[1].title, "Space_Adventures_001__c2c__diff_ver");
+            #[cfg(target_family = "windows")]
+            assert_eq!(
+                data[1].path,
+                "./test/data/manga\\Space Adventures\\Space_Adventures_001__c2c__diff_ver.cbz"
+            );
+            #[cfg(target_family = "unix")]
+            assert_eq!(
+                data[1].path,
+                "./test/data/manga/Space Adventures/Space_Adventures_001__c2c__diff_ver.cbz"
             );
         }
     }

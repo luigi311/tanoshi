@@ -32,16 +32,12 @@ env_logger = "0.9.0"
 jsonwebtoken = { version = "7" }
 chrono = { version = "0.4", features = ["serde"] }
 anyhow = "1"
-wasmer = "2.0.0"
-wasmer-wasi = "2.0.0"
-wasmer-compiler-cranelift = "2.0.0"
 rust-embed = { version = "6.0", features = ["interpolate-folder-path"] }
 mime_guess = "2"
 clap = "3.0.0-beta.1"
 bytes = "1"
 dirs = "3"
 base64 = "0.13"
-lazy_static = "1.4"
 async-graphql = { version = "2.8.4", features = ["apollo_tracing", "chrono"] }
 async-graphql-warp = "2.8.4"
 sqlx = { version = "0.5.2", features = [
@@ -64,6 +60,7 @@ libarchive-rs = { git = "https://github.com/faldez/libarchive-rs", features = [
 teloxide = { version = "0.5.1", features = ["auto-send", "macros"] }
 html-escape = "0.2.9"
 phf = { version = "0.9", features = ["macros"] }
+human-sort = "0.2.2"
 
 [profile.release]
 lto = true
