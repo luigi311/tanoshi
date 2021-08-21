@@ -31,10 +31,7 @@ impl Local {
         "/images/cover-placeholder.jpg".to_string()
     }
 
-    fn filter_supported_files_and_folders(
-        entry: Result<DirEntry, std::io::Error>,
-    ) -> Option<DirEntry> {
-        let entry = entry.ok()?;
+    fn filter_supported_files_and_folders(entry: DirEntry) -> Option<DirEntry> {
         if entry.path().is_dir() {
             Some(entry)
         } else {
@@ -71,7 +68,18 @@ impl Local {
         }
 
         let entry_read_dir = match entry.read_dir() {
-            Ok(entry_read_dir) => entry_read_dir,
+            Ok(entry_read_dir) => {
+                let mut entry_read_dir: Vec<DirEntry> =
+                    entry_read_dir.into_iter().filter_map(Result::ok).collect();
+                entry_read_dir.sort_by(|a, b| {
+                    human_sort::compare(
+                        a.path().display().to_string().as_str(),
+                        b.path().display().to_string().as_str(),
+                    )
+                });
+                entry_read_dir.reverse();
+                entry_read_dir
+            }
             Err(_) => {
                 return Self::default_cover_url();
             }
@@ -191,6 +199,7 @@ impl Extension for Local {
 
         let data = read_dir
             .into_iter()
+            .filter_map(Result::ok)
             .filter_map(Self::filter_supported_files_and_folders)
             .map(|entry| Manga {
                 source_id: ID,
@@ -312,12 +321,12 @@ mod test {
             #[cfg(target_family = "windows")]
             assert_eq!(
                 data[0].cover_url,
-                "./test/data/manga\\Space Adventures\\Space_Adventures_001__c2c__diff_ver.cbz\\SPA00401.JPG"
+                "./test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver\\SPA00401.JPG"
             );
             #[cfg(target_family = "unix")]
             assert_eq!(
                 data[0].cover_url,
-                "./test/data/manga/Space Adventures/Space_Adventures_001__c2c__diff_ver.cbz/SPA00401.JPG"
+                "./test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver/SPA00401.JPG"
             );
 
             assert_eq!(data[1].title, "Space_Adventures_004__c2c__diff_ver");
@@ -336,12 +345,12 @@ mod test {
             #[cfg(target_family = "windows")]
             assert_eq!(
                 data[2].cover_url,
-                "./test/data/manga\\Super Duck\\super_duck_1\\duck00.jpg"
+                "./test/data/manga\\Super Duck\\super_duck_2.cbz\\duck00.jpg"
             );
             #[cfg(target_family = "unix")]
             assert_eq!(
                 data[2].cover_url,
-                "./test/data/manga/Super Duck/super_duck_1/duck00.jpg"
+                "./test/data/manga/Super Duck/super_duck_2.cbz/duck00.jpg"
             );
         }
     }
