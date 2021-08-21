@@ -400,7 +400,7 @@ mod test {
             );
             #[cfg(target_family = "unix")]
             assert_eq!(
-                data[0].cover_url,
+                data[0].path,
                 "./test/data/manga/Space_Adventures_004__c2c__diff_ver.cbz"
             );
         }
@@ -429,7 +429,7 @@ mod test {
             );
             #[cfg(target_family = "unix")]
             assert_eq!(
-                data[1].cover_url,
+                data[0].path,
                 "./test/data/manga/Space Adventures/Space_Adventures_001__c2c__diff_ver.cbz"
             );
 
@@ -442,7 +442,7 @@ mod test {
             );
             #[cfg(target_family = "unix")]
             assert_eq!(
-                data[1].cover_url,
+                data[1].path,
                 "./test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver"
             );
         }
