@@ -21,11 +21,6 @@ Selfhosted web manga reader with extensions.
 - Web reader is PWA and optimized for standalone mode on mobile
 - Multi-user with admin and reader role
 
-### Planned
-My plan is to make this as close as tachiyomi features. Planned features are listed [here](https://github.com/faldez/tanoshi/issues?q=is%3Aopen+is%3Aissue+label%3Aenhancement)
-
-Note that this project is still under heavy development, expect breaking changes on any release until hitting 1.0. 
-
 ## Installation
 ### Prebuilt Binary
 Download and run binary from latest release, aside from plugins all dependencies are statically linked.
