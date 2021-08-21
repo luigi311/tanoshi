@@ -382,9 +382,8 @@ mod test {
         let chapter = local
             .get_chapters("./test/data/manga\\Space_Adventures_004__c2c__diff_ver.cbz".to_string());
         #[cfg(target_family = "unix")]
-        let manga = local.get_manga_info(
-            "./test/data/manga/Space_Adventures_004__c2c__diff_ver.cbz".to_string(),
-        );
+        let chapter = local
+            .get_chapters("./test/data/manga/Space_Adventures_004__c2c__diff_ver.cbz".to_string());
 
         assert!(chapter.data.is_some());
         assert!(chapter.error.is_none());
@@ -413,7 +412,7 @@ mod test {
         #[cfg(target_family = "windows")]
         let chapter = local.get_chapters("./test/data/manga\\Space Adventures".to_string());
         #[cfg(target_family = "unix")]
-        let manga = local.get_manga_info("./test/data/manga/Space Adventures".to_string());
+        let chapter = local.get_chapters("./test/data/manga/Space Adventures".to_string());
 
         assert!(chapter.data.is_some());
         assert!(chapter.error.is_none());
@@ -457,7 +456,7 @@ mod test {
             "./test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver".to_string(),
         );
         #[cfg(target_family = "unix")]
-        let pages = local.get_manga_info(
+        let pages = local.get_pages(
             "./test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver".to_string(),
         );
 
