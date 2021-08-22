@@ -1,6 +1,6 @@
 use std::{
     ffi::OsStr,
-    fs::DirEntry,
+    fs::{DirEntry, ReadDir},
     path::{Path, PathBuf},
     time::UNIX_EPOCH,
 };
@@ -57,9 +57,32 @@ impl Local {
     fn find_cover_from_dir(path: &PathBuf) -> String {
         path.read_dir()
             .ok()
-            .and_then(|dir| dir.into_iter().find_map(Result::ok))
+            .map(Self::sort_dir)
+            .and_then(|dir| dir.into_iter().next())
             .map(|entry| entry.path().display().to_string())
             .unwrap_or_else(|| Self::default_cover_url())
+    }
+
+    fn sort_dir(dir: ReadDir) -> Vec<DirEntry> {
+        Self::sort_read_dir_with_reverse(dir, false)
+    }
+
+    fn sort_dir_reverse(dir: ReadDir) -> Vec<DirEntry> {
+        Self::sort_read_dir_with_reverse(dir, true)
+    }
+
+    fn sort_read_dir_with_reverse(dir: ReadDir, reverse: bool) -> Vec<DirEntry> {
+        let mut dir: Vec<DirEntry> = dir.into_iter().filter_map(Result::ok).collect();
+        dir.sort_by(|a, b| {
+            human_sort::compare(
+                a.path().display().to_string().as_str(),
+                b.path().display().to_string().as_str(),
+            )
+        });
+        if reverse {
+            dir.reverse();
+        }
+        dir
     }
 
     fn find_cover_url(entry: &PathBuf) -> String {
@@ -67,19 +90,8 @@ impl Local {
             return Self::find_cover_from_archive(entry);
         }
 
-        let entry_read_dir = match entry.read_dir() {
-            Ok(entry_read_dir) => {
-                let mut entry_read_dir: Vec<DirEntry> =
-                    entry_read_dir.into_iter().filter_map(Result::ok).collect();
-                entry_read_dir.sort_by(|a, b| {
-                    human_sort::compare(
-                        a.path().display().to_string().as_str(),
-                        b.path().display().to_string().as_str(),
-                    )
-                });
-                entry_read_dir.reverse();
-                entry_read_dir
-            }
+        let entry_read_dir = match entry.read_dir().map(Self::sort_dir_reverse) {
+            Ok(entry_read_dir) => entry_read_dir,
             Err(_) => {
                 return Self::default_cover_url();
             }
