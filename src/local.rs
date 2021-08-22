@@ -202,7 +202,7 @@ impl Extension for Local {
     }
 
     fn get_manga_list(&self, param: tanoshi_lib::prelude::Param) -> ExtensionResult<Vec<Manga>> {
-        let read_dir = match std::fs::read_dir(&self.path) {
+        let read_dir: Vec<DirEntry> = match std::fs::read_dir(&self.path).map(Self::sort_dir) {
             Ok(read_dir) => read_dir,
             Err(e) => {
                 return ExtensionResult::err(format!("{}", e).as_str());
@@ -211,7 +211,6 @@ impl Extension for Local {
 
         let data = read_dir
             .into_iter()
-            .filter_map(Result::ok)
             .filter_map(Self::filter_supported_files_and_folders)
             .map(|entry| Manga {
                 source_id: ID,
