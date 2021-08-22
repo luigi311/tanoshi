@@ -10,8 +10,26 @@ on:
       - .github/screenshots/**
 
 jobs:
-  build:
+  build-web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install trunk
+        run: |
+          wget -qO- https://github.com/thedodd/trunk/releases/download/v0.13.1/trunk-x86_64-unknown-linux-gnu.tar.gz | tar -xzf- -C $HOME/.cargo/bin
+          chmod +x $HOME/.cargo/bin/trunk
+      - name: Install wasm32-unknown-unknown
+        run: rustup target add wasm32-unknown-unknown
+      - name: Build tanoshi-web
+        run: cd tanoshi-web && trunk build
+      - name: Upload dist
+        uses: actions/upload-artifact@v2
+        with:
+          name: dist
+          path: tanoshi-web/dist
+  test:
     runs-on: ${{ matrix.os }}
+    needs: build-web
     strategy:
       matrix:
         os:
@@ -20,6 +38,11 @@ jobs:
           - windows-latest
     steps:
       - uses: actions/checkout@v2
+      - name: Download dist
+        uses: actions/download-artifact@v2
+        with:
+          name: dist
+          path: tanoshi-web/dist
       - name: Install deps
         if: ${{ matrix.os == 'ubuntu-latest' }}
         run: sudo apt update && sudo apt upgrade -y && sudo apt install -y libssl-dev libarchive-dev build-essential cmake llvm clang libicu-dev nettle-dev libacl1-dev liblzma-dev libzstd-dev liblz4-dev libbz2-dev zlib1g-dev libxml2-dev
@@ -31,30 +54,12 @@ jobs:
         uses: KyleMayes/install-llvm-action@v1
         with:
           version: "11.1"
-      - name: Install trunk
-        if: ${{ matrix.os == 'ubuntu-latest' }}
-        run: |
-          wget -qO- https://github.com/thedodd/trunk/releases/download/v0.13.1/trunk-x86_64-unknown-linux-gnu.tar.gz | tar -xzf- -C $HOME/.cargo/bin
-          chmod +x $HOME/.cargo/bin/trunk
-      - name: Install trunk
-        if: ${{ matrix.os == 'macos-latest' }}
-        run: brew install trunk
-      - name: Install trunk
-        if: ${{ matrix.os == 'windows-latest' }}
-        run: |
-          curl -sL https://github.com/thedodd/trunk/releases/download/v0.13.1/trunk-x86_64-pc-windows-msvc.zip -o trunk-x86_64-pc-windows-msvc.zip
-          7z x trunk-x86_64-pc-windows-msvc.zip
-          mv trunk.exe ~/.cargo/bin
-      - name: Install wasm32-unknown-unknown
-        run: rustup target add wasm32-unknown-unknown
       - name: Install deps
         if: ${{ matrix.os == 'windows-latest' }}
         run: |
           vcpkg integrate install
           vcpkg install --only-downloads libarchive:x64-windows-static-md
           vcpkg install libarchive:x64-windows-static-md
-      - name: Build tanoshi-web
-        run: cd tanoshi-web && trunk build
       - name: Test
         if: ${{ matrix.os == 'ubuntu-latest' }}
         uses: actions-rs/cargo@v1

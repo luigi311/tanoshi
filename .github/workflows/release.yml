@@ -21,18 +21,40 @@ jobs:
           release_name: Release ${{ github.ref }}
           draft: false
           prerelease: false
+  build-web:
+    runs-on: ubuntu-latest
+    needs:
+      - create-release
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install trunk
+        run: |
+          wget -qO- https://github.com/thedodd/trunk/releases/download/v0.13.1/trunk-x86_64-unknown-linux-gnu.tar.gz | tar -xzf- -C $HOME/.cargo/bin
+          chmod +x $HOME/.cargo/bin/trunk
+      - name: Install wasm32-unknown-unknown
+        run: rustup target add wasm32-unknown-unknown
+      - name: Build tanoshi-web
+        run: cd tanoshi-web && trunk build
+      - name: Upload dist
+        uses: actions/upload-artifact@v2
+        with:
+          name: dist
+          path: tanoshi-web/dist
   build-docker:
     runs-on: ubuntu-latest
     environment: default
+    needs:
+      - build-web
     steps:
       - name: Checkout
         uses: actions/checkout@v2
+      - name: Download dist
+        uses: actions/download-artifact@v2
+        with:
+          name: dist
+          path: tanoshi-web/dist
       - name: Set env
         run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/v}" >> $GITHUB_ENV
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v1
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v1
       - name: Login to DockerHub
         uses: docker/login-action@v1
         with:
@@ -42,12 +64,14 @@ jobs:
         uses: docker/build-push-action@v2
         with:
           context: .
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64
           push: true
           tags: faldez/tanoshi:latest,faldez/tanoshi:${{ env.RELEASE_VERSION }}
   build:
     runs-on: ${{ matrix.os }}
-    needs: create-release
+    needs:
+      - build-web
+      - create-release
     strategy:
       matrix:
         os:
@@ -66,6 +90,11 @@ jobs:
             asset: tanoshi-win.exe
     steps:
       - uses: actions/checkout@v2
+      - name: Download dist
+        uses: actions/download-artifact@v2
+        with:
+          name: dist
+          path: tanoshi-web/dist
       - name: Install deps
         if: ${{ matrix.os == 'ubuntu-latest' }}
         run: sudo apt update && sudo apt install -y libssl-dev libarchive-dev build-essential cmake llvm clang libicu-dev nettle-dev libacl1-dev liblzma-dev libzstd-dev liblz4-dev libbz2-dev zlib1g-dev libxml2-dev
@@ -84,11 +113,10 @@ jobs:
           vcpkg install --only-downloads libarchive:x64-windows-static-md
           vcpkg install libarchive:x64-windows-static-md
       - name: Install trunk
+        if: ${{ matrix.os == 'ubuntu-latest' }}
         run: |
-          cargo install trunk wasm-bindgen-cli
-          rustup target add wasm32-unknown-unknown
-      - name: Build tanoshi-web
-        run: cd tanoshi-web && trunk build --release
+          wget -qO- https://github.com/thedodd/trunk/releases/download/v0.13.1/trunk-x86_64-unknown-linux-gnu.tar.gz | tar -xzf- -C $HOME/.cargo/bin
+          chmod +x $HOME/.cargo/bin/trunk
       - name: Build tanoshi
         if: ${{ matrix.os == 'ubuntu-latest' }}
         run: cargo build -p tanoshi --release
