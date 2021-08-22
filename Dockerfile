@@ -20,7 +20,8 @@ RUN apt update && \
     libbz2-dev \
     zlib1g-dev \
     libxml2-dev
-RUN cargo install trunk wasm-bindgen-cli
+RUN wget -qO- https://github.com/thedodd/trunk/releases/download/v0.13.1/trunk-x86_64-unknown-linux-gnu.tar.gz | tar -xzf- -C $HOME/.cargo/bin
+RUN chmod +x $HOME/.cargo/bin/trunk
 RUN rustup target add wasm32-unknown-unknown
 
 COPY . .

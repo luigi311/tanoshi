@@ -18,29 +18,8 @@ jobs:
           - ubuntu-latest
           - macos-latest
           - windows-latest
-        include:
-          - os: ubuntu-latest
-            filename: tanoshi
-          - os: ubuntu-latest
-            arch: arm64
-            filename: tanoshi-arm64
-          - os: macos-latest
-            filename: tanoshi
-          - os: windows-latest
-            filename: tanoshi.exe
     steps:
       - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
-        if: ${{ matrix.arch != 'arm64' }}
-        with:
-          toolchain: stable
-          override: true
-      - uses: actions-rs/toolchain@v1
-        if: ${{ matrix.os == 'ubuntu-latest' && matrix.arch == 'arm64' }}
-        with:
-          toolchain: stable
-          target: aarch64-unknown-linux-gnu
-          override: true
       - name: Install deps
         if: ${{ matrix.os == 'ubuntu-latest' }}
         run: sudo apt update && sudo apt upgrade -y && sudo apt install -y libssl-dev libarchive-dev build-essential cmake llvm clang libicu-dev nettle-dev libacl1-dev liblzma-dev libzstd-dev liblz4-dev libbz2-dev zlib1g-dev libxml2-dev
@@ -81,13 +60,6 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
-      - name: Test
-        if: ${{ matrix.os == 'ubuntu-latest' && matrix.arch == 'arm64' }}
-        uses: actions-rs/cargo@v1
-        with:
-          use-cross: true
-          command: test
-          args: --target aarch64-unknown-linux-gnu
       - name: Test
         if: ${{ matrix.os == 'macos-latest' }}
         uses: actions-rs/cargo@v1
