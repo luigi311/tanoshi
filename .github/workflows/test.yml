@@ -52,18 +52,26 @@ jobs:
         uses: KyleMayes/install-llvm-action@v1
         with:
           version: "11.1"
+      - name: Install trunk
+        if: ${{ matrix.os != 'windows-latest' }}
+        run: |
+          wget -qO- https://github.com/thedodd/trunk/releases/download/v0.13.1/trunk-x86_64-unknown-linux-gnu.tar.gz | tar -xzf-
+          chmod +x trunk
+      - name: Install trunk
+        if: ${{ matrix.os == 'windows-latest' }}
+        run: |
+          curl -sL https://github.com/thedodd/trunk/releases/download/v0.13.1/trunk-x86_64-pc-windows-msvc.zip -o trunk-x86_64-pc-windows-msvc.zip
+          7z x trunk-x86_64-pc-windows-msvc.zip
+      - name: Install wasm32-unknown-unknown
+        run: rustup target add wasm32-unknown-unknown
       - name: Install deps
         if: ${{ matrix.os == 'windows-latest' }}
         run: |
           vcpkg integrate install
           vcpkg install --only-downloads libarchive:x64-windows-static-md
           vcpkg install libarchive:x64-windows-static-md
-      - name: Install trunk
-        run: |
-          cargo install trunk wasm-bindgen-cli
-          rustup target add wasm32-unknown-unknown
       - name: Build tanoshi-web
-        run: cd tanoshi-web && trunk build
+        run: cd tanoshi-web && ../trunk build
       - name: Test
         if: ${{ matrix.os == 'ubuntu-latest' }}
         uses: actions-rs/cargo@v1
