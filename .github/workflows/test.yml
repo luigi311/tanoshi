@@ -53,15 +53,19 @@ jobs:
         with:
           version: "11.1"
       - name: Install trunk
-        if: ${{ matrix.os != 'windows-latest' }}
+        if: ${{ matrix.os == 'ubuntu-latest' }}
         run: |
-          wget -qO- https://github.com/thedodd/trunk/releases/download/v0.13.1/trunk-x86_64-unknown-linux-gnu.tar.gz | tar -xzf-
-          chmod +x trunk
+          wget -qO- https://github.com/thedodd/trunk/releases/download/v0.13.1/trunk-x86_64-unknown-linux-gnu.tar.gz | tar -xzf- -C $HOME/.cargo/bin
+          chmod +x $HOME/.cargo/bin/trunk
+      - name: Install trunk
+        if: ${{ matrix.os = 'macos-latest' }}
+        run: brew install trunk
       - name: Install trunk
         if: ${{ matrix.os == 'windows-latest' }}
         run: |
           curl -sL https://github.com/thedodd/trunk/releases/download/v0.13.1/trunk-x86_64-pc-windows-msvc.zip -o trunk-x86_64-pc-windows-msvc.zip
           7z x trunk-x86_64-pc-windows-msvc.zip
+          mv trunk.exe ~/.cargo/bin
       - name: Install wasm32-unknown-unknown
         run: rustup target add wasm32-unknown-unknown
       - name: Install deps
@@ -71,7 +75,7 @@ jobs:
           vcpkg install --only-downloads libarchive:x64-windows-static-md
           vcpkg install libarchive:x64-windows-static-md
       - name: Build tanoshi-web
-        run: cd tanoshi-web && ../trunk build
+        run: cd tanoshi-web && trunk build
       - name: Test
         if: ${{ matrix.os == 'ubuntu-latest' }}
         uses: actions-rs/cargo@v1
