@@ -1,6 +1,6 @@
 [package]
 name = "tanoshi-lib"
-version = "0.24.0"
+version = "0.25.0"
 authors = ["Muhammad Fadhlika <fadhlika@gmail.com>"]
 edition = "2018"
 description = "Tanoshi library"
@@ -12,4 +12,4 @@ exclude = [".github/*"]
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
 chrono = { version = "0.4", features = ["serde"] }
-tanoshi-util = { path = "../tanoshi-util", version = "0.2.1" }
+tanoshi-util = { path = "../tanoshi-util", version = "0.3.0" }
