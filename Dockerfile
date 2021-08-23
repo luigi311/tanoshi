@@ -24,6 +24,8 @@ RUN apt update && \
 
 COPY . .
 
+RUN mkdir .cargo
+RUN cargo vendor > .cargo/config.toml
 RUN cargo build -p tanoshi --release
 
 FROM debian:buster-slim
