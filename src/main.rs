@@ -86,7 +86,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         telegram_bot = Some(bot);
     }
 
-    worker::start(
+    let (worker_handle, worker_tx) = worker::start(
         config.update_interval,
         mangadb.clone(),
         extension_bus.clone(),
@@ -104,6 +104,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         mangadb,
         config.secret,
         extension_bus,
+        worker_tx,
     ))
     .finish();
 
@@ -146,6 +147,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tokio::select! {
         _ = server_fut => {
             info!("server shutdown");
+        }
+        _ = worker_handle => {
+            info!("worker quit");
         }
         Some(_) = telegram_bot_fut => {
             info!("worker shutdown");
