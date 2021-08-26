@@ -3,6 +3,9 @@ query FetchUserList {
     id
     username
     isAdmin
+    settings {
+      telegramChatId
+    }
   }
   
   users {

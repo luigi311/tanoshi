@@ -7,7 +7,7 @@ use futures_signals::signal::SignalExt;
 use web_sys::HtmlInputElement;
 
 use crate::common::{events, snackbar, Route, SettingCategory};
-use crate::query;
+use crate::query::{self, fetch_me};
 use crate::utils::AsyncLoader;
 
 pub struct Profile {
@@ -27,6 +27,34 @@ impl Profile {
             telegram_chat_id: Mutable::new(None),
             loader: AsyncLoader::new(),
         })
+    }
+
+    fn fetch_me(profile: Rc<Self>) {
+        profile.loader.load(clone!(profile => async move {
+            match query::fetch_me().await {
+                Ok(result) => profile.telegram_chat_id.set(result.settings.telegram_chat_id.map(|id| id.to_string())),
+                Err(err) => {
+                    snackbar::show(format!("{}", err));
+                }
+            }
+        }));
+    }
+
+    fn test_telegram(profile: Rc<Self>) {
+        if let Some(chat_id) = profile
+            .telegram_chat_id
+            .get_cloned()
+            .map(|id| id.parse().unwrap_or_default())
+        {
+            profile.loader.load(async move {
+                match query::test_telegram(chat_id).await {
+                    Ok(_) => {}
+                    Err(err) => {
+                        snackbar::show(format!("{}", err));
+                    }
+                }
+            });
+        }
     }
 
     fn change_password(profile: Rc<Self>) {
@@ -141,6 +169,8 @@ impl Profile {
     }
 
     pub fn render_telegram_setting(profile: Rc<Self>) -> Dom {
+        Self::fetch_me(profile.clone());
+
         html!("form", {
             .style("display", "flex")
             .style("flex-direction", "column")
@@ -164,6 +194,15 @@ impl Profile {
                     .style("justify-content", "flex-end")
                     .style("margin", "0.5rem")
                     .children(&mut [
+                        html!("input", {
+                            .attribute("type", "button")
+                            .attribute("value", "Test")
+                            .text("Test")
+                            .event_preventable(clone!(profile => move |e: events::Click| {
+                                e.prevent_default();
+                                Self::test_telegram(profile.clone());
+                            }))
+                        }),
                         html!("input", {
                             .attribute("type", "submit")
                             .text("Submit")

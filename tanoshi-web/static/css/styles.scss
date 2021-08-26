@@ -132,7 +132,7 @@ input {
         color: red;
     }
 
-    &[type="submit"], &[type="submit"] {
+    &[type="submit"], &[type="button"] {
         background-color: transparent;
         color: #{$primary-color};
         

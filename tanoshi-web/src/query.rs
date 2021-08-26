@@ -491,3 +491,19 @@ pub async fn server_status(
     let data = post_graphql::<FetchServerStatus>(var).await?;
     Ok(data.server_status)
 }
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/schema.graphql",
+    query_path = "graphql/test_telegram.graphql",
+    response_derives = "Debug"
+)]
+pub struct TestTelegram;
+
+pub async fn test_telegram(chat_id: i64) -> Result<(), Box<dyn Error>> {
+    let var = test_telegram::Variables {
+        chat_id: Some(chat_id),
+    };
+    let _ = post_graphql::<TestTelegram>(var).await?;
+    Ok(())
+}

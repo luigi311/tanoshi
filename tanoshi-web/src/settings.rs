@@ -66,12 +66,14 @@ impl Settings {
                         id: result.0.id,
                         username: result.0.username,
                         is_admin: result.0.is_admin,
+                        telegram_chat_id: result.0.settings.telegram_chat_id
                     }));
 
                     settings.users.lock_mut().replace_cloned(result.1.iter().map(|u| User{
                         id: u.id,
                         username: u.username.clone(),
                         is_admin: u.is_admin,
+                        telegram_chat_id: None
                     }).collect());
                 },
                 Err(err) => {
@@ -89,6 +91,7 @@ impl Settings {
                         id: result.id,
                         username: result.username,
                         is_admin: result.is_admin,
+                        telegram_chat_id: result.settings.telegram_chat_id
                     }))
                 },
                 Err(err) => {

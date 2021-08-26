@@ -181,6 +181,10 @@ type QueryRoot {
   users: [User!]!
   me: User!
   serverStatus: Status!
+  testTelegram(
+    # telegram chat id
+    chatId: Int!
+  ): Boolean!
 }
 
 type RecentChapter {
