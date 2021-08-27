@@ -11,7 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [tanoshi] notification schema for testing
 - [tanoshi-web] fetch telegram id on profile
 - [tanoshi-web] add test telegram button on profile
+- [tanoshi-web] retry button if image failed to load
 
+## Fixed
+- [tanoshi-web] page freeze when select fit option in paged mod
 ## [0.25.2]
 
 Nothing changes, this release to build for multiarch docker image
