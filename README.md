@@ -1,14 +1,14 @@
-|Build|Stats|Release|Docker|Discord|
-|---|---|---|---|---|
-|![Build](https://github.com/faldez/tanoshi/workflows/Build/badge.svg)|![Release Stats](https://img.shields.io/github/downloads/faldez/tanoshi/total)|![Release](https://img.shields.io/github/v/release/faldez/tanoshi)|![Docker Pulls](https://img.shields.io/docker/pulls/faldez/tanoshi)|[![Discord](https://img.shields.io/discord/872093374281285682?color=7289DA&logo=discord&logoColor=FFFFFF)](https://discord.gg/wPSEftdDqB)|
+| Build                                                                 | Stats                                                                          | Release                                                            | Docker                                                              | Discord                                                                                                                                   |
+| --------------------------------------------------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------ | ------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| ![Build](https://github.com/faldez/tanoshi/workflows/Build/badge.svg) | ![Release Stats](https://img.shields.io/github/downloads/faldez/tanoshi/total) | ![Release](https://img.shields.io/github/v/release/faldez/tanoshi) | ![Docker Pulls](https://img.shields.io/docker/pulls/faldez/tanoshi) | [![Discord](https://img.shields.io/discord/872093374281285682?color=7289DA&logo=discord&logoColor=FFFFFF)](https://discord.gg/wPSEftdDqB) |
 
 # ![icon](tanoshi-web/static/icons/tanoshi.png) Tanoshi
 Selfhosted web manga reader with extensions.
 
 ## Screenshots
-|![library](.github/screenshots/library.png)|![manga](.github/screenshots/manga.png)|![reader](.github/screenshots/reader.png)|
-|---|---|---|
-|![sources](.github/screenshots/sources.png)|![catalogue](.github/screenshots/catalogue.png)|![settings](.github/screenshots/settings.png)|
+| ![library](.github/screenshots/library.png) | ![manga](.github/screenshots/manga.png)         | ![reader](.github/screenshots/reader.png)     |
+| ------------------------------------------- | ----------------------------------------------- | --------------------------------------------- |
+| ![sources](.github/screenshots/sources.png) | ![catalogue](.github/screenshots/catalogue.png) | ![settings](.github/screenshots/settings.png) |
 
 ## Features
 ### Currently working
@@ -20,9 +20,8 @@ Selfhosted web manga reader with extensions.
 - Read from right to left or left to right
 - Web reader is PWA and optimized for standalone mode on mobile
 - Multi-user with admin and reader role
-
-### Currently bugged
-- Telegram bot feature
+- Periodic chapter updates
+- Notification via Telegram
 
 ### In development
 - Filter feature
@@ -33,7 +32,12 @@ Download and run binary from latest release, aside from plugins all dependencies
 
 ### Docker
 ```
-docker create --name=tanoshi -p 8080:80 --mount type=bind,source=/path/to/data,target=/tanoshi --restart unless-stopped faldez/tanoshi
+docker create \
+    --name=tanoshi \
+    -p 8080:80 \
+    --mount type=bind,source=/path/to/data,target=/tanoshi \
+    --restart unless-stopped \
+    faldez/tanoshi
 ```
 
 ```
