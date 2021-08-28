@@ -188,7 +188,7 @@ impl Chapter {
 
         ctx.data::<GlobalContext>()?
             .mangadb
-            .update_page_by_chapter_id(self.id, &pages)
+            .insert_pages(self.id, &pages)
             .await?;
 
         Ok(pages)

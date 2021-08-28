@@ -708,10 +708,12 @@ impl Db {
         let stream = sqlx::query(
             r#"
             SELECT *, 
+            (SELECT JSON_GROUP_ARRAY(remote_url) FROM page WHERE chapter_id = ?) pages,
             (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number < chapter.number ORDER BY c.number DESC LIMIT 1) prev,
             (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number > chapter.number ORDER BY c.number ASC LIMIT 1) next 
             FROM chapter WHERE id = ?"#,
         )
+        .bind(id)
         .bind(id)
         .fetch_one(&self.pool)
         .await;
@@ -738,6 +740,7 @@ impl Db {
         let stream = sqlx::query(
             r#"
             SELECT *,
+            (SELECT JSON_GROUP_ARRAY(remote_url) FROM page WHERE chapter_id = ?) pages,
             (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number < chapter.number ORDER BY c.number DESC LIMIT 1) prev,
             (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number > chapter.number ORDER BY c.number ASC LIMIT 1) next 
             FROM chapter WHERE source_id = ? AND path = ?"#,
@@ -769,6 +772,7 @@ impl Db {
         let mut stream = sqlx::query(
             r#"
             SELECT *,
+            (SELECT JSON_GROUP_ARRAY(remote_url) FROM page WHERE chapter_id = ?) pages,
             (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number < chapter.number ORDER BY c.number DESC LIMIT 1) prev,
             (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number > chapter.number ORDER BY c.number ASC LIMIT 1) next 
             FROM chapter WHERE manga_id = ? ORDER BY number DESC"#
@@ -805,6 +809,7 @@ impl Db {
         let stream = sqlx::query(
             r#"
             SELECT *,
+            (SELECT JSON_GROUP_ARRAY(remote_url) FROM page WHERE chapter_id = ?) pages,
             (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number < chapter.number ORDER BY c.number DESC LIMIT 1) prev,
             (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number > chapter.number ORDER BY c.number ASC LIMIT 1) next 
             FROM chapter WHERE manga_id = ? ORDER BY uploaded DESC LIMIT 1"#
@@ -913,28 +918,33 @@ impl Db {
         Ok(())
     }
 
-    pub async fn update_page_by_chapter_id(
-        &self,
-        chapter_id: i64,
-        pages: &[String],
-    ) -> Result<i64> {
-        let row_id = sqlx::query(
-            r#"UPDATE chapter
-            SET pages = ?,
-            date_added = ?
-            WHERE id = ?"#,
-        )
-        .bind(serde_json::to_string(&pages)?)
-        .bind(chrono::NaiveDateTime::from_timestamp(
-            chrono::Local::now().timestamp(),
-            0,
-        ))
-        .bind(chapter_id)
-        .execute(&self.pool)
-        .await?
-        .last_insert_rowid();
+    pub async fn insert_pages(&self, chapter_id: i64, pages: &[String]) -> Result<()> {
+        if pages.is_empty() {
+            return Ok(());
+        }
 
-        Ok(row_id)
+        let mut values = vec![];
+        values.resize(pages.len(), "(?, ?, ?)");
+
+        let query_str = format!(
+            r#"INSERT INTO page (
+                chapter_id, 
+                rank, 
+                remote_url
+            ) VALUES {} ON CONFLICT(chapter_id, rank) DO UPDATE SET
+                remote_url=excluded.remote_url
+            "#,
+            values.join(",")
+        );
+
+        let mut query = sqlx::query(&query_str);
+        for (index, page) in pages.iter().enumerate() {
+            query = query.bind(chapter_id).bind(index as i64).bind(page);
+        }
+
+        query.execute(&self.pool).await?;
+
+        Ok(())
     }
 
     pub async fn insert_user_library(&self, user_id: i64, manga_id: i64) -> Result<u64> {
