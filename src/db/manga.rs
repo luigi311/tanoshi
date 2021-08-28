@@ -869,7 +869,7 @@ impl Db {
 
     pub async fn insert_chapters(&self, chapters: &[Chapter]) -> Result<()> {
         if chapters.is_empty() {
-            return Err(anyhow!("no chapters to insert"));
+            return Ok(());
         }
 
         let mut values = vec![];
