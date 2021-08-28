@@ -181,28 +181,33 @@ impl Manga {
             }
         }
 
-        let chapters: Vec<crate::db::model::Chapter> = {
-            let extensions = ctx.extensions.clone();
-            extensions
-                .get_chapters(self.source_id, self.path.clone())
-                .await?
-                .into_iter()
-                .map(|c| {
-                    let mut c: crate::db::model::Chapter = c.into();
-                    c.manga_id = self.id;
-                    c
-                })
-                .collect()
-        };
+        let chapters: Vec<crate::db::model::Chapter> = ctx
+            .extensions
+            .get_chapters(self.source_id, self.path.clone())
+            .await?
+            .into_iter()
+            .map(|c| {
+                let mut c: crate::db::model::Chapter = c.into();
+                c.manga_id = self.id;
+                c
+            })
+            .collect();
+
+        if chapters.is_empty() {
+            return Ok(vec![]);
+        }
 
         db.insert_chapters(&chapters).await?;
 
-        Ok(db
+        let chapters = db
             .get_chapters_by_manga_id(self.id)
-            .await?
+            .await
+            .unwrap_or_default()
             .into_iter()
             .map(|c| c.into())
-            .collect())
+            .collect::<Vec<Chapter>>();
+
+        Ok(chapters)
     }
 
     async fn chapter(
