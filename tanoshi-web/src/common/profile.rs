@@ -7,7 +7,7 @@ use futures_signals::signal::SignalExt;
 use web_sys::HtmlInputElement;
 
 use crate::common::{events, snackbar, Route, SettingCategory};
-use crate::query::{self, fetch_me};
+use crate::query;
 use crate::utils::AsyncLoader;
 
 pub struct Profile {

@@ -9,8 +9,7 @@ use crate::{
 };
 use dominator::{clone, html, routing, svg, with_node, Dom};
 use futures_signals::signal::{Mutable, SignalExt};
-use futures_signals::signal_map::MutableBTreeMap;
-use futures_signals::signal_vec::SignalVecExt;
+use futures_signals::signal_vec::{MutableVec, SignalVec, SignalVecExt};
 use wasm_bindgen::{JsCast, JsValue, UnwrapThrowExt};
 use web_sys::HtmlImageElement;
 
@@ -30,7 +29,7 @@ pub struct Reader {
     prev_page: Mutable<Option<usize>>,
     current_page: Mutable<usize>,
     next_page: Mutable<Option<usize>>,
-    pages: MutableBTreeMap<String, bool>,
+    pages: MutableVec<(String, bool)>,
     pages_len: Mutable<usize>,
     reader_settings: Rc<ReaderSettings>,
     is_bar_visible: Mutable<bool>,
@@ -50,7 +49,7 @@ impl Reader {
             prev_page: Mutable::new(None),
             current_page: Mutable::new(page as usize),
             next_page: Mutable::new(None),
-            pages: MutableBTreeMap::new(),
+            pages: MutableVec::new(),
             pages_len: Mutable::new(0),
             reader_settings: ReaderSettings::new(false, true),
             is_bar_visible: Mutable::new(true),
@@ -69,13 +68,11 @@ impl Reader {
                     reader.chapter_title.set_neq(result.title);
                     reader.next_chapter.set_neq(result.next);
                     reader.prev_chapter.set_neq(result.prev);
-                    reader.pages_len.set_neq(result.pages.len());
 
-                    let mut lock = reader.pages.lock_mut();
-                    lock.clear();
-                    for page in result.pages.iter() {
-                        lock.insert_cloned(page.clone(), false);
-                    }
+                    let len = result.pages.len();
+                    reader.pages_len.set_neq(len);
+
+                    reader.pages.lock_mut().replace_cloned(result.pages.iter().map(|page| (page.clone(), false)).collect());
 
                     reader.reader_settings.load_manga_reader_setting(result.manga.id);
 
@@ -85,7 +82,6 @@ impl Reader {
                             page = 0;
                         },
                         Nav::Prev => {
-                            let len = result.pages.len();
                             page = match reader.reader_settings.reader_mode.get() {
                                 ReaderMode::Continous => len - 1,
                                 ReaderMode::Paged => {
@@ -405,6 +401,21 @@ impl Reader {
         })
     }
 
+    pub fn pages_signal(&self) -> impl SignalVec<Item = (usize, (String, bool))> {
+        self.pages
+            .signal_vec_cloned()
+            .enumerate()
+            .filter_map(|(index, page)| {
+                if let Some(index) = index.get() {
+                    Some((index, page))
+                } else {
+                    None
+                }
+            })
+            .to_signal_cloned()
+            .to_signal_vec()
+    }
+
     pub fn render_vertical(reader: Rc<Self>) -> Dom {
         html!("div", {
             .children(&mut [
@@ -425,13 +436,13 @@ impl Reader {
                     }))
                 })
             ])
-            .children_signal_vec(reader.pages.entries_cloned().enumerate().map(clone!(reader => move |(index, (page, error))|
+            .children_signal_vec(reader.pages_signal().map(clone!(reader => move |(index, (page, error))|
                 if !error {
                     html!("img" => HtmlImageElement, {
                         .style("margin-left", "auto")
                         .style("margin-right", "auto")
                         .style("object-position", "center")
-                        .attribute("id", index.get().unwrap().to_string().as_str())
+                        .attribute("id", index.to_string().as_str())
                         .attribute("src", &proxied_image_url(&page))
                         .style_signal("max-width", reader.reader_settings.fit.signal().map(|x| match x {
                             crate::common::Fit::Height => "none",
@@ -452,7 +463,7 @@ impl Reader {
                         .event(clone!(reader, page => move |_: events::Error| {
                             log::error!("error loading image");
                             let mut lock = reader.pages.lock_mut();
-                            lock.insert_cloned(page.clone(), true);
+                            lock.set_cloned(index, (page.clone(), true));
                         }))
                         .event(clone!(reader => move |_: events::Click| {
                             reader.is_bar_visible.set_neq(!reader.is_bar_visible.get());
@@ -460,7 +471,7 @@ impl Reader {
                     })
                 } else {
                     html!("div", {
-                        .attribute("id", index.get().unwrap().to_string().as_str())
+                        .attribute("id", index.to_string().as_str())
                         .style("display", "flex")
                         .style("height", "calc(100vw * 1.59)")
                         .children(&mut [
@@ -470,7 +481,7 @@ impl Reader {
                                 .event(clone!(reader, page => move |_: events::Click| {
                                     log::info!("retry loading image");
                                     let mut lock = reader.pages.lock_mut();
-                                    lock.insert_cloned(page.clone(), false);
+                                    lock.set_cloned(index, (page.clone(), false));
                                 }))
                             })
                         ])
@@ -501,10 +512,9 @@ impl Reader {
                 for i in 0..reader.pages_len.get() {
                     let page_top = document()
                         .get_element_by_id(i.to_string().as_str())
-                        .unwrap()
-                        .dyn_into::<web_sys::HtmlElement>()
-                        .unwrap()
-                        .offset_top() as f64;
+                        .and_then(|el| el.dyn_into::<web_sys::HtmlElement>().ok())
+                        .map(|el| el.offset_top() as f64)
+                        .unwrap_or_default();
                     if page_top > body_top {
                         page_no = i;
                         break;
@@ -519,7 +529,7 @@ impl Reader {
         html!("div", {
             .style("display", "flex")
             .style("align-items", "center")
-            .children_signal_vec(reader.pages.entries_cloned().enumerate().map(clone!(reader => move |(index, (page, error))|
+            .children_signal_vec(reader.pages_signal().map(clone!(reader => move |(index, (page, error))|
                 if !error {
                     html!("img", {
                         .style("margin-left", "auto")
@@ -546,18 +556,18 @@ impl Reader {
                                 reader.next_page.set_neq(Some(x + 1));
                             }
 
-                            x == index.get().unwrap_or(0)
+                            x == index
                         })))
                         .attribute("src", &proxied_image_url(&page))
                         .event(clone!(reader, page => move |_: events::Error| {
                             log::error!("error loading image");
                             let mut lock = reader.pages.lock_mut();
-                            lock.insert_cloned(page.clone(), true);
+                            lock.set_cloned(index, (page.clone(), true));
                         }))
                     })
                 } else {
                     html!("div", {
-                        .attribute("id", index.get().unwrap().to_string().as_str())
+                        .attribute("id", index.to_string().as_str())
                         .style("display", "flex")
                         .style("height", "100vh")
                         .style("width", "100vw")
@@ -567,7 +577,7 @@ impl Reader {
                                 reader.next_page.set_neq(Some(x + 1));
                             }
 
-                            x == index.get().unwrap_or(0)
+                            x == index
                         })))
                         .children(&mut [
                             html!("button", {
@@ -577,7 +587,7 @@ impl Reader {
                                 .event(clone!(reader, page => move |_: events::Click| {
                                     log::info!("retry loading image");
                                     let mut lock = reader.pages.lock_mut();
-                                    lock.insert_cloned(page.clone(), false);
+                                    lock.set_cloned(index, (page.clone(), false));
                                 }))
                             })
                         ])
@@ -598,13 +608,13 @@ impl Reader {
                 Direction::LeftToRight => "row",
                 Direction::RightToLeft => "row-reverse",
             }))
-            .children_signal_vec(reader.pages.entries_cloned().enumerate().map(clone!(reader => move |(index, (page, error))|
+            .children_signal_vec(reader.pages_signal().map(clone!(reader => move |(index, (page, error))|
                 if !error {
                     html!("img" => HtmlImageElement, {
                         .class([
                             "mx-auto"
                         ])
-                        .attribute("id", format!("page-{}", index.get().unwrap_or(0)).as_str())
+                        .attribute("id", format!("page-{}", index).as_str())
                         .style_signal("max-width", reader.reader_settings.fit.signal().map(|x| match x {
                             crate::common::Fit::Height => "none",
                             _ => "100%",
@@ -621,26 +631,23 @@ impl Reader {
                         .event(clone!(reader, page => move |_: events::Error| {
                             log::error!("error loading image");
                             let mut lock = reader.pages.lock_mut();
-                            lock.insert_cloned(page.clone(), true);
+                            lock.set_cloned(index, (page.clone(), true));
                         }))
                         .with_node!(img => {
-                            .style_signal("width", reader.current_page.signal_cloned().map(clone!(reader, index, img => move |current_page| {
-                                if index.get().unwrap() == current_page && img.natural_width() > img.natural_height
-                                () {
+                            .style_signal("width", reader.current_page.signal_cloned().map(clone!(reader, index, img => move |current_page|
+                                if (index == current_page && img.natural_width() > img.natural_height())
+                                    || matches!(reader.reader_settings.fit.get(), crate::common::Fit::Height) {
                                     "initial"
                                 } else {
-                                    match reader.reader_settings.fit.get() {
-                                        crate::common::Fit::Height => "initial",
-                                        _ => "50%"
-                                    }
+                                    "50%"
                                 }
-                            })))
+                            )))
                             .visible_signal(reader.current_page.signal_cloned().map(clone!(reader, index, img => move |current_page| {
                                 let mut hidden = true;
-                                if index.get().unwrap() == current_page {
+                                if index == current_page {
                                     hidden = false;
                                     if current_page > 0 {
-                                        let is_prev_img_landscape = if let Ok(prev_img) = document().get_element_by_id(format!("page-{}", current_page - 1).as_str()).unwrap().dyn_into::<web_sys::HtmlImageElement>() {
+                                        let is_prev_img_landscape = if let Some(prev_img) = document().get_element_by_id(format!("page-{}", current_page - 1).as_str()).and_then(|el| el.dyn_into::<web_sys::HtmlImageElement>().ok()) {
                                             prev_img.natural_width() > prev_img.natural_height()
                                         } else {
                                             false
@@ -652,8 +659,8 @@ impl Reader {
                                         };
                                         reader.prev_page.set_neq(current_page.checked_sub(sub));
                                     }
-                                } else if index.get().unwrap() == current_page + 1 {
-                                    let is_prev_img_portrait = if let Ok(prev_img) = document().get_element_by_id(format!("page-{}", current_page).as_str()).unwrap().dyn_into::<web_sys::HtmlImageElement>() {
+                                } else if index == current_page + 1 {
+                                    let is_prev_img_portrait = if let Some(prev_img) = document().get_element_by_id(format!("page-{}", current_page).as_str()).and_then(|el| el.dyn_into::<web_sys::HtmlImageElement>().ok()) {
                                         prev_img.natural_width() <= prev_img.natural_height()
                                     } else {
                                         true
@@ -677,7 +684,7 @@ impl Reader {
                             })))
                             .event(clone!(reader, index => move |_: events::Load| {
                                 let current_page = reader.current_page.get();
-                                if index.get().unwrap() == current_page || index.get().unwrap() == current_page + 1 {
+                                if index == current_page || index == current_page + 1 {
                                     reader.current_page.replace(current_page);
                                 }
                             }))
@@ -685,7 +692,7 @@ impl Reader {
                     })
                 } else {
                     html!("div", {
-                        .attribute("id", format!("page-{}", index.get().unwrap_or(0)).as_str())
+                        .attribute("id", format!("page-{}", index).as_str())
                         .style("display", "flex")
                         .style_signal("width", reader.reader_settings.fit.signal().map(|x| match x {
                             crate::common::Fit::Height => "none",
@@ -697,7 +704,7 @@ impl Reader {
                         }))
                         .visible_signal(reader.current_page.signal_cloned().map(clone!(reader, index => move |current_page| {
                             let mut hidden = true;
-                            if index.get().unwrap() == current_page {
+                            if index == current_page {
                                 hidden = false;
                                 if current_page > 0 {
                                     let sub = if current_page == 1 {
@@ -707,7 +714,7 @@ impl Reader {
                                     };
                                     reader.prev_page.set_neq(current_page.checked_sub(sub));
                                 }
-                            } else if index.get().unwrap() == current_page + 1 {
+                            } else if index == current_page + 1 {
                                 hidden = false;
                                 if current_page + 2 < reader.pages_len.get() {
                                     reader.next_page.set_neq(Some(current_page + 2));
@@ -726,7 +733,7 @@ impl Reader {
                                 .event(clone!(reader, page => move |_: events::Click| {
                                     log::info!("retry loading image");
                                     let mut lock = reader.pages.lock_mut();
-                                    lock.insert_cloned(page.clone(), false);
+                                    lock.set_cloned(index, (page.clone(), false));
                                 }))
                             })
                         ])
