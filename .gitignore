@@ -3,7 +3,7 @@ target/
 .vscode/
 .env
 .idea/
-mangas/
+manga
 config.yml
 *.db
 *.db-shm
