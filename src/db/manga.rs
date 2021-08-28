@@ -708,12 +708,11 @@ impl Db {
         let stream = sqlx::query(
             r#"
             SELECT *, 
-            (SELECT JSON_GROUP_ARRAY(remote_url) FROM page WHERE chapter_id = ?) pages,
+            (SELECT JSON_GROUP_ARRAY(remote_url) FROM page WHERE chapter_id = chapter.id) pages,
             (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number < chapter.number ORDER BY c.number DESC LIMIT 1) prev,
             (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number > chapter.number ORDER BY c.number ASC LIMIT 1) next 
             FROM chapter WHERE id = ?"#,
         )
-        .bind(id)
         .bind(id)
         .fetch_one(&self.pool)
         .await;
@@ -740,7 +739,7 @@ impl Db {
         let stream = sqlx::query(
             r#"
             SELECT *,
-            (SELECT JSON_GROUP_ARRAY(remote_url) FROM page WHERE chapter_id = ?) pages,
+            (SELECT JSON_GROUP_ARRAY(remote_url) FROM page WHERE chapter_id = chapter.id) pages,
             (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number < chapter.number ORDER BY c.number DESC LIMIT 1) prev,
             (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number > chapter.number ORDER BY c.number ASC LIMIT 1) next 
             FROM chapter WHERE source_id = ? AND path = ?"#,
@@ -772,7 +771,7 @@ impl Db {
         let mut stream = sqlx::query(
             r#"
             SELECT *,
-            (SELECT JSON_GROUP_ARRAY(remote_url) FROM page WHERE chapter_id = ?) pages,
+            (SELECT JSON_GROUP_ARRAY(remote_url) FROM page WHERE chapter_id = chapter.id) pages,
             (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number < chapter.number ORDER BY c.number DESC LIMIT 1) prev,
             (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number > chapter.number ORDER BY c.number ASC LIMIT 1) next 
             FROM chapter WHERE manga_id = ? ORDER BY number DESC"#
@@ -809,7 +808,7 @@ impl Db {
         let stream = sqlx::query(
             r#"
             SELECT *,
-            (SELECT JSON_GROUP_ARRAY(remote_url) FROM page WHERE chapter_id = ?) pages,
+            (SELECT JSON_GROUP_ARRAY(remote_url) FROM page WHERE chapter_id = chapter.id) pages,
             (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number < chapter.number ORDER BY c.number DESC LIMIT 1) prev,
             (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number > chapter.number ORDER BY c.number ASC LIMIT 1) next 
             FROM chapter WHERE manga_id = ? ORDER BY uploaded DESC LIMIT 1"#
