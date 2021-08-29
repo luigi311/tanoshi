@@ -10,6 +10,7 @@ use rand::{Rng, SeedableRng};
 // create an alias for convenience
 type Aes128Cbc = Cbc<Aes128, Pkcs7>;
 
+#[allow(dead_code)]
 fn generate_iv() -> String {
     let mut rng: StdRng = SeedableRng::from_entropy();
     let chars = iter::repeat(())
@@ -24,28 +25,23 @@ pub fn encrypt_url(key: &str, url: &str) -> Result<String, Box<dyn std::error::E
     let mut buffer = vec![0_u8; pos * 2];
     buffer.splice(..pos, url.as_bytes().to_vec());
 
-    let iv = generate_iv();
-    let chiper = Aes128Cbc::new_from_slices(key.as_bytes(), iv.as_bytes())?;
+    let iv = [0_u8; 16];
+    let chiper = Aes128Cbc::new_from_slices(key.as_bytes(), &iv)?;
     let chipertext = chiper.encrypt(&mut buffer, pos)?;
 
-    let mut payload: Vec<u8> = vec![];
-    payload.extend_from_slice(iv.as_bytes());
-    payload.extend_from_slice(chipertext);
-
-    let encoded = base64::encode_config(payload, base64::URL_SAFE_NO_PAD);
+    let encoded = base64::encode_config(chipertext, base64::URL_SAFE_NO_PAD);
 
     Ok(encoded)
 }
 
 pub fn decrypt_url(key: &str, data: &str) -> Result<String, Box<dyn std::error::Error>> {
-    let decoded = base64::decode_config(data, base64::URL_SAFE_NO_PAD)?;
+    let mut decoded = base64::decode_config(data, base64::URL_SAFE_NO_PAD)?;
     debug!("decoded: {:?}", decoded);
 
-    let iv = decoded[..16].to_vec();
-    let mut chipertext = decoded[16..].to_vec();
+    let iv = [0_u8; 16];
 
     let chiper = Aes128Cbc::new_from_slices(key.as_bytes(), &iv)?;
-    let bytes = chiper.decrypt(&mut chipertext)?.to_vec();
+    let bytes = chiper.decrypt(&mut decoded)?.to_vec();
 
     let url = String::from_utf8(bytes)?;
     Ok(url)
@@ -93,7 +89,8 @@ mod test {
     #[test]
     fn test_encrypt_url() {
         let key = "pdn8QwMUTDSVfKQf".to_string();
-        let url = "https://cover.nep.li/cover/Jujutsu-Kaisen.jpg".to_string();
+        let url = "https://official-ongoing-2.gamindustri.us/manga/Jujutsu-Kaisen/0006-001.png"
+            .to_string();
 
         let result = encrypt_url(&key, &url);
 
@@ -103,13 +100,16 @@ mod test {
     #[test]
     fn test_decrypt_url() {
         let key = "pdn8QwMUTDSVfKQf".to_string();
-        let url = "UDhqb0RFdURRcUh3ZzcyeqFbIkEabGd6OLhHSPACTYr9Fsx529l9kuWohMqfJ22taXgvSHt28Sv5iaEiHlVlYg".to_string();
+        let url = "iSNS4boMrEewCKHEZ-qD6VvrgH4kU92mg-9AlQXcLWHi4LEmNpavXbsHAwIXGQDLwGlS4HNPuyiHNBCECS0S7JQyW8Iz4L_7AQbKARYtThQ".to_string();
 
         let result = decrypt_url(&key, &url);
 
         assert!(result.is_ok());
         if let Ok(url) = result {
-            assert_eq!("https://cover.nep.li/cover/Jujutsu-Kaisen.jpg", url);
+            assert_eq!(
+                "https://official-ongoing-2.gamindustri.us/manga/Jujutsu-Kaisen/0006-001.png",
+                url
+            );
         }
     }
 }
