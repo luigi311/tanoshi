@@ -5,10 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.25.6]
 
 ### Fixed
 - [tanoshi-web] fix web crash on single reader when using fit height
+- 
 ## [0.25.5]
 
 ## Changed
@@ -134,7 +135,8 @@ Nothing changes, this release to build for multiarch docker image
 
 - fix panic when using local source
 
-[Unreleased]: https://github.com/faldez/tanoshi/compare/v0.25.4...HEAD
+[Unreleased]: https://github.com/faldez/tanoshi/compare/v0.25.6...HEAD
+[0.25.6]: https://github.com/faldez/tanoshi/compare/v0.25.5...v0.25.6
 [0.25.5]: https://github.com/faldez/tanoshi/compare/v0.25.4...v0.25.5
 [0.25.4]: https://github.com/faldez/tanoshi/compare/v0.25.3...v0.25.4
 [0.25.3]: https://github.com/faldez/tanoshi/compare/v0.25.2...v0.25.3
