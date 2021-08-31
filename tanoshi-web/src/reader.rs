@@ -536,7 +536,7 @@ impl Reader {
                         .style("margin-left", "auto")
                         .style("margin-right", "auto")
                         .style_signal("max-width", reader.reader_settings.fit.signal().map(|x| match x {
-                            crate::common::Fit::Height => "node",
+                            crate::common::Fit::Height => "none",
                             _ => "100%",
                         }))
                         .style_signal("object-fit", reader.reader_settings.fit.signal().map(|x| match x {
