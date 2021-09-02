@@ -1,5 +1,6 @@
-use std::{collections::HashMap, fmt::Display};
+use std::{collections::HashMap, fmt::Display, str::FromStr};
 
+use tanoshi_lib::prelude::Version;
 use tanoshi_vm::prelude::ExtensionBus;
 use teloxide::{
     adaptors::{AutoSend, DefaultParseMode},
@@ -13,7 +14,7 @@ use tokio::{
     time::{self, Instant},
 };
 
-use crate::db::{model::Chapter, MangaDatabase};
+use crate::db::{model::Chapter, MangaDatabase, UserDatabase};
 
 pub enum Command {
     TelegramMessage(i64, String),
@@ -38,6 +39,7 @@ impl Display for ChapterUpdate {
 struct Worker {
     period: u64,
     mangadb: MangaDatabase,
+    userdb: UserDatabase,
     extension_bus: ExtensionBus,
     telegram_bot: Option<DefaultParseMode<AutoSend<Bot>>>,
 }
@@ -46,6 +48,7 @@ impl Worker {
     fn new(
         period: u64,
         mangadb: MangaDatabase,
+        userdb: UserDatabase,
         extension_bus: ExtensionBus,
         telegram_bot: Option<DefaultParseMode<AutoSend<Bot>>>,
     ) -> Self {
@@ -55,14 +58,159 @@ impl Worker {
         Self {
             period,
             mangadb,
+            userdb,
             extension_bus,
             telegram_bot,
         }
     }
 
+    async fn check_chapter_update(&self) -> Result<(), anyhow::Error> {
+        let manga_in_library = self.mangadb.get_all_user_library().await?;
+
+        let mut new_manga_chapter: HashMap<i64, Vec<ChapterUpdate>> = HashMap::new();
+        let mut new_users_chapters: HashMap<i64, Vec<ChapterUpdate>> = HashMap::new();
+
+        for (telegram_chat_id, manga) in manga_in_library {
+            if let Some(chapters) = new_manga_chapter.get(&manga.id) {
+                if let Some(telegram_chat_id) = telegram_chat_id {
+                    match new_users_chapters.get_mut(&telegram_chat_id) {
+                        Some(user_chapters) => {
+                            user_chapters.extend_from_slice(chapters);
+                        }
+                        None => {
+                            new_users_chapters.insert(telegram_chat_id, chapters.clone());
+                        }
+                    }
+                }
+                continue;
+            }
+
+            let last_uploaded_chapter = self
+                .mangadb
+                .get_last_uploaded_chapters_by_manga_id(manga.id)
+                .await;
+            let chapters = match self
+                .extension_bus
+                .get_chapters(manga.source_id, manga.path.clone())
+                .await
+            {
+                Ok(chapters) => {
+                    let chapters: Vec<Chapter> = chapters
+                        .into_iter()
+                        .map(|ch| {
+                            let mut c: Chapter = ch.into();
+                            c.manga_id = manga.id;
+                            c
+                        })
+                        .collect();
+                    chapters
+                }
+                Err(e) => {
+                    error!("error fetch new chapters, reason: {}", e);
+                    continue;
+                }
+            };
+
+            if let Err(e) = self.mangadb.insert_chapters(&chapters).await {
+                error!("error inserting new chapters, reason: {}", e);
+                continue;
+            }
+
+            let chapters = if let Some(last_uploaded_chapter) = last_uploaded_chapter {
+                chapters
+                    .into_iter()
+                    .filter(|ch| ch.uploaded > last_uploaded_chapter.uploaded)
+                    .collect()
+            } else {
+                chapters
+            };
+
+            let chapters: Vec<ChapterUpdate> = chapters
+                .iter()
+                .map(|ch| ChapterUpdate {
+                    manga_title: manga.title.clone(),
+                    cover_url: manga.cover_url.clone(),
+                    title: ch.title.clone(),
+                })
+                .collect();
+
+            new_manga_chapter.insert(manga.id, chapters.clone());
+            if let Some(telegram_chat_id) = telegram_chat_id {
+                match new_users_chapters.get_mut(&telegram_chat_id) {
+                    Some(user_chapters) => {
+                        user_chapters.extend_from_slice(&chapters);
+                    }
+                    None => {
+                        new_users_chapters.insert(telegram_chat_id, chapters);
+                    }
+                }
+            }
+        }
+
+        info!("users' new chapters: {:?}", new_users_chapters);
+
+        if let Some(bot) = self.telegram_bot.as_ref() {
+            for (chat_id, chapters) in new_users_chapters.into_iter() {
+                for chapter in chapters {
+                    if let Err(e) = bot.send_message(chat_id, chapter.to_string()).await {
+                        error!("failed to send message, reason: {}", e);
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    async fn check_server_update(&self) -> Result<(), anyhow::Error> {
+        #[derive(Debug, serde::Deserialize)]
+        struct Release {
+            pub tag_name: String,
+            pub body: String,
+        }
+
+        let client = reqwest::Client::new();
+        let release: Release = client
+            .get("https://api.github.com/repos/faldez/tanoshi/releases/latest")
+            .header(
+                "User-Agent",
+                format!("Tanoshi/{}", env!("CARGO_PKG_VERSION")),
+            )
+            .send()
+            .await?
+            .json()
+            .await?;
+
+        if Version::from_str(&release.tag_name[1..])?
+            > Version::from_str(env!("CARGO_PKG_VERSION"))?
+        {
+            info!("new server update found!");
+            if let Some(bot) = self.telegram_bot.as_ref() {
+                let admins = self.userdb.get_admins().await?;
+                for admin in admins {
+                    if let Some(chat_id) = admin.telegram_chat_id {
+                        bot.send_message(
+                            chat_id,
+                            format!(
+                                "<b>Tanoshi {} Released</b>\n{}",
+                                release.tag_name, release.body
+                            ),
+                        )
+                        .await?;
+                    }
+                }
+            }
+        } else {
+            info!("no update found");
+        }
+
+        Ok(())
+    }
+
     async fn run(&self, rx: UnboundedReceiver<Command>) {
         let mut rx = rx;
-        let mut interval = time::interval(time::Duration::from_secs(self.period));
+        let mut chapter_update_interval = time::interval(time::Duration::from_secs(self.period));
+        let mut server_update_interval = time::interval(time::Duration::from_secs(86400));
 
         loop {
             tokio::select! {
@@ -77,110 +225,21 @@ impl Worker {
                         }
                     }
                 }
-                start = interval.tick() => {
+                start = chapter_update_interval.tick() => {
                     info!("start periodic updates");
 
-                    let manga_in_library = match self.mangadb.get_all_user_library().await {
-                        Ok(manga) => manga,
-                        Err(e) => {
-                            error!("error get manga in library, reason: {}", e);
-                            continue;
-                        }
-                    };
-
-                    let mut new_manga_chapter: HashMap<i64, Vec<ChapterUpdate>> = HashMap::new();
-                    let mut new_users_chapters: HashMap<i64, Vec<ChapterUpdate>> = HashMap::new();
-
-                    for (telegram_chat_id, manga) in manga_in_library {
-                        if let Some(chapters) = new_manga_chapter.get(&manga.id) {
-                            if let Some(telegram_chat_id) = telegram_chat_id {
-                                match new_users_chapters.get_mut(&telegram_chat_id) {
-                                    Some(user_chapters) => {
-                                        user_chapters.extend_from_slice(chapters);
-                                    }
-                                    None => {
-                                        new_users_chapters.insert(telegram_chat_id, chapters.clone());
-                                    }
-                                }
-                            }
-                            continue;
-                        }
-
-                        let last_uploaded_chapter = self
-                            .mangadb
-                            .get_last_uploaded_chapters_by_manga_id(manga.id)
-                            .await;
-                        let chapters = match self
-                            .extension_bus
-                            .get_chapters(manga.source_id, manga.path.clone())
-                            .await
-                        {
-                            Ok(chapters) => {
-                                let chapters: Vec<Chapter> = chapters
-                                    .into_iter()
-                                    .map(|ch| {
-                                        let mut c: Chapter = ch.into();
-                                        c.manga_id = manga.id;
-                                        c
-                                    })
-                                    .collect();
-                                chapters
-                            }
-                            Err(e) => {
-                                error!("error fetch new chapters, reason: {}", e);
-                                continue;
-                            }
-                        };
-
-                        if let Err(e) = self.mangadb.insert_chapters(&chapters).await {
-                            error!("error inserting new chapters, reason: {}", e);
-                            continue;
-                        }
-
-                        let chapters = if let Some(last_uploaded_chapter) = last_uploaded_chapter {
-                            chapters
-                                .into_iter()
-                                .filter(|ch| ch.uploaded > last_uploaded_chapter.uploaded)
-                                .collect()
-                        } else {
-                            chapters
-                        };
-
-                        let chapters: Vec<ChapterUpdate> = chapters
-                            .iter()
-                            .map(|ch| ChapterUpdate {
-                                manga_title: manga.title.clone(),
-                                cover_url: manga.cover_url.clone(),
-                                title: ch.title.clone(),
-                            })
-                            .collect();
-
-                        new_manga_chapter.insert(manga.id, chapters.clone());
-                        if let Some(telegram_chat_id) = telegram_chat_id {
-                            match new_users_chapters.get_mut(&telegram_chat_id) {
-                                Some(user_chapters) => {
-                                    user_chapters.extend_from_slice(&chapters);
-                                }
-                                None => {
-                                    new_users_chapters.insert(telegram_chat_id, chapters);
-                                }
-                            }
-                        }
-                    }
-
-                    info!("users' new chapters: {:?}", new_users_chapters);
-
-                    if let Some(bot) = self.telegram_bot.as_ref() {
-                        for (chat_id, chapters) in new_users_chapters.into_iter() {
-                            for chapter in chapters {
-                                if let Err(e) = bot.send_message(chat_id, chapter.to_string()).await {
-                                    error!("failed to send message, reason: {}", e);
-                                }
-                            }
-                        }
+                    if let Err(e) = self.check_chapter_update().await {
+                        error!("failed check chapter update: {}", e)
                     }
 
                     info!("periodic updates done in {:?}", Instant::now() - start);
+                }
+                _ = server_update_interval.tick() => {
+                    info!("check server update");
+
+                    if let Err(e) = self.check_server_update().await {
+                        error!("failed check server update: {}", e)
+                    }
                 }
             }
         }
@@ -190,11 +249,12 @@ impl Worker {
 pub fn start(
     period: u64,
     mangadb: MangaDatabase,
+    userdb: UserDatabase,
     extension_bus: ExtensionBus,
     telegram_bot: Option<DefaultParseMode<AutoSend<Bot>>>,
 ) -> (JoinHandle<()>, UnboundedSender<Command>) {
     let (tx, rx) = unbounded_channel();
-    let worker = Worker::new(period, mangadb, extension_bus, telegram_bot);
+    let worker = Worker::new(period, mangadb, userdb, extension_bus, telegram_bot);
 
     let handle = tokio::spawn(async move {
         worker.run(rx).await;
