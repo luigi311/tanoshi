@@ -469,32 +469,6 @@ mod test {
 
         if let Some(data) = chapter.data {
             assert_eq!(data.len(), 2);
-
-            assert_eq!(data[0].source_id, 1);
-            assert_eq!(data[0].title, "Space_Adventures_004__c2c__diff_ver");
-            #[cfg(target_family = "windows")]
-            assert_eq!(
-                data[0].path,
-                "./test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver"
-            );
-            #[cfg(target_family = "unix")]
-            assert_eq!(
-                data[0].path,
-                "./test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver"
-            );
-
-            assert_eq!(data[1].source_id, 1);
-            assert_eq!(data[1].title, "Space_Adventures_001__c2c__diff_ver");
-            #[cfg(target_family = "windows")]
-            assert_eq!(
-                data[1].path,
-                "./test/data/manga\\Space Adventures\\Space_Adventures_001__c2c__diff_ver.cbz"
-            );
-            #[cfg(target_family = "unix")]
-            assert_eq!(
-                data[1].path,
-                "./test/data/manga/Space Adventures/Space_Adventures_001__c2c__diff_ver.cbz"
-            );
         }
     }
 
