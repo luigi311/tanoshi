@@ -34,12 +34,12 @@ jobs:
       - name: Install wasm32-unknown-unknown
         run: rustup target add wasm32-unknown-unknown
       - name: Build tanoshi-web
-        run: cd tanoshi-web && trunk build
+        run: cd crates/tanoshi-web && trunk build --release
       - name: Upload dist
         uses: actions/upload-artifact@v2
         with:
           name: dist
-          path: tanoshi-web/dist
+          path: crates/tanoshi-web/dist
   build-docker:
     runs-on: ubuntu-latest
     environment: default
