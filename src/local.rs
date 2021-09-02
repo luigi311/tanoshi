@@ -31,17 +31,21 @@ impl Local {
         "/images/cover-placeholder.jpg".to_string()
     }
 
-    fn filter_supported_files_and_folders(entry: DirEntry) -> Option<DirEntry> {
-        if entry.path().is_dir() {
-            Some(entry)
-        } else {
-            entry
-                .path()
-                .extension()?
-                .to_str()
-                .map(|ext| SUPPORTED_FILES.contains(&ext.to_lowercase()))
-                .and_then(|supported| if supported { Some(entry) } else { None })
-        }
+    fn filter_supported_files_and_folders(
+        entry: Result<DirEntry, std::io::Error>,
+    ) -> Option<DirEntry> {
+        entry.ok().and_then(|entry| {
+            if entry.path().is_dir() {
+                Some(entry)
+            } else {
+                entry
+                    .path()
+                    .extension()?
+                    .to_str()
+                    .map(|ext| SUPPORTED_FILES.contains(&ext.to_lowercase()))
+                    .and_then(|supported| if supported { Some(entry) } else { None })
+            }
+        })
     }
 
     // find first image from an archvie
@@ -90,7 +94,7 @@ impl Local {
             return Self::find_cover_from_archive(entry);
         }
 
-        let entry_read_dir = match entry.read_dir().map(Self::sort_dir_reverse) {
+        let entry_read_dir = match entry.read_dir() {
             Ok(entry_read_dir) => entry_read_dir,
             Err(_) => {
                 return Self::default_cover_url();
@@ -202,16 +206,35 @@ impl Extension for Local {
     }
 
     fn get_manga_list(&self, param: tanoshi_lib::prelude::Param) -> ExtensionResult<Vec<Manga>> {
-        let read_dir: Vec<DirEntry> = match std::fs::read_dir(&self.path).map(Self::sort_dir) {
+        let page = param.page.map(|p| p as usize).unwrap_or(1);
+        let offset = (page - 1) * 20;
+
+        let read_dir = match std::fs::read_dir(&self.path) {
             Ok(read_dir) => read_dir,
             Err(e) => {
                 return ExtensionResult::err(format!("{}", e).as_str());
             }
         };
 
-        let data = read_dir
-            .into_iter()
-            .filter_map(Self::filter_supported_files_and_folders)
+        let mut data: Box<dyn Iterator<Item = _>> = Box::new(
+            read_dir
+                .into_iter()
+                .filter_map(Self::filter_supported_files_and_folders),
+        );
+
+        if let Some(keyword) = param.keyword {
+            data = Box::new(data.filter(move |entry| {
+                entry
+                    .file_name()
+                    .to_str()
+                    .map(|a| a.to_lowercase().contains(&keyword))
+                    .unwrap_or_else(|| false)
+            }));
+        }
+
+        let manga = data
+            .skip(offset)
+            .take(20)
             .map(|entry| Manga {
                 source_id: ID,
                 title: entry
@@ -229,18 +252,7 @@ impl Extension for Local {
             })
             .collect::<Vec<_>>();
 
-        let page = param.page.map(|p| p as usize).unwrap_or(1);
-        let offset = (page - 1) * 20;
-        if offset >= data.len() {
-            return ExtensionResult::err("no page");
-        }
-
-        let mangas = match data[offset..].len() {
-            0..=20 => &data[offset..],
-            _ => &data[offset..offset + 20],
-        };
-
-        ExtensionResult::ok(mangas.to_vec())
+        ExtensionResult::ok(manga.to_vec())
     }
 
     fn get_manga_info(&self, path: String) -> ExtensionResult<Manga> {
@@ -313,6 +325,8 @@ impl Extension for Local {
 
 #[cfg(test)]
 mod test {
+    use std::{collections::HashSet, iter::FromIterator};
+
     use tanoshi_lib::prelude::Param;
 
     use super::*;
@@ -328,41 +342,31 @@ mod test {
         if let Some(data) = manga.data {
             assert_eq!(data.len(), 3);
 
-            assert_eq!(data[0].title, "Space Adventures");
+            let path_set: HashSet<String> = HashSet::from_iter(data.iter().map(|a| a.path.clone()));
             #[cfg(target_family = "windows")]
-            assert_eq!(
-                data[0].cover_url,
-                "./test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver\\SPA00401.JPG"
-            );
+            let want_path_set = HashSet::from_iter(vec![
+                "./test/data/manga\\Space_Adventures_004__c2c__diff_ver.cbz".to_string(),
+                "./test/data/manga\\Space Adventures".to_string(),
+                "./test/data/manga\\Super Duck".to_string(),
+            ]);
             #[cfg(target_family = "unix")]
-            assert_eq!(
-                data[0].cover_url,
-                "./test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver/SPA00401.JPG"
-            );
+            let want_path_set = HashSet::from_iter(vec![
+                "./test/data/manga/Space_Adventures_004__c2c__diff_ver.cbz".to_string(),
+                "./test/data/manga/Space Adventures".to_string(),
+                "./test/data/manga/Super Duck".to_string(),
+            ]);
 
-            assert_eq!(data[1].title, "Space_Adventures_004__c2c__diff_ver");
-            #[cfg(target_family = "windows")]
-            assert_eq!(
-                data[1].cover_url,
-                "./test/data/manga\\Space_Adventures_004__c2c__diff_ver.cbz\\SPA00401.JPG"
-            );
-            #[cfg(target_family = "unix")]
-            assert_eq!(
-                data[1].cover_url,
-                "./test/data/manga/Space_Adventures_004__c2c__diff_ver.cbz/SPA00401.JPG"
-            );
+            assert_eq!(path_set, want_path_set);
 
-            assert_eq!(data[2].title, "Super Duck");
-            #[cfg(target_family = "windows")]
-            assert_eq!(
-                data[2].cover_url,
-                "./test/data/manga\\Super Duck\\super_duck_2.cbz\\duck00.jpg"
-            );
-            #[cfg(target_family = "unix")]
-            assert_eq!(
-                data[2].cover_url,
-                "./test/data/manga/Super Duck/super_duck_2.cbz/duck00.jpg"
-            );
+            let title_set: HashSet<String> =
+                HashSet::from_iter(data.iter().map(|a| a.title.clone()));
+            let want_title_set = HashSet::from_iter(vec![
+                "Space Adventures".to_string(),
+                "Space_Adventures_004__c2c__diff_ver".to_string(),
+                "Super Duck".to_string(),
+            ]);
+
+            assert_eq!(title_set, want_title_set);
         }
     }
 
@@ -383,8 +387,9 @@ mod test {
             ..Default::default()
         });
 
-        assert!(manga.data.is_none());
-        assert!(manga.error.is_some());
+        assert!(manga.data.is_some());
+        assert!(manga.error.is_none());
+        assert_eq!(manga.data.unwrap().len(), 0);
     }
 
     #[test]
