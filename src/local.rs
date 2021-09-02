@@ -8,12 +8,11 @@ use std::{
 
 use chrono::NaiveDateTime;
 use fancy_regex::Regex;
-use phf::phf_set;
 use tanoshi_lib::prelude::{Chapter, Extension, ExtensionResult, Filters, Manga, Source, Version};
 
 pub static ID: i64 = 1;
 // list of supported files, other archive may works but no tested
-static SUPPORTED_FILES: phf::Set<&'static str> = phf_set! {
+static SUPPORTED_FILES: phf::Set<&'static str> = phf::phf_set! {
     "cbz",
     "cbr",
 };
