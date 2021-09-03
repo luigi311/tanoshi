@@ -1,6 +1,6 @@
 [package]
 name = "tanoshi"
-version = "0.25.6"
+version = "0.25.7"
 authors = ["fadhlika"]
 edition = "2018"
 description = "Tanoshi"
