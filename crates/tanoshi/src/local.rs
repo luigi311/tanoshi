@@ -159,7 +159,7 @@ impl Local {
             }
         };
         let number_re = match Regex::new(
-            r"(?i)(?<=v)(\d+)|(?<=volume)\s*(\d+)|(?<=vol)\s*(\d+)|(?<=\s)(\d+)",
+            r"(?i)(?<=v)(\d+)|(?<=volume)\s*(\d+)|(?<=vol)\s*(\d+)|(?<=\s)(\d+)|(\d+)",
         ) {
             Ok(re) => re,
             Err(_) => {
@@ -284,7 +284,7 @@ impl Extension for Local {
             }
         }
 
-        let read_dir = match std::fs::read_dir(&path).map(Self::sort_dir_reverse) {
+        let read_dir = match std::fs::read_dir(&path) {
             Ok(read_dir) => read_dir,
             Err(e) => {
                 return ExtensionResult::err(format!("{}", e).as_str());
@@ -293,6 +293,7 @@ impl Extension for Local {
 
         let mut data: Vec<Chapter> = read_dir
             .into_iter()
+            .filter_map(Result::ok)
             .filter_map(|entry| Self::map_entry_to_chapter(&entry.path()))
             .collect();
 
@@ -469,6 +470,34 @@ mod test {
 
         if let Some(data) = chapter.data {
             assert_eq!(data.len(), 2);
+
+            assert_eq!(data[0].source_id, 1);
+            assert_eq!(data[0].number, 4.0_f64);
+            assert_eq!(data[0].title, "Space_Adventures_004__c2c__diff_ver");
+            #[cfg(target_family = "windows")]
+            assert_eq!(
+                data[0].path,
+                "../../test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver"
+            );
+            #[cfg(target_family = "unix")]
+            assert_eq!(
+                data[0].path,
+                "../../test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver"
+            );
+
+            assert_eq!(data[1].source_id, 1);
+            assert_eq!(data[1].number, 1.0_f64);
+            assert_eq!(data[1].title, "Space_Adventures_001__c2c__diff_ver");
+            #[cfg(target_family = "windows")]
+            assert_eq!(
+                data[1].path,
+                "../../test/data/manga\\Space Adventures\\Space_Adventures_001__c2c__diff_ver.cbz"
+            );
+            #[cfg(target_family = "unix")]
+            assert_eq!(
+                data[1].path,
+                "../../test/data/manga/Space Adventures/Space_Adventures_001__c2c__diff_ver.cbz"
+            );
         }
     }
 
