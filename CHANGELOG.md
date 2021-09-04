@@ -7,9 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## Added
-- [tanoshi-web] show scanlator group in chapter list
+### Added
+- [tanoshi-web] scanlator now shown in chapter list
+- [tanoshi] mark chapter as read and mark chapter as unread
 
+### Changed
+- [tanoshi] local get_chapter now sorted
+- [tanoshi-web] reduce bottom paddding on reader settings modal
+
+### Fixed
+- [tanoshi-web] fix typo intial -> initial
+  
 ## [v0.25.7]
 
 ### Added
