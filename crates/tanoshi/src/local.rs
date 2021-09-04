@@ -284,7 +284,7 @@ impl Extension for Local {
             }
         }
 
-        let read_dir = match std::fs::read_dir(&path) {
+        let read_dir = match std::fs::read_dir(&path).map(Self::sort_dir_reverse) {
             Ok(read_dir) => read_dir,
             Err(e) => {
                 return ExtensionResult::err(format!("{}", e).as_str());
@@ -293,7 +293,6 @@ impl Extension for Local {
 
         let mut data: Vec<Chapter> = read_dir
             .into_iter()
-            .filter_map(Result::ok)
             .filter_map(|entry| Self::map_entry_to_chapter(&entry.path()))
             .collect();
 
