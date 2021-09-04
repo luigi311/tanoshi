@@ -33,7 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - [tanoshi-web] fix web crash on single reader when using fit height
-- 
+  
 ## [0.25.5]
 
 ## Changed
