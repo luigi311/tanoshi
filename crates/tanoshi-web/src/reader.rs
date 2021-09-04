@@ -544,7 +544,7 @@ impl Reader {
                             _ => "initial",
                         }))
                         .style_signal("width", reader.reader_settings.fit.signal().map(|x| match x {
-                            crate::common::Fit::Height => "intial",
+                            crate::common::Fit::Height => "initial",
                             _ => "100vw"
                         }))
                         .style_signal("height", reader.reader_settings.fit.signal().map(|x| match x {
