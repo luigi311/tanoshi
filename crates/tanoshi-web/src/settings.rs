@@ -5,6 +5,7 @@ use futures_signals::{signal::{Mutable, SignalExt}, signal_vec::{MutableSignalVe
 use std::rc::Rc;
 
 pub struct Settings {
+    server_version: String,
     page: Mutable<SettingCategory>,
     installed_sources: MutableVec<Source>,
     available_sources: MutableVec<Source>,
@@ -15,8 +16,9 @@ pub struct Settings {
 }
 
 impl Settings {
-    pub fn new() -> Rc<Self> {
+    pub fn new(server_version: String) -> Rc<Self> {
         Rc::new(Settings {
+            server_version,
             page: Mutable::new(SettingCategory::None),
             installed_sources: MutableVec::new(),
             available_sources: MutableVec::new(),
@@ -532,7 +534,11 @@ impl Settings {
                     SettingCategory::None => Some(html!("div", {
                         .children(&mut [
                             Self::render_user(settings.clone()),
-                            Self::render_categories(settings.clone())
+                            Self::render_categories(settings.clone()),
+                            html!("text", {
+                                .style("font-size", "small")
+                                .text(format!("v{}", settings.server_version).as_str())
+                            })
                         ])
                     })),
                     SettingCategory::Reader => Some(ReaderSettings::render(settings.reader_settings.clone())),
