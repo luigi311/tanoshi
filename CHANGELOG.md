@@ -18,7 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - [tanoshi-web] fix typo intial -> initial
   
-## [v0.25.7]
+## [0.25.7]
 
 ### Added
 - [tanoshi] check for update every 24 hours and send notification to admins if found
