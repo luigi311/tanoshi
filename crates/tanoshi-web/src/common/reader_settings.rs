@@ -3,7 +3,7 @@ use futures_signals::signal::{Mutable, SignalExt};
 use serde::{Deserialize, Serialize};
 use std::rc::Rc;
 
-use crate::utils::{local_storage, document};
+use crate::utils::{document, local_storage};
 
 #[derive(PartialEq, Copy, Clone, Serialize, Deserialize)]
 pub enum ReaderMode {
@@ -22,7 +22,7 @@ pub enum DisplayMode {
     Single,
     Double,
     Auto,
-}   
+}
 
 impl Default for DisplayMode {
     fn default() -> Self {
@@ -32,8 +32,14 @@ impl Default for DisplayMode {
 
 impl DisplayMode {
     fn is_landscape(&self) -> bool {
-        let client_width = document().document_element().map(|el| el.client_width()).unwrap_or(0_i32);
-        let client_height = document().document_element().map(|el| el.client_height()).unwrap_or(0_i32);
+        let client_width = document()
+            .document_element()
+            .map(|el| el.client_width())
+            .unwrap_or(0_i32);
+        let client_height = document()
+            .document_element()
+            .map(|el| el.client_height())
+            .unwrap_or(0_i32);
 
         client_width > client_height
     }
@@ -419,6 +425,11 @@ impl ReaderSettings {
                     .class_signal("non-modal", reader.use_modal.signal().map(|x| !x))
                     .class_signal("animate__slideInUp", reader.show.signal())
                     .class_signal("animate__slideOutDown", reader.show.signal().map(|x| !x))
+                    .style_signal("padding-bottom", reader.use_modal.signal().map(|use_modal| if use_modal {
+                        Some("env(safe-area-inset-bottom)")
+                    } else {
+                        None
+                    }))
                     .visible_signal(reader.first_render.signal().map(|x| !x))
                     .children(&mut [
                         Self::render_header(reader.clone()),
@@ -428,13 +439,6 @@ impl ReaderSettings {
                         Self::render_background(reader.clone()),
                         Self::render_fit_screen(reader.clone()),
                     ])
-                    .child_signal(reader.use_modal.signal().map(|use_modal| if use_modal {
-                        Some(html!("div", {
-                            .class("bottombar-spacing")
-                        }))
-                    } else {
-                        None
-                    }))
                 })
             ])
         })
