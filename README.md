@@ -1,6 +1,6 @@
-| Build                                                                 | Stats                                                                          | Release                                                            | Docker                                                              | Discord                                                                                                                                   |
-| --------------------------------------------------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------ | ------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| ![Build](https://github.com/faldez/tanoshi/workflows/Build/badge.svg) | ![Release Stats](https://img.shields.io/github/downloads/faldez/tanoshi/total) | ![Release](https://img.shields.io/github/v/release/faldez/tanoshi) | ![Docker Pulls](https://img.shields.io/docker/pulls/faldez/tanoshi) | [![Discord](https://img.shields.io/discord/872093374281285682?color=7289DA&logo=discord&logoColor=FFFFFF)](https://discord.gg/wPSEftdDqB) |
+| Build                                                                 | Stats                                                                          | Release                                                                                                                 | Docker                                                                                                                         | Discord                                                                                                                                   |
+| --------------------------------------------------------------------- | ------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| ![Build](https://github.com/faldez/tanoshi/workflows/Build/badge.svg) | ![Release Stats](https://img.shields.io/github/downloads/faldez/tanoshi/total) | [![Release](https://img.shields.io/github/v/release/faldez/tanoshi)](https://github.com/faldez/tanoshi/releases/latest) | [![Docker Pulls](https://img.shields.io/docker/pulls/faldez/tanoshi)](https://hub.docker.com/repository/docker/faldez/tanoshi) | [![Discord](https://img.shields.io/discord/872093374281285682?color=7289DA&logo=discord&logoColor=FFFFFF)](https://discord.gg/wPSEftdDqB) |
 
 # ![icon](crates/tanoshi-web/static/icons/tanoshi.png) Tanoshi
 Selfhosted web manga reader with extensions.
@@ -28,9 +28,11 @@ Selfhosted web manga reader with extensions.
 
 ## Installation
 ### Prebuilt Binary
-Download and run binary from latest release, aside from plugins all dependencies are statically linked.
+Download and run binary from latest release, aside from plugins all dependencies are statically linked. Prebuilt binary available for `amd64` platform.
 
 ### Docker
+Docker image available for `amd64` and `arm64`. If you want to selfhost on a raspberry pi, you need 64 bit OS, such as ubuntu or Raspbian OS 64 bit. Tanoshi can't run on `arm` because [wasmer](https://github.com/wasmerio/wasmer) can't run on those platform yet, when `wasmer` could run on `arm` I will build image for `arm`.
+
 ```
 docker create \
     --name=tanoshi \
@@ -85,6 +87,8 @@ secret: secret
 plugin_path: /absolute/path/to/plugins
 # Absolute path to manga
 local_path: /absolute/path/to/manga
+# Periodic update interval, must be over 3600
+update_interval: 3600
 # Telegram token
 telegram:
   name: <your bot name>
@@ -129,19 +133,21 @@ Tanoshi backend use [rust-embed](https://github.com/pyros2097/rust-embed) to emb
    ```
 3. Change directory into `tanoshi-web`
     ```
-    cd tanoshi-web 
+    cd crates/tanoshi-web 
     ```
-3. Install all npm dependencies
+3. Build
     ```
     trunk build
     ```
 
 ### Backend
-1. Change directory into `tanoshi` or root repository
+1. Change directory into `crates/tanoshi` or root repository
 2. Install dependencies for https://github.com/faldez/libarchive-rs
 3. Build
     ```
     cargo build
+    # or from root repository
+    cargo build -p tanoshi
     ```
 
 PS. On linux you may need to install libssl-dev on ubuntu/debian or openssl-dev on fedora/centos
