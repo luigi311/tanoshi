@@ -62,6 +62,8 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: faldez/tanoshi:master
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
   test:
     runs-on: ${{ matrix.os }}
     strategy:

@@ -72,6 +72,8 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: faldez/tanoshi:latest,faldez/tanoshi:${{ env.RELEASE_VERSION }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
   build:
     runs-on: ${{ matrix.os }}
     needs:
