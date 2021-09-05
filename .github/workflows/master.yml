@@ -1,0 +1,58 @@
+name: release
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - crates/**
+      - "!**/*.md"
+      - "!.github/screenshots/**"
+
+jobs:
+  build-web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install trunk
+        run: |
+          wget -qO- https://github.com/thedodd/trunk/releases/download/v0.13.1/trunk-x86_64-unknown-linux-gnu.tar.gz | tar -xzf- -C $HOME/.cargo/bin
+          chmod +x $HOME/.cargo/bin/trunk
+      - name: Install wasm32-unknown-unknown
+        run: rustup target add wasm32-unknown-unknown
+      - name: Build tanoshi-web
+        run: cd crates/tanoshi-web && trunk build --release
+      - name: Upload dist
+        uses: actions/upload-artifact@v2
+        with:
+          name: dist
+          path: crates/tanoshi-web/dist
+  build-docker:
+    runs-on: ubuntu-latest
+    environment: default
+    needs:
+      - build-web
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Download dist
+        uses: actions/download-artifact@v2
+        with:
+          name: dist
+          path: crates/tanoshi-web/dist
+      - name: Login to DockerHub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v1
+      - name: Build and push
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: faldez/tanoshi:master
