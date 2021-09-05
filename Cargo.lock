@@ -1758,8 +1758,8 @@ checksum = "3576a87f2ba00f6f106fdfcd16db1d698d648a26ad8e0573cad8537c3c362d2a"
 
 [[package]]
 name = "libarchive-rs"
-version = "0.0.0"
-source = "git+https://github.com/faldez/libarchive-rs#3d7eb642c71992a5c996e60d1d1ce50629f4bfcd"
+version = "0.1.0"
+source = "git+https://github.com/faldez/libarchive-rs?rev=caa8a210b0c794348de80ba0c1f1ad3fe1fbcef4#caa8a210b0c794348de80ba0c1f1ad3fe1fbcef4"
 dependencies = [
  "libarchive-sys",
 ]
@@ -1767,7 +1767,7 @@ dependencies = [
 [[package]]
 name = "libarchive-sys"
 version = "0.1.0"
-source = "git+https://github.com/faldez/libarchive-rs#3d7eb642c71992a5c996e60d1d1ce50629f4bfcd"
+source = "git+https://github.com/faldez/libarchive-rs?rev=caa8a210b0c794348de80ba0c1f1ad3fe1fbcef4#caa8a210b0c794348de80ba0c1f1ad3fe1fbcef4"
 dependencies = [
  "bindgen",
  "cmake",
@@ -3368,7 +3368,6 @@ dependencies = [
  "teloxide",
  "tokio",
  "tokio-stream",
- "ureq",
  "warp",
 ]
 

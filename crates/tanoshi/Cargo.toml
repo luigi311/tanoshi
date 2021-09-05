@@ -39,12 +39,11 @@ sqlx = { version = "0.5.2", features = [
     "migrate",
 ] }
 reqwest = { version = "^0.11", features = ["json", "rustls"] }
-ureq = { version = "2", features = ["json"] }
 futures = "^0.3"
 rust-argon2 = "0.8"
 ron = "0.6.4"
 fancy-regex = "0.7"
-libarchive-rs = { git = "https://github.com/faldez/libarchive-rs", features = [
+libarchive-rs = { git = "https://github.com/faldez/libarchive-rs", rev = "caa8a210b0c794348de80ba0c1f1ad3fe1fbcef4", features = [
     "static",
 ] }
 teloxide = { version = "0.5.1", features = ["auto-send", "macros"] }
