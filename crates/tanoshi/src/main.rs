@@ -125,6 +125,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             },
         );
 
+    let health_check = warp::path!("health").and(warp::get()).map(|| warp::reply());
+
     let static_files = assets::filter::static_files();
     let image_proxy = proxy::proxy(config.secret.clone());
 
@@ -137,13 +139,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         });
         bind_routes!(
             config.port,
+            health_check,
             image_proxy,
             graphql_playground,
             static_files,
             graphql_post
         )
     } else {
-        bind_routes!(config.port, image_proxy, static_files, graphql_post)
+        bind_routes!(
+            config.port,
+            health_check,
+            image_proxy,
+            static_files,
+            graphql_post
+        )
     };
 
     tokio::select! {
