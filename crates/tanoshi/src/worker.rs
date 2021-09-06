@@ -145,6 +145,8 @@ impl Worker {
                     }
                 }
             }
+
+            tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
         }
 
         info!("users' new chapters: {:?}", new_users_chapters);
@@ -155,6 +157,7 @@ impl Worker {
                     if let Err(e) = bot.send_message(chat_id, chapter.to_string()).await {
                         error!("failed to send message, reason: {}", e);
                     }
+                    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
                 }
             }
         }
