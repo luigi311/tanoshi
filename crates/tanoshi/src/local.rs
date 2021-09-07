@@ -196,7 +196,7 @@ impl Extension for Local {
             url: format!("{}", self.path.display()),
             version: Version::default(),
             icon: "/icons/192.png".to_string(),
-            lib_version: Version::from_str(tanoshi_lib::TANOSHI_LIB_VERSION).unwrap_or_default(),
+            lib_version: tanoshi_lib::VERSION.to_owned(),
             need_login: false,
             languages: vec![],
         }
