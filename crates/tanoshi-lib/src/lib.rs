@@ -1,10 +1,18 @@
+use std::str::FromStr;
+
+use prelude::Version;
+
 pub mod data;
 pub mod error;
 pub mod extensions;
 pub mod prelude;
 
 /// This is used to ensure both application and extension use the same version
-pub static TANOSHI_LIB_VERSION: &str = env!("CARGO_PKG_VERSION");
+pub const VERSION_STR: &str = env!("CARGO_PKG_VERSION");
+
+lazy_static::lazy_static! {
+    pub static ref VERSION: Version = Version::from_str(VERSION_STR).unwrap_or_default();
+}
 
 #[macro_export]
 macro_rules! register_extension {

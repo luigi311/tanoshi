@@ -3394,6 +3394,7 @@ name = "tanoshi-lib"
 version = "0.25.1"
 dependencies = [
  "chrono",
+ "lazy_static",
  "ron",
  "serde",
  "tanoshi-util",
