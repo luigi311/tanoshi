@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.25.10]
+
+### Added
+- [tanoshi-web] appearance settings, manually change theme
+- [tanoshi-web] prefer color scheme event listener
+- [tanoshi] add health check endpoint
+
+### Changed
+- [tanoshi-web] checkbox color now more gray and have primary color when checked
+- [tanoshi-web] reader setting don't use separate struct
+- [tanoshi] periodic updates now have 100ms delay
+
 ## [0.25.9]
 
 ### Changed
