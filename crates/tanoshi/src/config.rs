@@ -7,11 +7,13 @@ use std::{iter, path::PathBuf};
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct TelegramConfig {
     pub name: String,
-    pub token:String,
+    pub token: String,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct Config {
+    #[serde(skip)]
+    path: PathBuf,
     #[serde(default = "default_port")]
     pub port: u16,
     #[serde(default = "default_database_path")]
@@ -26,12 +28,13 @@ pub struct Config {
     pub local_path: String,
     #[serde(default)]
     pub enable_playground: bool,
-    pub telegram: Option<TelegramConfig>
+    pub telegram: Option<TelegramConfig>,
 }
 
 impl Default for Config {
     fn default() -> Self {
         Self {
+            path: tanoshi_home().join("config.yml"),
             port: default_port(),
             database_path: default_database_path(),
             secret: default_secret(),
@@ -102,14 +105,23 @@ impl Config {
         match std::fs::File::open(config_path.clone()) {
             Ok(file) => {
                 info!("Open config from {:?}", config_path);
-                Ok(serde_yaml::from_reader(file)?)
+                let mut cfg: Self = serde_yaml::from_reader(file)?;
+                cfg.path = config_path;
+                Ok(cfg)
             }
             Err(_) => {
-                let config = Config::default();
-                std::fs::write(&config_path, serde_yaml::to_string(&config)?)?;
-                info!("Write default config at {:?}", config_path);
-                Ok(config)
+                let mut cfg = Config::default();
+                cfg.path = config_path;
+                cfg.save()?;
+                info!("Write default config at {:?}", cfg.path);
+                Ok(cfg)
             }
         }
+    }
+
+    pub fn save(&self) -> Result<(), Box<dyn std::error::Error>> {
+        std::fs::write(&self.path, serde_yaml::to_string(&self)?)?;
+
+        Ok(())
     }
 }
