@@ -1,11 +1,13 @@
 use std::str::FromStr;
 
-use prelude::Version;
+use data::Version;
 
 pub mod data;
 pub mod error;
 pub mod extensions;
 pub mod prelude;
+
+pub use tanoshi_util;
 
 /// This is used to ensure both application and extension use the same version
 pub const VERSION_STR: &str = env!("CARGO_PKG_VERSION");
