@@ -130,7 +130,7 @@ jobs:
         with:
           path: "C:/vcpkg/installed"
           key: vcpkg-${{ matrix.os }}-
-          restore-key: |
+          restore-keys: |
             vcpkg-${{ matrix.os }}-
       - name: Install deps
         if: ${{ matrix.os == 'windows-latest' }}
