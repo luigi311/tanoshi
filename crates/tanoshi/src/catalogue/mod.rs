@@ -113,6 +113,7 @@ impl CatalogueRoot {
                     .await?
                     .into()
             };
+            m.id = manga.id;
 
             db.insert_manga(&mut m).await?;
 

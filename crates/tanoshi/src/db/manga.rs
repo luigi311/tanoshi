@@ -638,7 +638,9 @@ impl Db {
         .await?
         .last_insert_rowid();
 
-        manga.id = row_id;
+        if manga.id == 0 {
+            manga.id = row_id;
+        }
         Ok(())
     }
 
