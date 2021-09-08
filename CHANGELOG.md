@@ -7,8 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- [tanoshi-web] go to manga detail from history and update page
+- [tanoshi-vm] log extension load time
+- [tanoshi-vm] show which command has receiver dropped error
+
 ### Changed
 - [tanoshi] `sourceId` in manga is replaced with `source`
+- [tanoshi-vm] source detail cache in memory, no need to call webassemby function for detail
+
+### Fixed
+- [tanoshi-web] text input have full border radius
+- [tanoshi] extension file removed after uninstall
+- [tanoshi] refresh manga from browsing catalogue results in wrong chapters for manga
 
 ## [0.25.10]
 
