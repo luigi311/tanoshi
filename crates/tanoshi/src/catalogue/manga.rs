@@ -1,4 +1,4 @@
-use super::Chapter;
+use super::{Chapter, Source};
 use crate::{context::GlobalContext, user, utils};
 use async_graphql::{Context, Object, Result};
 
@@ -97,10 +97,6 @@ impl Manga {
         self.id
     }
 
-    async fn source_id(&self) -> i64 {
-        self.source_id
-    }
-
     async fn title(&self) -> String {
         self.title.clone()
     }
@@ -165,6 +161,12 @@ impl Manga {
 
     async fn date_added(&self) -> chrono::NaiveDateTime {
         self.date_added
+    }
+
+    async fn source(&self, ctx: &Context<'_>) -> Result<Source> {
+        let ctx = ctx.data::<GlobalContext>()?;
+        let source = ctx.extensions.detail(self.source_id).await?;
+        Ok(source.into())
     }
 
     async fn chapters(
