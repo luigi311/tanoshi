@@ -1,5 +1,10 @@
 use serde::{de::DeserializeOwned, Serialize};
-use std::{collections::HashMap, fmt::Debug, path::Path, sync::Arc};
+use std::{
+    collections::{BTreeMap, HashMap},
+    fmt::Debug,
+    path::Path,
+    sync::Arc,
+};
 use tanoshi_lib::prelude::{Chapter, Extension, ExtensionResult, Filters, Manga, Param, Source};
 use tanoshi_util::http::Request;
 use tokio::{
@@ -245,6 +250,7 @@ pub async fn compile<P: AsRef<Path>>(path: P) -> Result<(), Box<dyn std::error::
 async fn thread(extension_receiver: UnboundedReceiver<Command>) {
     let mut recv = extension_receiver;
     let mut extension_map: HashMap<i64, Arc<dyn Extension>> = HashMap::new();
+    let mut extension_detail_map: BTreeMap<i64, Source> = BTreeMap::new();
 
     let store = ExtensionProxy::init_store_headless();
 
@@ -262,6 +268,7 @@ async fn thread(extension_receiver: UnboundedReceiver<Command>) {
                             let source = proxy.detail();
                             info!("loaded: {:?}", source);
                             extension_map.insert(source.id, proxy);
+                            extension_detail_map.insert(source.id, source);
                         }
                         Err(e) => {
                             error!("error load extension: {}", e);
@@ -278,19 +285,18 @@ async fn thread(extension_receiver: UnboundedReceiver<Command>) {
                     }
                 }
                 Command::List(tx) => {
-                    let sources = extension_map
-                        .iter()
-                        .map(|(_, ext)| ext.detail())
+                    let sources = extension_detail_map
+                        .values()
+                        .cloned()
                         .collect::<Vec<Source>>();
 
                     if tx.send(sources).is_err() {
                         error!("receiver dropped");
                     }
                 }
-                Command::Detail(source_id, tx) => match extension_map.get(&source_id) {
-                    Some(proxy) => {
-                        let res = proxy.detail();
-                        if tx.send(res).is_err() {
+                Command::Detail(source_id, tx) => match extension_detail_map.get(&source_id) {
+                    Some(detail) => {
+                        if tx.send(detail.clone()).is_err() {
                             error!("receiver dropped");
                         }
                     }
