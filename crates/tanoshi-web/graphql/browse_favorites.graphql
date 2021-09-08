@@ -2,8 +2,10 @@ query BrowseFavorites($refresh: Boolean) {
   library(refresh: $refresh) {
     id
     title
-    sourceId
     path
     coverUrl
+    source {
+      id
+    }
   }
 }
