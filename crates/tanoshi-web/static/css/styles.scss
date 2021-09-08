@@ -119,9 +119,13 @@ input {
     padding: 0.5rem;
     margin: 0.5rem;
     background-color: var(--background-color-200);
-    border-radius: 100%;
     font-size: medium;
     -webkit-appearance: none;
+    border-radius: 0.25rem;
+
+    &[type="checkbox"] {
+        border-radius: 100% !important;
+    }
 
     &[type="checkbox"]:checked {
         background-color: #{$primary-color};
