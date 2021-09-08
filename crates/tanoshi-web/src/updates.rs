@@ -1,13 +1,13 @@
 use std::rc::Rc;
 
-use crate::common::{snackbar};
+use crate::common::snackbar;
 use crate::query;
 use crate::utils::{proxied_image_url, AsyncLoader};
 use crate::{
     app::App,
     common::{Route, Spinner},
 };
-use dominator::{clone, events, html, link, Dom};
+use dominator::{clone, events, html, link, routing, svg, Dom};
 use futures_signals::signal::{Mutable, SignalExt};
 use futures_signals::signal_vec::{MutableVec, SignalVecExt};
 use wasm_bindgen::UnwrapThrowExt;
@@ -116,6 +116,30 @@ impl Updates {
                                     })
                                 ])
                             })
+                        ])
+                    }),
+                    html!("button", {
+                        .style("margin-left", "0.5rem")
+                        .style("margin-right", "0.5rem")
+                        .event(clone!(entry => move |_:events::Click| {
+                            routing::go_to_url(Route::Manga(entry.manga_id).url().as_str());
+                        }))
+                        .children(&mut [
+                            svg!("svg", {
+                                .attribute("xmlns", "http://www.w3.org/2000/svg")
+                                .attribute("fill", "none")
+                                .attribute("viewBox", "0 0 24 24")
+                                .attribute("stroke", "currentColor")
+                                .class("icon")
+                                .children(&mut [
+                                    svg!("path", {
+                                        .attribute("stroke-linecap", "round")
+                                        .attribute("stroke-linejoin", "round")
+                                        .attribute("stroke-width", "2")
+                                        .attribute("d", "M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253")
+                                    })
+                                ])
+                            }),
                         ])
                     })
                 ])
