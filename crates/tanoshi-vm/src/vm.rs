@@ -1,10 +1,5 @@
 use serde::{de::DeserializeOwned, Serialize};
-use std::{
-    collections::{BTreeMap, HashMap},
-    fmt::Debug,
-    path::Path,
-    sync::Arc,
-};
+use std::{collections::BTreeMap, fmt::Debug, path::Path, sync::Arc};
 use tanoshi_lib::prelude::{Chapter, Extension, ExtensionResult, Filters, Manga, Param, Source};
 use tanoshi_util::http::Request;
 use tokio::{
@@ -250,8 +245,7 @@ pub async fn compile<P: AsRef<Path>>(path: P) -> Result<(), Box<dyn std::error::
 
 async fn thread(extension_receiver: UnboundedReceiver<Command>) {
     let mut recv = extension_receiver;
-    let mut extension_map: HashMap<i64, Arc<dyn Extension>> = HashMap::new();
-    let mut extension_detail_map: BTreeMap<i64, Source> = BTreeMap::new();
+    let mut extension_map: BTreeMap<i64, (Source, Arc<dyn Extension>)> = BTreeMap::new();
 
     let store = ExtensionProxy::init_store_headless();
 
@@ -260,7 +254,8 @@ async fn thread(extension_receiver: UnboundedReceiver<Command>) {
         if let Some(cmd) = cmd {
             match cmd {
                 Command::Insert(source_id, proxy) => {
-                    extension_map.insert(source_id, proxy);
+                    let source = proxy.detail();
+                    extension_map.insert(source_id, (source, proxy));
                 }
                 Command::Load(path) => {
                     info!("load plugin from {:?}", path.clone());
@@ -268,9 +263,8 @@ async fn thread(extension_receiver: UnboundedReceiver<Command>) {
                     match ExtensionProxy::load(&store, path) {
                         Ok(proxy) => {
                             let source = proxy.detail();
-                            info!("loaded in {}: {:?}", now.elapsed().as_millis(), source);
-                            extension_map.insert(source.id, proxy);
-                            extension_detail_map.insert(source.id, source);
+                            info!("loaded in {} ms: {:?}", now.elapsed().as_millis(), source);
+                            extension_map.insert(source.id, (source, proxy));
                         }
                         Err(e) => {
                             error!("error load extension: {}", e);
@@ -287,17 +281,18 @@ async fn thread(extension_receiver: UnboundedReceiver<Command>) {
                     }
                 }
                 Command::List(tx) => {
-                    let sources = extension_detail_map
+                    let sources = extension_map
                         .values()
                         .cloned()
+                        .map(|(source, _)| source)
                         .collect::<Vec<Source>>();
 
                     if tx.send(sources).is_err() {
                         error!("[Command::List] receiver dropped");
                     }
                 }
-                Command::Detail(source_id, tx) => match extension_detail_map.get(&source_id) {
-                    Some(detail) => {
+                Command::Detail(source_id, tx) => match extension_map.get(&source_id) {
+                    Some((detail, _)) => {
                         if tx.send(detail.clone()).is_err() {
                             error!("[Command::Detail] receiver dropped");
                         }
@@ -333,7 +328,7 @@ async fn thread(extension_receiver: UnboundedReceiver<Command>) {
 }
 
 fn process<F, T>(
-    extension_map: &HashMap<i64, Arc<dyn Extension>>,
+    extension_map: &BTreeMap<i64, (Source, Arc<dyn Extension>)>,
     source_id: i64,
     tx: ExtensionResultSender<T>,
     f: F,
@@ -343,7 +338,7 @@ fn process<F, T>(
 {
     match extension_map.get(&source_id) {
         Some(proxy) => {
-            let proxy = proxy.clone();
+            let (_, proxy) = proxy.clone();
             tokio::spawn(async move {
                 let res = f(proxy);
                 if tx.send(res).is_err() {
