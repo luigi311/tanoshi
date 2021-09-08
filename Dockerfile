@@ -1,12 +1,17 @@
 FROM faldez/tanoshi-builder:latest AS planner
-COPY . .
+COPY crates/ /app/crates/
+COPY Cargo.lock /app/Cargo.lock
+COPY Cargo.toml /app/Cargo.toml
 RUN cargo chef prepare  --recipe-path recipe.json
 
 FROM faldez/tanoshi-builder:latest AS builder
 
 COPY --from=planner /app/recipe.json recipe.json
 RUN cargo chef cook --release --recipe-path recipe.json
-COPY . .
+
+COPY crates/ /app/crates/
+COPY Cargo.lock /app/Cargo.lock
+COPY Cargo.toml /app/Cargo.toml
 
 RUN cargo build -p tanoshi --release
 

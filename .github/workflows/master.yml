@@ -9,6 +9,7 @@ on:
   push:
     branches: [master]
     paths:
+      - Dockerfile
       - crates/**
       - "!**/*.md"
       - "!.github/screenshots/**"
