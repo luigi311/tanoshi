@@ -10,6 +10,7 @@ use tanoshi_util::http::Request;
 use tokio::{
     sync::mpsc::{UnboundedReceiver, UnboundedSender},
     task::JoinHandle,
+    time::Instant,
 };
 use wasmer::{imports, ChainableNamedResolver, Function, Instance, Module, Store, WasmerEnv};
 
@@ -263,10 +264,11 @@ async fn thread(extension_receiver: UnboundedReceiver<Command>) {
                 }
                 Command::Load(path) => {
                     info!("load plugin from {:?}", path.clone());
+                    let now = Instant::now();
                     match ExtensionProxy::load(&store, path) {
                         Ok(proxy) => {
                             let source = proxy.detail();
-                            info!("loaded: {:?}", source);
+                            info!("loaded in {}: {:?}", now.elapsed().as_millis(), source);
                             extension_map.insert(source.id, proxy);
                             extension_detail_map.insert(source.id, source);
                         }
@@ -281,7 +283,7 @@ async fn thread(extension_receiver: UnboundedReceiver<Command>) {
                 Command::Exist(source_id, tx) => {
                     let exist = extension_map.get(&source_id).is_some();
                     if tx.send(exist).is_err() {
-                        error!("receiver dropped");
+                        error!("[Command::Exist] receiver dropped");
                     }
                 }
                 Command::List(tx) => {
@@ -291,13 +293,13 @@ async fn thread(extension_receiver: UnboundedReceiver<Command>) {
                         .collect::<Vec<Source>>();
 
                     if tx.send(sources).is_err() {
-                        error!("receiver dropped");
+                        error!("[Command::List] receiver dropped");
                     }
                 }
                 Command::Detail(source_id, tx) => match extension_detail_map.get(&source_id) {
                     Some(detail) => {
                         if tx.send(detail.clone()).is_err() {
-                            error!("receiver dropped");
+                            error!("[Command::Detail] receiver dropped");
                         }
                     }
                     None => {
@@ -345,7 +347,7 @@ fn process<F, T>(
             tokio::spawn(async move {
                 let res = f(proxy);
                 if tx.send(res).is_err() {
-                    error!("receiver dropped");
+                    error!("[process] receiver dropped");
                 }
             });
         }
