@@ -30,6 +30,7 @@ struct Chapter {
 pub struct Manga {
     pub id: Mutable<i64>,
     pub source_id: Mutable<i64>,
+    pub source_name: Mutable<String>,
     pub path: Mutable<String>,
     title: Mutable<Option<String>>,
     author: MutableVec<String>,
@@ -48,6 +49,7 @@ impl Manga {
         Rc::new(Self {
             id: Mutable::new(id),
             source_id: Mutable::new(source_id),
+            source_name: Mutable::new("".to_string()),
             path: Mutable::new(path),
             title: Mutable::new(None),
             author: MutableVec::new(),
@@ -66,6 +68,7 @@ impl Manga {
         manga.loader.load(clone!(manga => async move {
             match query::fetch_manga_detail(manga.id.get(), refresh).await {
                 Ok(result) => {
+                    manga.source_name.set(result.source.name);
                     manga.title.set_neq(Some(result.title));
                     manga.author.lock_mut().replace_cloned(result.author);
                     manga.genre.lock_mut().replace_cloned(result.genre);
@@ -95,6 +98,7 @@ impl Manga {
             match query::fetch_manga_by_source_path(manga.source_id.get(), manga.path.get_cloned()).await {
                 Ok(result) => {
                     manga.id.set_neq(result.id);
+                    manga.source_name.set(result.source.name);
                     manga.title.set_neq(Some(result.title));
                     manga.author.lock_mut().replace_cloned(result.author);
                     manga.genre.lock_mut().replace_cloned(result.genre);
@@ -334,6 +338,7 @@ impl Manga {
                                     .children_signal_vec(manga.author.signal_vec_cloned().map(|x| {
                                         html!("span", {
                                             // .class(["md:text-lg", "sm:text-sm", "text-gray-900", "dark:text-gray-300", "mr-2"])
+                                            .style("margin-right", "0.5rem")
                                             .text(&x)
                                         })
                                     }))
@@ -359,7 +364,26 @@ impl Manga {
                                     //         }))
                                     //     }
                                     // ))
-                                })
+                                }),
+
+                                html!("div", {
+                                    .style("margin-left", "0.5rem")
+                                    .style("margin-top", "0.5rem")
+                                    .text_signal(manga.source_name.signal_cloned())
+                                    .class_signal("skeleton", manga.source_name.signal_cloned().map(|x| x.is_empty()))
+                                    // .child_signal(manga.status.signal_cloned().map(|x|
+                                    //     if let Some(status) = x {
+                                    //         Some(html!("span", {
+                                    //             .class(["md:text-lg", "sm:text-sm", "text-gray-900", "dark:text-gray-300", "mr-2"])
+                                    //             .text(&status)
+                                    //         }))
+                                    //     } else {
+                                    //         Some(html!("div", {
+                                    //             .class(["w-32", "md:w-48", "lg:w-64", "xl:w-72", "h-6", "mb-2", "rounded", "bg-gray-200", "dark:bg-gray-800"])
+                                    //         }))
+                                    //     }
+                                    // ))
+                                }),
                             ])
                         })
                     ])

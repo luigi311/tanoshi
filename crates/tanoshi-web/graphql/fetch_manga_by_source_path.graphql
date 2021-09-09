@@ -8,6 +8,9 @@ query FetchMangaBySourcePath($sourceId: Int, $path: String) {
     description
     status
     isFavorite
+    source {
+      name
+    }
     chapters {
       id
       title

@@ -8,6 +8,9 @@ query FetchMangaDetail($id: Int, $refresh: Boolean) {
     description
     status
     isFavorite
+    source {
+      name
+    }
     chapters(refresh: $refresh) {
       id
       title
