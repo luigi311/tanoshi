@@ -19,7 +19,7 @@ use utils::{local_storage, window};
 use wasm_bindgen::{prelude::*, JsCast};
 
 use app::App;
-use web_sys::{Event, MediaQueryList, MediaQueryListEvent};
+use web_sys::MediaQueryListEvent;
 
 #[wasm_bindgen(start)]
 pub async fn main_js() -> Result<(), JsValue> {

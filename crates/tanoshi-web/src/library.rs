@@ -1,11 +1,21 @@
 use std::rc::Rc;
 
-use dominator::{Dom, clone, html};
-use futures_signals::signal_vec::{MutableVec, SignalVecExt};
+use dominator::{clone, html, with_node, Dom};
+use futures_signals::{
+    signal::{Mutable, SignalExt},
+    signal_vec::{MutableVec, SignalVecExt},
+};
+use web_sys::HtmlInputElement;
 
-use crate::{common::{Cover, Spinner, events, snackbar}, query, utils::AsyncLoader};
+use crate::{
+    common::{events, snackbar, Cover, Spinner},
+    query,
+    utils::AsyncLoader,
+};
 
 pub struct Library {
+    keyword: Mutable<String>,
+    is_search: Mutable<bool>,
     loader: AsyncLoader,
     spinner: Rc<Spinner>,
     cover_list: MutableVec<Cover>,
@@ -14,6 +24,8 @@ pub struct Library {
 impl Library {
     pub fn new() -> Rc<Self> {
         Rc::new(Library {
+            keyword: Mutable::new("".to_string()),
+            is_search: Mutable::new(false),
             loader: AsyncLoader::new(),
             spinner: Spinner::new_with_fullscreen(true),
             cover_list: MutableVec::new(),
@@ -36,30 +48,95 @@ impl Library {
         }));
     }
 
+    // pub fn render_topbar(library: Rc<Self>) -> Dom {
+    //     html!("div", {
+    //         .class("topbar")
+    //         .children(&mut [
+    //             html!("button", {
+    //                 .text("Filter")
+    //             }),
+    //             html!("span", {
+    //                 .text("Library")
+    //             }),
+    //             html!("button", {
+    //                 .text("Refresh")
+    //                 .event(clone!(library => move |_: events::Click| {
+    //                     Self::fetch_libraries(library.clone(), true);
+    //                 }))
+    //             })
+    //         ])
+    //     })
+    // }
+
     pub fn render_topbar(library: Rc<Self>) -> Dom {
         html!("div", {
             .class("topbar")
-            .children(&mut [
-                html!("button", {
-                    .text("Filter")
-                }),
-                html!("span", {
-                    .text("Library")
-                }),
-                html!("button", {
-                    .text("Refresh")
-                    .event(clone!(library => move |_: events::Click| {
-                        Self::fetch_libraries(library.clone(), true);
+            .child_signal(library.is_search.signal().map(|is_search| {
+                if is_search {
+                    None
+                } else {
+                    Some(html!("button", {
+                        .text("Refresh")
                     }))
-                })
-            ])
+                }
+            }))
+            .child_signal(library.is_search.signal().map(clone!(library => move |is_search| {
+                if is_search {
+                    Some(html!("input" => HtmlInputElement, {
+                        .style("width", "100%")
+                        .attribute("placeholder", "Search")
+                        .attribute("type", "text")
+                        .property_signal("value", library.keyword.signal_cloned())
+                        .with_node!(input => {
+                            .event(clone!(library => move |_: events::Input| {
+                                library.keyword.set_neq(input.value());
+                            }))
+                            .event_preventable(|event: events::KeyDown| {
+                                if event.key() == "Enter" {
+                                    event.prevent_default();
+                                }
+                            })
+                        })
+                    }))
+                } else {
+                    Some(html!("span", {
+                        .text("Library")
+                    }))
+                }
+            })))
+            .child_signal(library.is_search.signal().map(clone!(library => move |is_search| {
+                if is_search {
+                    Some(html!("button", {
+                        .text("Cancel")
+                        .event(clone!(library => move |_: events::Click| {
+                            library.is_search.set_neq(false);
+                            if library.keyword.get_cloned() != "" {
+                                library.keyword.set_neq("".to_string());
+                            }
+                        }))
+                    }))
+                } else {
+                    Some(html!("button", {
+                        .text("Search")
+                        .event(clone!(library => move |_: events::Click| {
+                            library.is_search.set_neq(true);
+                        }))
+                    }))
+                }
+            })))
         })
     }
 
-    pub fn render_main(library: &Self) -> Dom {
+    pub fn render_main(library: Rc<Self>, keyword: String) -> Dom {
         html!("div", {
             .class("manga-grid")
-            .children_signal_vec(library.cover_list.signal_vec_cloned().map(move |cover| cover.render()))
+            .children_signal_vec(library.cover_list.signal_vec_cloned().filter_map(clone!(keyword => move |cover| {
+                if keyword.is_empty() || cover.title.to_ascii_lowercase().contains(&keyword.to_ascii_lowercase()) {
+                    Some(cover.render())
+                } else {
+                    None
+                }
+            })))
         })
     }
 
@@ -73,9 +150,13 @@ impl Library {
                 html!("div", {
                     .class("topbar-spacing")
                 }),
-                Self::render_main(&library),
                 Spinner::render(&library.spinner)
             ])
+            .child_signal(
+                library.keyword.signal_cloned().map(
+                    clone!(library => move |keyword| Some(Self::render_main(library.clone(), keyword)))
+                )
+            )
         })
     }
 }
