@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - [tanoshi-web] go to manga detail from history and update page
+- [tanoshi-web] search in library
 - [tanoshi-vm] log extension load time
 - [tanoshi-vm] show which command has receiver dropped error
 
@@ -18,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - [tanoshi-web] text input have full border radius
+- [tanoshi-web] theme not changing when prefres-color-scheme change
 - [tanoshi] extension file removed after uninstall
 - [tanoshi] refresh manga from browsing catalogue results in wrong chapters for manga
 
