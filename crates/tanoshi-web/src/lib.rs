@@ -37,9 +37,11 @@ pub async fn main_js() -> Result<(), JsValue> {
         }
     }) as Box<dyn FnMut(_)>);
 
-    if let Ok(Some(media_query_list)) = window().match_media("prefers-color-scheme: dark)") {
+    if let Ok(Some(media_query_list)) = window().match_media("(prefers-color-scheme: dark)") {
         media_query_list.set_onchange(Some(closure.as_ref().unchecked_ref()))
     }
+
+    closure.forget();
 
     dominator::append_dom(&dominator::body(), App::render(App::new()));
 
