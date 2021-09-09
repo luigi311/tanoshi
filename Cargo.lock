@@ -3332,7 +3332,7 @@ dependencies = [
 
 [[package]]
 name = "tanoshi"
-version = "0.25.10"
+version = "0.25.11"
 dependencies = [
  "aes",
  "anyhow",
