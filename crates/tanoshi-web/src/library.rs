@@ -48,38 +48,17 @@ impl Library {
         }));
     }
 
-    // pub fn render_topbar(library: Rc<Self>) -> Dom {
-    //     html!("div", {
-    //         .class("topbar")
-    //         .children(&mut [
-    //             html!("button", {
-    //                 .text("Filter")
-    //             }),
-    //             html!("span", {
-    //                 .text("Library")
-    //             }),
-    //             html!("button", {
-    //                 .text("Refresh")
-    //                 .event(clone!(library => move |_: events::Click| {
-    //                     Self::fetch_libraries(library.clone(), true);
-    //                 }))
-    //             })
-    //         ])
-    //     })
-    // }
-
     pub fn render_topbar(library: Rc<Self>) -> Dom {
         html!("div", {
             .class("topbar")
-            .child_signal(library.is_search.signal().map(|is_search| {
-                if is_search {
-                    None
-                } else {
-                    Some(html!("button", {
-                        .text("Refresh")
+            .child_signal(library.is_search.signal().map(clone!(library => move |is_search|
+                (!is_search).then(|| html!("button", {
+                    .text("Refresh")
+                    .event(clone!(library => move |_: events::Click| {
+                        Self::fetch_libraries(library.clone(), true);
                     }))
-                }
-            }))
+                }))
+            )))
             .child_signal(library.is_search.signal().map(clone!(library => move |is_search| {
                 if is_search {
                     Some(html!("input" => HtmlInputElement, {
