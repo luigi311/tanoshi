@@ -13,7 +13,7 @@ Selfhosted web manga reader with extensions.
 ## Features
 ### Currently working
 - Browse, search, and read manga from local
-- Source are [extensible](https://github.com/fadhlika/tanoshi-extensions), if you want a source that directly fetch from google drive for example, you can build them.
+- Source are [extensible](https://github.com/fadhlika/tanoshi-extensions)
 - Favorite mangas
 - Reading history across devices
 - See chapter updates
