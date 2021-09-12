@@ -631,9 +631,8 @@ impl Reader {
             .children_signal_vec(reader.pages_signal().map(clone!(reader => move |(index, (page, error))|
                 if !error {
                     html!("img" => HtmlImageElement, {
-                        .class([
-                            "mx-auto"
-                        ])
+                        .style("margin-left", "auto")
+                        .style("margin-right", "auto")
                         .attribute("id", format!("page-{}", index).as_str())
                         .style_signal("max-width", reader.reader_settings.fit.signal().map(|x| match x {
                             crate::common::Fit::Height => "none",
