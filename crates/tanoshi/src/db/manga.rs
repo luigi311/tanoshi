@@ -1013,7 +1013,7 @@ impl Db {
             ON CONFLICT(user_id, chapter_id)
             DO UPDATE SET
             last_page = excluded.last_page,
-            read_at = excluded.read_at
+            read_at = excluded.read_at,
             is_complete = excluded.is_complete
             WHERE user_history.last_page != excluded.last_page
             "#,
