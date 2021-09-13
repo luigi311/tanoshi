@@ -151,7 +151,7 @@ impl Worker {
                 }
             }
 
-            tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+            tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
         }
 
         info!("users' new chapters: {:?}", new_users_chapters);
@@ -210,6 +210,10 @@ impl Worker {
             updates
         };
 
+        if updates.is_empty() {
+            info!("no extension updates found");
+        }
+
         for update in updates {
             info!("new extension update found!");
             if let Some(bot) = self.telegram_bot.as_ref() {
@@ -264,7 +268,7 @@ impl Worker {
                 }
             }
         } else {
-            info!("no update found");
+            info!("no tanoshi update found");
         }
 
         Ok(())
