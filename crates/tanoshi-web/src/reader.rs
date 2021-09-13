@@ -19,6 +19,13 @@ enum Nav {
     Next,
 }
 
+#[derive(Debug, Clone)]
+enum PageStatus {
+    Initial,
+    Loaded,
+    Error,
+}
+
 pub struct Reader {
     chapter_id: Mutable<i64>,
     manga_id: Mutable<i64>,
@@ -29,7 +36,7 @@ pub struct Reader {
     prev_page: Mutable<Option<usize>>,
     current_page: Mutable<usize>,
     next_page: Mutable<Option<usize>>,
-    pages: MutableVec<(String, bool)>,
+    pages: MutableVec<(String, PageStatus)>,
     pages_len: Mutable<usize>,
     reader_settings: Rc<ReaderSettings>,
     is_bar_visible: Mutable<bool>,
@@ -72,7 +79,7 @@ impl Reader {
                     let len = result.pages.len();
                     reader.pages_len.set_neq(len);
 
-                    reader.pages.lock_mut().replace_cloned(result.pages.iter().map(|page| (page.clone(), false)).collect());
+                    reader.pages.lock_mut().replace_cloned(result.pages.iter().map(|page| (page.clone(), PageStatus::Initial)).collect());
 
                     reader.reader_settings.load_by_manga_id(result.manga.id);
 
@@ -152,6 +159,14 @@ impl Reader {
 
     fn update_page_read(reader: Rc<Self>, page: usize) {
         let chapter_id = reader.chapter_id.get();
+
+        Self::replace_state_with_url(chapter_id, page + 1);
+
+        // just opening a chapter shouldn't be considered as reading
+        if page == 0 {
+            return;
+        }
+
         AsyncLoader::new().load(async move {
             match query::update_page_read_at(chapter_id, page as i64).await {
                 Ok(_) => {}
@@ -159,7 +174,6 @@ impl Reader {
                     snackbar::show(format!("{}", err));
                 }
             }
-            Self::replace_state_with_url(chapter_id, page + 1);
         });
     }
 
@@ -416,16 +430,16 @@ impl Reader {
         })
     }
 
-    pub fn pages_signal(&self) -> impl SignalVec<Item = (usize, (String, bool))> {
+    fn pages_signal(&self) -> impl SignalVec<Item = (usize, String, PageStatus)> {
         self.pages
             .signal_vec_cloned()
             .enumerate()
-            .filter_map(|(index, page)| index.get().map(|index| (index, page)))
+            .filter_map(|(index, (page, status))| index.get().map(|index| (index, page, status)))
             .to_signal_cloned()
             .to_signal_vec()
     }
 
-    pub fn render_vertical(reader: Rc<Self>) -> Dom {
+    fn render_vertical(reader: Rc<Self>) -> Dom {
         html!("div", {
             .style("display", "flex")
             .style("flex-direction", "column")
@@ -447,8 +461,8 @@ impl Reader {
                     }))
                 })
             ])
-            .children_signal_vec(reader.pages_signal().map(clone!(reader => move |(index, (page, error))|
-                if !error {
+            .children_signal_vec(reader.pages_signal().map(clone!(reader => move |(index, page, status)|
+                if !matches!(status, PageStatus::Error) {
                     html!("img" => HtmlImageElement, {
                         .style("margin-left", "auto")
                         .style("margin-right", "auto")
@@ -473,7 +487,14 @@ impl Reader {
                         .event(clone!(reader, page => move |_: events::Error| {
                             log::error!("error loading image");
                             let mut lock = reader.pages.lock_mut();
-                            lock.set_cloned(index, (page.clone(), true));
+                            lock.set_cloned(index, (page.clone(), PageStatus::Error));
+                        }))
+                        .event(clone!(reader, page => move |_: events::Load| {
+                            if !matches!(status, PageStatus::Loaded) {
+                                log::info!("image loaded");
+                                let mut lock = reader.pages.lock_mut();
+                                lock.set_cloned(index, (page.clone(), PageStatus::Loaded));
+                            }
                         }))
                         .event(clone!(reader => move |_: events::Click| {
                             reader.is_bar_visible.set_neq(!reader.is_bar_visible.get());
@@ -491,7 +512,7 @@ impl Reader {
                                 .event(clone!(reader, page => move |_: events::Click| {
                                     log::info!("retry loading image");
                                     let mut lock = reader.pages.lock_mut();
-                                    lock.set_cloned(index, (page.clone(), false));
+                                    lock.set_cloned(index, (page.clone(), PageStatus::Initial));
                                 }))
                             })
                         ])
@@ -539,12 +560,12 @@ impl Reader {
         })
     }
 
-    pub fn render_single(reader: Rc<Self>) -> Dom {
+    fn render_single(reader: Rc<Self>) -> Dom {
         html!("div", {
             .style("display", "flex")
             .style("align-items", "center")
-            .children_signal_vec(reader.pages_signal().map(clone!(reader => move |(index, (page, error))|
-                if !error {
+            .children_signal_vec(reader.pages_signal().map(clone!(reader => move |(index, page, status)|
+                if !matches!(status, PageStatus::Error) {
                     html!("img", {
                         .style("margin-left", "auto")
                         .style("margin-right", "auto")
@@ -576,7 +597,14 @@ impl Reader {
                         .event(clone!(reader, page => move |_: events::Error| {
                             log::error!("error loading image");
                             let mut lock = reader.pages.lock_mut();
-                            lock.set_cloned(index, (page.clone(), true));
+                            lock.set_cloned(index, (page.clone(), PageStatus::Error));
+                        }))
+                        .event(clone!(reader, page => move |_: events::Load| {
+                            if !matches!(status, PageStatus::Loaded) {
+                                log::info!("image loaded");
+                                let mut lock = reader.pages.lock_mut();
+                                lock.set_cloned(index, (page.clone(), PageStatus::Loaded));
+                            }
                         }))
                     })
                 } else {
@@ -601,7 +629,7 @@ impl Reader {
                                 .event(clone!(reader, page => move |_: events::Click| {
                                     log::info!("retry loading image");
                                     let mut lock = reader.pages.lock_mut();
-                                    lock.set_cloned(index, (page.clone(), false));
+                                    lock.set_cloned(index, (page.clone(), PageStatus::Initial));
                                 }))
                             })
                         ])
@@ -611,7 +639,7 @@ impl Reader {
         })
     }
 
-    pub fn render_double(reader: Rc<Self>) -> Dom {
+    fn render_double(reader: Rc<Self>) -> Dom {
         html!("div", {
             .attribute("id", "page-list")
             .style("display", "flex")
@@ -622,8 +650,8 @@ impl Reader {
                 Direction::LeftToRight => "row",
                 Direction::RightToLeft => "row-reverse",
             }))
-            .children_signal_vec(reader.pages_signal().map(clone!(reader => move |(index, (page, error))|
-                if !error {
+            .children_signal_vec(reader.pages_signal().map(clone!(reader => move |(index, page, status)|
+                if !matches!(status, PageStatus::Error) {
                     html!("img" => HtmlImageElement, {
                         .style("margin-left", "auto")
                         .style("margin-right", "auto")
@@ -644,7 +672,14 @@ impl Reader {
                         .event(clone!(reader, page => move |_: events::Error| {
                             log::error!("error loading image");
                             let mut lock = reader.pages.lock_mut();
-                            lock.set_cloned(index, (page.clone(), true));
+                            lock.set_cloned(index, (page.clone(), PageStatus::Error));
+                        }))
+                        .event(clone!(reader, page => move |_: events::Load| {
+                            if !matches!(status, PageStatus::Loaded) {
+                                log::info!("image loaded");
+                                let mut lock = reader.pages.lock_mut();
+                                lock.set_cloned(index, (page.clone(), PageStatus::Loaded));
+                            }
                         }))
                         .with_node!(img => {
                             .style_signal("width", reader.current_page.signal_cloned().map(clone!(reader, index, img => move |current_page|
@@ -746,7 +781,7 @@ impl Reader {
                                 .event(clone!(reader, page => move |_: events::Click| {
                                     log::info!("retry loading image");
                                     let mut lock = reader.pages.lock_mut();
-                                    lock.set_cloned(index, (page.clone(), false));
+                                    lock.set_cloned(index, (page.clone(), PageStatus::Initial));
                                 }))
                             })
                         ])
@@ -760,27 +795,7 @@ impl Reader {
         html!("div", {
             .class("reader")
             .future(reader.current_page.signal().for_each(clone!(reader => move |page| {
-                // just opening a chapter shouldn't be considered as reading
-                if page > 0 {
-                    let page = match reader.reader_settings.reader_mode.get() {
-                        ReaderMode::Continous => page,
-                        ReaderMode::Paged => {
-                            match reader.reader_settings.display_mode.get().get() {
-                                // display_mode.get() shouldn't return auto, here to satisfy compiler
-                                DisplayMode::Single | DisplayMode::Auto => page,
-                                DisplayMode::Double => {
-                                    if page + 2 == reader.pages_len.get() {
-                                        page + 1
-                                    } else {
-                                        page
-                                    }
-                                }
-                            }
-                        }
-                    };
-
-                    Self::update_page_read(reader.clone(), page);
-                }
+                Self::update_page_read(reader.clone(), page);
 
                 if page == 0 {
                     reader.prev_page.set(None);
