@@ -11,10 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [tanoshi-web] unread chapters badges for manga in library
 - [tanoshi] unread chapter count for manga
 - [tanoshi] `is_complete` field to set a chapter is completely read
+- [tanoshi] extension update notification
 - [tanoshi-web] reader open from last page read in paged mode
 - [tanoshi-web] source is shown in manga detail page
 - [tanoshi-web] filter chapter by read or unread
 - [tanoshi-web] sort chapter by read at or number
+- [tanoshi-web] resume button
 
 ### Changed
 - [tanoshi] mark chapter as read set last_page to last page of a chapter if availavle and mark `is_complete` as true
