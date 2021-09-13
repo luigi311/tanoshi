@@ -420,13 +420,7 @@ impl Reader {
         self.pages
             .signal_vec_cloned()
             .enumerate()
-            .filter_map(|(index, page)| {
-                if let Some(index) = index.get() {
-                    Some((index, page))
-                } else {
-                    None
-                }
-            })
+            .filter_map(|(index, page)| index.get().map(|index| (index, page)))
             .to_signal_cloned()
             .to_signal_vec()
     }

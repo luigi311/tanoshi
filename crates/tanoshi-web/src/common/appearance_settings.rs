@@ -108,7 +108,7 @@ impl AppearanceSettings {
             .class("reader-settings")
             .class("non-modal")
             .children(&mut [
-                Self::render_theme(reader.clone()),
+                Self::render_theme(reader),
             ])
         })
     }

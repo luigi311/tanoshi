@@ -110,8 +110,10 @@ impl Config {
                 Ok(cfg)
             }
             Err(_) => {
-                let mut cfg = Config::default();
-                cfg.path = config_path;
+                let cfg = Config {
+                    path: config_path,
+                    ..Default::default()
+                };
                 cfg.save()?;
                 info!("Write default config at {:?}", cfg.path);
                 Ok(cfg)

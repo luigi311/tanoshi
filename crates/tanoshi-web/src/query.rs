@@ -46,9 +46,7 @@ where
                 .join(", ")
                 .into());
         }
-        _ => {
-            return Err("no data".into());
-        }
+        _ => Err("no data".into()),
     }
 }
 

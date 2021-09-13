@@ -124,10 +124,10 @@ pub async fn get_image_from_url(url: String) -> Result<Response<Bytes>, Infallib
         Ok(res) => Ok(res),
         Err(e) => {
             error!("error create response, reason: {}", e);
-            return Ok(warp::http::Response::builder()
+            Ok(warp::http::Response::builder()
                 .status(500)
                 .body(bytes::Bytes::new())
-                .unwrap_or_default());
+                .unwrap_or_default())
         }
     }
 }

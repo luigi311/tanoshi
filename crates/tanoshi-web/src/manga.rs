@@ -753,13 +753,13 @@ impl Manga {
                             .style("width", "50%")
                             .class_signal("active", manga.order.signal_cloned().map(|sort| matches!(sort.order, Order::Asc)))
                             .text("Ascending")
-                            .event(clone!(manga => move |_: events::Click| manga.order.set(ChapterSort { by: manga.order.get_cloned().by.clone(), order: Order::Asc})))
+                            .event(clone!(manga => move |_: events::Click| manga.order.set(ChapterSort { by: manga.order.get_cloned().by, order: Order::Asc})))
                         }),
                         html!("button", {
                             .style("width", "50%")
                             .class_signal("active", manga.order.signal_cloned().map(|sort| matches!(sort.order, Order::Desc)))
                             .text("Descending")
-                            .event(clone!(manga => move |_: events::Click| manga.order.set(ChapterSort { by: manga.order.get_cloned().by.clone(), order: Order::Desc})))
+                            .event(clone!(manga => move |_: events::Click| manga.order.set(ChapterSort { by: manga.order.get_cloned().by, order: Order::Desc})))
                         }),
                     ])
                 })
@@ -815,13 +815,13 @@ impl Manga {
                     ChapterSort { by: Sort::Number, order: Order::Asc} => a.number.partial_cmp(&b.number).unwrap_or(std::cmp::Ordering::Equal),
                     ChapterSort { by: Sort::Number, order: Order::Desc} => b.number.partial_cmp(&a.number).unwrap_or(std::cmp::Ordering::Equal),
                     ChapterSort { by: Sort::ReadAt, order: Order::Asc} => {
-                        let a = a.read_progress.as_ref().map(|progress| progress.at).unwrap_or(NaiveDateTime::from_timestamp(0, 0));
-                        let b = b.read_progress.as_ref().map(|progress| progress.at).unwrap_or(NaiveDateTime::from_timestamp(0, 0));
+                        let a = a.read_progress.as_ref().map(|progress| progress.at).unwrap_or_else(|| NaiveDateTime::from_timestamp(0, 0));
+                        let b = b.read_progress.as_ref().map(|progress| progress.at).unwrap_or_else(|| NaiveDateTime::from_timestamp(0, 0));
                         a.cmp(&b)
                     },
                     ChapterSort { by: Sort::ReadAt, order: Order::Desc} => {
-                        let a = a.read_progress.as_ref().map(|progress| progress.at).unwrap_or(NaiveDateTime::from_timestamp(0, 0));
-                        let b = b.read_progress.as_ref().map(|progress| progress.at).unwrap_or(NaiveDateTime::from_timestamp(0, 0));
+                        let a = a.read_progress.as_ref().map(|progress| progress.at).unwrap_or_else(|| NaiveDateTime::from_timestamp(0, 0));
+                        let b = b.read_progress.as_ref().map(|progress| progress.at).unwrap_or_else(|| NaiveDateTime::from_timestamp(0, 0));
                         b.cmp(&a)
                     }
                 });
@@ -861,7 +861,7 @@ impl Manga {
                     .children(&mut [
                         Self::render_sort_setting(manga_page.clone()),
                         Self::render_order_setting(manga_page.clone()),
-                        Self::render_filter_setting(manga_page.clone()),
+                        Self::render_filter_setting(manga_page),
                     ])
                 })))
             ])

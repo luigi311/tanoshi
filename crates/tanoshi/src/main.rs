@@ -125,7 +125,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             },
         );
 
-    let health_check = warp::path!("health").and(warp::get()).map(|| warp::reply());
+    let health_check = warp::path!("health").and(warp::get()).map(warp::reply);
 
     let static_files = assets::filter::static_files();
     let image_proxy = proxy::proxy(config.secret.clone());

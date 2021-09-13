@@ -94,7 +94,7 @@ impl UserRoot {
     }
 
     async fn users(&self, ctx: &Context<'_>) -> Result<Vec<User>> {
-        let is_admin = check_is_admin(&ctx)?;
+        let is_admin = check_is_admin(ctx)?;
         if !is_admin {
             return Err("Forbidden".into());
         };
@@ -133,7 +133,7 @@ impl UserMutationRoot {
 
         let user_count = userdb.get_users_count().await?;
 
-        if user_count > 0 && !check_is_admin(&ctx)? {
+        if user_count > 0 && !check_is_admin(ctx)? {
             return Err("Forbidden".into());
         };
 

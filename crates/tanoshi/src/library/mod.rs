@@ -5,8 +5,8 @@ use async_graphql::connection::{query, Connection, Edge, EmptyFields};
 use async_graphql::{Context, Object, Result};
 use chrono::{Local, NaiveDateTime};
 
-mod library;
-pub use library::{RecentChapter, RecentUpdate};
+mod recent;
+pub use recent::{RecentChapter, RecentUpdate};
 
 #[derive(Default)]
 pub struct LibraryRoot;

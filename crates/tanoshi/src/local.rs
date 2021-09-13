@@ -2,7 +2,6 @@ use std::{
     ffi::OsStr,
     fs::{DirEntry, ReadDir},
     path::{Path, PathBuf},
-    str::FromStr,
     time::UNIX_EPOCH,
 };
 
@@ -49,7 +48,7 @@ impl Local {
     }
 
     // find first image from an archvie
-    fn find_cover_from_archive(path: &PathBuf) -> String {
+    fn find_cover_from_archive(path: &Path) -> String {
         libarchive_rs::list_archive_files(path.display().to_string().as_str())
             .ok()
             .and_then(|files| files.first().cloned())
@@ -58,19 +57,20 @@ impl Local {
     }
 
     // find first image from a directory
-    fn find_cover_from_dir(path: &PathBuf) -> String {
+    fn find_cover_from_dir(path: &Path) -> String {
         path.read_dir()
             .ok()
             .map(Self::sort_dir)
             .and_then(|dir| dir.into_iter().next())
             .map(|entry| entry.path().display().to_string())
-            .unwrap_or_else(|| Self::default_cover_url())
+            .unwrap_or_else(Self::default_cover_url)
     }
 
     fn sort_dir(dir: ReadDir) -> Vec<DirEntry> {
         Self::sort_read_dir_with_reverse(dir, false)
     }
 
+    #[allow(dead_code)]
     fn sort_dir_reverse(dir: ReadDir) -> Vec<DirEntry> {
         Self::sort_read_dir_with_reverse(dir, true)
     }
@@ -89,7 +89,7 @@ impl Local {
         dir
     }
 
-    fn find_cover_url(entry: &PathBuf) -> String {
+    fn find_cover_url(entry: &Path) -> String {
         if entry.is_file() {
             return Self::find_cover_from_archive(entry);
         }
@@ -121,7 +121,7 @@ impl Local {
     }
 
     fn get_pages_from_archive(
-        path: &PathBuf,
+        path: &Path,
         filename: String,
     ) -> Result<Vec<String>, Box<dyn std::error::Error>> {
         match libarchive_rs::list_archive_files(&filename) {
@@ -136,7 +136,7 @@ impl Local {
         }
     }
 
-    fn get_pages_from_dir(path: &PathBuf) -> Result<Vec<String>, Box<dyn std::error::Error>> {
+    fn get_pages_from_dir(path: &Path) -> Result<Vec<String>, Box<dyn std::error::Error>> {
         let pages = path
             .read_dir()?
             .into_iter()
@@ -146,7 +146,7 @@ impl Local {
         Ok(pages)
     }
 
-    fn map_entry_to_chapter(path: &PathBuf) -> Option<Chapter> {
+    fn map_entry_to_chapter(path: &Path) -> Option<Chapter> {
         let modified = match path
             .metadata()
             .ok()

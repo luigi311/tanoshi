@@ -424,7 +424,7 @@ impl ReaderSettings {
                         Self::render_display_mode(reader.clone()),
                         Self::render_direction(reader.clone()),
                         Self::render_background(reader.clone()),
-                        Self::render_fit_screen(reader.clone()),
+                        Self::render_fit_screen(reader),
                     ])
                 })
             ])

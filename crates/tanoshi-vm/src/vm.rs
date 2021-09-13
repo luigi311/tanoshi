@@ -28,7 +28,7 @@ impl ExtensionProxy {
         store: &Store,
         path: P,
     ) -> Result<Arc<dyn Extension>, Box<dyn std::error::Error>> {
-        let module = unsafe { Module::deserialize_from_file(&store, path)? };
+        let module = unsafe { Module::deserialize_from_file(store, path)? };
 
         let stdin = Pipe::new();
         let stdout = Pipe::new();
@@ -46,12 +46,12 @@ impl ExtensionProxy {
 
         let tanoshi = imports! {
             "tanoshi" => {
-                "host_http_request" => Function::new_native_with_env(&store, env.clone(), host_http_request),
-                "host_debug" => Function::new_native_with_env(&store, env.clone(), host_debug),
-                "host_error" => Function::new_native_with_env(&store, env.clone(), host_error),
-                "host_info" => Function::new_native_with_env(&store, env.clone(), host_info),
-                "host_trace" => Function::new_native_with_env(&store, env.clone(), host_trace),
-                "host_warn" => Function::new_native_with_env(&store, env.clone(), host_warn),
+                "host_http_request" => Function::new_native_with_env(store, env.clone(), host_http_request),
+                "host_debug" => Function::new_native_with_env(store, env.clone(), host_debug),
+                "host_error" => Function::new_native_with_env(store, env.clone(), host_error),
+                "host_info" => Function::new_native_with_env(store, env.clone(), host_info),
+                "host_trace" => Function::new_native_with_env(store, env.clone(), host_trace),
+                "host_warn" => Function::new_native_with_env(store, env.clone(), host_warn),
             }
         };
 

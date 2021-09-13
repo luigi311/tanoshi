@@ -1062,6 +1062,7 @@ impl Db {
             .map_err(|e| anyhow::anyhow!(e))
     }
 
+    #[allow(dead_code)]
     pub async fn get_user_history_last_read(
         &self,
         user_id: i64,
