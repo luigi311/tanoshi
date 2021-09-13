@@ -520,6 +520,7 @@ impl Manga {
                         .attribute("xmlns", "http://www.w3.org/2000/svg")
                         .attribute("viewBox", "0 0 24 24")
                         .attribute("stroke", "currentColor")
+                        .attribute("fill", "none")
                         .class("icon")
                         .children(&mut [
                             svg!("path", {
@@ -531,7 +532,7 @@ impl Manga {
                         ])
                     }),
                     html!("span", {
-                        .text("Resume")
+                        .text("Read")
                     })
                 ])
                 .event(clone!(chapter => move |_: events::Click| {
