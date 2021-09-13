@@ -491,7 +491,6 @@ impl Reader {
                         }))
                         .event(clone!(reader, page => move |_: events::Load| {
                             if !matches!(status, PageStatus::Loaded) {
-                                log::info!("image loaded");
                                 let mut lock = reader.pages.lock_mut();
                                 lock.set_cloned(index, (page.clone(), PageStatus::Loaded));
                             }
@@ -510,7 +509,6 @@ impl Reader {
                                 .style("margin", "auto")
                                 .text("Retry")
                                 .event(clone!(reader, page => move |_: events::Click| {
-                                    log::info!("retry loading image");
                                     let mut lock = reader.pages.lock_mut();
                                     lock.set_cloned(index, (page.clone(), PageStatus::Initial));
                                 }))
@@ -552,7 +550,6 @@ impl Reader {
                     }
                 }
                 let is_last_page = reader.pages_len.get() == reader.current_page.get() + 1;
-                info!("is_last_page: {} page_no: {}", is_last_page, page_no);
                 if !(is_last_page && page_no == 0) {
                     reader.current_page.set_neq(page_no as usize);
                 }
@@ -601,7 +598,6 @@ impl Reader {
                         }))
                         .event(clone!(reader, page => move |_: events::Load| {
                             if !matches!(status, PageStatus::Loaded) {
-                                log::info!("image loaded");
                                 let mut lock = reader.pages.lock_mut();
                                 lock.set_cloned(index, (page.clone(), PageStatus::Loaded));
                             }
@@ -627,7 +623,6 @@ impl Reader {
                                 .style("z-index", "20")
                                 .text("Retry")
                                 .event(clone!(reader, page => move |_: events::Click| {
-                                    log::info!("retry loading image");
                                     let mut lock = reader.pages.lock_mut();
                                     lock.set_cloned(index, (page.clone(), PageStatus::Initial));
                                 }))
@@ -676,7 +671,6 @@ impl Reader {
                         }))
                         .event(clone!(reader, page => move |_: events::Load| {
                             if !matches!(status, PageStatus::Loaded) {
-                                log::info!("image loaded");
                                 let mut lock = reader.pages.lock_mut();
                                 lock.set_cloned(index, (page.clone(), PageStatus::Loaded));
                             }
@@ -779,7 +773,6 @@ impl Reader {
                                 .style("z-index", "20")
                                 .text("Retry")
                                 .event(clone!(reader, page => move |_: events::Click| {
-                                    log::info!("retry loading image");
                                     let mut lock = reader.pages.lock_mut();
                                     lock.set_cloned(index, (page.clone(), PageStatus::Initial));
                                 }))
