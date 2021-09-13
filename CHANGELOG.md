@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- [tanoshi-web] unread chapters badges for manga in library
+- [tanoshi] unread chapter count for manga
+- [tanoshi] `is_complete` field to set a chapter is completely read
+- [tanoshi-web] reader open from last page read in paged mode
+- [tanoshi-web] source is shown in manga detail page
+- [tanoshi-web] filter chapter by read or unread
+- [tanoshi-web] sort chapter by read at or number
+
+### Changed
+- [tanoshi] mark chapter as read set last_page to last page of a chapter if availavle and mark `is_complete` as true
+- [tanoshi-web] opening first page won't update history
+
+### Fixed
+- [tanoshi-web] current page reset to zero after last page
+- [tanoshi-web] double spread image on double paged reader not on center
+
 ## [0.25.11]
 
 ### Added
