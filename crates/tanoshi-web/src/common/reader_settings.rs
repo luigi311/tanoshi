@@ -413,7 +413,7 @@ impl ReaderSettings {
                     .class_signal("animate__slideInUp", reader.show.signal())
                     .class_signal("animate__slideOutDown", reader.show.signal().map(|x| !x))
                     .style_signal("padding-bottom", reader.use_modal.signal().map(|use_modal| if use_modal {
-                        Some("env(safe-area-inset-bottom)")
+                        Some("calc(env(safe-area-inset-bottom) + 0.5rem)")
                     } else {
                         None
                     }))
