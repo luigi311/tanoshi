@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.25.12]
 
 ### Added
 - [tanoshi-web] unread chapters badges for manga in library
@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - [tanoshi] mark chapter as read set last_page to last page of a chapter if availavle and mark `is_complete` as true
 - [tanoshi-web] opening first page won't update history
+- [tanoshi] interval between chapter refresh in periodic update is now 500ms
 
 ### Fixed
 - [tanoshi-web] current page reset to zero after last page
@@ -217,7 +218,8 @@ Nothing changes, this release to build for multiarch docker image
 
 - fix panic when using local source
 
-[Unreleased]: https://github.com/faldez/tanoshi/compare/v0.25.11...HEAD
+[Unreleased]: https://github.com/faldez/tanoshi/compare/v0.25.12...HEAD
+[0.25.12]: https://github.com/faldez/tanoshi/compare/v0.25.11...v0.25.12
 [0.25.11]: https://github.com/faldez/tanoshi/compare/v0.25.10...v0.25.11
 [0.25.10]: https://github.com/faldez/tanoshi/compare/v0.25.9...v0.25.10
 [0.25.9]: https://github.com/faldez/tanoshi/compare/v0.25.8...v0.25.9
