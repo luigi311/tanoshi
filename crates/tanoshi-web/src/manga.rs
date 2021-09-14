@@ -933,6 +933,26 @@ impl Manga {
                     .children(&mut [
                         html!("button", {
                             .style("margin", "auto")
+                            .text("Select All")
+                            .event(clone!(manga_page => move |_:events::Click| {
+                                let chapters = manga_page.chapters.lock_ref();
+                                for chapter in chapters.iter() {
+                                    chapter.selected.set(true);
+                                }
+                            }))
+                        }),
+                        html!("button", {
+                            .style("margin", "auto")
+                            .text("Deselect All")
+                            .event(clone!(manga_page => move |_:events::Click| {
+                                let chapters = manga_page.chapters.lock_ref();
+                                for chapter in chapters.iter() {
+                                    chapter.selected.set(false);
+                                }
+                            }))
+                        }),
+                        html!("button", {
+                            .style("margin", "auto")
                             .text("Mark as Read")
                             .event(clone!(manga_page => move |_:events::Click| {
                                 Self::mark_chapter_as_read(manga_page.clone());
