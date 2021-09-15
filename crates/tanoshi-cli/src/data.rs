@@ -1,8 +1,8 @@
+use tanoshi_lib::prelude::Source;
+
 #[derive(serde::Serialize)]
-pub struct Source {
-    pub id: i64,
-    pub name: String,
+pub struct Index {
     pub path: String,
-    pub version: String,
-    pub icon: String,
+    #[serde(flatten)]
+    pub source: Source,
 }
