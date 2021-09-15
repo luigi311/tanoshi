@@ -12,7 +12,11 @@ pub async fn generate_json(bus: ExtensionBus) -> Result<(), Box<dyn std::error::
         .iter()
         .map(|source| Index {
             path: format!("library/{}.wasm", source.name),
-            source: source.clone(),
+            id: source.id,
+            name: source.name.clone(),
+            version: source.version.to_string(),
+            lib_version: source.lib_version.to_string(),
+            icon: source.icon.clone(),
         })
         .collect::<Vec<Index>>();
 
