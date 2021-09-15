@@ -5,6 +5,9 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+
 ## [0.25.14]
 
 ### Added
@@ -231,7 +234,8 @@ Nothing changes, this release to build for multiarch docker image
 
 - fix panic when using local source
 
-[Unreleased]: https://github.com/faldez/tanoshi/compare/v0.25.13...HEAD
+[Unreleased]: https://github.com/faldez/tanoshi/compare/v0.25.14...HEAD
+[0.25.14]: https://github.com/faldez/tanoshi/compare/v0.25.13...v0.25.14
 [0.25.13]: https://github.com/faldez/tanoshi/compare/v0.25.12...v0.25.13
 [0.25.12]: https://github.com/faldez/tanoshi/compare/v0.25.11...v0.25.12
 [0.25.11]: https://github.com/faldez/tanoshi/compare/v0.25.10...v0.25.11
