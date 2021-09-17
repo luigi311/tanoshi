@@ -1,9 +1,14 @@
 use dominator::{clone, events, html, Dom};
-use futures_signals::signal::{Mutable, SignalExt};
+use futures_signals::{
+    map_ref,
+    signal::{self, Mutable, Signal, SignalExt},
+};
 use serde::{Deserialize, Serialize};
 use std::rc::Rc;
 
 use crate::utils::{document, local_storage};
+
+const KEY: &str = "settings:reader";
 
 #[derive(PartialEq, Copy, Clone, Serialize, Deserialize)]
 pub enum ReaderMode {
@@ -96,10 +101,19 @@ impl Default for Fit {
     }
 }
 
+pub struct ReaderSettingSignal {
+    pub use_modal: bool,
+    pub reader_mode: ReaderMode,
+    pub display_mode: DisplayMode,
+    pub direction: Direction,
+    pub background: Background,
+    pub fit: Fit,
+}
+
 #[derive(Clone, Default, Serialize, Deserialize)]
 pub struct ReaderSettings {
     #[serde(skip)]
-    use_modal: Mutable<bool>,
+    use_modal: bool,
     #[serde(skip)]
     first_render: Mutable<bool>,
     #[serde(skip)]
@@ -115,11 +129,11 @@ pub struct ReaderSettings {
 
 impl ReaderSettings {
     pub fn new(show: bool, use_modal: bool) -> Rc<Self> {
-        Self::load_manga_reader_setting(show, use_modal, 0)
+        Self::load(show, use_modal, 0)
     }
 
-    pub fn load_manga_reader_setting(show: bool, use_modal: bool, manga_id: i64) -> Rc<Self> {
-        let mut key = "settings:reader".to_string();
+    pub fn load(show: bool, use_modal: bool, manga_id: i64) -> Rc<Self> {
+        let mut key = KEY.to_string();
         if manga_id > 0 {
             key = [key, manga_id.to_string()].join(":");
         }
@@ -131,7 +145,7 @@ impl ReaderSettings {
         };
 
         Rc::new(ReaderSettings {
-            use_modal: Mutable::new(use_modal),
+            use_modal,
             first_render: Mutable::new(use_modal),
             show: Mutable::new(show),
             manga_id: Mutable::new(manga_id),
@@ -146,7 +160,7 @@ impl ReaderSettings {
 
         self.manga_id.replace(manga_id);
 
-        let key = ["settings:reader".to_string(), manga_id.to_string()].join(":");
+        let key = [KEY.to_string(), manga_id.to_string()].join(":");
         let settings = if let Ok(Some(settings)) = local_storage().get_item(&key) {
             serde_json::from_str::<ReaderSettings>(&settings).unwrap_or_default()
         } else {
@@ -164,40 +178,44 @@ impl ReaderSettings {
         self.first_render.replace_with(|_| false);
     }
 
-    pub fn render_apply_button(reader: Rc<Self>) -> Dom {
-        html!("button", {
-            .text("Apply")
-            .event(clone!(reader => move |_: events::Click| {
-                let mut key = "settings:reader".to_string();
-                if *reader.manga_id.lock_ref() > 0 {
-                    key = [key, (*reader.manga_id.lock_ref()).to_string()].join(":");
-                }
+    fn save(&self) {
+        let mut key = KEY.to_string();
+        if *self.manga_id.lock_ref() > 0 {
+            key = [key, (*self.manga_id.lock_ref()).to_string()].join(":");
+        }
 
-                let _ = local_storage().set_item(&key, &serde_json::to_string(reader.as_ref()).unwrap());
-                if *reader.use_modal.lock_ref() {
-                    reader.show.set_neq(false);
-                }
+        let _ = local_storage().set_item(&key, &serde_json::to_string(self).unwrap());
+        if self.use_modal {
+            self.show.set_neq(false);
+        }
+    }
+
+    pub fn render_apply_button(settings: Rc<Self>) -> Dom {
+        html!("button", {
+            .text("Save")
+            .event(clone!(settings => move |_: events::Click| {
+                settings.save();
             }))
         })
     }
 
-    pub fn render_header(reader: Rc<Self>) -> Dom {
+    pub fn render_header(settings: Rc<Self>) -> Dom {
         html!("div", {
             .style("display", "flex")
             .style("justify-content", "space-between")
             .style("margin-bottom", "0.5rem")
-            .visible_signal(reader.use_modal.signal())
+            .visible_signal(signal::always(settings.use_modal))
             .children(&mut [
                 html!("span", {
                     .style("font-size", "large")
                     .text("Settings")
                 }),
-                Self::render_apply_button(reader)
+                Self::render_apply_button(settings)
             ])
         })
     }
 
-    fn render_reader_mode(reader: Rc<Self>) -> Dom {
+    fn render_reader_mode(settings: Rc<Self>) -> Dom {
         html!("div", {
             .children(&mut [
                 html!("label", {
@@ -209,21 +227,21 @@ impl ReaderSettings {
                     .children(&mut [
                         html!("button", {
                             .style("width", "50%")
-                            .class_signal("active", reader.reader_mode.signal_cloned().map(|x| match x {
+                            .class_signal("active", settings.reader_mode.signal_cloned().map(|x| match x {
                                 ReaderMode::Continous => true,
                                 ReaderMode::Paged => false,
                             }))
                             .text("Continous")
-                            .event(clone!(reader => move |_: events::Click| reader.reader_mode.set_neq(ReaderMode::Continous)))
+                            .event(clone!(settings => move |_: events::Click| settings.reader_mode.set_neq(ReaderMode::Continous)))
                         }),
                         html!("button", {
                             .style("width", "50%")
-                            .class_signal("active", reader.reader_mode.signal_cloned().map(|x| match x {
+                            .class_signal("active", settings.reader_mode.signal_cloned().map(|x| match x {
                                 ReaderMode::Continous => false,
                                 ReaderMode::Paged => true,
                             }))
                             .text("Paged")
-                            .event(clone!(reader => move |_: events::Click| reader.reader_mode.set_neq(ReaderMode::Paged)))
+                            .event(clone!(settings => move |_: events::Click| settings.reader_mode.set_neq(ReaderMode::Paged)))
                         }),
                     ])
                 })
@@ -231,13 +249,13 @@ impl ReaderSettings {
         })
     }
 
-    fn render_display_mode(reader: Rc<Self>) -> Dom {
+    fn render_display_mode(settings: Rc<Self>) -> Dom {
         html!("div", {
-            .style_signal("opacity", reader.reader_mode.signal_cloned().map(|x| match x {
+            .style_signal("opacity", settings.reader_mode.signal_cloned().map(|x| match x {
                 ReaderMode::Continous => "0.5",
                 ReaderMode::Paged => "1",
             }))
-            .attribute_signal("disabled", reader.reader_mode.signal_cloned().map(|x| match x {
+            .attribute_signal("disabled", settings.reader_mode.signal_cloned().map(|x| match x {
                 ReaderMode::Continous => Some("true"),
                 ReaderMode::Paged => None,
             }))
@@ -251,21 +269,21 @@ impl ReaderSettings {
                     .children(&mut [
                         html!("button", {
                             .style("width", "33%")
-                            .class_signal("active", reader.display_mode.signal_cloned().map(|x| matches!(x, DisplayMode::Single)))
+                            .class_signal("active", settings.display_mode.signal_cloned().map(|x| matches!(x, DisplayMode::Single)))
                             .text("Single")
-                            .event(clone!(reader => move |_: events::Click| reader.display_mode.set_neq(DisplayMode::Single)))
+                            .event(clone!(settings => move |_: events::Click| settings.display_mode.set_neq(DisplayMode::Single)))
                         }),
                         html!("button", {
                             .style("width", "33%")
-                            .class_signal("active", reader.display_mode.signal_cloned().map(|x| matches!(x, DisplayMode::Double)))
+                            .class_signal("active", settings.display_mode.signal_cloned().map(|x| matches!(x, DisplayMode::Double)))
                             .text("Double")
-                            .event(clone!(reader => move |_: events::Click| reader.display_mode.set_neq(DisplayMode::Double)))
+                            .event(clone!(settings => move |_: events::Click| settings.display_mode.set_neq(DisplayMode::Double)))
                         }),
                         html!("button", {
                             .style("width", "33%")
-                            .class_signal("active", reader.display_mode.signal_cloned().map(|x| matches!(x, DisplayMode::Auto)))
+                            .class_signal("active", settings.display_mode.signal_cloned().map(|x| matches!(x, DisplayMode::Auto)))
                             .text("Auto")
-                            .event(clone!(reader => move |_: events::Click| reader.display_mode.set_neq(DisplayMode::Auto)))
+                            .event(clone!(settings => move |_: events::Click| settings.display_mode.set_neq(DisplayMode::Auto)))
                         }),
                     ])
                 })
@@ -273,13 +291,13 @@ impl ReaderSettings {
         })
     }
 
-    fn render_direction(reader: Rc<Self>) -> Dom {
+    fn render_direction(settings: Rc<Self>) -> Dom {
         html!("div", {
-            .style_signal("opacity", reader.reader_mode.signal_cloned().map(|x| match x {
+            .style_signal("opacity", settings.reader_mode.signal_cloned().map(|x| match x {
                 ReaderMode::Continous => "0.5",
                 ReaderMode::Paged => "1",
             }))
-            .attribute_signal("disabled", reader.reader_mode.signal_cloned().map(|x| match x {
+            .attribute_signal("disabled", settings.reader_mode.signal_cloned().map(|x| match x {
                 ReaderMode::Continous => Some("true"),
                 ReaderMode::Paged => None,
             }))
@@ -293,21 +311,21 @@ impl ReaderSettings {
                     .children(&mut [
                         html!("button", {
                             .style("width", "50%")
-                            .class_signal("active", reader.direction.signal_cloned().map(|x| match x {
+                            .class_signal("active", settings.direction.signal_cloned().map(|x| match x {
                                 Direction::LeftToRight => true,
                                 Direction::RightToLeft => false,
                             }))
                             .text("Left to Right")
-                            .event(clone!(reader => move |_: events::Click| reader.direction.set_neq(Direction::LeftToRight)))
+                            .event(clone!(settings => move |_: events::Click| settings.direction.set_neq(Direction::LeftToRight)))
                         }),
                         html!("button", {
                             .style("width", "50%")
-                            .class_signal("active", reader.direction.signal_cloned().map(|x| match x {
+                            .class_signal("active", settings.direction.signal_cloned().map(|x| match x {
                                 Direction::LeftToRight => false,
                                 Direction::RightToLeft => true,
                             }))
                             .text("Right to Left")
-                            .event(clone!(reader => move |_: events::Click| reader.direction.set_neq(Direction::RightToLeft)))
+                            .event(clone!(settings => move |_: events::Click| settings.direction.set_neq(Direction::RightToLeft)))
                         }),
                     ])
                 })
@@ -315,7 +333,7 @@ impl ReaderSettings {
         })
     }
 
-    fn render_background(reader: Rc<Self>) -> Dom {
+    fn render_background(settings: Rc<Self>) -> Dom {
         html!("div", {
             .children(&mut [
                 html!("label", {
@@ -327,21 +345,21 @@ impl ReaderSettings {
                     .children(&mut [
                         html!("button", {
                             .style("width", "50%")
-                            .class_signal("active", reader.background.signal_cloned().map(|x| match x {
+                            .class_signal("active", settings.background.signal_cloned().map(|x| match x {
                                 Background::Black => true,
                                 Background::White => false,
                             }))
                             .text("Black")
-                            .event(clone!(reader => move |_: events::Click| reader.background.set_neq(Background::Black)))
+                            .event(clone!(settings => move |_: events::Click| settings.background.set_neq(Background::Black)))
                         }),
                         html!("button", {
                             .style("width", "50%")
-                            .class_signal("active", reader.background.signal_cloned().map(|x| match x {
+                            .class_signal("active", settings.background.signal_cloned().map(|x| match x {
                                 Background::Black => false,
                                 Background::White => true,
                             }))
                             .text("White")
-                            .event(clone!(reader => move |_: events::Click| reader.background.set_neq(Background::White)))
+                            .event(clone!(settings => move |_: events::Click| settings.background.set_neq(Background::White)))
                         }),
                     ])
                 })
@@ -349,7 +367,7 @@ impl ReaderSettings {
         })
     }
 
-    fn render_fit_screen(reader: Rc<Self>) -> Dom {
+    fn render_fit_screen(settings: Rc<Self>) -> Dom {
         html!("div", {
             .children(&mut [
                 html!("label", {
@@ -361,33 +379,33 @@ impl ReaderSettings {
                     .children(&mut [
                         html!("button", {
                             .style("width", "33.333333%")
-                            .class_signal("active", reader.fit.signal_cloned().map(|x| match x {
+                            .class_signal("active", settings.fit.signal_cloned().map(|x| match x {
                                 Fit::Height => true,
                                 Fit::Width => false,
                                 Fit::All => false
                             }))
                             .text("Height")
-                            .event(clone!(reader => move |_: events::Click| reader.fit.set_neq(Fit::Height)))
+                            .event(clone!(settings => move |_: events::Click| settings.fit.set_neq(Fit::Height)))
                         }),
                         html!("button", {
                             .style("width", "33.333333%")
-                            .class_signal("active", reader.fit.signal_cloned().map(|x| match x {
+                            .class_signal("active", settings.fit.signal_cloned().map(|x| match x {
                                 Fit::Height => false,
                                 Fit::Width => true,
                                 Fit::All => false
                             }))
                             .text("Width")
-                            .event(clone!(reader => move |_: events::Click| reader.fit.set_neq(Fit::Width)))
+                            .event(clone!(settings => move |_: events::Click| settings.fit.set_neq(Fit::Width)))
                         }),
                         html!("button", {
                             .style("width", "33.333333%")
-                            .class_signal("active", reader.fit.signal_cloned().map(|x| match x {
+                            .class_signal("active", settings.fit.signal_cloned().map(|x| match x {
                                 Fit::Height => false,
                                 Fit::Width => false,
                                 Fit::All => true
                             }))
                             .text("All")
-                            .event(clone!(reader => move |_: events::Click| reader.fit.set_neq(Fit::All)))
+                            .event(clone!(settings => move |_: events::Click| settings.fit.set_neq(Fit::All)))
                         }),
                     ])
                 })
@@ -395,36 +413,63 @@ impl ReaderSettings {
         })
     }
 
-    pub fn render(reader: Rc<Self>) -> Dom {
-        let use_modal = reader.use_modal.get();
+    fn signal(&self) -> impl Signal<Item = ReaderSettingSignal> {
+        map_ref! {
+            let use_modal = signal::always(self.use_modal),
+            let reader_mode = self.reader_mode.signal_cloned(),
+            let display_mode = self.display_mode.signal_cloned(),
+            let direction = self.direction.signal_cloned(),
+            let background = self.background.signal_cloned(),
+            let fit = self.fit.signal_cloned() =>
+
+            ReaderSettingSignal {
+                use_modal: *use_modal,
+                reader_mode: *reader_mode,
+                display_mode: *display_mode,
+                direction: *direction,
+                background: *background,
+                fit: *fit,
+            }
+        }
+    }
+
+    pub fn render(settings: Rc<Self>) -> Dom {
+        let use_modal = settings.use_modal;
         html!("div", {
+            .future(settings.signal().for_each(clone!(settings => move |s| {
+                if !s.use_modal {
+                    settings.save();
+                }
+
+                async {}
+            })))
             .children(&mut [
                 html!("div", {
-                    .visible_signal(reader.show.signal().map(move |show| show && use_modal))
+                    .visible_signal(settings.show.signal().map(move |show| show && use_modal))
                     .class("reader-settings-background")
-                    .event(clone!(reader => move |_: events::Click| {
-                        reader.show.set_neq(false);
+                    .event(clone!(settings => move |_: events::Click| {
+                        settings.show.set_neq(false);
                     }))
                 }),
                 html!("div", {
                     .class("reader-settings")
-                    .class_signal(["modal", "animate__animated"], reader.use_modal.signal())
-                    .class_signal("non-modal", reader.use_modal.signal().map(|x| !x))
-                    .class_signal("animate__slideInUp", reader.show.signal())
-                    .class_signal("animate__slideOutDown", reader.show.signal().map(|x| !x))
-                    .style_signal("padding-bottom", reader.use_modal.signal().map(|use_modal| if use_modal {
+                    .class_signal(["modal", "animate__animated"], signal::always(settings.use_modal))
+                    .class_signal("non-modal", signal::always(settings.use_modal).map(|x| !x))
+                    .class_signal("animate__slideInUp", settings.show.signal())
+                    .class_signal("animate__slideOutDown", settings.show.signal().map(|x| !x))
+                    .style_signal("padding-bottom", signal::always(settings.use_modal).map(|use_modal| if use_modal {
                         Some("calc(env(safe-area-inset-bottom) + 0.5rem)")
                     } else {
                         None
                     }))
-                    .visible_signal(reader.first_render.signal().map(|x| !x))
+                    .visible_signal(settings.first_render.signal().map(|x| !x))
                     .children(&mut [
-                        Self::render_header(reader.clone()),
-                        Self::render_reader_mode(reader.clone()),
-                        Self::render_display_mode(reader.clone()),
-                        Self::render_direction(reader.clone()),
-                        Self::render_background(reader.clone()),
-                        Self::render_fit_screen(reader),
+                        Self::render_header(settings.clone()),
+                        Self::render_reader_mode(settings.clone()),
+                        Self::render_display_mode(settings.clone()),
+                        Self::render_direction(settings.clone()),
+                        Self::render_background(settings.clone()),
+                        Self::render_fit_screen(settings),
                     ])
                 })
             ])

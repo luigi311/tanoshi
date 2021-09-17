@@ -51,6 +51,13 @@ impl Default for Filter {
     }
 }
 
+#[derive(Clone, Copy)]
+pub struct ChapterSettingSignal {
+    use_modal: bool,
+    pub sort: ChapterSort,
+    pub filter: Filter,
+}
+
 #[derive(Clone, Default, Deserialize, Serialize)]
 pub struct ChapterSettings {
     #[serde(skip)]
@@ -127,7 +134,7 @@ impl ChapterSettings {
 
     pub fn render_apply_button(settings: Rc<Self>) -> Dom {
         html!("button", {
-            .text("Apply")
+            .text("Save")
             .event(clone!(settings => move |_: events::Click| settings.save()))
         })
     }
@@ -238,38 +245,28 @@ impl ChapterSettings {
         })
     }
 
-    fn sort_signal(&self) -> impl Signal<Item = (bool, ChapterSort)> {
+    fn signal(&self) -> impl Signal<Item = ChapterSettingSignal> {
         map_ref! {
             let use_modal = signal::always(self.use_modal),
-            let sort = self.sort.signal_cloned() =>
-
-            (*use_modal, *sort)
-        }
-    }
-
-    fn filter_signal(&self) -> impl Signal<Item = (bool, Filter)> {
-        map_ref! {
-            let use_modal = signal::always(self.use_modal),
+            let sort = self.sort.signal_cloned(),
             let filter = self.filter.signal_cloned() =>
 
-            (*use_modal, *filter)
+            ChapterSettingSignal {
+                use_modal: *use_modal,
+                sort: *sort,
+                filter: *filter,
+            }
         }
     }
 
     pub fn render(settings: Rc<Self>) -> Dom {
         let use_modal = settings.use_modal;
         html!("div", {
-            .future(settings.sort_signal().for_each(clone!(settings => move |(use_modal, sort)| {
-                if !use_modal {
+            .future(settings.signal().for_each(clone!(settings => move |s| {
+                if !s.use_modal {
                     settings.save();
+                    // info!("settings change");
                 }
-
-                async {}
-            })))
-            .future(settings.filter_signal().for_each(clone!(settings => move |(use_modal, filter)| {
-                if !use_modal {
-                    settings.save();
-                };
 
                 async {}
             })))
