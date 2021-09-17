@@ -271,9 +271,6 @@ impl Settings {
                             SettingCategory::Appearance => {
                                 Some(AppearanceSettings::render_apply_button(settings.appearance_settings.clone()))
                             }
-                            SettingCategory::Reader => {
-                                Some(ReaderSettings::render_apply_button(settings.reader_settings.clone()))
-                            }
                             SettingCategory::Users => {
                                 Some(link!(Route::Settings(SettingCategory::CreateUser).url(), {
                                     .text("Create User")
