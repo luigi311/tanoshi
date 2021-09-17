@@ -1,17 +1,12 @@
-use crate::common::snackbar;
-use crate::common::Modal;
-use crate::common::Route;
-use crate::common::Spinner;
-use crate::query;
-use crate::utils::window;
-use crate::utils::{proxied_image_url, AsyncLoader};
+use crate::{
+    common::{snackbar, ChapterSettings, Sort, Order, ChapterSort, Filter, Route, Spinner},
+    query,
+    utils::{proxied_image_url, window, AsyncLoader},
+};
 use chrono::NaiveDateTime;
-use dominator::with_node;
-use dominator::{clone, events, html, routing, svg, Dom};
-use futures_signals::signal;
-use futures_signals::signal::SignalExt;
+use dominator::{clone, events, html, routing, svg, with_node, Dom};
 use futures_signals::{
-    signal::Mutable,
+    signal::{self, Mutable, SignalExt},
     signal_vec::{MutableVec, SignalVecExt},
 };
 use std::rc::Rc;
@@ -50,31 +45,6 @@ impl Default for Chapter {
     }
 }
 
-#[derive(Clone)]
-pub enum Sort {
-    Number,
-    ReadAt,
-}
-
-#[derive(Clone)]
-pub enum Order {
-    Asc,
-    Desc,
-}
-
-#[derive(Clone)]
-struct ChapterSort {
-    by: Sort,
-    order: Order,
-}
-
-#[derive(Clone)]
-pub enum Filter {
-    None,
-    Read,
-    Unread,
-}
-
 pub struct Manga {
     pub id: Mutable<i64>,
     pub source_id: Mutable<i64>,
@@ -90,9 +60,7 @@ pub struct Manga {
     next_chapter: Mutable<Option<Chapter>>,
     chapters: MutableVec<Rc<Chapter>>,
     is_edit_chapter: Mutable<bool>,
-    chapter_menu: Rc<Modal>,
-    order: Mutable<ChapterSort>,
-    filter: Mutable<Filter>,
+    chapter_settings: Rc<ChapterSettings>,
     loader: AsyncLoader,
 }
 
@@ -113,12 +81,7 @@ impl Manga {
             next_chapter: Mutable::new(None),
             chapters: MutableVec::new(),
             is_edit_chapter: Mutable::new(false),
-            chapter_menu: Modal::new(),
-            order: Mutable::new(ChapterSort {
-                by: Sort::Number,
-                order: Order::Desc,
-            }),
-            filter: Mutable::new(Filter::None),
+            chapter_settings: ChapterSettings::new(false, true),
             loader: AsyncLoader::new(),
         })
     }
@@ -157,6 +120,8 @@ impl Manga {
                         }),
                         selected: Mutable::new(false)
                     })).collect());
+
+                    manga.chapter_settings.load_by_manga_id(manga.id.get());                    
                 },
                 Err(err) => {
                     snackbar::show(format!("{}", err));
@@ -200,6 +165,8 @@ impl Manga {
                         }),
                         selected: Mutable::new(false)
                     })).collect());
+
+                    manga.chapter_settings.load_by_manga_id(manga.id.get());
                 },
                 Err(err) => {
                     snackbar::show(format!("{}", err));
@@ -594,7 +561,7 @@ impl Manga {
 
     pub fn render_chapters(manga: Rc<Self>) -> Dom {
         let is_edit_chapter = manga.is_edit_chapter.clone();
-        let filter = manga.filter.clone();
+        let filter = manga.chapter_settings.filter.clone();
 
         html!("div", {
             .attribute("id", "chapters")
@@ -652,7 +619,7 @@ impl Manga {
                                 html!("button", {
                                     .style("margin", "0.25rem")
                                     .event(clone!(manga => move |_: events::Click| {
-                                        manga.chapter_menu.toggle_show()
+                                        manga.chapter_settings.toggle_show()
                                     }))
                                     .children(&mut [
                                         svg!("svg", {
@@ -773,96 +740,6 @@ impl Manga {
         })
     }
 
-    fn render_sort_setting(manga: Rc<Self>) -> Dom {
-        html!("div", {
-            .children(&mut [
-                html!("label", {
-                    .style("margin", "0.5rem")
-                    .text("Sort")
-                }),
-                html!("div", {
-                    .class("reader-settings-row")
-                    .children(&mut [
-                        html!("button", {
-                            .style("width", "50%")
-                            .class_signal("active", manga.order.signal_cloned().map(|sort| matches!(sort.by, Sort::Number)))
-                            .text("Number")
-                            .event(clone!(manga => move |_: events::Click| manga.order.set(ChapterSort { by: Sort::Number, order: manga.order.get_cloned().order})))
-                        }),
-                        html!("button", {
-                            .style("width", "50%")
-                            .class_signal("active", manga.order.signal_cloned().map(|sort| matches!(sort.by, Sort::ReadAt)))
-                            .text("Recently Read")
-                            .event(clone!(manga => move |_: events::Click| manga.order.set(ChapterSort { by: Sort::ReadAt, order: manga.order.get_cloned().order})))
-                        }),
-                    ])
-                })
-            ])
-        })
-    }
-
-    fn render_order_setting(manga: Rc<Self>) -> Dom {
-        html!("div", {
-            .children(&mut [
-                html!("label", {
-                    .style("margin", "0.5rem")
-                    .text("Order")
-                }),
-                html!("div", {
-                    .class("reader-settings-row")
-                    .children(&mut [
-                        html!("button", {
-                            .style("width", "50%")
-                            .class_signal("active", manga.order.signal_cloned().map(|sort| matches!(sort.order, Order::Asc)))
-                            .text("Ascending")
-                            .event(clone!(manga => move |_: events::Click| manga.order.set(ChapterSort { by: manga.order.get_cloned().by, order: Order::Asc})))
-                        }),
-                        html!("button", {
-                            .style("width", "50%")
-                            .class_signal("active", manga.order.signal_cloned().map(|sort| matches!(sort.order, Order::Desc)))
-                            .text("Descending")
-                            .event(clone!(manga => move |_: events::Click| manga.order.set(ChapterSort { by: manga.order.get_cloned().by, order: Order::Desc})))
-                        }),
-                    ])
-                })
-            ])
-        })
-    }
-
-    fn render_filter_setting(manga: Rc<Self>) -> Dom {
-        html!("div", {
-            .children(&mut [
-                html!("label", {
-                    .style("margin", "0.5rem")
-                    .text("Filter")
-                }),
-                html!("div", {
-                    .class("reader-settings-row")
-                    .children(&mut [
-                        html!("button", {
-                            .style("width", "33%")
-                            .class_signal("active", manga.filter.signal_cloned().map(|x| matches!(x, Filter::None)))
-                            .text("None")
-                            .event(clone!(manga => move |_: events::Click| manga.filter.set(Filter::None)))
-                        }),
-                        html!("button", {
-                            .style("width", "33%")
-                            .class_signal("active", manga.filter.signal_cloned().map(|x| matches!(x, Filter::Read)))
-                            .text("Read")
-                            .event(clone!(manga => move |_: events::Click| manga.filter.set(Filter::Read)))
-                        }),
-                        html!("button", {
-                            .style("width", "33%")
-                            .class_signal("active", manga.filter.signal_cloned().map(|x| matches!(x, Filter::Unread)))
-                            .text("Unread")
-                            .event(clone!(manga => move |_: events::Click| manga.filter.set(Filter::Unread)))
-                        }),
-                    ])
-                })
-            ])
-        })
-    }
-
     pub fn render(manga_page: Rc<Self>) -> Dom {
         if manga_page.id.get() != 0 {
             Self::fetch_detail(manga_page.clone(), false);
@@ -871,7 +748,7 @@ impl Manga {
         }
 
         html!("div", {
-            .future(manga_page.order.signal_cloned().for_each(clone!(manga_page => move |sort| {
+            .future(manga_page.chapter_settings.sort.signal_cloned().for_each(clone!(manga_page => move |sort| {
                 let mut chapters = manga_page.chapters.lock_ref().to_vec();
                 chapters.sort_by(|a, b| match sort {
                     ChapterSort { by: Sort::Number, order: Order::Asc} => a.number.partial_cmp(&b.number).unwrap_or(std::cmp::Ordering::Equal),
@@ -916,16 +793,7 @@ impl Manga {
                     .visible_signal(manga_page.is_edit_chapter.signal())
                     .class("bottombar-spacing")
                 }),
-                Modal::render(manga_page.chapter_menu.clone(), clone!(manga_page => html!("div", {
-                    .style("width", "100%")
-                    .style("display", "flex")
-                    .style("flex-direction", "column")
-                    .children(&mut [
-                        Self::render_sort_setting(manga_page.clone()),
-                        Self::render_order_setting(manga_page.clone()),
-                        Self::render_filter_setting(manga_page),
-                    ])
-                })))
+                ChapterSettings::render(manga_page.chapter_settings.clone())
             ])
             .child_signal(manga_page.is_edit_chapter.signal().map(clone!(manga_page => move |is_edit| if is_edit {
                 Some(html!("div",{

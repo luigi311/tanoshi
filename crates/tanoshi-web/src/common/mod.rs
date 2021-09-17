@@ -31,3 +31,6 @@ pub mod snackbar;
 
 mod modal;
 pub use modal::*;
+
+mod chapter_settings;
+pub use chapter_settings::*;
