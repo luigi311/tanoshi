@@ -1,4 +1,4 @@
-use crate::{common::{AppearanceSettings, Login, Profile, ReaderSettings, Route, SettingCategory, Source, Spinner, User, events, snackbar}, query, utils::{AsyncLoader, window}};
+use crate::{common::{AppearanceSettings, ChapterSettings, Login, Profile, ReaderSettings, Route, SettingCategory, Source, Spinner, User, events, snackbar}, query, utils::{AsyncLoader, window}};
 use dominator::svg;
 use dominator::{clone, html, link, routing, Dom};
 use futures_signals::{signal::{Mutable, SignalExt}, signal_vec::{MutableSignalVec, MutableVec}, signal_vec::SignalVecExt};
@@ -13,6 +13,7 @@ pub struct Settings {
     users: MutableVec<User>,
     appearance_settings: Rc<AppearanceSettings>,
     reader_settings: Rc<ReaderSettings>,
+    chapter_settings: Rc<ChapterSettings>,
     loader: AsyncLoader,
 }
 
@@ -27,6 +28,7 @@ impl Settings {
             users: MutableVec::new(),
             appearance_settings: AppearanceSettings::new(),
             reader_settings: ReaderSettings::new(true, false),
+            chapter_settings: ChapterSettings::new(true, false),
             loader: AsyncLoader::new(),
         })
     }
@@ -253,6 +255,7 @@ impl Settings {
                         match x {
                             SettingCategory::None => "Settings",
                             SettingCategory::Appearance => "Appearance",
+                            SettingCategory::General => "General",
                             SettingCategory::Reader => "Reader",
                             SettingCategory::Source(_) => "Sources",
                             SettingCategory::Users => "Users",
@@ -293,6 +296,10 @@ impl Settings {
                 link!(Route::Settings(SettingCategory::Appearance).url(), {
                     .class("list-item")
                     .text("Appearance")
+                }),
+                link!(Route::Settings(SettingCategory::General).url(), {
+                    .class("list-item")
+                    .text("General")
                 }),
                 link!(Route::Settings(SettingCategory::Reader).url(), {
                     .class("list-item")
@@ -552,6 +559,11 @@ impl Settings {
                         ])
                     })),
                     SettingCategory::Appearance =>  Some(AppearanceSettings::render(settings.appearance_settings.clone())),
+                    SettingCategory::General => Some(html!("div", {
+                        .children(&mut [
+                            ChapterSettings::render(settings.chapter_settings.clone())
+                        ])
+                    })),
                     SettingCategory::Reader => Some(ReaderSettings::render(settings.reader_settings.clone())),
                     SettingCategory::Source(source_id) => Some(Self::render_source_settings(settings.clone(), source_id)),
                     SettingCategory::Users => Some(Self::render_users_management(settings.clone())),
