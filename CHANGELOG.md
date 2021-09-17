@@ -5,8 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.25.15]
 
+### Added
+- [tanoshi-web] add global and per manga chapter sort and filter settings
+
+### Changed
+- [tanoshi-web] reader settings in settings page automatically save without click apply
 
 ## [0.25.14]
 
@@ -234,7 +239,8 @@ Nothing changes, this release to build for multiarch docker image
 
 - fix panic when using local source
 
-[Unreleased]: https://github.com/faldez/tanoshi/compare/v0.25.14...HEAD
+[Unreleased]: https://github.com/faldez/tanoshi/compare/v0.25.15...HEAD
+[0.25.15]: https://github.com/faldez/tanoshi/compare/v0.25.14...v0.25.15
 [0.25.14]: https://github.com/faldez/tanoshi/compare/v0.25.13...v0.25.14
 [0.25.13]: https://github.com/faldez/tanoshi/compare/v0.25.12...v0.25.13
 [0.25.12]: https://github.com/faldez/tanoshi/compare/v0.25.11...v0.25.12
