@@ -34,7 +34,7 @@ $divide-color-dark: $color-gray-800;
 $divide-color-dark-1: $color-gray-700;
 
 :root {
-    --animate-duration:  0.5s;
+    --animate-duration:  500ms;
     --background-color: white;
     --background-color-100: #{$color-gray-200};
     --background-color-200: #{$color-gray-300};
@@ -605,6 +605,21 @@ $manga-grid: (
     border: var(--list-group-border);
 }
 
+
+$continuous-width: (
+    '0px': '100vw',
+    '768px': '768px'
+);
+
+@each $min-width, $width in $continuous-width {
+    @media (min-width: $min-width) { 
+        .continuous-image-loading {
+            width: #{$width} !important;
+            height: calc(1.59 * #{$width}) !important;
+        }
+    }
+}
+
 .reader {
     background-color: white;
 }
@@ -696,8 +711,6 @@ $manga-grid: (
         animation: spin 2s linear infinite;
       }
 }
-
-
 
 @keyframes spin {
   0% { transform: rotate(0deg); }

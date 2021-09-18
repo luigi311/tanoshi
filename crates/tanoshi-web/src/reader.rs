@@ -8,7 +8,7 @@ use crate::{
     utils::history,
 };
 use dominator::{clone, html, routing, svg, with_node, Dom};
-use futures_signals::signal::{Mutable, SignalExt};
+use futures_signals::signal::{self, Mutable, SignalExt};
 use futures_signals::signal_vec::{MutableVec, SignalVec, SignalVecExt};
 use wasm_bindgen::{JsCast, JsValue, UnwrapThrowExt};
 use web_sys::HtmlImageElement;
@@ -19,7 +19,7 @@ enum Nav {
     Next,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 enum PageStatus {
     Initial,
     Loaded,
@@ -464,6 +464,7 @@ impl Reader {
             .children_signal_vec(reader.pages_signal().map(clone!(reader => move |(index, page, status)|
                 if !matches!(status, PageStatus::Error) {
                     html!("img" => HtmlImageElement, {
+                        .class_signal("continuous-image-loading", signal::always(status).map(|s| matches!(s, PageStatus::Initial)))
                         .style("margin-left", "auto")
                         .style("margin-right", "auto")
                         .attribute("id", format!("page-{}", index).as_str())
