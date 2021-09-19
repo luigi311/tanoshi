@@ -238,7 +238,7 @@ impl Worker {
             for source in installed_sources {
                 if let Some(index) = available_sources_map.get(&source.id) {
                     if Version::from_str(&index.version)? > source.version {
-                        updates.push(format!("<b>{}</b> extension update available", source.name));
+                        updates.push(format!("{} extension update available", source.name));
                     }
                 }
             }
@@ -250,16 +250,16 @@ impl Worker {
             info!("no extension updates found");
         }
 
+        let admins = self.userdb.get_admins().await?;
         for update in updates {
             info!("new extension update found!");
-            let admins = self.userdb.get_admins().await?;
-            for admin in admins {
+            for admin in admins.iter() {
                 if let Some((bot, chat_id)) = self.telegram_bot.as_ref().zip(admin.telegram_chat_id)
                 {
                     bot.send_message(chat_id, &update).await?;
                 }
                 if let Some((pushover, user_key)) =
-                    self.pushover.as_ref().zip(admin.pushover_user_key)
+                    self.pushover.as_ref().zip(admin.pushover_user_key.as_ref())
                 {
                     pushover.send_notification(&user_key, &update).await?;
                 }
@@ -294,10 +294,7 @@ impl Worker {
             info!("new server update found!");
             let admins = self.userdb.get_admins().await?;
             for admin in admins {
-                let msg = format!(
-                    "<b>Tanoshi {} Released</b>\n{}",
-                    release.tag_name, release.body
-                );
+                let msg = format!("Tanoshi {} Released\n{}", release.tag_name, release.body);
 
                 if let Some((bot, chat_id)) = self.telegram_bot.as_ref().zip(admin.telegram_chat_id)
                 {
