@@ -82,19 +82,9 @@ impl Worker {
     async fn check_chapter_update(&self) -> Result<(), anyhow::Error> {
         let manga_in_library = self.mangadb.get_all_user_library().await?;
 
-        let mut new_manga_chapter: HashMap<i64, Vec<ChapterUpdate>> = HashMap::new();
-        let mut manga_user_map: HashMap<i64, Vec<i64>> = HashMap::new();
         let mut user_map: HashMap<i64, User> = HashMap::new();
 
         for item in manga_in_library {
-            manga_user_map.insert(item.manga.id, item.user_ids.clone());
-            for user_id in item.user_ids.iter() {
-                if user_map.get(&user_id).is_none() {
-                    let user = self.userdb.get_user_by_id(*user_id).await?;
-                    user_map.insert(*user_id, user);
-                }
-            }
-
             let last_uploaded_chapter = self
                 .mangadb
                 .get_last_uploaded_chapters_by_manga_id(item.manga.id)
@@ -139,58 +129,42 @@ impl Worker {
                 chapters
             };
 
-            if chapters.is_empty() {
-                continue;
-            }
+            info!("Found: {} new chapters", chapters.len());
 
-            let chapters = chapters
-                .iter()
-                .map(|ch| ChapterUpdate {
-                    manga_title: item.manga.title.clone(),
-                    cover_url: item.manga.cover_url.clone(),
-                    title: ch.title.clone(),
-                })
-                .collect();
+            for chapter in chapters {
+                for user_id in item.user_ids.iter() {
+                    let user = match user_map.get(user_id) {
+                        Some(user) => user.to_owned(),
+                        None => {
+                            let user = self.userdb.get_user_by_id(*user_id).await?;
+                            user_map.insert(*user_id, user.to_owned());
+                            user
+                        }
+                    };
 
-            new_manga_chapter.insert(item.manga.id, chapters);
-
-            tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
-        }
-
-        debug!("new chapters: {:?}", new_manga_chapter);
-
-        if self.telegram_bot.is_none() && self.pushover.is_none() {
-            return Ok(());
-        }
-
-        for (manga_id, updates) in new_manga_chapter.iter() {
-            let user_ids = if let Some(user_ids) = manga_user_map.get(&manga_id) {
-                user_ids
-                    .clone()
-                    .iter()
-                    .filter_map(|user_id| user_map.get(user_id).cloned())
-                    .map(|user| (user.telegram_chat_id, user.pushover_user_key.clone()))
-                    .collect::<Vec<(Option<i64>, Option<String>)>>()
-            } else {
-                continue;
-            };
-
-            for (telegram_chat_id, pushover_user_key) in user_ids {
-                for update in updates {
-                    if let Some((bot, chat_id)) = self.telegram_bot.as_ref().zip(telegram_chat_id) {
-                        if let Err(e) = bot.send_message(chat_id, update.to_string()).await {
+                    if let Some((bot, chat_id)) = self
+                        .telegram_bot
+                        .as_ref()
+                        .zip(user.telegram_chat_id.as_ref())
+                    {
+                        let update = ChapterUpdate {
+                            manga_title: item.manga.title.clone(),
+                            cover_url: item.manga.cover_url.clone(),
+                            title: chapter.title.clone(),
+                        };
+                        if let Err(e) = bot.send_message(*chat_id, update.to_string()).await {
                             error!("failed to send message, reason: {}", e);
                         }
                     }
 
                     if let Some((pushover, user_key)) =
-                        self.pushover.as_ref().zip(pushover_user_key.as_ref())
+                        self.pushover.as_ref().zip(user.pushover_user_key.as_ref())
                     {
                         if let Err(e) = pushover
                             .send_notification_with_title(
                                 user_key,
-                                &update.manga_title,
-                                &update.title,
+                                &item.manga.title,
+                                &chapter.title,
                             )
                             .await
                         {
@@ -200,7 +174,7 @@ impl Worker {
                 }
             }
 
-            tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+            tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
         }
 
         Ok(())
@@ -227,41 +201,32 @@ impl Worker {
             available_sources_map
         };
 
-        let updates = {
-            let installed_sources = self
-                .extension_bus
-                .list()
-                .await
-                .map_err(|e| anyhow::anyhow!("{}", e))?;
-
-            let mut updates: Vec<String> = vec![];
-            for source in installed_sources {
-                if let Some(index) = available_sources_map.get(&source.id) {
-                    if Version::from_str(&index.version)? > source.version {
-                        updates.push(format!("{} extension update available", source.name));
-                    }
-                }
-            }
-
-            updates
-        };
-
-        if updates.is_empty() {
-            info!("no extension updates found");
-        }
-
         let admins = self.userdb.get_admins().await?;
-        for update in updates {
-            info!("new extension update found!");
-            for admin in admins.iter() {
-                if let Some((bot, chat_id)) = self.telegram_bot.as_ref().zip(admin.telegram_chat_id)
-                {
-                    bot.send_message(chat_id, &update).await?;
-                }
-                if let Some((pushover, user_key)) =
-                    self.pushover.as_ref().zip(admin.pushover_user_key.as_ref())
-                {
-                    pushover.send_notification(&user_key, &update).await?;
+        let installed_sources = self
+            .extension_bus
+            .list()
+            .await
+            .map_err(|e| anyhow::anyhow!("{}", e))?;
+
+        for source in installed_sources {
+            if available_sources_map
+                .get(&source.id)
+                .and_then(|index| Version::from_str(&index.version).ok())
+                .map(|v| v > source.version)
+                .unwrap_or(false)
+            {
+                for admin in admins.iter() {
+                    let message = format!("{} extension update available", source.name);
+                    if let Some((bot, chat_id)) =
+                        self.telegram_bot.as_ref().zip(admin.telegram_chat_id)
+                    {
+                        bot.send_message(chat_id, &message).await?;
+                    }
+                    if let Some((pushover, user_key)) =
+                        self.pushover.as_ref().zip(admin.pushover_user_key.as_ref())
+                    {
+                        pushover.send_notification(&user_key, &message).await?;
+                    }
                 }
             }
         }
