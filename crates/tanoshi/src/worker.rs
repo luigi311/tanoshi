@@ -252,12 +252,16 @@ impl Worker {
 
         for update in updates {
             info!("new extension update found!");
-            if let Some(bot) = self.telegram_bot.as_ref() {
-                let admins = self.userdb.get_admins().await?;
-                for admin in admins {
-                    if let Some(chat_id) = admin.telegram_chat_id {
-                        bot.send_message(chat_id, &update).await?;
-                    }
+            let admins = self.userdb.get_admins().await?;
+            for admin in admins {
+                if let Some((bot, chat_id)) = self.telegram_bot.as_ref().zip(admin.telegram_chat_id)
+                {
+                    bot.send_message(chat_id, &update).await?;
+                }
+                if let Some((pushover, user_key)) =
+                    self.pushover.as_ref().zip(admin.pushover_user_key)
+                {
+                    pushover.send_notification(&user_key, &update).await?;
                 }
             }
         }
@@ -288,19 +292,21 @@ impl Worker {
             > Version::from_str(env!("CARGO_PKG_VERSION"))?
         {
             info!("new server update found!");
-            if let Some(bot) = self.telegram_bot.as_ref() {
-                let admins = self.userdb.get_admins().await?;
-                for admin in admins {
-                    if let Some(chat_id) = admin.telegram_chat_id {
-                        bot.send_message(
-                            chat_id,
-                            format!(
-                                "<b>Tanoshi {} Released</b>\n{}",
-                                release.tag_name, release.body
-                            ),
-                        )
-                        .await?;
-                    }
+            let admins = self.userdb.get_admins().await?;
+            for admin in admins {
+                let msg = format!(
+                    "<b>Tanoshi {} Released</b>\n{}",
+                    release.tag_name, release.body
+                );
+
+                if let Some((bot, chat_id)) = self.telegram_bot.as_ref().zip(admin.telegram_chat_id)
+                {
+                    bot.send_message(chat_id, &msg).await?;
+                }
+                if let Some((pushover, user_key)) =
+                    self.pushover.as_ref().zip(admin.pushover_user_key)
+                {
+                    pushover.send_notification(&user_key, &msg).await?;
                 }
             }
         } else {
