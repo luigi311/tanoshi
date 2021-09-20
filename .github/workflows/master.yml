@@ -3,13 +3,13 @@ name: test
 on:
   pull_request:
     paths:
-      - .github/workflows/master.yml
       - crates/**
       - "!**/*.md"
       - "!.github/screenshots/**"
   push:
     branches: [master]
     paths:
+      - .github/workflows/master.yml
       - Dockerfile
       - crates/**
       - "!**/*.md"
@@ -102,7 +102,7 @@ jobs:
       - name: Download LLVM
         if: ${{ matrix.os == 'windows-latest' }}
         run: |
-          Invoke-WebRequest -Uri  https://media.githubusercontent.com/media/faldez/tanoshi-builder/master/LLVM.7z -OutFile LLVM.7z
+          Invoke-WebRequest -Uri https://github.com/faldez/tanoshi-builder/releases/download/v0.1.0/LLVM.7z -OutFile LLVM.7z
           7z x .\LLVM.7z -o'C:\'
       - name: Cache vcpkg
         id: cache-vcpkg
