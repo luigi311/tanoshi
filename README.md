@@ -22,7 +22,7 @@ Selfhosted web manga reader with extensions.
 - Web reader is PWA and optimized for standalone mode on mobile
 - Multi-user with admin and non admin role
 - Periodic chapter updates
-- Notification via Telegram
+- Notification via Telegram and Pushover
 
 ### In development
 - Filter feature
