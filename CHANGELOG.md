@@ -9,7 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - [tanoshi] pushover notification
-- [tanoshi-web] continuous reader page has height when loading
+- [tanoshi-web] continuous reader pages have height when loading
+- [tanoshi-web] global search
+
+### Changed
+- [tanoshi] tanoshi will no longer compile wasm from extension repo, instead download precompiled extension
+- [tanoshi] use dylib engine instead of univerval engine
+- [tanoshi] wasm extension now compiled using llvm instead of cranelift
+- [tanoshi] extension process no longer spawn task
 
 ## [0.25.16]
 

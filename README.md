@@ -94,6 +94,9 @@ update_interval: 3600
 telegram:
   name: <your bot name>
   token: <your bot token>
+# Pushover
+pushover:
+  application_key: <your pushover application key>
 ```
 
 local manga have to be structured below, it tested for `cbz` and `cbr` files
