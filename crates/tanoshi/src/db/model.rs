@@ -44,7 +44,6 @@ pub struct Chapter {
     pub next: Option<i64>,
     pub uploaded: NaiveDateTime,
     pub date_added: NaiveDateTime,
-    pub pages: Vec<String>,
 }
 
 impl Default for Chapter {
@@ -61,7 +60,6 @@ impl Default for Chapter {
             next: None,
             uploaded: NaiveDateTime::from_timestamp(0, 0),
             date_added: NaiveDateTime::from_timestamp(0, 0),
-            pages: vec![],
         }
     }
 }

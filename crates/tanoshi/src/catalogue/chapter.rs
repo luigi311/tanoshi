@@ -35,7 +35,6 @@ pub struct Chapter {
     pub uploaded: chrono::NaiveDateTime,
     pub date_added: chrono::NaiveDateTime,
     pub read_progress: Option<ReadProgress>,
-    pub pages: Vec<String>,
 }
 
 impl From<tanoshi_lib::data::Chapter> for Chapter {
@@ -53,7 +52,6 @@ impl From<tanoshi_lib::data::Chapter> for Chapter {
             uploaded: ch.uploaded,
             date_added: chrono::NaiveDateTime::from_timestamp(chrono::Local::now().timestamp(), 0),
             read_progress: None,
-            pages: vec![],
         }
     }
 }
@@ -73,7 +71,6 @@ impl From<crate::db::model::Chapter> for Chapter {
             uploaded: val.uploaded,
             date_added: val.date_added,
             read_progress: None,
-            pages: val.pages,
         }
     }
 }
@@ -92,7 +89,6 @@ impl From<tanoshi_lib::data::Chapter> for crate::db::model::Chapter {
             next: None,
             uploaded: ch.uploaded,
             date_added: chrono::NaiveDateTime::from_timestamp(chrono::Local::now().timestamp(), 0),
-            pages: vec![],
         }
     }
 }
@@ -111,7 +107,6 @@ impl From<Chapter> for crate::db::model::Chapter {
             next: val.next,
             uploaded: val.uploaded,
             date_added: val.date_added,
-            pages: val.pages,
         }
     }
 }
@@ -180,9 +175,11 @@ impl Chapter {
         ctx: &Context<'_>,
         #[graphql(desc = "fetch from source", default = false)] fetch: bool,
     ) -> Result<Vec<String>> {
-        info!("pages: {}, fetch: {}", self.pages.len(), fetch);
-        let pages = if !self.pages.is_empty() && !fetch {
-            self.pages.clone()
+        let mangadb = &ctx.data::<GlobalContext>()?.mangadb;
+
+        let pages = if let Ok(pages) = mangadb.get_pages_by_chapter_id(self.id).await {
+            info!("return pages from db");
+            pages
         } else {
             let pages = ctx
                 .data::<GlobalContext>()?
@@ -190,11 +187,9 @@ impl Chapter {
                 .get_pages(self.source_id, self.path.clone())
                 .await?;
 
-            ctx.data::<GlobalContext>()?
-                .mangadb
-                .insert_pages(self.id, &pages)
-                .await?;
+            mangadb.insert_pages(self.id, &pages).await?;
 
+            info!("return pages from source");
             pages
         };
 

@@ -712,7 +712,6 @@ impl Db {
         let stream = sqlx::query(
             r#"
             SELECT *,
-            (SELECT JSON_GROUP_ARRAY(remote_url) FROM page WHERE chapter_id = chapter.id) pages,
             (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number < chapter.number ORDER BY c.number DESC LIMIT 1) prev,
             (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number > chapter.number ORDER BY c.number ASC LIMIT 1) next
             FROM chapter WHERE id = ?"#,
@@ -731,9 +730,8 @@ impl Db {
             scanlator: row.get(6),
             uploaded: row.get(7),
             date_added: row.get(8),
-            pages: serde_json::from_str(row.get(9)).unwrap_or_default(),
-            prev: row.get(10),
-            next: row.get(11),
+            prev: row.get(9),
+            next: row.get(10),
         })?)
     }
 
@@ -804,7 +802,6 @@ impl Db {
             )
             SELECT
                 chapter.*,
-                (SELECT JSON_GROUP_ARRAY(remote_url) FROM page WHERE page.chapter_id = chapter.id) pages,
                 (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number < chapter.number ORDER BY c.number DESC LIMIT 1) prev,
                 (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number > chapter.number ORDER BY c.number ASC LIMIT 1) next
             FROM
@@ -836,9 +833,8 @@ impl Db {
             scanlator: row.get(6),
             uploaded: row.get(7),
             date_added: row.get(8),
-            pages: serde_json::from_str(row.get(9)).unwrap_or_default(),
-            prev: row.get(10),
-            next: row.get(11),
+            prev: row.get(9),
+            next: row.get(10),
         }))
     }
 
@@ -847,7 +843,6 @@ impl Db {
         let stream = sqlx::query(
             r#"
             SELECT *,
-            (SELECT JSON_GROUP_ARRAY(remote_url) FROM page WHERE chapter_id = chapter.id) pages,
             (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number < chapter.number ORDER BY c.number DESC LIMIT 1) prev,
             (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number > chapter.number ORDER BY c.number ASC LIMIT 1) next
             FROM chapter WHERE source_id = ? AND path = ?"#,
@@ -868,9 +863,8 @@ impl Db {
             scanlator: row.get(6),
             uploaded: row.get(7),
             date_added: row.get(8),
-            pages: serde_json::from_str(row.get(9)).unwrap_or_default(),
-            prev: row.get(10),
-            next: row.get(11),
+            prev: row.get(9),
+            next: row.get(10),
         })
     }
 
@@ -878,7 +872,6 @@ impl Db {
         let mut stream = sqlx::query(
             r#"
             SELECT *,
-            (SELECT JSON_GROUP_ARRAY(remote_url) FROM page WHERE chapter_id = chapter.id) pages,
             (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number < chapter.number ORDER BY c.number DESC LIMIT 1) prev,
             (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number > chapter.number ORDER BY c.number ASC LIMIT 1) next
             FROM chapter WHERE manga_id = ? ORDER BY number DESC"#
@@ -898,9 +891,8 @@ impl Db {
                 scanlator: row.get(6),
                 uploaded: row.get(7),
                 date_added: row.get(8),
-                pages: serde_json::from_str(row.get(9)).unwrap_or_default(),
-                prev: row.get(10),
-                next: row.get(11),
+                prev: row.get(9),
+                next: row.get(10),
             });
         }
         if chapters.is_empty() {
@@ -914,7 +906,6 @@ impl Db {
         let stream = sqlx::query(
             r#"
             SELECT *,
-            (SELECT JSON_GROUP_ARRAY(remote_url) FROM page WHERE chapter_id = chapter.id) pages,
             (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number < chapter.number ORDER BY c.number DESC LIMIT 1) prev,
             (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number > chapter.number ORDER BY c.number ASC LIMIT 1) next
             FROM chapter WHERE manga_id = ? ORDER BY uploaded DESC LIMIT 1"#
@@ -934,9 +925,8 @@ impl Db {
             scanlator: row.get(6),
             uploaded: row.get(7),
             date_added: row.get(8),
-            pages: serde_json::from_str(row.get(9)).unwrap_or_default(),
-            prev: row.get(10),
-            next: row.get(11),
+            prev: row.get(9),
+            next: row.get(10),
         })
     }
 
@@ -1049,6 +1039,23 @@ impl Db {
         query.execute(&self.pool).await?;
 
         Ok(())
+    }
+
+    pub async fn get_pages_by_chapter_id(&self, chapter_id: i64) -> Result<Vec<String>> {
+        let mut stream = sqlx::query("SELECT remote_url FROM page WHERE chapter_id = ?")
+            .bind(chapter_id)
+            .fetch(&self.pool);
+
+        let mut pages = vec![];
+        while let Some(row) = stream.try_next().await? {
+            pages.push(row.get(0));
+        }
+
+        if pages.is_empty() {
+            Err(anyhow!("no pages"))
+        } else {
+            Ok(pages)
+        }
     }
 
     pub async fn insert_user_library(&self, user_id: i64, manga_id: i64) -> Result<u64> {
