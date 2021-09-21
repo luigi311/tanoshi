@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [tanoshi] pushover notification
 - [tanoshi-web] continuous reader pages have height when loading
 - [tanoshi-web] global search
+- [tanoshi-web] filter and sort manga in library
 
 ### Changed
 - [tanoshi] tanoshi will no longer compile wasm from extension repo, instead download precompiled extension
