@@ -331,7 +331,7 @@ async fn thread_main<P: AsRef<Path>>(path: P, extension_receiver: UnboundedRecei
                     }
                 }
             }
-            Command::Unload(source_id) => {
+            Command::Unload(source_id, tx) => {
                 let extension_path = if let Some((source, _)) = extension_map.get_mut(&source_id) {
                     PathBuf::new()
                         .join(&path)
@@ -359,6 +359,10 @@ async fn thread_main<P: AsRef<Path>>(path: P, extension_receiver: UnboundedRecei
                 // reload all extension
                 if let Err(e) = reload(&path, &store, &mut extension_map).await {
                     error!("error reloading extension: {}", e);
+                }
+
+                if tx.send(()).is_err() {
+                    error!("[Command::Unload] receiver dropped");
                 }
             }
             Command::Exist(source_id, tx) => {

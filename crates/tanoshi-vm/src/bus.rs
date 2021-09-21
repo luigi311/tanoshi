@@ -18,7 +18,7 @@ pub type ExtensionResultSender<T> = Sender<ExtensionResult<T>>;
 pub enum Command {
     Insert(i64, Arc<dyn Extension>),
     Load(String),
-    Unload(i64),
+    Unload(i64, Sender<()>),
     Exist(i64, Sender<bool>),
     List(Sender<Vec<Source>>),
     Detail(i64, Sender<Source>),
@@ -66,7 +66,9 @@ impl ExtensionBus {
     }
 
     pub async fn unload(&self, source_id: i64) -> Result<(), Box<dyn std::error::Error>> {
-        self.tx.send(Command::Unload(source_id))?;
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        self.tx.send(Command::Unload(source_id, tx))?;
+        timeout(Duration::from_secs(30), rx).await??;
         Ok(())
     }
 
