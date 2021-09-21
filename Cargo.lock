@@ -3413,7 +3413,7 @@ dependencies = [
 
 [[package]]
 name = "tanoshi-vm"
-version = "0.5.1"
+version = "0.5.2"
 dependencies = [
  "bytes",
  "env_logger 0.9.0",
