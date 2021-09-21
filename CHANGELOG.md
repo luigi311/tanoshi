@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [v0.25.17]
 
 ### Added
 - [tanoshi] pushover notification
@@ -15,9 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - [tanoshi] tanoshi will no longer compile wasm from extension repo, instead download precompiled extension
-- [tanoshi] use dylib engine instead of univerval engine
+- [tanoshi] use dylib engine instead of univerval engine reduce memory usage
 - [tanoshi] wasm extension now compiled using llvm instead of cranelift
-- [tanoshi] extension process no longer spawn task
+- [tanoshi] extension process no longer spawn task, reduce chances unreachable error
 
 ## [0.25.16]
 
@@ -258,7 +258,8 @@ Nothing changes, this release to build for multiarch docker image
 
 - fix panic when using local source
 
-[Unreleased]: https://github.com/faldez/tanoshi/compare/v0.25.16...HEAD
+[Unreleased]: https://github.com/faldez/tanoshi/compare/v0.25.17...HEAD
+[0.25.17]: https://github.com/faldez/tanoshi/compare/v0.25.16...v0.25.17
 [0.25.16]: https://github.com/faldez/tanoshi/compare/v0.25.15...v0.25.16
 [0.25.15]: https://github.com/faldez/tanoshi/compare/v0.25.14...v0.25.15
 [0.25.14]: https://github.com/faldez/tanoshi/compare/v0.25.13...v0.25.14
