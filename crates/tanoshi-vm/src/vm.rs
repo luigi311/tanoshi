@@ -1,5 +1,10 @@
 use serde::{de::DeserializeOwned, Serialize};
-use std::{collections::BTreeMap, fmt::Debug, path::Path, sync::Arc};
+use std::{
+    collections::BTreeMap,
+    fmt::Debug,
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 use tanoshi_lib::prelude::{Chapter, Extension, ExtensionResult, Filters, Manga, Param, Source};
 use tanoshi_util::http::Request;
 use tokio::{
@@ -177,10 +182,11 @@ impl Extension for ExtensionProxy {
     }
 }
 
-pub fn start() -> (JoinHandle<()>, UnboundedSender<Command>) {
+pub fn start<P: AsRef<Path>>(path: P) -> (JoinHandle<()>, UnboundedSender<Command>) {
     let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
-    let handle = tokio::spawn(async {
-        thread(rx).await;
+    let path = PathBuf::new().join(path);
+    let handle = tokio::spawn(async move {
+        thread_main(path, rx).await;
     });
 
     (handle, tx)
@@ -214,6 +220,39 @@ pub async fn load<P: AsRef<Path>>(
         tx.send(Command::Load(
             path.to_str().ok_or("no path str")?.to_string(),
         ))?;
+    }
+
+    Ok(())
+}
+
+pub async fn reload<P: AsRef<Path>>(
+    path: P,
+    store: &Store,
+    extension_map: &mut BTreeMap<i64, (Source, Arc<dyn Extension>)>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let path = PathBuf::new().join(path);
+    for entry in std::fs::read_dir(&path)?
+        .into_iter()
+        .filter_map(Result::ok)
+        .filter(move |path| {
+            path.path()
+                .extension()
+                .map_or(false, |ext| ext == "tanoshi")
+        })
+    {
+        let path = entry.path();
+        info!("load plugin from {:?}", path.display());
+        let now = Instant::now();
+        match ExtensionProxy::load(&store, &path) {
+            Ok(proxy) => {
+                let source = proxy.detail();
+                info!("loaded in {} ms: {:?}", now.elapsed().as_millis(), source);
+                extension_map.insert(source.id, (source, proxy));
+            }
+            Err(e) => {
+                error!("error load extension: {}", e);
+            }
+        }
     }
 
     Ok(())
@@ -266,90 +305,109 @@ pub async fn compile_with_target<P: AsRef<Path>>(
     Ok(())
 }
 
-async fn thread(extension_receiver: UnboundedReceiver<Command>) {
+async fn thread_main<P: AsRef<Path>>(path: P, extension_receiver: UnboundedReceiver<Command>) {
     let mut recv = extension_receiver;
     let mut extension_map: BTreeMap<i64, (Source, Arc<dyn Extension>)> = BTreeMap::new();
 
-    let store = ExtensionProxy::init_store_headless();
+    let mut store = ExtensionProxy::init_store_headless();
 
-    loop {
-        let cmd = recv.recv().await;
-        if let Some(cmd) = cmd {
-            match cmd {
-                Command::Insert(source_id, proxy) => {
-                    let source = proxy.detail();
-                    extension_map.insert(source_id, (source, proxy));
-                }
-                Command::Load(path) => {
-                    info!("load plugin from {:?}", path);
-                    let now = Instant::now();
-                    match ExtensionProxy::load(&store, &path) {
-                        Ok(proxy) => {
-                            let source = proxy.detail();
-                            info!("loaded in {} ms: {:?}", now.elapsed().as_millis(), source);
-                            extension_map.insert(source.id, (source, proxy));
-                        }
-                        Err(e) => {
-                            error!("error load extension: {}", e);
-                        }
+    while let Some(cmd) = recv.recv().await {
+        match cmd {
+            Command::Insert(source_id, proxy) => {
+                let source = proxy.detail();
+                extension_map.insert(source_id, (source, proxy));
+            }
+            Command::Load(path) => {
+                info!("load plugin from {:?}", path);
+                let now = Instant::now();
+                match ExtensionProxy::load(&store, &path) {
+                    Ok(proxy) => {
+                        let source = proxy.detail();
+                        info!("loaded in {} ms: {:?}", now.elapsed().as_millis(), source);
+                        extension_map.insert(source.id, (source, proxy));
                     }
-                    info!(
-                        "Extension {} loaded in {:?} ms",
-                        path,
-                        now.elapsed().as_millis()
-                    );
-                }
-                Command::Unload(source_id) => {
-                    extension_map.remove(&source_id);
-                }
-                Command::Exist(source_id, tx) => {
-                    let exist = extension_map.get(&source_id).is_some();
-                    if tx.send(exist).is_err() {
-                        error!("[Command::Exist] receiver dropped");
+                    Err(e) => {
+                        error!("error load extension: {}", e);
                     }
                 }
-                Command::List(tx) => {
-                    let sources = extension_map
-                        .values()
-                        .cloned()
-                        .map(|(source, _)| source)
-                        .collect::<Vec<Source>>();
+            }
+            Command::Unload(source_id) => {
+                let extension_path = if let Some((source, _)) = extension_map.get_mut(&source_id) {
+                    PathBuf::new()
+                        .join(&path)
+                        .join(&source.name)
+                        .with_extension("tanoshi")
+                } else {
+                    continue;
+                };
 
-                    if tx.send(sources).is_err() {
-                        error!("[Command::List] receiver dropped");
+                // drop extension map
+                drop(extension_map);
+                // drop extension map
+                drop(store);
+
+                // remove the file
+                if let Err(e) = std::fs::remove_file(&extension_path) {
+                    error!("error removing {}: {}", extension_path.display(), e);
+                }
+
+                // assign new extension map
+                extension_map = BTreeMap::new();
+                // initialize new store
+                store = ExtensionProxy::init_store_headless();
+
+                // reload all extension
+                if let Err(e) = reload(&path, &store, &mut extension_map).await {
+                    error!("error reloading extension: {}", e);
+                }
+            }
+            Command::Exist(source_id, tx) => {
+                let exist = extension_map.get(&source_id).is_some();
+                if tx.send(exist).is_err() {
+                    error!("[Command::Exist] receiver dropped");
+                }
+            }
+            Command::List(tx) => {
+                let sources = extension_map
+                    .values()
+                    .cloned()
+                    .map(|(source, _)| source)
+                    .collect::<Vec<Source>>();
+
+                if tx.send(sources).is_err() {
+                    error!("[Command::List] receiver dropped");
+                }
+            }
+            Command::Detail(source_id, tx) => match extension_map.get(&source_id) {
+                Some((detail, _)) => {
+                    if tx.send(detail.clone()).is_err() {
+                        error!("[Command::Detail] receiver dropped");
                     }
                 }
-                Command::Detail(source_id, tx) => match extension_map.get(&source_id) {
-                    Some((detail, _)) => {
-                        if tx.send(detail.clone()).is_err() {
-                            error!("[Command::Detail] receiver dropped");
-                        }
-                    }
-                    None => {
-                        error!("extension with id {} not found", source_id);
-                    }
-                },
-                Command::Filters(source_id, tx) => {
-                    process(&extension_map, source_id, tx, |proxy| proxy.filters());
+                None => {
+                    error!("extension with id {} not found", source_id);
                 }
-                Command::GetMangaList(source_id, param, tx) => {
-                    process(&extension_map, source_id, tx, |proxy| {
-                        proxy.get_manga_list(param)
-                    });
-                }
-                Command::GetMangaInfo(source_id, path, tx) => {
-                    process(&extension_map, source_id, tx, |proxy| {
-                        proxy.get_manga_info(path)
-                    });
-                }
-                Command::GetChapters(source_id, path, tx) => {
-                    process(&extension_map, source_id, tx, |proxy| {
-                        proxy.get_chapters(path)
-                    });
-                }
-                Command::GetPages(source_id, path, tx) => {
-                    process(&extension_map, source_id, tx, |proxy| proxy.get_pages(path));
-                }
+            },
+            Command::Filters(source_id, tx) => {
+                process(&extension_map, source_id, tx, |proxy| proxy.filters());
+            }
+            Command::GetMangaList(source_id, param, tx) => {
+                process(&extension_map, source_id, tx, |proxy| {
+                    proxy.get_manga_list(param)
+                });
+            }
+            Command::GetMangaInfo(source_id, path, tx) => {
+                process(&extension_map, source_id, tx, |proxy| {
+                    proxy.get_manga_info(path)
+                });
+            }
+            Command::GetChapters(source_id, path, tx) => {
+                process(&extension_map, source_id, tx, |proxy| {
+                    proxy.get_chapters(path)
+                });
+            }
+            Command::GetPages(source_id, path, tx) => {
+                process(&extension_map, source_id, tx, |proxy| proxy.get_pages(path));
             }
         }
     }

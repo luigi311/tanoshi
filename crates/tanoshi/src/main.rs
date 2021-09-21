@@ -69,7 +69,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mangadb = db::MangaDatabase::new(pool.clone());
     let userdb = db::UserDatabase::new(pool.clone());
 
-    let (_, extension_tx) = vm::start();
+    let (_, extension_tx) = vm::start(&config.plugin_path);
     vm::load(&config.plugin_path, extension_tx.clone()).await?;
 
     let extension_bus = ExtensionBus::new(&config.plugin_path, extension_tx);

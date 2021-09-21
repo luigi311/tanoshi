@@ -66,13 +66,7 @@ impl ExtensionBus {
     }
 
     pub async fn unload(&self, source_id: i64) -> Result<(), Box<dyn std::error::Error>> {
-        let detail = self.detail(source_id).await?;
-
         self.tx.send(Command::Unload(source_id))?;
-
-        let path = self.path.join(detail.name).with_extension("tanoshi");
-        info!("removing {}", path.display());
-        tokio::fs::remove_file(&path).await?;
         Ok(())
     }
 
