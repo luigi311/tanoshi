@@ -57,7 +57,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         vm::load(&extension_path, extension_tx.clone()).await?;
     }
 
-    #[cfg(not(feature = "disable-compiler"))]
+    #[cfg(feature = "disable-compiler")]
     vm::load(&extension_path, extension_tx.clone()).await?;
 
     let extension_bus = ExtensionBus::new(extension_path.clone(), extension_tx);
