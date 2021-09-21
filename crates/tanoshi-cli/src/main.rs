@@ -51,13 +51,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     let (_, extension_tx) = vm::start(&extension_path);
+
+    #[cfg(not(feature = "disable-compiler"))]
     if !matches!(opts.subcmd, SubCommand::Compile(_)) {
         vm::load(&extension_path, extension_tx.clone()).await?;
     }
 
+    #[cfg(not(feature = "disable-compiler"))]
+    vm::load(&extension_path, extension_tx.clone()).await?;
+
     let extension_bus = ExtensionBus::new(extension_path.clone(), extension_tx);
 
     match opts.subcmd {
+        #[cfg(not(feature = "disable-compiler"))]
         SubCommand::Compile(opts) => {
             // let triples = [
             //     "x86_64-apple-darwin",
