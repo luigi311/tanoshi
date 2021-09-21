@@ -147,15 +147,18 @@ Tanoshi backend use [rust-embed](https://github.com/pyros2097/rust-embed) to emb
 ### Backend
 1. Change directory into `crates/tanoshi` or root repository
 2. Install dependencies for https://github.com/faldez/libarchive-rs
-3. Install dependenciy for https://gitlab.com/taricorp/llvm-sys.rs
-   - on Windows, you can download https://github.com/faldez/tanoshi-builder/blob/master/LLVM.7z, extract to a directory and set environment variable$env:LLVM_SYS_110_PREFIX= to `/path/to/llvm`
+3. Install dependency for https://gitlab.com/taricorp/llvm-sys.rs
+   - on Windows, you can download from https://github.com/faldez/tanoshi-builder/releases/download/v0.1.0/LLVM.7z extract to a directory and set environment variable `$LLVM_SYS_110_PREFIX` to `/path/to/llvm` or build it yourself
    - on macOS, install using homebrew `brew install llvm@11` ands set `LLVM_SYS_110_PREFIX` to `/usr/local/opt/llvm`
-   - on Linux ..
+   - on Linux
+        ```bash
+        wget https://apt.llvm.org/llvm.sh 
+        chmod +x llvm.sh
+        ./llvm.sh 11
+        ```
 4. Build
     ```
     cargo build
-    # or from root repository
-    cargo build -p tanoshi
     ```
 
 PS. On linux you may need to install libssl-dev on ubuntu/debian or openssl-dev on fedora/centos
