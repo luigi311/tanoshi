@@ -119,7 +119,7 @@ pub async fn fetch_manga_from_favorite(refresh: bool) -> Result<Vec<Cover>, Box<
                 item.cover_url.clone(),
                 false,
                 item.last_read_at.as_ref().and_then(|read_at| {
-                    chrono::NaiveDateTime::parse_from_str(&read_at, "%Y-%m-%dT%H:%M:%S%.f").ok()
+                    chrono::NaiveDateTime::parse_from_str(read_at, "%Y-%m-%dT%H:%M:%S%.f").ok()
                 }),
                 item.unread_chapter_count,
             )

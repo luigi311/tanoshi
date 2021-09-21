@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - [tanoshi] pushover notification
-- [tanoshi-web] continuous reader pages have height when loading
+- [tanoshi-web] continuous reader pages have default height when loading
 - [tanoshi-web] global search
 - [tanoshi-web] filter and sort manga in library
 

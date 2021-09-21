@@ -228,7 +228,7 @@ impl Worker {
                     if let Some((pushover, user_key)) =
                         self.pushover.as_ref().zip(admin.pushover_user_key.as_ref())
                     {
-                        pushover.send_notification(&user_key, &message).await?;
+                        pushover.send_notification(user_key, &message).await?;
                     }
                 }
             }

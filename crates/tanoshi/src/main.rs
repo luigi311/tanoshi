@@ -90,7 +90,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let pushover = config
         .pushover
-        .map(|pushover_cfg| Pushover::new(pushover_cfg.application_key.clone()));
+        .map(|pushover_cfg| Pushover::new(pushover_cfg.application_key));
 
     let (worker_handle, worker_tx) = worker::start(
         config.update_interval,

@@ -1,12 +1,12 @@
 use std::rc::Rc;
 
+use dominator::with_node;
 use dominator::{clone, html, Dom};
-use dominator::{routing, with_node};
 use futures_signals::signal::Mutable;
 use futures_signals::signal::SignalExt;
 use web_sys::HtmlInputElement;
 
-use crate::common::{events, snackbar, Route, SettingCategory};
+use crate::common::{events, snackbar};
 use crate::query;
 use crate::utils::AsyncLoader;
 
@@ -36,7 +36,7 @@ impl Profile {
             match query::fetch_me().await {
                 Ok(result) => {
                     profile.telegram_chat_id.set(result.telegram_chat_id.map(|id| id.to_string()));
-                    profile.pushover_user_key.set(result.pushover_user_key.map(|id| id.to_string()));
+                    profile.pushover_user_key.set(result.pushover_user_key);
                 },
                 Err(err) => {
                     snackbar::show(format!("{}", err));
@@ -284,7 +284,7 @@ impl Profile {
         html!("div", {
             .children(&mut [
                 Self::render_change_password(profile.clone()),
-                Self::render_notification_setting(profile.clone()),
+                Self::render_notification_setting(profile),
             ])
         })
     }

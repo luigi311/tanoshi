@@ -33,7 +33,7 @@ pub enum Route {
 impl Route {
     pub fn signal() -> impl Signal<Item = Self> {
         routing::url()
-            .signal_ref(|url| Url::new(&url).unwrap_throw())
+            .signal_ref(|url| Url::new(url).unwrap_throw())
             .map(|url| {
                 let pathname = url.pathname();
                 let mut paths = pathname.split('/').collect::<Vec<_>>();

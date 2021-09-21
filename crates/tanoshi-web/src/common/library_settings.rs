@@ -270,7 +270,7 @@ impl LibrarySettings {
                         Self::render_header(settings.clone()),
                         Self::render_sort_setting(settings.clone()),
                         Self::render_order_setting(settings.clone()),
-                        Self::render_filter_setting(settings.clone()),
+                        Self::render_filter_setting(settings),
                     ])
                 })
             ])

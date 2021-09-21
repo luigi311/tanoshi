@@ -173,7 +173,7 @@ impl Chapter {
     async fn pages(
         &self,
         ctx: &Context<'_>,
-        #[graphql(desc = "fetch from source", default = false)] fetch: bool,
+        #[graphql(desc = "fetch from source", default = false)] _fetch: bool,
     ) -> Result<Vec<String>> {
         let mangadb = &ctx.data::<GlobalContext>()?.mangadb;
 

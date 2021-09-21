@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use dominator::{Dom, clone, events, html, link, routing, with_node};
 use futures_signals::map_ref;
-use futures_signals::signal::{self, Mutable, SignalExt};
+use futures_signals::signal::{Mutable, SignalExt};
 use futures_signals::signal_map::MutableBTreeMap;
 use futures_signals::signal_vec::{self, MutableVec, SignalVecExt};
 use wasm_bindgen::prelude::*;
@@ -102,7 +102,7 @@ impl Catalogue {
     }
 
     pub fn fetch_manga_from_all_sources(catalogue: Rc<Self>) {
-        let sources: Vec<Source> = catalogue.sources.lock_ref().iter().map(|s| s.clone()).collect();
+        let sources: Vec<Source> = catalogue.sources.lock_ref().iter().cloned().collect();
         let keyword = catalogue.keyword.get_cloned();
         catalogue.loader.load(clone!(catalogue => async move {
             for source in sources {

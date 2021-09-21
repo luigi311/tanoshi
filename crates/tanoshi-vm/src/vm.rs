@@ -243,7 +243,7 @@ pub async fn reload<P: AsRef<Path>>(
         let path = entry.path();
         info!("load plugin from {:?}", path.display());
         let now = Instant::now();
-        match ExtensionProxy::load(&store, &path) {
+        match ExtensionProxy::load(store, &path) {
             Ok(proxy) => {
                 let source = proxy.detail();
                 info!("loaded in {} ms: {:?}", now.elapsed().as_millis(), source);
