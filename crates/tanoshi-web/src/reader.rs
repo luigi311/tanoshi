@@ -349,6 +349,9 @@ impl Reader {
                     .event(clone!(reader => move |_: events::Click| {
                        if let Some(next) = reader.next_chapter.get() {
                         reader.chapter_id.set(next);
+                        if matches!(reader.reader_settings.reader_mode.get(), ReaderMode::Continous) {
+                            window().scroll_to_with_x_and_y(0.0_f64, 0.0_f64);
+                        }
                        }
                     }))
                 })
@@ -567,7 +570,7 @@ impl Reader {
                     .event(clone!(reader => move |_: events::Click| {
                         if let Some(next_chapter) = reader.next_chapter.get() {
                             reader.chapter_id.set(next_chapter);
-                            window().scroll_to_with_x_and_y(0.0_f64, 0.0_f64)
+                            window().scroll_to_with_x_and_y(0.0_f64, 0.0_f64);
                         } else {
                             info!("no next_page or next_chapter");
                         }
