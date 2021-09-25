@@ -227,6 +227,7 @@ impl Settings {
             .children(&mut [
                 html!("button", {
                     .style("justify-self", "start")
+                    .style("min-width", "5.5rem")
                     .style_signal("visibility", settings.page.signal_cloned().map(|x|
                         match x {
                             SettingCategory::None => "hidden",
@@ -289,6 +290,7 @@ impl Settings {
                 }),
                 html!("button", {
                     .style("justify-self", "end")
+                    .style("min-width", "5.5rem")
                     .child_signal(settings.page.signal_cloned().map(move |page| {
                         match page {
                             SettingCategory::Appearance => {
@@ -300,7 +302,7 @@ impl Settings {
                                 }))
                             }
                             _ => {
-                                None
+                                Some(html!("div", {}))
                             }
                         }
                     }))
@@ -579,7 +581,7 @@ impl Settings {
             _ => {}
         }
         html!("div", {
-            .class("page")
+            .style("padding", "0.5rem")
             .children(&mut [
                 Self::render_topbar(settings.clone()),
                 html!("div", {

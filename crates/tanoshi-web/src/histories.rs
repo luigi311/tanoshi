@@ -114,7 +114,7 @@ impl Histories {
                                     }),
                                     html!("span", {
                                         .class("date-updated")
-                                        .text(&Self::calculate_days(entry.read_at))
+                                        .text(format!("Page: {} • {}", entry.last_page_read + 1, &Self::calculate_days(entry.read_at)).as_str())
                                     })
                                 ])
                             })

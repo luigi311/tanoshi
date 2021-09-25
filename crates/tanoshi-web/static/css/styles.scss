@@ -164,6 +164,7 @@ input {
     padding-bottom: 0.5rem;
     border-bottom: var(--topbar-bottom-border);
     -webkit-padding-after: 0.5rem;
+    min-height: 1.5rem;
     
     span, input {
         background-color: inherit;
@@ -199,7 +200,7 @@ input {
         padding-top: env(safe-area-inset-top);
         background-color: transparent;
         width: 100%;
-        height: 2.5rem;
+        height: 2.75rem;
     }
 }
 
@@ -211,6 +212,7 @@ input {
     left: 0px;
     right: 0px;
     height: 2.5rem;
+    width: 100%;
     z-index: 40;
     padding-top: 0.5rem;
     padding-bottom: calc(env(safe-area-inset-bottom) + 0.5rem);
@@ -361,6 +363,8 @@ $manga-grid: (
     flex-direction: column;
     padding: 0;
     list-style-type: none;
+    margin-top: 0;
+    margin-bottom: 0;
 
     &-item {
         display: flex;

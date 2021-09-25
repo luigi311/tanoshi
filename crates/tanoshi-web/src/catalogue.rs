@@ -457,7 +457,6 @@ impl Catalogue {
         };
 
         html!("div", {
-            .class("page")
             .children(&mut [
                 Self::render_topbar(catalogue.clone()),
                 html!("div", {

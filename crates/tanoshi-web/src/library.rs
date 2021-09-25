@@ -202,6 +202,7 @@ impl Library {
 
     pub fn render_main(library: Rc<Self>, keyword: String) -> Dom {
         html!("div", {
+            .style("padding", "0.5rem")
             .child_signal(library.library_settings.filter.signal_cloned().map(clone!(library => move |filter| Some(html!("div", {
                 .class("manga-grid")
                 .children_signal_vec(library.cover_list.signal_vec_cloned().filter_map(clone!(filter, keyword => move |cover| {
@@ -223,7 +224,6 @@ impl Library {
         Self::fetch_libraries(library.clone(), false);
 
         html!("div", {
-            .class("page")
             .future(library.library_settings.sort.signal_cloned().for_each(clone!(library => move |sort| {
                 let mut covers = library.cover_list.lock_ref().to_vec();
                 covers.sort_by(|a, b| match sort {
