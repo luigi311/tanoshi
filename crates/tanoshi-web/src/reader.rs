@@ -373,8 +373,11 @@ impl Reader {
                 html!("div", {
                     .style("border-radius", "10%")
                     .style("padding", "0.5rem")
-                    .style_signal("background-color", reader.is_bar_visible.signal().map(|visible| if visible {None} else {Some("rgba(0, 0, 0, 0.5)")}))
-                    .style_signal("color", reader.is_bar_visible.signal().map(|visible| if visible {None} else {Some("white")}))
+                    .style_signal("color", reader.is_bar_visible.signal().map(|visible| if visible { Some("black") } else { Some("white") }))
+                    .style_signal("font-weight", reader.is_bar_visible.signal().map(|visible| if visible { None } else { Some("bold") }))
+                    .style_signal("-webkit-text-fill-color", reader.is_bar_visible.signal().map(|visible| if visible { None } else { Some("white") }))
+                    .style_signal("-webkit-text-stroke-width", reader.is_bar_visible.signal().map(|visible| if visible { None } else { Some("1px") }))
+                    .style_signal("-webkit-text-stroke-color", reader.is_bar_visible.signal().map(|visible| if visible { None } else { Some("black")}))
                     .children(&mut [
                         html!("span", {
                             .text_signal(reader.current_page.signal().map(|p| (p + 1).to_string()))
