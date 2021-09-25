@@ -296,7 +296,7 @@ async fn thread_main<P: AsRef<Path>>(path: P, extension_receiver: UnboundedRecei
                 extension_map.insert(source.id, (source, proxy));
             }
             Command::Unload(source_id, tx) => {
-                drop(extension_map.get_mut(&source_id));
+                drop(extension_map.remove(&source_id));
                 let extension_path = if let Some((source, _)) = extension_map.get_mut(&source_id) {
                     PathBuf::new()
                         .join(&path)
