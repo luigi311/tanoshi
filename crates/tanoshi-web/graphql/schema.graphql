@@ -127,7 +127,7 @@ input ProfileInput {
 }
 
 type QueryRoot {
-  installedSources: [Source!]!
+  installedSources(checkUpdate: Boolean!): [Source!]!
   availableSources: [Source!]!
   source(sourceId: Int!): Source!
   browseSource(

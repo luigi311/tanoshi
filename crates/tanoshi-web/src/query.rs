@@ -315,7 +315,6 @@ pub async fn fetch_all_sources() -> Result<fetch_all_sources::ResponseData, Box<
 )]
 pub struct FetchSourceDetail;
 
-#[allow(dead_code)]
 pub async fn fetch_source(
     source_id: i64,
 ) -> Result<fetch_source_detail::FetchSourceDetailSource, Box<dyn Error>> {

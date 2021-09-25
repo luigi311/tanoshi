@@ -1,5 +1,5 @@
 query FetchAllSources{
-  installedSources {
+  installedSources(checkUpdate: true) {
     id
     name
     version
@@ -14,6 +14,5 @@ query FetchAllSources{
     version
     icon
     needLogin
-    hasUpdate
   }
 }

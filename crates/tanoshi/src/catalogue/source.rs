@@ -107,22 +107,24 @@ pub struct SourceRoot;
 
 #[Object]
 impl SourceRoot {
-    async fn installed_sources(&self, ctx: &Context<'_>) -> Result<Vec<Source>> {
-        let available_sources_map = {
-            let url = "https://faldez.github.io/tanoshi-extensions".to_string();
-            let available_sources: Vec<SourceIndex> = ureq::get(&url).call()?.into_json()?;
-            let mut available_sources_map = HashMap::new();
-            for source in available_sources {
-                available_sources_map.insert(source.id, source);
-            }
-            available_sources_map
-        };
+    async fn installed_sources(
+        &self,
+        ctx: &Context<'_>,
+        check_update: bool,
+    ) -> Result<Vec<Source>> {
+        let installed_sources = ctx.data::<ExtensionBus>()?.list().await?;
+        let mut sources: Vec<Source> = vec![];
+        if check_update {
+            let available_sources_map = {
+                let url = "https://faldez.github.io/tanoshi-extensions".to_string();
+                let available_sources: Vec<SourceIndex> = ureq::get(&url).call()?.into_json()?;
+                let mut available_sources_map = HashMap::new();
+                for source in available_sources {
+                    available_sources_map.insert(source.id, source);
+                }
+                available_sources_map
+            };
 
-        let sources = {
-            let extensions = ctx.data::<ExtensionBus>()?;
-            let installed_sources = extensions.list().await?;
-
-            let mut sources: Vec<Source> = vec![];
             for source in installed_sources {
                 let mut source: Source = source.into();
                 if let Some(index) = available_sources_map.get(&source.id) {
@@ -131,10 +133,10 @@ impl SourceRoot {
                 }
                 sources.push(source);
             }
-            sources.sort_by(|a, b| a.id.cmp(&b.id));
-
-            sources
-        };
+        } else {
+            sources = installed_sources.into_iter().map(|s| s.into()).collect();
+        }
+        sources.sort_by(|a, b| a.id.cmp(&b.id));
 
         Ok(sources)
     }

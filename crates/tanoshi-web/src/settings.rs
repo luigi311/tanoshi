@@ -1,12 +1,13 @@
 use crate::{common::{AppearanceSettings, ChapterSettings, Login, Profile, ReaderSettings, Route, SettingCategory, Source, Spinner, User, events, snackbar}, query, utils::{AsyncLoader, window}};
 use dominator::svg;
 use dominator::{clone, html, link, routing, Dom};
-use futures_signals::{signal::{Mutable, SignalExt}, signal_vec::{MutableSignalVec, MutableVec}, signal_vec::SignalVecExt};
+use futures_signals::{signal::{self, Mutable, SignalExt}, signal_vec::{MutableSignalVec, MutableVec}, signal_vec::SignalVecExt};
 use std::rc::Rc;
 
 pub struct Settings {
     server_version: String,
     page: Mutable<SettingCategory>,
+    source: Mutable<Option<Source>>,
     installed_sources: MutableVec<Source>,
     available_sources: MutableVec<Source>,
     me: Mutable<Option<User>>,
@@ -22,6 +23,7 @@ impl Settings {
         Rc::new(Settings {
             server_version,
             page: Mutable::new(SettingCategory::None),
+            source: Mutable::new(None),
             installed_sources: MutableVec::new(),
             available_sources: MutableVec::new(),
             me: Mutable::new(None),
@@ -31,6 +33,27 @@ impl Settings {
             chapter_settings: ChapterSettings::new(true, false),
             loader: AsyncLoader::new(),
         })
+    }
+
+    fn fetch_source(settings: Rc<Self>, source_id: i64) {
+        settings.loader.load(clone!(settings => async move {
+            match query::fetch_source(source_id).await {
+                Ok(s) => {
+                    settings.source.set(Some(Source {
+                        id: s.id,
+                        name: s.name.clone(),
+                        version: s.version.clone(),
+                        icon: s.icon.clone(),
+                        need_login: s.need_login,
+                        has_update: false,
+                        installed: true,
+                    }));             
+                },
+                Err(err) => {
+                    snackbar::show(format!("{}", err));
+                }
+            }
+        }));
     }
 
     fn fetch_sources(settings: Rc<Self>) {
@@ -53,7 +76,7 @@ impl Settings {
                         version: s.version.clone(),
                         icon: s.icon.clone(),
                         need_login: s.need_login,
-                        has_update: s.has_update,
+                        has_update: false,
                         installed: false,
                     }).collect());                    
                 },
@@ -135,7 +158,7 @@ impl Settings {
                         version: s.version.clone(),
                         icon: s.icon.clone(),
                         need_login: s.need_login,
-                        has_update: s.has_update,
+                        has_update: false,
                         installed: false,
                     }).collect());
                 },
@@ -174,7 +197,7 @@ impl Settings {
                         version: s.version.clone(),
                         icon: s.icon.clone(),
                         need_login: s.need_login,
-                        has_update: s.has_update,
+                        has_update: false,
                         installed: false,
                     }).collect());
                 },
@@ -339,30 +362,57 @@ impl Settings {
                         html!("li", {
                             .class("list-item")
                             .children(&mut [
-                                link!(Route::Settings(SettingCategory::Source(x.id)).url(), {
-                                    .style("display", "flex")
-                                    .style("width", "100%")
-                                    .children(&mut [
-                                        html!("img", {
-                                            .style("width", "2.5rem")
-                                            .style("height", "2.5rem")
-                                            .style("margin-right", "0.5rem")
-                                            .attribute("src", &x.icon)
-                                        }),
-                                        html!("div", {
-                                            .style("display", "flex")
-                                            .style("flex-direction", "column")
-                                            .children(&mut [
-                                                html!("span", {
-                                                    .text(&x.name)
-                                                }),
-                                                html!("span", {
-                                                    .text(&x.version)
-                                                })
-                                            ])
-                                        })
-                                    ])
-                                }),
+                                if x.installed {
+                                    link!(Route::Settings(SettingCategory::Source(x.id)).url(), {
+                                        .style("display", "flex")
+                                        .style("width", "100%")
+                                        .children(&mut [
+                                            html!("img", {
+                                                .style("width", "2.5rem")
+                                                .style("height", "2.5rem")
+                                                .style("margin-right", "0.5rem")
+                                                .attribute("src", &x.icon)
+                                            }),
+                                            html!("div", {
+                                                .style("display", "flex")
+                                                .style("flex-direction", "column")
+                                                .children(&mut [
+                                                    html!("span", {
+                                                        .text(&x.name)
+                                                    }),
+                                                    html!("span", {
+                                                        .text(&x.version)
+                                                    })
+                                                ])
+                                            })
+                                        ])
+                                    })
+                                } else {
+                                    html!("div", {
+                                        .style("display", "flex")
+                                        .style("width", "100%")
+                                        .children(&mut [
+                                            html!("img", {
+                                                .style("width", "2.5rem")
+                                                .style("height", "2.5rem")
+                                                .style("margin-right", "0.5rem")
+                                                .attribute("src", &x.icon)
+                                            }),
+                                            html!("div", {
+                                                .style("display", "flex")
+                                                .style("flex-direction", "column")
+                                                .children(&mut [
+                                                    html!("span", {
+                                                        .text(&x.name)
+                                                    }),
+                                                    html!("span", {
+                                                        .text(&x.version)
+                                                    })
+                                                ])
+                                            })
+                                        ])
+                                    })
+                                },
                                 if x.installed && x.has_update {
                                     html!("button", {
                                         .text("Update")
@@ -401,41 +451,35 @@ impl Settings {
                 .style("display", "flex")
                 .style("flex-direction", "column")
                 .style("align-items", "center")
-                .children_signal_vec(settings.installed_sources.signal_vec_cloned().map(move |source| if source.id == source_id {
-                    html!("div", {
-                        .style("display", "flex")
-                        .style("flex-direction", "column")
-                        .style("align-items", "center")
-                        .children(&mut [
-                            html!("img", {
-                                .style("width", "3rem")
-                                .style("height", "3rem")
-                                .attribute("src", &source.icon)
-                            }),
-                            html!("span", {
-                                .text(&source.name)
-                            }),
-                            html!("span", {
-                                .text(&source.version)
-                            })
-                        ])
-                    })
-                } else {
-                    html!("div", {})
-                }))
-                .children(&mut [
-                    html!("button", {
-                        .class("uninstall-btn")
-                        .children(&mut [
-                            html!("span", {
-                                .text("Uninstall")
-                                .event(clone!(settings => move |_: events::Click| {
-                                    Self::uninstall_source(settings.clone(), source_id);
-                                }))
-                            })
-                        ])
-                    })
-                ])
+                .child_signal(settings.source.signal_cloned().map(|s| s.map(|source| html!("div", {
+                    .style("display", "flex")
+                    .style("flex-direction", "column")
+                    .style("align-items", "center")
+                    .children(&mut [
+                        html!("img", {
+                            .style("width", "3rem")
+                            .style("height", "3rem")
+                            .attribute("src", &source.icon)
+                        }),
+                        html!("span", {
+                            .text(&source.name)
+                        }),
+                        html!("span", {
+                            .text(&source.version)
+                        })
+                    ])
+                }))))
+                .child_signal(signal::always(source_id).map(clone!(settings => move |source_id| (source_id > 1).then(|| html!("button", {
+                    .class("uninstall-btn")
+                    .children(&mut [
+                        html!("span", {
+                            .text("Uninstall")
+                            .event(clone!(settings => move |_: events::Click| {
+                                Self::uninstall_source(settings.clone(), source_id);
+                            }))
+                        })
+                    ])
+                })))))
             })
         }
     }
@@ -526,7 +570,11 @@ impl Settings {
         settings.page.set(category.clone());
         match category {
             SettingCategory::None => Self::fetch_me(settings.clone()),
-            SettingCategory::Source(_) => Self::fetch_sources(settings.clone()),
+            SettingCategory::Source(id) => if id == 0 {
+                Self::fetch_sources(settings.clone())
+            } else {
+                Self::fetch_source(settings.clone(), id)
+            },
             SettingCategory::Users => Self::fetch_user_list(settings.clone()),
             _ => {}
         }

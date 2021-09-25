@@ -1,5 +1,5 @@
 query FetchSources{
-  installedSources {
+  installedSources(checkUpdate: false) {
     id
     name
     version
