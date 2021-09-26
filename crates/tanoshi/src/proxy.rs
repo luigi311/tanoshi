@@ -1,108 +1,111 @@
-use bytes::Bytes;
-use serde::Deserialize;
-use std::{convert::Infallible, io::Read};
-use warp::{filters::BoxedFilter, hyper::Response, Filter, Reply};
+use std::sync::Arc;
+
+use axum::{
+    body::Body,
+    extract::{Extension, Path},
+    http::{Response, StatusCode},
+    response::IntoResponse,
+};
 
 use crate::utils;
 
-#[derive(Deserialize)]
-pub struct Image {
-    pub url: String,
-}
-
-pub fn proxy(secret: String) -> BoxedFilter<(impl Reply,)> {
-    warp::path("image")
-        .and(warp::path::param())
-        .and(with_secret(secret))
-        .and_then(get_image)
-        .boxed()
-}
-
-fn with_secret(
+pub struct Proxy {
+    client: reqwest::Client,
     secret: String,
-) -> impl Filter<Extract = (String,), Error = std::convert::Infallible> + Clone {
-    warp::any().map(move || secret.clone())
 }
 
-pub async fn get_image(url: String, secret: String) -> Result<impl warp::Reply, Infallible> {
-    debug!("encrypted image url: {}", url);
-    let url = match utils::decrypt_url(&secret, &url) {
-        Ok(url) => url,
-        Err(e) => {
-            error!("error validate url: {}", e);
-            "".to_string()
-        }
-    };
-    debug!("get image from {}", url);
-
-    let content_type = mime_guess::from_path(&url)
-        .first_or_octet_stream()
-        .to_string();
-
-    let res = match url {
-        url if url.starts_with("http") => get_image_from_url(url).await,
-        url if !url.is_empty() => get_image_from_file(url).await,
-        _ => Err(400),
-    };
-
-    match res {
-        Ok(bytes) => Ok(warp::http::Response::builder()
-            .header("Content-Type", content_type)
-            .header("Content-Length", bytes.len())
-            .header("Cache-Control", "max-age=315360000")
-            .body(bytes)
-            .unwrap()),
-        Err(status) => Ok(empty_response(status)),
-    }
-}
-
-pub async fn get_image_from_file(file: String) -> Result<Bytes, u16> {
-    let file = std::path::PathBuf::from(file);
-    // if file is already a file, serve it
-    if file.is_file() {
-        match std::fs::read(file) {
-            Ok(buf) => Ok(Bytes::from(buf)),
-            Err(_) => Err(500),
-        }
-    } else {
-        // else if its combination of archive files and path inside the archive
-        // extract the file from archive
-        let filename = file.parent().unwrap().to_str().unwrap();
-        let path = file.file_name().unwrap().to_str().unwrap();
-        match libarchive_rs::extract_archive_file(filename, path) {
-            Ok(buf) => Ok(Bytes::from(buf)),
-            Err(_) => Err(400),
-        }
-    }
-}
-
-fn empty_response(status: u16) -> Response<Bytes> {
-    warp::http::Response::builder()
-        .status(status)
-        .body(bytes::Bytes::new())
-        .unwrap_or_default()
-}
-
-pub async fn get_image_from_url(url: String) -> Result<Bytes, u16> {
-    debug!("get image from {}", url);
-    if url.is_empty() {
-        return Err(400);
+impl Proxy {
+    pub fn new(secret: String) -> Arc<Self> {
+        Arc::new(Self {
+            client: reqwest::Client::new(),
+            secret,
+        })
     }
 
-    let res = match ureq::get(&url).call() {
-        Ok(res) => {
-            let mut bytes = Vec::new();
-            let mut reader = res.into_reader();
-            if let Err(_) = reader.read_to_end(&mut bytes) {
-                return Err(500);
+    pub async fn proxy(Path(url): Path<String>, state: Extension<Arc<Self>>) -> impl IntoResponse {
+        debug!("encrypted image url: {}", url);
+        let url = match utils::decrypt_url(&state.as_ref().secret, &url) {
+            Ok(url) => url,
+            Err(e) => {
+                error!("error validate url: {}", e);
+                "".to_string()
             }
-            bytes
-        }
-        Err(e) => {
-            error!("error fetch image, reason: {}", e);
-            return Err(500);
-        }
-    };
+        };
+        debug!("get image from {}", url);
+        let res: Response<Body> = match state.as_ref().get_image(&url).await {
+            Ok(body) => body,
+            Err(status) => http::Response::builder()
+                .status(status)
+                .body(Body::empty())
+                .unwrap(),
+        };
 
-    Ok(Bytes::from(res))
+        res
+    }
+
+    pub async fn get_image(&self, url: &str) -> Result<http::Response<Body>, StatusCode> {
+        match url {
+            url if url.starts_with("http") => Ok(self.get_image_from_url(url).await?),
+            url if !url.is_empty() => Ok(self.get_image_from_file(url).await?),
+            _ => Err(StatusCode::BAD_REQUEST),
+        }
+    }
+
+    async fn get_image_from_file(&self, file: &str) -> Result<http::Response<Body>, StatusCode> {
+        let file = std::path::PathBuf::from(file);
+
+        // if file is already a file, serve it
+        if file.is_file() {
+            let content_type = mime_guess::from_path(&file)
+                .first_or_octet_stream()
+                .to_string();
+            match std::fs::read(file) {
+                Ok(buf) => Ok(http::Response::builder()
+                    .header("Content-Type", content_type)
+                    .body(Body::from(buf))
+                    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?),
+                Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
+            }
+        } else {
+            // else if its combination of archive files and path inside the archive
+            // extract the file from archive
+            let filename = file.parent().unwrap().to_str().unwrap();
+            let path = file.file_name().unwrap().to_str().unwrap();
+            let content_type = mime_guess::from_path(path)
+                .first_or_octet_stream()
+                .to_string();
+            match libarchive_rs::extract_archive_file(filename, path) {
+                Ok(buf) => Ok(http::Response::builder()
+                    .header("Content-Type", content_type)
+                    .body(Body::from(buf))
+                    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?),
+                Err(_) => Err(StatusCode::BAD_REQUEST),
+            }
+        }
+    }
+
+    async fn get_image_from_url(&self, url: &str) -> Result<http::Response<Body>, StatusCode> {
+        debug!("get image from {}", url);
+        if url.is_empty() {
+            return Err(StatusCode::BAD_REQUEST);
+        }
+
+        let source_res = match self.client.get(url).send().await {
+            Ok(res) => res,
+            Err(e) => {
+                error!("error fetch image, reason: {}", e);
+                return Err(StatusCode::INTERNAL_SERVER_ERROR);
+            }
+        };
+
+        let mut res = http::Response::builder().status(source_res.status());
+
+        for (name, value) in source_res.headers() {
+            res = res.header(name, value);
+        }
+
+        Ok(res
+            .body(Body::wrap_stream(source_res.bytes_stream()))
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?)
+    }
 }

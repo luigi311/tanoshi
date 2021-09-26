@@ -10,7 +10,6 @@ mod library;
 mod local;
 mod notifier;
 mod proxy;
-mod routes;
 mod schema;
 mod status;
 mod user;
@@ -20,6 +19,7 @@ mod worker;
 use crate::{
     config::Config,
     notifier::pushover::Pushover,
+    proxy::Proxy,
     schema::{MutationRoot, QueryRoot, TanoshiSchema},
     user::Secret,
 };
@@ -33,19 +33,66 @@ use async_graphql::{
     EmptySubscription,
     Schema,
 };
-use async_graphql_warp::{BadRequest, Response};
-use std::{convert::Infallible, sync::Arc};
-use teloxide::prelude::RequesterExt;
-use warp::{
-    http::{Response as HttpResponse, StatusCode},
-    Filter, Rejection,
+use async_graphql_axum::{GraphQLRequest, GraphQLResponse};
+use axum::extract::{Extension, FromRequest, RequestParts, TypedHeader};
+use axum::{async_trait, handler::get};
+use axum::{
+    handler::post,
+    response::{self, IntoResponse},
 };
+use axum::{AddExtensionLayer, Router, Server};
+use headers::{authorization::Bearer, Authorization};
+use std::{
+    net::{IpAddr, SocketAddr},
+    str::FromStr,
+    sync::Arc,
+};
+use teloxide::prelude::RequesterExt;
 
 #[derive(Clap)]
 struct Opts {
     /// Path to config file
     #[clap(long)]
     config: Option<String>,
+}
+
+struct Token(String);
+
+#[async_trait]
+impl<B> FromRequest<B> for Token
+where
+    B: Send,
+{
+    type Rejection = ();
+
+    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+        // Extract the token from the authorization header
+        let token = TypedHeader::<Authorization<Bearer>>::from_request(req)
+            .await
+            .map(|TypedHeader(Authorization(bearer))| Token(bearer.token().to_string()))
+            .unwrap_or_else(|_| Token("".to_string()));
+
+        Ok(token)
+    }
+}
+
+async fn graphql_handler(
+    token: Token,
+    schema: Extension<TanoshiSchema>,
+    req: GraphQLRequest,
+) -> GraphQLResponse {
+    let req = req.into_inner();
+    let req = req.data(token.0);
+    schema.execute(req).await.into()
+}
+
+#[allow(dead_code)]
+async fn graphql_playground() -> impl IntoResponse {
+    response::Html(playground_source(GraphQLPlaygroundConfig::new("/graphql")))
+}
+
+async fn health_check() -> impl IntoResponse {
+    response::Html("OK")
 }
 
 #[tokio::main]
@@ -114,50 +161,28 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     .data(worker_tx)
     .finish();
 
-    let graphql_post = warp::header::optional::<String>("Authorization")
-        .and(async_graphql_warp::graphql(schema.clone()))
-        .and_then(
-            |token: Option<String>,
-             (schema, mut request): (TanoshiSchema, async_graphql::Request)| async move {
-                if let Some(token) = token {
-                    if let Some(token) = token.strip_prefix("Bearer ").map(|t| t.to_string()) {
-                        request = request.data(token);
-                    }
-                }
-                let resp = schema.execute(request).await;
-                Ok::<_, Infallible>(Response::from(resp))
-            },
-        );
+    let proxy = Proxy::new(config.secret.clone());
 
-    let health_check = warp::path!("health").and(warp::get()).map(warp::reply);
-
-    let static_files = assets::filter::static_files();
-    let image_proxy = proxy::proxy(config.secret.clone());
-
-    let server_fut = if config.enable_playground {
-        info!("enable graphql playground");
-        let graphql_playground = warp::path!("graphql").and(warp::get()).map(|| {
-            HttpResponse::builder()
-                .header("content-type", "text/html")
-                .body(playground_source(GraphQLPlaygroundConfig::new("/graphql")))
-        });
-        bind_routes!(
-            config.port,
-            health_check,
-            image_proxy,
-            graphql_playground,
-            static_files,
-            graphql_post
-        )
+    let mut app = Router::new()
+        .nest("/", get(assets::static_handler))
+        .route("/image/:url", get(Proxy::proxy))
+        .route("/health", get(health_check))
+        .layer(AddExtensionLayer::new(proxy))
+        .boxed();
+    if config.enable_playground {
+        app = app
+            .nest("/graphql", get(graphql_playground).post(graphql_handler))
+            .layer(AddExtensionLayer::new(schema))
+            .boxed();
     } else {
-        bind_routes!(
-            config.port,
-            health_check,
-            image_proxy,
-            static_files,
-            graphql_post
-        )
-    };
+        app = app
+            .nest("/graphql", post(graphql_handler))
+            .layer(AddExtensionLayer::new(schema))
+            .boxed();
+    }
+
+    let addr = SocketAddr::from((IpAddr::from_str("::0")?, config.port));
+    let server_fut = Server::bind(&addr).serve(app.into_make_service());
 
     tokio::select! {
         _ = server_fut => {

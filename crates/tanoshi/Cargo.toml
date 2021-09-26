@@ -15,7 +15,11 @@ tokio-stream = "0.1.5"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 serde_yaml = "0.8"
-warp = { version = "0.3.1", features = ["compression", "tls"] }
+async-graphql = { version = "2.10.0", features = ["apollo_tracing", "chrono"] }
+async-graphql-axum = "2.10.0"
+axum = { version = "0.2.5", features = ["headers"] }
+headers = "0.3"
+http = "0.2.5"
 rand = { version = "^0.8" }
 log = { version = "*" }
 env_logger = "0.9.0"
@@ -28,17 +32,14 @@ clap = "3.0.0-beta.1"
 bytes = "1"
 dirs = "3"
 base64 = "0.13"
-async-graphql = { version = "2.8.4", features = ["apollo_tracing", "chrono"] }
-async-graphql-warp = "2.8.4"
-sqlx = { version = "0.5.2", features = [
+sqlx = { version = "0.5", features = [
     "runtime-tokio-rustls",
-    "macros",
     "sqlite",
     "chrono",
     "json",
     "migrate",
 ] }
-ureq = { version = "2", features = ["json"] }
+reqwest = { version = "0.11", features = ["json"] }
 futures = "^0.3"
 rust-argon2 = "0.8"
 ron = "0.6.4"

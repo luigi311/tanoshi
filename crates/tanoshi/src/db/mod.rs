@@ -1,8 +1,4 @@
-use sqlx::{
-    migrate::MigrateDatabase,
-    sqlite::{SqlitePool, SqlitePoolOptions},
-    Sqlite,
-};
+use sqlx::{migrate::MigrateDatabase, sqlite::SqlitePool, Sqlite};
 
 mod manga;
 pub use manga::Db as MangaDatabase;
@@ -19,11 +15,7 @@ pub async fn establish_connection(
         Sqlite::create_database(database_path).await?;
     }
 
-    let pool = SqlitePoolOptions::new()
-        .max_connections(25)
-        .connect(database_path)
-        .await
-        .unwrap();
+    let pool = SqlitePool::connect(database_path).await?;
     sqlx::migrate!("./migrations").run(&pool).await?;
     Ok(pool)
 }
