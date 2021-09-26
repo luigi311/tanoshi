@@ -177,7 +177,7 @@ impl Chapter {
         ctx: &Context<'_>,
         #[graphql(desc = "fetch from source", default = false)] _fetch: bool,
     ) -> Result<Vec<String>> {
-        let mangadb = &&ctx.data::<Arc<GlobalContext>>()?.mangadb;
+        let mangadb = &ctx.data::<Arc<GlobalContext>>()?.mangadb;
 
         let pages = if let Ok(pages) = mangadb.get_pages_by_chapter_id(self.id).await {
             info!("return pages from db");
