@@ -1,4 +1,6 @@
-use crate::db::UserDatabase;
+use std::sync::Arc;
+
+use crate::context::GlobalContext;
 use async_graphql::{Context, InputObject, Object, Result};
 use rand::RngCore;
 
@@ -72,7 +74,8 @@ impl UserRoot {
         #[graphql(desc = "password")] password: String,
     ) -> Result<String> {
         let user = ctx
-            .data::<UserDatabase>()?
+            .data::<Arc<GlobalContext>>()?
+            .userdb
             .get_user_by_username(username)
             .await?;
 
@@ -80,7 +83,7 @@ impl UserRoot {
             return Err("Wrong username or password".into());
         }
 
-        let secret = ctx.data::<Secret>()?;
+        let secret = &ctx.data::<Arc<GlobalContext>>()?.secret;
         let token = jsonwebtoken::encode(
             &Header::default(),
             &Claims {
@@ -89,7 +92,7 @@ impl UserRoot {
                 is_admin: user.is_admin,
                 exp: 10000000000,
             },
-            &EncodingKey::from_secret(secret.0.as_bytes()),
+            &EncodingKey::from_secret(secret.as_bytes()),
         )?;
 
         Ok(token)
@@ -101,7 +104,7 @@ impl UserRoot {
             return Err("Forbidden".into());
         };
 
-        let users = ctx.data::<UserDatabase>()?.get_users().await?;
+        let users = ctx.data::<Arc<GlobalContext>>()?.userdb.get_users().await?;
 
         Ok(users.into_iter().map(|user| user.into()).collect())
     }
@@ -109,7 +112,8 @@ impl UserRoot {
     async fn me(&self, ctx: &Context<'_>) -> Result<User> {
         let user = get_claims(ctx)?;
         let user = ctx
-            .data::<UserDatabase>()?
+            .data::<Arc<GlobalContext>>()?
+            .userdb
             .get_user_by_id(user.sub)
             .await
             .map_err(|_| "user not exist, please relogin")?;
@@ -130,7 +134,7 @@ impl UserMutationRoot {
         #[graphql(desc = "password")] password: String,
         #[graphql(desc = "role", default = false)] is_admin: bool,
     ) -> Result<i64> {
-        let userdb = ctx.data::<UserDatabase>()?;
+        let userdb = &ctx.data::<Arc<GlobalContext>>()?.userdb;
 
         let user_count = userdb.get_users_count().await?;
 
@@ -172,7 +176,7 @@ impl UserMutationRoot {
     ) -> Result<u64> {
         let claims = get_claims(ctx)?;
 
-        let userdb = ctx.data::<UserDatabase>()?;
+        let userdb = &ctx.data::<Arc<GlobalContext>>()?.userdb;
 
         let user = userdb.get_user_by_id(claims.sub).await?;
 
@@ -199,7 +203,7 @@ impl UserMutationRoot {
         debug!("update_profile");
         let claims = get_claims(ctx)?;
 
-        let userdb = ctx.data::<UserDatabase>()?;
+        let userdb = &ctx.data::<Arc<GlobalContext>>()?.userdb;
         let mut user = userdb.get_user_by_id(claims.sub).await?;
         debug!("update_profile");
 
@@ -218,10 +222,10 @@ pub fn get_claims(ctx: &Context<'_>) -> Result<Claims> {
     let token = ctx
         .data::<String>()
         .map_err(|_| "token not exists, please login")?;
-    let secret = ctx.data::<Secret>()?;
+    let secret = &ctx.data::<Arc<GlobalContext>>()?.secret;
     let claims = jsonwebtoken::decode::<Claims>(
         token,
-        &DecodingKey::from_secret(secret.0.as_bytes()),
+        &DecodingKey::from_secret(secret.as_bytes()),
         &Validation::default(),
     )
     .map_err(|e| format!("failed to decode token, reason: {}", e))?;

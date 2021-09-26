@@ -5,6 +5,7 @@ extern crate argon2;
 mod assets;
 mod catalogue;
 mod config;
+mod context;
 mod db;
 mod library;
 mod local;
@@ -18,10 +19,10 @@ mod worker;
 
 use crate::{
     config::Config,
+    context::GlobalContext,
     notifier::pushover::Pushover,
     proxy::Proxy,
     schema::{MutationRoot, QueryRoot, TanoshiSchema},
-    user::Secret,
 };
 use clap::Clap;
 use futures::future::OptionFuture;
@@ -154,11 +155,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         EmptySubscription::default(),
     )
     // .extension(ApolloTracing)
-    .data(userdb)
-    .data(mangadb)
-    .data(Secret(config.secret.clone()))
-    .data(extension_bus)
-    .data(worker_tx)
+    .data(GlobalContext::new(
+        userdb,
+        mangadb,
+        config.secret.clone(),
+        extension_bus,
+        worker_tx,
+    ))
     .finish();
 
     let proxy = Proxy::new(config.secret.clone());
