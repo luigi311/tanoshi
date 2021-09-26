@@ -46,6 +46,7 @@ impl Display for ChapterUpdate {
 
 struct Worker {
     period: u64,
+    client: reqwest::Client,
     mangadb: MangaDatabase,
     userdb: UserDatabase,
     extension_bus: ExtensionBus,
@@ -71,6 +72,7 @@ impl Worker {
         info!("periodic updates every {} seconds", period);
         Self {
             period,
+            client: reqwest::Client::new(),
             mangadb,
             userdb,
             extension_bus,
@@ -190,19 +192,17 @@ impl Worker {
             pub icon: String,
         }
 
-        let available_sources_map = {
-            // let url = "https://raw.githubusercontent.com/faldez/tanoshi-extensions/repo/index.json"
-            //     .to_string();
-
-            let url = "https://faldez.github.io/tanoshi-extensions".to_string();
-
-            let available_sources: Vec<SourceIndex> = reqwest::get(&url).await?.json().await?;
-            let mut available_sources_map = HashMap::new();
-            for source in available_sources {
-                available_sources_map.insert(source.id, source);
-            }
-            available_sources_map
-        };
+        let url = "https://faldez.github.io/tanoshi-extensions".to_string();
+        let available_sources_map = self
+            .client
+            .get(&url)
+            .send()
+            .await?
+            .json::<Vec<SourceIndex>>()
+            .await?
+            .into_iter()
+            .map(|source| (source.id, source))
+            .collect::<HashMap<i64, SourceIndex>>();
 
         let admins = self.userdb.get_admins().await?;
         let installed_sources = self
@@ -244,8 +244,8 @@ impl Worker {
             pub body: String,
         }
 
-        let client = reqwest::Client::new();
-        let release: Release = client
+        let release: Release = self
+            .client
             .get("https://api.github.com/repos/faldez/tanoshi/releases/latest")
             .header(
                 "User-Agent",
