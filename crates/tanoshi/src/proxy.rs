@@ -24,7 +24,7 @@ impl Proxy {
 
     pub async fn proxy(Path(url): Path<String>, state: Extension<Arc<Self>>) -> impl IntoResponse {
         debug!("encrypted image url: {}", url);
-        let url = match utils::decrypt_url(&state.as_ref().secret, &url) {
+        let url = match utils::decrypt_url(&state.secret, &url) {
             Ok(url) => url,
             Err(e) => {
                 error!("error validate url: {}", e);
