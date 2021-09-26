@@ -376,7 +376,7 @@ impl Reader {
                 html!("div", {
                     .style("border-radius", "10%")
                     .style("padding", "0.5rem")
-                    .style_signal("color", reader.is_bar_visible.signal().map(|visible| if visible { Some("black") } else { Some("white") }))
+                    .style_signal("color", reader.is_bar_visible.signal().map(|visible| if visible { Some("inherit") } else { Some("white") }))
                     .style_signal("font-weight", reader.is_bar_visible.signal().map(|visible| if visible { None } else { Some("bold") }))
                     .style_signal("-webkit-text-fill-color", reader.is_bar_visible.signal().map(|visible| if visible { None } else { Some("white") }))
                     .style_signal("-webkit-text-stroke-width", reader.is_bar_visible.signal().map(|visible| if visible { None } else { Some("1px") }))
