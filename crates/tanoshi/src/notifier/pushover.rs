@@ -49,14 +49,14 @@ impl Pushover {
         let res: Response = self
             .client
             .post(PUSHOVER_ENDPOINT)
-            .body(serde_json::to_string(payload)?)
+            .json(payload)
             .send()
             .await?
             .json()
             .await?;
 
         if res.status != 1 {
-            return Err(anyhow!("error push test notification"));
+            return Err(anyhow!("error push test notification: {}", res.status));
         }
 
         Ok(())

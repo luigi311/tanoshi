@@ -140,14 +140,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .pushover
         .map(|pushover_cfg| Pushover::new(pushover_cfg.application_key));
 
-    let (worker_handle, worker_tx) = worker::start(
-        config.update_interval,
-        mangadb.clone(),
-        userdb.clone(),
-        extension_bus.clone(),
-        telegram_bot,
-        pushover,
+    let (worker_handle, worker_tx) = worker::worker::start(telegram_bot, pushover);
+
+    let ctx = GlobalContext::new(
+        userdb,
+        mangadb,
+        config.secret.clone(),
+        extension_bus,
+        worker_tx,
     );
+
+    let update_worker_handle = worker::updates::start(config.update_interval, ctx.clone());
 
     let schema: TanoshiSchema = Schema::build(
         QueryRoot::default(),
@@ -155,13 +158,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         EmptySubscription::default(),
     )
     // .extension(ApolloTracing)
-    .data(GlobalContext::new(
-        userdb,
-        mangadb,
-        config.secret.clone(),
-        extension_bus,
-        worker_tx,
-    ))
+    .data(ctx.clone())
     .finish();
 
     let proxy = Proxy::new(config.secret.clone());
@@ -193,6 +190,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         _ = worker_handle => {
             info!("worker quit");
+        }
+        _ = update_worker_handle => {
+            info!("update worker quit");
         }
         Some(_) = telegram_bot_fut => {
             info!("worker shutdown");

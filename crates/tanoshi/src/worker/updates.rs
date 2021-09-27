@@ -1,32 +1,19 @@
+use std::sync::Arc;
 use std::{collections::HashMap, fmt::Display, str::FromStr};
 
 use serde::Deserialize;
 use tanoshi_lib::prelude::Version;
-use tanoshi_vm::prelude::ExtensionBus;
-use teloxide::{
-    adaptors::{AutoSend, DefaultParseMode},
-    prelude::Requester,
-    Bot,
-};
-use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
+
 use tokio::{
-    sync::mpsc::unbounded_channel,
     task::JoinHandle,
     time::{self, Instant},
 };
 
+use crate::context::GlobalContext;
 use crate::{
-    db::{
-        model::{Chapter, User},
-        MangaDatabase, UserDatabase,
-    },
-    notifier::pushover::Pushover,
+    db::model::{Chapter, User},
+    worker::Command as WorkerCommand,
 };
-
-pub enum Command {
-    TelegramMessage(i64, String),
-    PushoverMessage(String, String),
-}
 
 #[derive(Debug, Clone)]
 struct ChapterUpdate {
@@ -44,25 +31,14 @@ impl Display for ChapterUpdate {
     }
 }
 
-struct Worker {
+struct UpdatesWorker {
     period: u64,
     client: reqwest::Client,
-    mangadb: MangaDatabase,
-    userdb: UserDatabase,
-    extension_bus: ExtensionBus,
-    telegram_bot: Option<DefaultParseMode<AutoSend<Bot>>>,
-    pushover: Option<Pushover>,
+    ctx: Arc<GlobalContext>,
 }
 
-impl Worker {
-    fn new(
-        period: u64,
-        mangadb: MangaDatabase,
-        userdb: UserDatabase,
-        extension_bus: ExtensionBus,
-        telegram_bot: Option<DefaultParseMode<AutoSend<Bot>>>,
-        pushover: Option<Pushover>,
-    ) -> Self {
+impl UpdatesWorker {
+    fn new(period: u64, ctx: Arc<GlobalContext>) -> Self {
         #[cfg(not(debug_assertions))]
         let period = if period > 0 && period < 3600 {
             3600
@@ -73,21 +49,18 @@ impl Worker {
         Self {
             period,
             client: reqwest::Client::new(),
-            mangadb,
-            userdb,
-            extension_bus,
-            telegram_bot,
-            pushover,
+            ctx,
         }
     }
 
     async fn check_chapter_update(&self) -> Result<(), anyhow::Error> {
-        let manga_in_library = self.mangadb.get_all_user_library().await?;
+        let manga_in_library = self.ctx.mangadb.get_all_user_library().await?;
 
         let mut user_map: HashMap<i64, User> = HashMap::new();
 
         for item in manga_in_library {
             let last_uploaded_chapter = self
+                .ctx
                 .mangadb
                 .get_last_uploaded_chapters_by_manga_id(item.manga.id)
                 .await
@@ -96,7 +69,8 @@ impl Worker {
             info!("Checking updates: {}", item.manga.title);
 
             let chapters = match self
-                .extension_bus
+                .ctx
+                .extensions
                 .get_chapters(item.manga.source_id, item.manga.path.clone())
                 .await
             {
@@ -117,7 +91,7 @@ impl Worker {
                 }
             };
 
-            if let Err(e) = self.mangadb.insert_chapters(&chapters).await {
+            if let Err(e) = self.ctx.mangadb.insert_chapters(&chapters).await {
                 error!("error inserting new chapters, reason: {}", e);
                 continue;
             }
@@ -138,38 +112,33 @@ impl Worker {
                     let user = match user_map.get(user_id) {
                         Some(user) => user.to_owned(),
                         None => {
-                            let user = self.userdb.get_user_by_id(*user_id).await?;
+                            let user = self.ctx.userdb.get_user_by_id(*user_id).await?;
                             user_map.insert(*user_id, user.to_owned());
                             user
                         }
                     };
 
-                    if let Some((bot, chat_id)) = self
-                        .telegram_bot
-                        .as_ref()
-                        .zip(user.telegram_chat_id.as_ref())
-                    {
+                    if let Some(chat_id) = user.telegram_chat_id {
                         let update = ChapterUpdate {
                             manga_title: item.manga.title.clone(),
                             cover_url: item.manga.cover_url.clone(),
                             title: chapter.title.clone(),
                         };
-                        if let Err(e) = bot.send_message(*chat_id, update.to_string()).await {
+                        if let Err(e) = self
+                            .ctx
+                            .worker_tx
+                            .send(WorkerCommand::TelegramMessage(chat_id, update.to_string()))
+                        {
                             error!("failed to send message, reason: {}", e);
                         }
                     }
 
-                    if let Some((pushover, user_key)) =
-                        self.pushover.as_ref().zip(user.pushover_user_key.as_ref())
-                    {
-                        if let Err(e) = pushover
-                            .send_notification_with_title(
-                                user_key,
-                                &item.manga.title,
-                                &chapter.title,
-                            )
-                            .await
-                        {
+                    if let Some(user_key) = user.pushover_user_key {
+                        if let Err(e) = self.ctx.worker_tx.send(WorkerCommand::PushoverMessage {
+                            user_key,
+                            title: Some(item.manga.title.clone()),
+                            body: chapter.title.clone(),
+                        }) {
                             error!("failed to send PushoverMessage, reason: {}", e);
                         }
                     }
@@ -204,9 +173,10 @@ impl Worker {
             .map(|source| (source.id, source))
             .collect::<HashMap<i64, SourceIndex>>();
 
-        let admins = self.userdb.get_admins().await?;
+        let admins = self.ctx.userdb.get_admins().await?;
         let installed_sources = self
-            .extension_bus
+            .ctx
+            .extensions
             .list()
             .await
             .map_err(|e| anyhow::anyhow!("{}", e))?;
@@ -220,15 +190,24 @@ impl Worker {
             {
                 for admin in admins.iter() {
                     let message = format!("{} extension update available", source.name);
-                    if let Some((bot, chat_id)) =
-                        self.telegram_bot.as_ref().zip(admin.telegram_chat_id)
-                    {
-                        bot.send_message(chat_id, &message).await?;
+                    if let Some(chat_id) = admin.telegram_chat_id {
+                        if let Err(e) = self
+                            .ctx
+                            .worker_tx
+                            .send(WorkerCommand::TelegramMessage(chat_id, message.clone()))
+                        {
+                            error!("failed to send message, reason: {}", e);
+                        }
                     }
-                    if let Some((pushover, user_key)) =
-                        self.pushover.as_ref().zip(admin.pushover_user_key.as_ref())
-                    {
-                        pushover.send_notification(user_key, &message).await?;
+
+                    if let Some(user_key) = admin.pushover_user_key.clone() {
+                        if let Err(e) = self.ctx.worker_tx.send(WorkerCommand::PushoverMessage {
+                            user_key,
+                            title: None,
+                            body: message.clone(),
+                        }) {
+                            error!("failed to send PushoverMessage, reason: {}", e);
+                        }
                     }
                 }
             }
@@ -260,18 +239,28 @@ impl Worker {
             > Version::from_str(env!("CARGO_PKG_VERSION"))?
         {
             info!("new server update found!");
-            let admins = self.userdb.get_admins().await?;
+            let admins = self.ctx.userdb.get_admins().await?;
             for admin in admins {
                 let msg = format!("Tanoshi {} Released\n{}", release.tag_name, release.body);
 
-                if let Some((bot, chat_id)) = self.telegram_bot.as_ref().zip(admin.telegram_chat_id)
-                {
-                    bot.send_message(chat_id, &msg).await?;
+                if let Some(chat_id) = admin.telegram_chat_id {
+                    if let Err(e) = self
+                        .ctx
+                        .worker_tx
+                        .send(WorkerCommand::TelegramMessage(chat_id, msg.clone()))
+                    {
+                        error!("failed to send message, reason: {}", e);
+                    }
                 }
-                if let Some((pushover, user_key)) =
-                    self.pushover.as_ref().zip(admin.pushover_user_key)
-                {
-                    pushover.send_notification(&user_key, &msg).await?;
+
+                if let Some(user_key) = admin.pushover_user_key.clone() {
+                    if let Err(e) = self.ctx.worker_tx.send(WorkerCommand::PushoverMessage {
+                        user_key,
+                        title: None,
+                        body: msg.clone(),
+                    }) {
+                        error!("failed to send PushoverMessage, reason: {}", e);
+                    }
                 }
             }
         } else {
@@ -281,32 +270,13 @@ impl Worker {
         Ok(())
     }
 
-    async fn run(&self, rx: UnboundedReceiver<Command>) {
-        let mut rx = rx;
+    async fn run(&self) {
         let period = if self.period == 0 { 3600 } else { self.period };
         let mut chapter_update_interval = time::interval(time::Duration::from_secs(period));
         let mut server_update_interval = time::interval(time::Duration::from_secs(86400));
 
         loop {
             tokio::select! {
-                Some(cmd) = rx.recv() => {
-                    match cmd {
-                        Command::TelegramMessage(chat_id, message) => {
-                            if let Some(bot) = self.telegram_bot.as_ref() {
-                                if let Err(e) = bot.send_message(chat_id, message).await {
-                                    error!("failed to send TelegramMessage, reason: {}", e);
-                                }
-                            }
-                        }
-                        Command::PushoverMessage(user_key, message) => {
-                            if let Some(pushover) = self.pushover.as_ref() {
-                                if let Err(e) = pushover.send_notification(&user_key, &message).await {
-                                    error!("failed to send PushoverMessage, reason: {}", e);
-                                }
-                            }
-                        }
-                    }
-                }
                 start = chapter_update_interval.tick() => {
                     if self.period == 0 {
                         continue;
@@ -338,27 +308,12 @@ impl Worker {
     }
 }
 
-pub fn start(
-    period: u64,
-    mangadb: MangaDatabase,
-    userdb: UserDatabase,
-    extension_bus: ExtensionBus,
-    telegram_bot: Option<DefaultParseMode<AutoSend<Bot>>>,
-    pushover: Option<Pushover>,
-) -> (JoinHandle<()>, UnboundedSender<Command>) {
-    let (tx, rx) = unbounded_channel();
-    let worker = Worker::new(
-        period,
-        mangadb,
-        userdb,
-        extension_bus,
-        telegram_bot,
-        pushover,
-    );
+pub fn start(period: u64, ctx: Arc<GlobalContext>) -> JoinHandle<()> {
+    let worker = UpdatesWorker::new(period, ctx);
 
     let handle = tokio::spawn(async move {
-        worker.run(rx).await;
+        worker.run().await;
     });
 
-    (handle, tx)
+    handle
 }

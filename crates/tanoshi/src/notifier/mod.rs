@@ -35,10 +35,11 @@ impl NotificationRoot {
         let _ = user::get_claims(ctx)?;
         ctx.data::<Arc<GlobalContext>>()?
             .worker_tx
-            .send(WorkerCommand::PushoverMessage(
+            .send(WorkerCommand::PushoverMessage {
                 user_key,
-                "Test Notification".to_string(),
-            ))?;
+                title: None,
+                body: "Test Notification".to_string(),
+            })?;
 
         Ok(true)
     }
