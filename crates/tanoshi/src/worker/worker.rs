@@ -3,8 +3,7 @@ use teloxide::{
     prelude::Requester,
     Bot,
 };
-use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
-use tokio::{sync::mpsc::unbounded_channel, task::JoinHandle};
+use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 
 use crate::notifier::pushover::Pushover;
 
@@ -73,13 +72,17 @@ impl Worker {
 pub fn start(
     telegram_bot: Option<DefaultParseMode<AutoSend<Bot>>>,
     pushover: Option<Pushover>,
-) -> (JoinHandle<()>, UnboundedSender<Command>) {
+) -> UnboundedSender<Command> {
     let (tx, rx) = unbounded_channel();
-    let worker = Worker::new(telegram_bot, pushover);
-
-    let handle = tokio::spawn(async move {
-        worker.run(rx).await;
-    });
-
-    (handle, tx)
+    let handle = tokio::runtime::Handle::current();
+    std::thread::Builder::new()
+        .name("worker".to_string())
+        .spawn(move || {
+            let worker = Worker::new(telegram_bot, pushover);
+            handle.block_on(async move {
+                worker.run(rx).await;
+            });
+        })
+        .expect("worker panics");
+    tx
 }
