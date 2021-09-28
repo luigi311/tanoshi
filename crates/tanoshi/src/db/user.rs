@@ -17,6 +17,7 @@ impl Db {
     }
 
     pub async fn insert_user(&self, user: User) -> Result<i64> {
+        let mut conn = self.pool.acquire().await?;
         let row_id = sqlx::query(
             r#"INSERT INTO user(
                 username,
@@ -27,7 +28,7 @@ impl Db {
         .bind(&user.username)
         .bind(&user.password)
         .bind(user.is_admin)
-        .execute(&self.pool)
+        .execute(&mut conn)
         .await?
         .last_insert_rowid();
 
@@ -35,6 +36,7 @@ impl Db {
     }
 
     pub async fn update_password(&self, id: i64, password: String) -> Result<u64> {
+        let mut conn = self.pool.acquire().await?;
         let row_id = sqlx::query(
             r#"UPDATE user
                 SET password = ?
@@ -42,7 +44,7 @@ impl Db {
         )
         .bind(&password)
         .bind(id)
-        .execute(&self.pool)
+        .execute(&mut conn)
         .await?
         .rows_affected();
 
@@ -51,6 +53,7 @@ impl Db {
 
     #[allow(dead_code)]
     pub async fn update_user_is_admin(&self, id: i64, is_admin: bool) -> Result<u64> {
+        let mut conn = self.pool.acquire().await?;
         let row_id = sqlx::query(
             r#"UPDATE user
                 SET is_admin = ?
@@ -58,7 +61,7 @@ impl Db {
         )
         .bind(&is_admin)
         .bind(id)
-        .execute(&self.pool)
+        .execute(&mut conn)
         .await?
         .rows_affected();
 
@@ -66,7 +69,8 @@ impl Db {
     }
 
     pub async fn get_users(&self) -> Result<Vec<User>> {
-        let mut stream = sqlx::query(r#"SELECT * FROM user"#).fetch(&self.pool);
+        let mut conn = self.pool.acquire().await?;
+        let mut stream = sqlx::query(r#"SELECT * FROM user"#).fetch(&mut conn);
 
         let mut users = vec![];
         while let Some(row) = stream.try_next().await? {
@@ -86,16 +90,18 @@ impl Db {
     }
 
     pub async fn get_users_count(&self) -> Result<i64> {
+        let mut conn = self.pool.acquire().await?;
         let stream = sqlx::query(r#"SELECT COUNT(1) FROM user"#)
-            .fetch_one(&self.pool)
+            .fetch_one(&mut conn)
             .await;
 
         Ok(stream.map(|row| row.get(0))?)
     }
 
     pub async fn get_admins(&self) -> Result<Vec<User>> {
+        let mut conn = self.pool.acquire().await?;
         let mut stream =
-            sqlx::query(r#"SELECT * FROM user WHERE is_admin = true"#).fetch(&self.pool);
+            sqlx::query(r#"SELECT * FROM user WHERE is_admin = true"#).fetch(&mut conn);
 
         let mut users = vec![];
         while let Some(row) = stream.try_next().await? {
@@ -114,9 +120,10 @@ impl Db {
     }
 
     pub async fn get_user_by_id(&self, id: i64) -> Result<User> {
+        let mut conn = self.pool.acquire().await?;
         let stream = sqlx::query(r#"SELECT * FROM user WHERE id = ?"#)
             .bind(id)
-            .fetch_one(&self.pool)
+            .fetch_one(&mut conn)
             .await;
 
         Ok(stream.map(|row| User {
@@ -132,9 +139,10 @@ impl Db {
     }
 
     pub async fn get_user_by_username(&self, username: String) -> Result<User> {
+        let mut conn = self.pool.acquire().await?;
         let stream = sqlx::query(r#"SELECT * FROM user WHERE username = ?"#)
             .bind(&username)
-            .fetch_one(&self.pool)
+            .fetch_one(&mut conn)
             .await;
 
         Ok(stream.map(|row| User {
@@ -150,6 +158,7 @@ impl Db {
     }
 
     pub async fn update_user_setting(&self, user: &User) -> Result<u64> {
+        let mut conn = self.pool.acquire().await?;
         let mut column_to_update = vec![];
         let mut arguments = SqliteArguments::default();
 
@@ -171,7 +180,7 @@ impl Db {
         );
 
         let rows_affected = sqlx::query_with(&query, arguments)
-            .execute(&self.pool)
+            .execute(&mut conn)
             .await?
             .rows_affected();
 
