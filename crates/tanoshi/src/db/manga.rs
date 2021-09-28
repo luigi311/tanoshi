@@ -17,9 +17,10 @@ impl Db {
     }
 
     pub async fn get_manga_by_id(&self, id: i64) -> Result<Manga> {
+        let mut conn = self.pool.acquire().await?;
         let stream = sqlx::query(r#"SELECT * FROM manga WHERE id = ?"#)
             .bind(id)
-            .fetch_one(&self.pool)
+            .fetch_one(&mut conn)
             .await;
 
         Ok(stream.map(|row| Manga {
@@ -37,10 +38,11 @@ impl Db {
     }
 
     pub async fn get_manga_by_source_path(&self, source_id: i64, path: &str) -> Result<Manga> {
+        let mut conn = self.pool.acquire().await?;
         let stream = sqlx::query(r#"SELECT * FROM manga WHERE source_id = ? AND path = ?"#)
             .bind(source_id)
             .bind(path)
-            .fetch_one(&self.pool)
+            .fetch_one(&mut conn)
             .await;
 
         Ok(stream.map(|row| Manga {
@@ -58,13 +60,14 @@ impl Db {
     }
 
     pub async fn get_library(&self, user_id: i64) -> Result<Vec<Manga>> {
+        let mut conn = self.pool.acquire().await?;
         let mut stream = sqlx::query(
             r#"SELECT manga.* FROM manga
                     JOIN user_library ON manga.id = user_library.manga_id AND user_library.user_id = ?
                     ORDER BY title"#,
         )
         .bind(user_id)
-        .fetch(&self.pool);
+        .fetch(&mut conn);
 
         let mut mangas = vec![];
         while let Some(row) = stream.try_next().await? {
@@ -85,13 +88,14 @@ impl Db {
     }
 
     pub async fn get_all_user_library(&self) -> Result<Vec<UserMangaLibrary>> {
+        let mut conn = self.pool.acquire().await?;
         let mut stream = sqlx::query(
             r#"SELECT manga.*, JSON_GROUP_ARRAY(user.id) FROM manga
             JOIN user_library ON user_library.manga_id = manga.id
             JOIN user ON user.id = user_library.user_id
             GROUP BY user_library.manga_id"#,
         )
-        .fetch(&self.pool);
+        .fetch(&mut conn);
 
         let mut mangas = vec![];
         while let Some(row) = stream.try_next().await? {
@@ -118,11 +122,12 @@ impl Db {
     }
 
     pub async fn is_user_library(&self, user_id: i64, manga_id: i64) -> Result<bool> {
+        let mut conn = self.pool.acquire().await?;
         let stream =
             sqlx::query(r#"SELECT true FROM user_library WHERE user_id = ? AND manga_id = ?"#)
                 .bind(user_id)
                 .bind(manga_id)
-                .fetch_one(&self.pool)
+                .fetch_one(&mut conn)
                 .await
                 .ok();
 
@@ -141,6 +146,7 @@ impl Db {
         before_timestamp: i64,
         before_id: i64,
     ) -> Result<Vec<RecentUpdate>> {
+        let mut conn = self.pool.acquire().await?;
         let mut stream = sqlx::query(
             r#"
         SELECT
@@ -165,7 +171,7 @@ impl Db {
         .bind(after_id)
         .bind(before_timestamp)
         .bind(before_id)
-        .fetch(&self.pool);
+        .fetch(&mut conn);
 
         let mut chapters = vec![];
         while let Some(row) = stream.try_next().await? {
@@ -190,6 +196,7 @@ impl Db {
         before_id: i64,
         first: i32,
     ) -> Result<Vec<RecentUpdate>> {
+        let mut conn = self.pool.acquire().await?;
         let mut stream = sqlx::query(
             r#"
         SELECT
@@ -216,7 +223,7 @@ impl Db {
         .bind(before_timestamp)
         .bind(before_id)
         .bind(first)
-        .fetch(&self.pool);
+        .fetch(&mut conn);
 
         let mut chapters = vec![];
         while let Some(row) = stream.try_next().await? {
@@ -241,6 +248,7 @@ impl Db {
         before_id: i64,
         last: i32,
     ) -> Result<Vec<RecentUpdate>> {
+        let mut conn = self.pool.acquire().await?;
         let mut stream = sqlx::query(
             r#"
         SELECT * FROM (
@@ -269,7 +277,7 @@ impl Db {
         .bind(before_timestamp)
         .bind(before_id)
         .bind(last)
-        .fetch(&self.pool);
+        .fetch(&mut conn);
 
         let mut chapters = vec![];
         while let Some(row) = stream.try_next().await? {
@@ -286,6 +294,11 @@ impl Db {
     }
 
     pub async fn get_chapter_has_next_page(&self, user_id: i64, timestamp: i64, id: i64) -> bool {
+        let mut conn = if let Ok(conn) = self.pool.acquire().await {
+            conn
+        } else {
+            return false;
+        };
         let stream = sqlx::query(
             r#"
             SELECT
@@ -303,7 +316,7 @@ impl Db {
         .bind(user_id)
         .bind(timestamp)
         .bind(id)
-        .fetch_one(&self.pool)
+        .fetch_one(&mut conn)
         .await
         .ok();
 
@@ -315,6 +328,11 @@ impl Db {
     }
 
     pub async fn get_chapter_has_before_page(&self, user_id: i64, timestamp: i64, id: i64) -> bool {
+        let mut conn = if let Ok(conn) = self.pool.acquire().await {
+            conn
+        } else {
+            return false;
+        };
         let stream = sqlx::query(
             r#"
         SELECT
@@ -332,7 +350,7 @@ impl Db {
         .bind(user_id)
         .bind(timestamp)
         .bind(id)
-        .fetch_one(&self.pool)
+        .fetch_one(&mut conn)
         .await
         .ok();
 
@@ -345,6 +363,7 @@ impl Db {
 
     #[allow(dead_code)]
     pub async fn get_chapter_len(&self) -> Result<i64> {
+        let mut conn = self.pool.acquire().await?;
         let stream = sqlx::query(
             r#"
             SELECT COUNT(id)
@@ -352,7 +371,7 @@ impl Db {
             JOIN manga ON manga.id = chapter.manga_id
             WHERE manga.is_favorite = true"#,
         )
-        .fetch_one(&self.pool)
+        .fetch_one(&mut conn)
         .await
         .ok();
 
@@ -370,6 +389,7 @@ impl Db {
         before_timestamp: i64,
         before_id: i64,
     ) -> Result<Vec<RecentChapter>> {
+        let mut conn = self.pool.acquire().await?;
         let mut stream = sqlx::query(
             r#"
         SELECT
@@ -395,7 +415,7 @@ impl Db {
         .bind(before_id)
         .bind(after_timestamp)
         .bind(before_timestamp)
-        .fetch(&self.pool);
+        .fetch(&mut conn);
 
         let mut chapters = vec![];
         while let Some(row) = stream.try_next().await? {
@@ -421,6 +441,7 @@ impl Db {
         before_id: i64,
         first: i32,
     ) -> Result<Vec<RecentChapter>> {
+        let mut conn = self.pool.acquire().await?;
         log::info!(
             "{} {} {} {}",
             after_timestamp,
@@ -456,7 +477,7 @@ impl Db {
         .bind(after_timestamp)
         .bind(before_timestamp)
         .bind(first)
-        .fetch(&self.pool);
+        .fetch(&mut conn);
 
         let mut chapters = vec![];
         while let Some(row) = stream.try_next().await? {
@@ -482,6 +503,7 @@ impl Db {
         before_id: i64,
         last: i32,
     ) -> Result<Vec<RecentChapter>> {
+        let mut conn = self.pool.acquire().await?;
         let mut stream = sqlx::query(
             r#"
         SELECT * FROM (
@@ -511,7 +533,7 @@ impl Db {
         .bind(after_timestamp)
         .bind(before_timestamp)
         .bind(last)
-        .fetch(&self.pool);
+        .fetch(&mut conn);
 
         let mut chapters = vec![];
         while let Some(row) = stream.try_next().await? {
@@ -534,6 +556,11 @@ impl Db {
         timestamp: i64,
         id: i64,
     ) -> bool {
+        let mut conn = if let Ok(conn) = self.pool.acquire().await {
+            conn
+        } else {
+            return false;
+        };
         let stream = sqlx::query(
             r#"
             SELECT COUNT(1) FROM (
@@ -553,7 +580,7 @@ impl Db {
         .bind(user_id)
         .bind(id)
         .bind(timestamp)
-        .fetch_one(&self.pool)
+        .fetch_one(&mut conn)
         .await
         .ok();
 
@@ -570,6 +597,12 @@ impl Db {
         timestamp: i64,
         id: i64,
     ) -> bool {
+        let mut conn = if let Ok(conn) = self.pool.acquire().await {
+            conn
+        } else {
+            return false;
+        };
+
         let stream = sqlx::query(
             r#"
             SELECT COUNT(1) FROM (
@@ -589,7 +622,7 @@ impl Db {
         .bind(user_id)
         .bind(id)
         .bind(timestamp)
-        .fetch_one(&self.pool)
+        .fetch_one(&mut conn)
         .await
         .ok();
 
@@ -601,6 +634,7 @@ impl Db {
     }
 
     pub async fn insert_manga(&self, manga: &mut Manga) -> Result<()> {
+        let mut conn = self.pool.acquire().await?;
         let row_id = sqlx::query(
             r#"
             INSERT INTO manga(
@@ -637,7 +671,7 @@ impl Db {
             chrono::Local::now().timestamp(),
             0,
         ))
-        .execute(&self.pool)
+        .execute(&mut conn)
         .await?
         .last_insert_rowid();
 
@@ -654,6 +688,7 @@ impl Db {
 
     #[allow(dead_code)]
     pub async fn update_manga_info(&self, manga: &Manga) -> Result<u64> {
+        let mut conn = self.pool.acquire().await?;
         let mut column_to_update = vec![];
         let mut arguments = SqliteArguments::default();
         if manga.source_id > 0 {
@@ -702,7 +737,7 @@ impl Db {
         );
 
         let rows_affected = sqlx::query_with(&query, arguments)
-            .execute(&self.pool)
+            .execute(&mut conn)
             .await?
             .rows_affected();
 
@@ -714,6 +749,7 @@ impl Db {
         user_id: i64,
         manga_id: i64,
     ) -> Result<Option<NaiveDateTime>> {
+        let mut conn = self.pool.acquire().await?;
         let row = sqlx::query(
             "SELECT read_at FROM (SELECT MAX(user_history.read_at) as read_at FROM chapter
             JOIN user_history ON user_history.chapter_id = chapter.id AND user_history.user_id = ?
@@ -722,13 +758,14 @@ impl Db {
         )
         .bind(user_id)
         .bind(manga_id)
-        .fetch_optional(&self.pool)
+        .fetch_optional(&mut conn)
         .await?;
 
         Ok(row.map(|r| r.get::<chrono::NaiveDateTime, _>(0)))
     }
 
     pub async fn get_chapter_by_id(&self, id: i64) -> Result<Chapter> {
+        let mut conn = self.pool.acquire().await?;
         let stream = sqlx::query(
             r#"
             SELECT *,
@@ -737,7 +774,7 @@ impl Db {
             FROM chapter WHERE id = ?"#,
         )
         .bind(id)
-        .fetch_one(&self.pool)
+        .fetch_one(&mut conn)
         .await;
 
         Ok(stream.map(|row| Chapter {
@@ -760,6 +797,7 @@ impl Db {
         user_id: i64,
         manga_id: i64,
     ) -> Result<Option<Chapter>> {
+        let mut conn = self.pool.acquire().await?;
         let stream = sqlx::query(
             r#"
             WITH last_reading_session AS (
@@ -840,7 +878,7 @@ impl Db {
         .bind(manga_id)
         .bind(user_id)
         .bind(manga_id)
-        .fetch_optional(&self.pool)
+        .fetch_optional(&mut conn)
         .await?;
 
         Ok(stream.map(|row| Chapter {
@@ -860,6 +898,7 @@ impl Db {
 
     #[allow(dead_code)]
     pub async fn get_chapter_by_source_path(&self, source_id: i64, path: &str) -> Option<Chapter> {
+        let mut conn = self.pool.acquire().await.ok()?;
         let stream = sqlx::query(
             r#"
             SELECT *,
@@ -869,7 +908,7 @@ impl Db {
         )
         .bind(source_id)
         .bind(path)
-        .fetch_one(&self.pool)
+        .fetch_one(&mut conn)
         .await
         .ok();
 
@@ -889,6 +928,7 @@ impl Db {
     }
 
     pub async fn get_chapters_by_manga_id(&self, manga_id: i64) -> Result<Vec<Chapter>> {
+        let mut conn = self.pool.acquire().await?;
         let mut stream = sqlx::query(
             r#"
             SELECT *,
@@ -897,7 +937,7 @@ impl Db {
             FROM chapter WHERE manga_id = ? ORDER BY number DESC"#
         )
         .bind(manga_id)
-        .fetch(&self.pool);
+        .fetch(&mut conn);
 
         let mut chapters = vec![];
         while let Some(row) = stream.try_next().await? {
@@ -923,6 +963,7 @@ impl Db {
     }
 
     pub async fn get_last_uploaded_chapters_by_manga_id(&self, manga_id: i64) -> Option<Chapter> {
+        let mut conn = self.pool.acquire().await.ok()?;
         let stream = sqlx::query(
             r#"
             SELECT *,
@@ -931,7 +972,7 @@ impl Db {
             FROM chapter WHERE manga_id = ? ORDER BY uploaded DESC LIMIT 1"#
         )
         .bind(manga_id)
-        .fetch_one(&self.pool)
+        .fetch_one(&mut conn)
         .await
         .ok();
 
@@ -952,6 +993,7 @@ impl Db {
 
     #[allow(dead_code)]
     pub async fn insert_chapter(&self, chapter: &Chapter) -> Result<i64> {
+        let mut conn = self.pool.acquire().await?;
         let row_id = sqlx::query(
             r#"INSERT INTO chapter(
                 source_id,
@@ -975,7 +1017,7 @@ impl Db {
             chrono::Local::now().timestamp(),
             0,
         ))
-        .execute(&self.pool)
+        .execute(&mut conn)
         .await?
         .last_insert_rowid();
 
@@ -983,6 +1025,7 @@ impl Db {
     }
 
     pub async fn insert_chapters(&self, chapters: &[Chapter]) -> Result<()> {
+        let mut conn = self.pool.acquire().await?;
         if chapters.is_empty() {
             return Ok(());
         }
@@ -1027,12 +1070,13 @@ impl Db {
                 ));
         }
 
-        query.execute(&self.pool).await?;
+        query.execute(&mut conn).await?;
 
         Ok(())
     }
 
     pub async fn insert_pages(&self, chapter_id: i64, pages: &[String]) -> Result<()> {
+        let mut conn = self.pool.acquire().await?;
         if pages.is_empty() {
             return Ok(());
         }
@@ -1056,15 +1100,16 @@ impl Db {
             query = query.bind(chapter_id).bind(index as i64).bind(page);
         }
 
-        query.execute(&self.pool).await?;
+        query.execute(&mut conn).await?;
 
         Ok(())
     }
 
     pub async fn get_pages_by_chapter_id(&self, chapter_id: i64) -> Result<Vec<String>> {
+        let mut conn = self.pool.acquire().await?;
         let mut stream = sqlx::query("SELECT remote_url FROM page WHERE chapter_id = ?")
             .bind(chapter_id)
-            .fetch(&self.pool);
+            .fetch(&mut conn);
 
         let mut pages = vec![];
         while let Some(row) = stream.try_next().await? {
@@ -1079,20 +1124,22 @@ impl Db {
     }
 
     pub async fn insert_user_library(&self, user_id: i64, manga_id: i64) -> Result<u64> {
+        let mut conn = self.pool.acquire().await?;
         sqlx::query("INSERT INTO user_library (user_id, manga_id) VALUES (?, ?)")
             .bind(user_id)
             .bind(manga_id)
-            .execute(&self.pool)
+            .execute(&mut conn)
             .await
             .map(|res| res.rows_affected())
             .map_err(|e| anyhow::anyhow!(e))
     }
 
     pub async fn delete_user_library(&self, user_id: i64, manga_id: i64) -> Result<u64> {
+        let mut conn = self.pool.acquire().await?;
         sqlx::query("DELETE FROM user_library WHERE user_id = ? AND manga_id = ?")
             .bind(user_id)
             .bind(manga_id)
-            .execute(&self.pool)
+            .execute(&mut conn)
             .await
             .map(|res| res.rows_affected())
             .map_err(|e| anyhow::anyhow!(e))
@@ -1104,6 +1151,7 @@ impl Db {
         chapter_id: i64,
         page: i64,
     ) -> Result<u64> {
+        let mut conn = self.pool.acquire().await?;
         sqlx::query(
             r#"
             INSERT INTO
@@ -1121,13 +1169,14 @@ impl Db {
         .bind(chrono::Local::now())
         .bind(page)
         .bind(chapter_id)
-        .execute(&self.pool)
+        .execute(&mut conn)
         .await
         .map(|res| res.rows_affected())
         .map_err(|e| anyhow::anyhow!(e))
     }
 
     pub async fn update_chapters_read_at(&self, user_id: i64, chapter_ids: &[i64]) -> Result<u64> {
+        let mut conn = self.pool.acquire().await?;
         if chapter_ids.is_empty() {
             return Ok(0);
         }
@@ -1162,13 +1211,14 @@ impl Db {
         query = query.bind(user_id);
 
         query
-            .execute(&self.pool)
+            .execute(&mut conn)
             .await
             .map(|res| res.rows_affected())
             .map_err(|e| anyhow::anyhow!(e))
     }
 
     pub async fn delete_chapters_read_at(&self, user_id: i64, chapter_ids: &[i64]) -> Result<u64> {
+        let mut conn = self.pool.acquire().await?;
         if chapter_ids.is_empty() {
             return Ok(0);
         }
@@ -1189,7 +1239,7 @@ impl Db {
         }
 
         query
-            .execute(&self.pool)
+            .execute(&mut conn)
             .await
             .map(|res| res.rows_affected())
             .map_err(|e| anyhow::anyhow!(e))
@@ -1201,12 +1251,13 @@ impl Db {
         user_id: i64,
         chapter_id: i64,
     ) -> Result<Option<i64>> {
+        let mut conn = self.pool.acquire().await?;
         let stream = sqlx::query(
             r#"SELECT last_page FROM user_history WHERE user_id = ? AND chapter_id = ?"#,
         )
         .bind(user_id)
         .bind(chapter_id)
-        .fetch_one(&self.pool)
+        .fetch_one(&mut conn)
         .await
         .ok();
 
@@ -1222,10 +1273,11 @@ impl Db {
         user_id: i64,
         chapter_id: i64,
     ) -> Result<Option<ReadProgress>> {
+        let mut conn = self.pool.acquire().await?;
         let progress= sqlx::query(r#"SELECT read_at, last_page, is_complete FROM user_history WHERE user_id = ? AND chapter_id = ?"#)
                 .bind(user_id)
                 .bind(chapter_id)
-                .fetch_optional(&self.pool)
+                .fetch_optional(&mut conn)
                 .await?
                 .map(|row| ReadProgress {
                     at: row.get::<chrono::NaiveDateTime, _>(0),
@@ -1241,6 +1293,7 @@ impl Db {
         user_id: i64,
         manga_id: i64,
     ) -> Result<i64> {
+        let mut conn = self.pool.acquire().await?;
         let row =
             sqlx::query(r#"
                 SELECT COUNT(1) FROM (
@@ -1249,7 +1302,7 @@ impl Db {
                 WHERE is_complete = false"#)
                 .bind(user_id)
                 .bind(manga_id)
-                .fetch_one(&self.pool)
+                .fetch_one(&mut conn)
                 .await?;
 
         Ok(row.get::<i64, _>(0))
