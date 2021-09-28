@@ -201,7 +201,7 @@ pub async fn load<P: AsRef<Path>>(
     path: P,
     tx: UnboundedSender<Command>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    match std::fs::read_dir(&path) {
+    match tokio::fs::read_dir(&path).await {
         Ok(_) => {}
         Err(_) => {
             let _ = std::fs::create_dir_all(&path);
@@ -211,15 +211,16 @@ pub async fn load<P: AsRef<Path>>(
     #[cfg(feature = "compiler")]
     compile(&path).await?;
 
-    for entry in std::fs::read_dir(&path)?
-        .into_iter()
-        .filter_map(Result::ok)
-        .filter(move |path| {
-            path.path()
-                .extension()
-                .map_or(false, |ext| ext == "tanoshi")
-        })
-    {
+    let mut read_dir = tokio::fs::read_dir(&path).await?;
+    while let Some(entry) = read_dir.next_entry().await? {
+        if !entry
+            .path()
+            .extension()
+            .map_or(false, |ext| ext == "tanoshi")
+        {
+            continue;
+        }
+
         let path = entry.path();
         info!("found compiled plugin at {:?}", path.clone());
         tx.send(Command::Load(
@@ -252,25 +253,30 @@ pub async fn compile_with_target<P: AsRef<Path>>(
     let cpu_feature = CpuFeature::set();
     let target = Target::new(triple, cpu_feature);
 
-    match std::fs::read_dir(&path) {
+    match tokio::fs::read_dir(&path).await {
         Ok(_) => {}
         Err(_) => {
             let _ = std::fs::create_dir_all(&path);
         }
     }
 
-    for entry in std::fs::read_dir(&path)?
-        .into_iter()
-        .filter_map(Result::ok)
-        .filter(move |path| path.path().extension().map_or(false, |ext| ext == "wasm"))
-    {
+    let mut read_dir = tokio::fs::read_dir(&path).await?;
+    while let Some(entry) = read_dir.next_entry().await? {
+        if !entry
+            .path()
+            .extension()
+            .map_or(false, |ext| ext == "tanoshi")
+        {
+            continue;
+        }
+
         let path = entry.path();
         info!("found wasm file at {:?}", path.clone());
         ExtensionProxy::compile_from_file(&path, target.clone()).map_err(|e| format!("{}", e))?;
 
         if remove_wasm {
             debug!("remove wasm file");
-            std::fs::remove_file(path)?;
+            tokio::fs::remove_file(path).await?;
         }
     }
 
@@ -307,7 +313,7 @@ async fn thread_main<P: AsRef<Path>>(path: P, extension_receiver: UnboundedRecei
                 };
 
                 // remove the file
-                if let Err(e) = std::fs::remove_file(&extension_path) {
+                if let Err(e) = tokio::fs::remove_file(&extension_path).await {
                     error!("error removing {}: {}", extension_path.display(), e);
                 }
 
@@ -343,31 +349,34 @@ async fn thread_main<P: AsRef<Path>>(path: P, extension_receiver: UnboundedRecei
                 }
             },
             Command::Filters(source_id, tx) => {
-                process(&extension_map, source_id, tx, |proxy| proxy.filters());
+                process(&extension_map, source_id, tx, |proxy| proxy.filters()).await;
             }
             Command::GetMangaList(source_id, param, tx) => {
                 process(&extension_map, source_id, tx, |proxy| {
                     proxy.get_manga_list(param)
-                });
+                })
+                .await;
             }
             Command::GetMangaInfo(source_id, path, tx) => {
                 process(&extension_map, source_id, tx, |proxy| {
                     proxy.get_manga_info(path)
-                });
+                })
+                .await;
             }
             Command::GetChapters(source_id, path, tx) => {
                 process(&extension_map, source_id, tx, |proxy| {
                     proxy.get_chapters(path)
-                });
+                })
+                .await;
             }
             Command::GetPages(source_id, path, tx) => {
-                process(&extension_map, source_id, tx, |proxy| proxy.get_pages(path));
+                process(&extension_map, source_id, tx, |proxy| proxy.get_pages(path)).await;
             }
         }
     }
 }
 
-fn process<F, T>(
+async fn process<F, T>(
     extension_map: &BTreeMap<i64, (Source, Arc<dyn Extension>)>,
     source_id: i64,
     tx: ExtensionResultSender<T>,
@@ -379,10 +388,14 @@ fn process<F, T>(
     match extension_map.get(&source_id) {
         Some(proxy) => {
             let (_, proxy) = proxy.clone();
-            let res = f(proxy);
-            if tx.send(res).is_err() {
-                error!("[process] receiver dropped");
-            }
+            tokio::task::spawn_blocking(move || {
+                let res = f(proxy);
+                if tx.send(res).is_err() {
+                    error!("[process] receiver dropped");
+                }
+            })
+            .await
+            .expect("failed to spawn process");
         }
         None => {
             error!("extension with id {} not found", source_id);
