@@ -197,6 +197,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Some(_) = telegram_bot_fut => {
             info!("worker shutdown");
         }
+        _ = tokio::signal::ctrl_c() => {
+            info!("ctrl+c signal");
+        }
     }
 
     info!("closing database...");
