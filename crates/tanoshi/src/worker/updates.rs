@@ -4,7 +4,10 @@ use std::{collections::HashMap, fmt::Display, str::FromStr};
 use serde::Deserialize;
 use tanoshi_lib::prelude::Version;
 
-use tokio::time::{self, Instant};
+use tokio::{
+    task::JoinHandle,
+    time::{self, Instant},
+};
 
 use crate::context::GlobalContext;
 use crate::{
@@ -305,15 +308,12 @@ impl UpdatesWorker {
     }
 }
 
-pub fn start(period: u64, ctx: Arc<GlobalContext>) {
-    let handle = tokio::runtime::Handle::current();
-    std::thread::Builder::new()
-        .name("update_worker".to_string())
-        .spawn(move || {
-            let worker = UpdatesWorker::new(period, ctx);
-            handle.block_on(async move {
-                worker.run().await;
-            });
-        })
-        .expect("update worker panics");
+pub fn start(period: u64, ctx: Arc<GlobalContext>) -> JoinHandle<()> {
+    let worker = UpdatesWorker::new(period, ctx);
+
+    let handle = tokio::spawn(async move {
+        worker.run().await;
+    });
+
+    handle
 }
