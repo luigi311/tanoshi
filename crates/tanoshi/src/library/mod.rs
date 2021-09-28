@@ -25,10 +25,10 @@ impl LibraryRoot {
         let manga = db.get_library(user.sub).await?;
 
         if refresh {
-            let extensions = &ctx.data::<Arc<GlobalContext>>()?.extensions;
             for favorite_manga in manga.iter() {
                 let mut m: crate::db::model::Manga = {
-                    extensions
+                    ctx.data::<Arc<GlobalContext>>()?
+                        .extensions
                         .get_manga_info(favorite_manga.source_id, favorite_manga.path.clone())
                         .await?
                         .into()

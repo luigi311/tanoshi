@@ -187,21 +187,14 @@ impl Extension for ExtensionProxy {
     }
 }
 
-pub fn start<P: AsRef<Path>>(path: P) -> UnboundedSender<Command> {
+pub fn start<P: AsRef<Path>>(path: P) -> (JoinHandle<()>, UnboundedSender<Command>) {
     let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
     let path = PathBuf::new().join(path);
-    let handle = tokio::runtime::Handle::current();
+    let handle = tokio::spawn(async move {
+        thread_main(path, rx).await;
+    });
 
-    std::thread::Builder::new()
-        .name("tanoshi_vm".to_string())
-        .spawn(move || {
-            handle.block_on(async move {
-                thread_main(path, rx).await;
-            });
-        })
-        .expect("tanoshi vm panics");
-
-    tx
+    (handle, tx)
 }
 
 pub async fn load<P: AsRef<Path>>(

@@ -117,7 +117,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mangadb = db::MangaDatabase::new(pool.clone());
     let userdb = db::UserDatabase::new(pool.clone());
 
-    let extension_tx = vm::start(&config.plugin_path);
+    let (_, extension_tx) = vm::start(&config.plugin_path);
     vm::load(&config.plugin_path, extension_tx.clone()).await?;
 
     let extension_bus = ExtensionBus::new(&config.plugin_path, extension_tx);
@@ -182,8 +182,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let addr = SocketAddr::from((IpAddr::from_str("::0")?, config.port));
-    Server::bind(&addr).serve(app.into_make_service()).await?;
+    let server_fut = Server::bind(&addr).serve(app.into_make_service());
 
+    tokio::select! {
+        _ = server_fut => {
+            info!("server shutdown");
+        }
+        // _ = worker_handle => {
+        //     info!("worker quit");
+        // }
+        // _ = update_worker_handle => {
+        //     info!("update worker quit");
+        // }
+        Some(_) = telegram_bot_fut => {
+            info!("worker shutdown");
+        }
+    }
+
+    info!("closing database...");
     pool.close().await;
 
     Ok(())

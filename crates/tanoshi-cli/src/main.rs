@@ -50,7 +50,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         None => "target/wasm32-wasi/release".to_string(),
     };
 
-    let extension_tx = vm::start(&extension_path);
+    let (_, extension_tx) = vm::start(&extension_path);
 
     #[cfg(not(feature = "disable-compiler"))]
     if !matches!(opts.subcmd, SubCommand::Compile(_)) {
