@@ -4,14 +4,18 @@ use std::{collections::HashMap, fmt::Display, str::FromStr};
 use serde::Deserialize;
 use tanoshi_lib::prelude::Version;
 
+use tanoshi_vm::prelude::ExtensionBus;
+use tokio::sync::mpsc::UnboundedSender;
 use tokio::{
     task::JoinHandle,
     time::{self, Instant},
 };
 
-use crate::context::GlobalContext;
 use crate::{
-    db::model::{Chapter, User},
+    db::{
+        model::{Chapter, User},
+        MangaDatabase, UserDatabase,
+    },
     worker::Command as WorkerCommand,
 };
 
@@ -34,11 +38,20 @@ impl Display for ChapterUpdate {
 struct UpdatesWorker {
     period: u64,
     client: reqwest::Client,
-    ctx: Arc<GlobalContext>,
+    userdb: UserDatabase,
+    mangadb: MangaDatabase,
+    extensions: ExtensionBus,
+    worker_tx: UnboundedSender<WorkerCommand>,
 }
 
 impl UpdatesWorker {
-    fn new(period: u64, ctx: Arc<GlobalContext>) -> Self {
+    fn new(
+        period: u64,
+        userdb: UserDatabase,
+        mangadb: MangaDatabase,
+        extensions: ExtensionBus,
+        worker_tx: UnboundedSender<WorkerCommand>,
+    ) -> Self {
         #[cfg(not(debug_assertions))]
         let period = if period > 0 && period < 3600 {
             3600
@@ -49,18 +62,20 @@ impl UpdatesWorker {
         Self {
             period,
             client: reqwest::Client::new(),
-            ctx,
+            userdb,
+            mangadb,
+            extensions,
+            worker_tx,
         }
     }
 
     async fn check_chapter_update(&self) -> Result<(), anyhow::Error> {
-        let manga_in_library = self.ctx.mangadb.get_all_user_library().await?;
+        let manga_in_library = self.mangadb.get_all_user_library().await?;
 
         let mut user_map: HashMap<i64, User> = HashMap::new();
 
         for item in manga_in_library {
             let last_uploaded_chapter = self
-                .ctx
                 .mangadb
                 .get_last_uploaded_chapters_by_manga_id(item.manga.id)
                 .await
@@ -69,7 +84,6 @@ impl UpdatesWorker {
             info!("Checking updates: {}", item.manga.title);
 
             let chapters = match self
-                .ctx
                 .extensions
                 .get_chapters(item.manga.source_id, item.manga.path.clone())
                 .await
@@ -91,7 +105,7 @@ impl UpdatesWorker {
                 }
             };
 
-            if let Err(e) = self.ctx.mangadb.insert_chapters(&chapters).await {
+            if let Err(e) = self.mangadb.insert_chapters(&chapters).await {
                 error!("error inserting new chapters, reason: {}", e);
                 continue;
             }
@@ -112,7 +126,7 @@ impl UpdatesWorker {
                     let user = match user_map.get(user_id) {
                         Some(user) => user.to_owned(),
                         None => {
-                            let user = self.ctx.userdb.get_user_by_id(*user_id).await?;
+                            let user = self.userdb.get_user_by_id(*user_id).await?;
                             user_map.insert(*user_id, user.to_owned());
                             user
                         }
@@ -125,7 +139,6 @@ impl UpdatesWorker {
                             title: chapter.title.clone(),
                         };
                         if let Err(e) = self
-                            .ctx
                             .worker_tx
                             .send(WorkerCommand::TelegramMessage(chat_id, update.to_string()))
                         {
@@ -134,7 +147,7 @@ impl UpdatesWorker {
                     }
 
                     if let Some(user_key) = user.pushover_user_key {
-                        if let Err(e) = self.ctx.worker_tx.send(WorkerCommand::PushoverMessage {
+                        if let Err(e) = self.worker_tx.send(WorkerCommand::PushoverMessage {
                             user_key,
                             title: Some(item.manga.title.clone()),
                             body: chapter.title.clone(),
@@ -173,9 +186,8 @@ impl UpdatesWorker {
             .map(|source| (source.id, source))
             .collect::<HashMap<i64, SourceIndex>>();
 
-        let admins = self.ctx.userdb.get_admins().await?;
+        let admins = self.userdb.get_admins().await?;
         let installed_sources = self
-            .ctx
             .extensions
             .list()
             .await
@@ -192,7 +204,6 @@ impl UpdatesWorker {
                     let message = format!("{} extension update available", source.name);
                     if let Some(chat_id) = admin.telegram_chat_id {
                         if let Err(e) = self
-                            .ctx
                             .worker_tx
                             .send(WorkerCommand::TelegramMessage(chat_id, message.clone()))
                         {
@@ -201,7 +212,7 @@ impl UpdatesWorker {
                     }
 
                     if let Some(user_key) = admin.pushover_user_key.clone() {
-                        if let Err(e) = self.ctx.worker_tx.send(WorkerCommand::PushoverMessage {
+                        if let Err(e) = self.worker_tx.send(WorkerCommand::PushoverMessage {
                             user_key,
                             title: None,
                             body: message.clone(),
@@ -239,13 +250,12 @@ impl UpdatesWorker {
             > Version::from_str(env!("CARGO_PKG_VERSION"))?
         {
             info!("new server update found!");
-            let admins = self.ctx.userdb.get_admins().await?;
+            let admins = self.userdb.get_admins().await?;
             for admin in admins {
                 let msg = format!("Tanoshi {} Released\n{}", release.tag_name, release.body);
 
                 if let Some(chat_id) = admin.telegram_chat_id {
                     if let Err(e) = self
-                        .ctx
                         .worker_tx
                         .send(WorkerCommand::TelegramMessage(chat_id, msg.clone()))
                     {
@@ -254,7 +264,7 @@ impl UpdatesWorker {
                 }
 
                 if let Some(user_key) = admin.pushover_user_key.clone() {
-                    if let Err(e) = self.ctx.worker_tx.send(WorkerCommand::PushoverMessage {
+                    if let Err(e) = self.worker_tx.send(WorkerCommand::PushoverMessage {
                         user_key,
                         title: None,
                         body: msg.clone(),
@@ -308,8 +318,14 @@ impl UpdatesWorker {
     }
 }
 
-pub fn start(period: u64, ctx: Arc<GlobalContext>) -> JoinHandle<()> {
-    let worker = UpdatesWorker::new(period, ctx);
+pub fn start(
+    period: u64,
+    userdb: UserDatabase,
+    mangadb: MangaDatabase,
+    extensions: ExtensionBus,
+    worker_tx: UnboundedSender<WorkerCommand>,
+) -> JoinHandle<()> {
+    let worker = UpdatesWorker::new(period, userdb, mangadb, extensions, worker_tx);
 
     let handle = tokio::spawn(async move {
         worker.run().await;

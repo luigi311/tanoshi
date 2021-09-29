@@ -141,15 +141,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let (worker_handle, worker_tx) = worker::worker::start(telegram_bot, pushover);
 
-    let ctx = GlobalContext::new(
-        userdb,
-        mangadb,
-        config.secret.clone(),
-        extension_bus,
-        worker_tx,
+    let update_worker_handle = worker::updates::start(
+        config.update_interval,
+        userdb.clone(),
+        mangadb.clone(),
+        extension_bus.clone(),
+        worker_tx.clone(),
     );
-
-    let update_worker_handle = worker::updates::start(config.update_interval, ctx.clone());
 
     let schema: TanoshiSchema = Schema::build(
         QueryRoot::default(),
