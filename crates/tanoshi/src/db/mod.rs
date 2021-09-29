@@ -20,7 +20,9 @@ pub async fn establish_connection(
     }
 
     let pool = SqlitePoolOptions::new()
+        .max_connections(5)
         .idle_timeout(std::time::Duration::from_secs(60))
+        .max_lifetime(std::time::Duration::from_secs(3 * 60))
         .connect(database_path)
         .await?;
     sqlx::migrate!("./migrations").run(&pool).await?;
