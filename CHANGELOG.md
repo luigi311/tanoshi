@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- [tanoshi-web] restore last page read on continuous mode
+- [tanoshi] installedSource query has check update param
+
+### Fixed
+- [tanoshi-web] large header on firefox
+- [tanoshi-web] next chapter doesn't scroll to top on continous mode
+
+### Changed
+- [tanoshi-web] page indicator style changes
+- [tanoshi] move from warp to axum
+- [tanoshi-vm] extension now loaded then dropped every call
+- [tanoshi] limit sqlite connection to 5 with 1 minute idle timeout and 3 minute max lifetime
+- [tanoshi] image proxy now serve stream data
+
+
 ## [v0.25.17]
 
 ### Added
