@@ -190,7 +190,6 @@ impl Catalogue {
                         .style("width", "100%")
                         .attribute("placeholder", "Search")
                         .attribute("type", "text")
-                        .property_signal("value", catalogue.keyword.signal_cloned())
                         .with_node!(input => {
                             .event(clone!(catalogue => move |_: events::Input| {
                                 catalogue.keyword.set_neq(input.value());

@@ -92,7 +92,6 @@ impl Library {
                         .style("flex-grow", "1")
                         .attribute("placeholder", "Search")
                         .attribute("type", "text")
-                        .property_signal("value", library.keyword.signal_cloned())
                         .with_node!(input => {
                             .event(clone!(library => move |_: events::Input| {
                                 library.keyword.set_neq(input.value());
