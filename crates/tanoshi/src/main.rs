@@ -182,7 +182,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .boxed();
     }
 
-    let addr = SocketAddr::from((IpAddr::from_str("::0")?, config.port));
+    let addr = SocketAddr::from((IpAddr::from_str("0.0.0.0")?, config.port));
     let server_fut = Server::bind(&addr).serve(app.into_make_service());
 
     tokio::select! {
