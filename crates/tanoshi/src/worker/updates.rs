@@ -1,4 +1,3 @@
-use std::sync::Arc;
 use std::{collections::HashMap, fmt::Display, str::FromStr};
 
 use serde::Deserialize;
@@ -327,9 +326,7 @@ pub fn start(
 ) -> JoinHandle<()> {
     let worker = UpdatesWorker::new(period, userdb, mangadb, extensions, worker_tx);
 
-    let handle = tokio::spawn(async move {
+    tokio::spawn(async move {
         worker.run().await;
-    });
-
-    handle
+    })
 }

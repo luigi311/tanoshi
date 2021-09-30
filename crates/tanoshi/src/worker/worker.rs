@@ -58,10 +58,8 @@ impl Worker {
                             {
                                 error!("failed to send PushoverMessage, reason: {}", e);
                             }
-                        } else {
-                            if let Err(e) = pushover.send_notification(&user_key, &body).await {
-                                error!("failed to send PushoverMessage, reason: {}", e);
-                            }
+                        } else  if let Err(e) = pushover.send_notification(&user_key, &body).await {
+                            error!("failed to send PushoverMessage, reason: {}", e);
                         }
                     }
                 }
