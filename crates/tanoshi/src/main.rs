@@ -116,7 +116,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mangadb = db::MangaDatabase::new(pool.clone());
     let userdb = db::UserDatabase::new(pool.clone());
 
-    let (_, extension_tx) = vm::start(&config.plugin_path);
+    let (vm_handle, extension_tx) = vm::start(&config.plugin_path);
     vm::load(&config.plugin_path, extension_tx.clone()).await?;
 
     let extension_bus = ExtensionBus::new(&config.plugin_path, extension_tx);
@@ -188,6 +188,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tokio::select! {
         _ = server_fut => {
             info!("server shutdown");
+        }
+        _ = vm_handle => {
+            info!("vm quit");
         }
         _ = worker_handle => {
             info!("worker quit");
