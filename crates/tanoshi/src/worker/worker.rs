@@ -20,23 +20,24 @@ pub enum Command {
 struct Worker {
     telegram_bot: Option<DefaultParseMode<AutoSend<Bot>>>,
     pushover: Option<Pushover>,
+    rx: Receiver<Command>,
 }
 
 impl Worker {
     fn new(
         telegram_bot: Option<DefaultParseMode<AutoSend<Bot>>>,
         pushover: Option<Pushover>,
+        rx: Receiver<Command>,
     ) -> Self {
         Self {
             telegram_bot,
             pushover,
+            rx,
         }
     }
 
-    async fn run(&self, rx: Receiver<Command>) {
-        let mut rx = rx;
-
-        while let Some(cmd) = rx.recv().await {
+    async fn run(&mut self) {
+        while let Some(cmd) = self.rx.recv().await {
             match cmd {
                 Command::TelegramMessage(chat_id, message) => {
                     if let Some(bot) = self.telegram_bot.as_ref() {
@@ -73,10 +74,10 @@ pub fn start(
     pushover: Option<Pushover>,
 ) -> (JoinHandle<()>, Sender<Command>) {
     let (tx, rx) = tokio::sync::mpsc::channel(10);
-    let worker = Worker::new(telegram_bot, pushover);
+    let mut worker = Worker::new(telegram_bot, pushover, rx);
 
     let handle = tokio::spawn(async move {
-        worker.run(rx).await;
+        worker.run().await;
     });
 
     (handle, tx)
