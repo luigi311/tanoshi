@@ -3,8 +3,8 @@ use teloxide::{
     prelude::Requester,
     Bot,
 };
-use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
-use tokio::{sync::mpsc::unbounded_channel, task::JoinHandle};
+use tokio::sync::mpsc::{Receiver, Sender};
+use tokio::task::JoinHandle;
 
 use crate::notifier::pushover::Pushover;
 
@@ -33,7 +33,7 @@ impl Worker {
         }
     }
 
-    async fn run(&self, rx: UnboundedReceiver<Command>) {
+    async fn run(&self, rx: Receiver<Command>) {
         let mut rx = rx;
 
         while let Some(cmd) = rx.recv().await {
@@ -58,7 +58,7 @@ impl Worker {
                             {
                                 error!("failed to send PushoverMessage, reason: {}", e);
                             }
-                        } else  if let Err(e) = pushover.send_notification(&user_key, &body).await {
+                        } else if let Err(e) = pushover.send_notification(&user_key, &body).await {
                             error!("failed to send PushoverMessage, reason: {}", e);
                         }
                     }
@@ -71,8 +71,8 @@ impl Worker {
 pub fn start(
     telegram_bot: Option<DefaultParseMode<AutoSend<Bot>>>,
     pushover: Option<Pushover>,
-) -> (JoinHandle<()>, UnboundedSender<Command>) {
-    let (tx, rx) = unbounded_channel();
+) -> (JoinHandle<()>, Sender<Command>) {
+    let (tx, rx) = tokio::sync::mpsc::channel(1);
     let worker = Worker::new(telegram_bot, pushover);
 
     let handle = tokio::spawn(async move {

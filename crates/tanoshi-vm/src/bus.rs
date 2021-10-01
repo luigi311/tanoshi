@@ -6,22 +6,22 @@ use std::{
 };
 use tanoshi_lib::prelude::{Chapter, Extension, ExtensionResult, Filters, Manga, Param, Source};
 use tokio::{
-    sync::{mpsc::UnboundedSender, oneshot::Sender},
+    sync::{mpsc, oneshot},
     time::timeout,
 };
 
 // use crate::prelude::ExtensionProxy;
 
-pub type ExtensionResultSender<T> = Sender<ExtensionResult<T>>;
+pub type ExtensionResultSender<T> = oneshot::Sender<ExtensionResult<T>>;
 
 #[derive(Debug)]
 pub enum Command {
     Insert(i64, Arc<dyn Extension>),
     Load(String),
-    Unload(i64, Sender<()>),
-    Exist(i64, Sender<bool>),
-    List(Sender<Vec<Source>>),
-    Detail(i64, Sender<Source>),
+    Unload(i64, oneshot::Sender<()>),
+    Exist(i64, oneshot::Sender<bool>),
+    List(oneshot::Sender<Vec<Source>>),
+    Detail(i64, oneshot::Sender<Source>),
     Filters(i64, ExtensionResultSender<Option<Filters>>),
     GetMangaList(i64, Param, ExtensionResultSender<Vec<Manga>>),
     GetMangaInfo(i64, String, ExtensionResultSender<Manga>),
@@ -32,11 +32,11 @@ pub enum Command {
 #[derive(Debug, Clone)]
 pub struct ExtensionBus {
     path: PathBuf,
-    tx: UnboundedSender<Command>,
+    tx: mpsc::Sender<Command>,
 }
 
 impl ExtensionBus {
-    pub fn new<P: AsRef<Path>>(path: P, tx: UnboundedSender<Command>) -> Self {
+    pub fn new<P: AsRef<Path>>(path: P, tx: mpsc::Sender<Command>) -> Self {
         Self {
             path: PathBuf::new().join(path),
             tx,
@@ -48,7 +48,7 @@ impl ExtensionBus {
         source_id: i64,
         proxy: Arc<dyn Extension>,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        Ok(self.tx.send(Command::Insert(source_id, proxy))?)
+        Ok(self.tx.send(Command::Insert(source_id, proxy)).await?)
     }
 
     pub async fn install(
@@ -60,21 +60,24 @@ impl ExtensionBus {
         // ExtensionProxy::compile(contents, &path)?;
         tokio::fs::write(&path, contents).await?;
 
-        Ok(self.tx.send(Command::Load(
-            path.to_str().ok_or("path can't to string")?.to_string(),
-        ))?)
+        Ok(self
+            .tx
+            .send(Command::Load(
+                path.to_str().ok_or("path can't to string")?.to_string(),
+            ))
+            .await?)
     }
 
     pub async fn unload(&self, source_id: i64) -> Result<(), Box<dyn std::error::Error>> {
         let (tx, rx) = tokio::sync::oneshot::channel();
-        self.tx.send(Command::Unload(source_id, tx))?;
+        self.tx.send(Command::Unload(source_id, tx)).await?;
         timeout(Duration::from_secs(30), rx).await??;
         Ok(())
     }
 
     pub async fn exist(&self, source_id: i64) -> Result<bool, Box<dyn std::error::Error>> {
         let (tx, rx) = tokio::sync::oneshot::channel();
-        self.tx.send(Command::Exist(source_id, tx))?;
+        self.tx.send(Command::Exist(source_id, tx)).await?;
 
         let exist = timeout(Duration::from_secs(30), rx).await??;
         Ok(exist)
@@ -82,7 +85,7 @@ impl ExtensionBus {
 
     pub async fn list(&self) -> Result<Vec<Source>, Box<dyn std::error::Error>> {
         let (tx, rx) = tokio::sync::oneshot::channel();
-        self.tx.send(Command::List(tx))?;
+        self.tx.send(Command::List(tx)).await?;
 
         let sources = timeout(Duration::from_secs(30), rx).await??;
         Ok(sources)
@@ -90,7 +93,7 @@ impl ExtensionBus {
 
     pub async fn detail(&self, source_id: i64) -> Result<Source, Box<dyn std::error::Error>> {
         let (tx, rx) = tokio::sync::oneshot::channel();
-        self.tx.send(Command::Detail(source_id, tx))?;
+        self.tx.send(Command::Detail(source_id, tx)).await?;
 
         let source = timeout(Duration::from_secs(30), rx).await??;
         Ok(source)
@@ -101,7 +104,7 @@ impl ExtensionBus {
         source_id: i64,
     ) -> Result<Option<Filters>, Box<dyn std::error::Error>> {
         let (tx, rx) = tokio::sync::oneshot::channel();
-        self.tx.send(Command::Filters(source_id, tx))?;
+        self.tx.send(Command::Filters(source_id, tx)).await?;
 
         timeout(Duration::from_secs(30), rx).await??.result()
     }
@@ -112,7 +115,9 @@ impl ExtensionBus {
         param: Param,
     ) -> Result<Vec<Manga>, Box<dyn std::error::Error>> {
         let (tx, rx) = tokio::sync::oneshot::channel();
-        self.tx.send(Command::GetMangaList(source_id, param, tx))?;
+        self.tx
+            .send(Command::GetMangaList(source_id, param, tx))
+            .await?;
 
         timeout(Duration::from_secs(30), rx).await??.result()
     }
@@ -123,7 +128,9 @@ impl ExtensionBus {
         path: String,
     ) -> Result<Manga, Box<dyn std::error::Error>> {
         let (tx, rx) = tokio::sync::oneshot::channel();
-        self.tx.send(Command::GetMangaInfo(source_id, path, tx))?;
+        self.tx
+            .send(Command::GetMangaInfo(source_id, path, tx))
+            .await?;
 
         timeout(Duration::from_secs(30), rx).await??.result()
     }
@@ -134,7 +141,9 @@ impl ExtensionBus {
         path: String,
     ) -> Result<Vec<Chapter>, Box<dyn std::error::Error>> {
         let (tx, rx) = tokio::sync::oneshot::channel();
-        self.tx.send(Command::GetChapters(source_id, path, tx))?;
+        self.tx
+            .send(Command::GetChapters(source_id, path, tx))
+            .await?;
 
         timeout(Duration::from_secs(30), rx).await??.result()
     }
@@ -145,7 +154,7 @@ impl ExtensionBus {
         path: String,
     ) -> Result<Vec<String>, Box<dyn std::error::Error>> {
         let (tx, rx) = tokio::sync::oneshot::channel();
-        self.tx.send(Command::GetPages(source_id, path, tx))?;
+        self.tx.send(Command::GetPages(source_id, path, tx)).await?;
 
         timeout(Duration::from_secs(30), rx).await??.result()
     }

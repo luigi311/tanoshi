@@ -4,7 +4,7 @@ use serde::Deserialize;
 use tanoshi_lib::prelude::Version;
 
 use tanoshi_vm::prelude::ExtensionBus;
-use tokio::sync::mpsc::UnboundedSender;
+use tokio::sync::mpsc::Sender;
 use tokio::{
     task::JoinHandle,
     time::{self, Instant},
@@ -40,7 +40,7 @@ struct UpdatesWorker {
     userdb: UserDatabase,
     mangadb: MangaDatabase,
     extensions: ExtensionBus,
-    worker_tx: UnboundedSender<WorkerCommand>,
+    worker_tx: Sender<WorkerCommand>,
 }
 
 impl UpdatesWorker {
@@ -49,7 +49,7 @@ impl UpdatesWorker {
         userdb: UserDatabase,
         mangadb: MangaDatabase,
         extensions: ExtensionBus,
-        worker_tx: UnboundedSender<WorkerCommand>,
+        worker_tx: Sender<WorkerCommand>,
     ) -> Self {
         #[cfg(not(debug_assertions))]
         let period = if period > 0 && period < 3600 {
@@ -140,17 +140,22 @@ impl UpdatesWorker {
                         if let Err(e) = self
                             .worker_tx
                             .send(WorkerCommand::TelegramMessage(chat_id, update.to_string()))
+                            .await
                         {
                             error!("failed to send message, reason: {}", e);
                         }
                     }
 
                     if let Some(user_key) = user.pushover_user_key {
-                        if let Err(e) = self.worker_tx.send(WorkerCommand::PushoverMessage {
-                            user_key,
-                            title: Some(item.manga.title.clone()),
-                            body: chapter.title.clone(),
-                        }) {
+                        if let Err(e) = self
+                            .worker_tx
+                            .send(WorkerCommand::PushoverMessage {
+                                user_key,
+                                title: Some(item.manga.title.clone()),
+                                body: chapter.title.clone(),
+                            })
+                            .await
+                        {
                             error!("failed to send PushoverMessage, reason: {}", e);
                         }
                     }
@@ -205,17 +210,22 @@ impl UpdatesWorker {
                         if let Err(e) = self
                             .worker_tx
                             .send(WorkerCommand::TelegramMessage(chat_id, message.clone()))
+                            .await
                         {
                             error!("failed to send message, reason: {}", e);
                         }
                     }
 
                     if let Some(user_key) = admin.pushover_user_key.clone() {
-                        if let Err(e) = self.worker_tx.send(WorkerCommand::PushoverMessage {
-                            user_key,
-                            title: None,
-                            body: message.clone(),
-                        }) {
+                        if let Err(e) = self
+                            .worker_tx
+                            .send(WorkerCommand::PushoverMessage {
+                                user_key,
+                                title: None,
+                                body: message.clone(),
+                            })
+                            .await
+                        {
                             error!("failed to send PushoverMessage, reason: {}", e);
                         }
                     }
@@ -257,17 +267,22 @@ impl UpdatesWorker {
                     if let Err(e) = self
                         .worker_tx
                         .send(WorkerCommand::TelegramMessage(chat_id, msg.clone()))
+                        .await
                     {
                         error!("failed to send message, reason: {}", e);
                     }
                 }
 
                 if let Some(user_key) = admin.pushover_user_key.clone() {
-                    if let Err(e) = self.worker_tx.send(WorkerCommand::PushoverMessage {
-                        user_key,
-                        title: None,
-                        body: msg.clone(),
-                    }) {
+                    if let Err(e) = self
+                        .worker_tx
+                        .send(WorkerCommand::PushoverMessage {
+                            user_key,
+                            title: None,
+                            body: msg.clone(),
+                        })
+                        .await
+                    {
                         error!("failed to send PushoverMessage, reason: {}", e);
                     }
                 }
@@ -322,7 +337,7 @@ pub fn start(
     userdb: UserDatabase,
     mangadb: MangaDatabase,
     extensions: ExtensionBus,
-    worker_tx: UnboundedSender<WorkerCommand>,
+    worker_tx: Sender<WorkerCommand>,
 ) -> JoinHandle<()> {
     let worker = UpdatesWorker::new(period, userdb, mangadb, extensions, worker_tx);
 

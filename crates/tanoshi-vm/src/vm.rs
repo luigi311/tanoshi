@@ -8,7 +8,7 @@ use std::{
 use tanoshi_lib::prelude::{Chapter, Extension, ExtensionResult, Filters, Manga, Param, Source};
 use tanoshi_util::http::Request;
 use tokio::{
-    sync::mpsc::{UnboundedReceiver, UnboundedSender},
+    sync::mpsc::{Receiver, Sender},
     task::JoinHandle,
     time::Instant,
 };
@@ -187,8 +187,8 @@ impl Extension for ExtensionProxy {
     }
 }
 
-pub fn start<P: AsRef<Path>>(path: P) -> (JoinHandle<()>, UnboundedSender<Command>) {
-    let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+pub fn start<P: AsRef<Path>>(path: P) -> (JoinHandle<()>, Sender<Command>) {
+    let (tx, rx) = tokio::sync::mpsc::channel(10);
     let path = PathBuf::new().join(path);
     let handle = tokio::spawn(async move {
         thread_main(path, rx).await;
@@ -199,7 +199,7 @@ pub fn start<P: AsRef<Path>>(path: P) -> (JoinHandle<()>, UnboundedSender<Comman
 
 pub async fn load<P: AsRef<Path>>(
     path: P,
-    tx: UnboundedSender<Command>,
+    tx: Sender<Command>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     match tokio::fs::read_dir(&path).await {
         Ok(_) => {}
@@ -225,7 +225,8 @@ pub async fn load<P: AsRef<Path>>(
         info!("found compiled plugin at {:?}", path.clone());
         tx.send(Command::Load(
             path.to_str().ok_or("no path str")?.to_string(),
-        ))?;
+        ))
+        .await?;
     }
 
     Ok(())
@@ -283,7 +284,7 @@ pub async fn compile_with_target<P: AsRef<Path>>(
     Ok(())
 }
 
-async fn thread_main<P: AsRef<Path>>(path: P, extension_receiver: UnboundedReceiver<Command>) {
+async fn thread_main<P: AsRef<Path>>(path: P, extension_receiver: Receiver<Command>) {
     let mut recv = extension_receiver;
     let mut extension_map: BTreeMap<i64, (Source, Arc<dyn Extension>)> = BTreeMap::new();
 
