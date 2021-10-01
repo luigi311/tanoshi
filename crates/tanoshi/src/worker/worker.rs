@@ -72,7 +72,7 @@ pub fn start(
     telegram_bot: Option<DefaultParseMode<AutoSend<Bot>>>,
     pushover: Option<Pushover>,
 ) -> (JoinHandle<()>, Sender<Command>) {
-    let (tx, rx) = tokio::sync::mpsc::channel(1);
+    let (tx, rx) = tokio::sync::mpsc::channel(10);
     let worker = Worker::new(telegram_bot, pushover);
 
     let handle = tokio::spawn(async move {

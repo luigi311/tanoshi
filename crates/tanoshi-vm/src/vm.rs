@@ -188,7 +188,7 @@ impl Extension for ExtensionProxy {
 }
 
 pub fn start<P: AsRef<Path>>(path: P) -> (JoinHandle<()>, Sender<Command>) {
-    let (tx, rx) = tokio::sync::mpsc::channel(10);
+    let (tx, rx) = tokio::sync::mpsc::channel(25);
     let path = PathBuf::new().join(path);
     let handle = tokio::spawn(async move {
         thread_main(path, rx).await;
