@@ -113,7 +113,7 @@ pub async fn fetch_manga_from_favorite(refresh: bool) -> Result<Vec<Cover>, Box<
         .map(|item| {
             Cover::new(
                 item.id,
-                item.source.id,
+                0,
                 item.path.clone(),
                 item.title.clone(),
                 item.cover_url.clone(),

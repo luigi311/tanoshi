@@ -4,9 +4,6 @@ query BrowseFavorites($refresh: Boolean) {
     title
     path
     coverUrl
-    source {
-      id
-    }
     lastReadAt
     unreadChapterCount
   }
