@@ -187,11 +187,10 @@ impl Extension for ExtensionProxy {
     }
 }
 
-pub fn start<P: AsRef<Path>>(path: P) -> (JoinHandle<()>, Sender<Command>) {
+pub fn start() -> (JoinHandle<()>, Sender<Command>) {
     let (tx, rx) = tokio::sync::mpsc::channel(25);
-    let path = PathBuf::new().join(path);
     let handle = tokio::spawn(async move {
-        thread_main(path, rx).await;
+        thread_main(rx).await;
     });
 
     (handle, tx)
@@ -284,7 +283,7 @@ pub async fn compile_with_target<P: AsRef<Path>>(
     Ok(())
 }
 
-async fn thread_main<P: AsRef<Path>>(path: P, extension_receiver: Receiver<Command>) {
+async fn thread_main(extension_receiver: Receiver<Command>) {
     let mut recv = extension_receiver;
     let mut extension_map: BTreeMap<i64, (Source, Arc<dyn Extension>)> = BTreeMap::new();
 
@@ -304,19 +303,6 @@ async fn thread_main<P: AsRef<Path>>(path: P, extension_receiver: Receiver<Comma
             }
             Command::Unload(source_id, tx) => {
                 drop(extension_map.remove(&source_id));
-                let extension_path = if let Some((source, _)) = extension_map.get_mut(&source_id) {
-                    PathBuf::new()
-                        .join(&path)
-                        .join(&source.name)
-                        .with_extension("tanoshi")
-                } else {
-                    continue;
-                };
-
-                // remove the file
-                if let Err(e) = tokio::fs::remove_file(&extension_path).await {
-                    error!("error removing {}: {}", extension_path.display(), e);
-                }
 
                 if tx.send(()).is_err() {
                     error!("[Command::Unload] receiver dropped");
