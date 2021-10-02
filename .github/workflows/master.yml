@@ -97,7 +97,7 @@ jobs:
         if: ${{ matrix.os == 'macos-latest' }}
         run: brew install icu4c libarchive bzip2 lz4 zlib expat llvm@11
       - name: Install LLVM and Clang
-        if: ${{ matrix.os == 'ubuntu-latest' }}
+        if: ${{ matrix.os != 'windows-latest' }}
         uses: KyleMayes/install-llvm-action@v1
         with:
           version: "11.0"
@@ -143,4 +143,4 @@ jobs:
           command: test
         env:
           LLVM_SYS_110_PREFIX: C:\LLVM
-          LIBCLANG_PATH: C:\LLVM\bin
+          LIBCLANG_PATH: ${{ env.LLVM_PATH }}\bin
