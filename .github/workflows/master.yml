@@ -101,6 +101,12 @@ jobs:
         uses: KyleMayes/install-llvm-action@v1
         with:
           version: "11.0"
+      - name: Set up Clang
+        if: ${{ matrix.os == 'windows-latest' }}
+        uses: egor-tensin/setup-clang@v1
+        with:
+          version: 11
+          platform: x64
       - name: Download LLVM
         if: ${{ matrix.os == 'windows-latest' }}
         run: |
