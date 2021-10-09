@@ -262,11 +262,7 @@ pub async fn compile_with_target<P: AsRef<Path>>(
 
     let mut read_dir = tokio::fs::read_dir(&path).await?;
     while let Some(entry) = read_dir.next_entry().await? {
-        if !entry
-            .path()
-            .extension()
-            .map_or(false, |ext| ext == "tanoshi")
-        {
+        if !entry.path().extension().map_or(false, |ext| ext == "wasm") {
             continue;
         }
 
