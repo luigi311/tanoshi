@@ -1,6 +1,6 @@
 [package]
 name = "tanoshi-cli"
-version = "0.4.6"
+version = "0.4.7"
 authors = ["Muhammad Fadhlika <fadhlika@gmail.com>"]
 edition = "2018"
 description = "Tanoshi CLI Utilities"
