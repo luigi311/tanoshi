@@ -86,7 +86,7 @@ jobs:
         os:
           - ubuntu-latest
           - macos-latest
-          - windows-latest
+          # - windows-latest
     steps:
       - uses: actions/checkout@v2
       - run: mkdir crates/tanoshi-web/dist
