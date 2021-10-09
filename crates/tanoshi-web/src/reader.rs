@@ -464,7 +464,7 @@ impl Reader {
             if index >= current_page.checked_sub(3).unwrap_or(0) && index <= current_page + 3 {
                 Some(proxied_image_url(&page))
             } else {
-                None
+                Some("data:,".to_string())
             }
         })
     }
