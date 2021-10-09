@@ -8,7 +8,7 @@ use crate::{
     utils::history,
 };
 use dominator::{clone, html, routing, svg, with_node, Dom};
-use futures_signals::signal::{self, Mutable, SignalExt};
+use futures_signals::signal::{self, Mutable, Signal, SignalExt};
 use futures_signals::signal_vec::{MutableVec, SignalVec, SignalVecExt};
 use wasm_bindgen::{JsCast, JsValue, UnwrapThrowExt};
 use web_sys::HtmlImageElement;
@@ -459,6 +459,16 @@ impl Reader {
             .to_signal_vec()
     }
 
+    fn image_src_signal(&self, index: usize, page: String)-> impl Signal<Item = Option<String>> {
+        self.current_page.signal_cloned().map(move |current_page| {
+            if index >= current_page.checked_sub(3).unwrap_or(0) && index <= current_page + 3 {
+                Some(proxied_image_url(&page))
+            } else {
+                None
+            }
+        })
+    }
+
     fn render_vertical(reader: Rc<Self>) -> Dom {
         html!("div", {
             .style("display", "flex")
@@ -505,7 +515,7 @@ impl Reader {
                         .style("margin-left", "auto")
                         .style("margin-right", "auto")
                         .attribute("id", format!("{}", index).as_str())
-                        .attribute("src", &proxied_image_url(&page))
+                        .attribute_signal("src", reader.image_src_signal(index, page.clone()))
                         .style_signal("max-width", reader.reader_settings.fit.signal().map(|x| match x {
                             crate::common::Fit::Height => "none",
                             _ => "768px",
@@ -632,7 +642,7 @@ impl Reader {
 
                             x == index
                         })))
-                        .attribute("src", &proxied_image_url(&page))
+                        .attribute_signal("src", reader.image_src_signal(index, page.clone()))
                         .event(clone!(reader, page => move |_: events::Error| {
                             log::error!("error loading image");
                             let mut lock = reader.pages.lock_mut();
@@ -705,7 +715,7 @@ impl Reader {
                             crate::common::Fit::Width => "initial",
                             _ => "100%"
                         }))
-                        .attribute("src", &proxied_image_url(&page))
+                        .attribute_signal("src", reader.image_src_signal(index, page.clone()))
                         .event(clone!(reader, page => move |_: events::Error| {
                             log::error!("error loading image");
                             let mut lock = reader.pages.lock_mut();
