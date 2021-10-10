@@ -459,12 +459,12 @@ impl Reader {
             .to_signal_vec()
     }
 
-    fn image_src_signal(&self, index: usize, page: String)-> impl Signal<Item = Option<String>> {
+    fn image_src_signal(&self, index: usize, page: String, status: PageStatus)-> impl Signal<Item = Option<String>> {
         self.current_page.signal_cloned().map(move |current_page| {
-            if index >= current_page.checked_sub(3).unwrap_or(0) && index <= current_page + 3 {
+            if (index >= current_page.checked_sub(2).unwrap_or(0) && index <= current_page + 2) || matches!(status, PageStatus::Loaded) {
                 Some(proxied_image_url(&page))
             } else {
-                Some("data:,".to_string())
+                None
             }
         })
     }
@@ -515,7 +515,7 @@ impl Reader {
                         .style("margin-left", "auto")
                         .style("margin-right", "auto")
                         .attribute("id", format!("{}", index).as_str())
-                        .attribute_signal("src", reader.image_src_signal(index, page.clone()))
+                        .attribute_signal("src", reader.image_src_signal(index, page.clone(), status))
                         .style_signal("max-width", reader.reader_settings.fit.signal().map(|x| match x {
                             crate::common::Fit::Height => "none",
                             _ => "768px",
@@ -642,7 +642,7 @@ impl Reader {
 
                             x == index
                         })))
-                        .attribute_signal("src", reader.image_src_signal(index, page.clone()))
+                        .attribute_signal("src", reader.image_src_signal(index, page.clone(), status))
                         .event(clone!(reader, page => move |_: events::Error| {
                             log::error!("error loading image");
                             let mut lock = reader.pages.lock_mut();
@@ -715,7 +715,7 @@ impl Reader {
                             crate::common::Fit::Width => "initial",
                             _ => "100%"
                         }))
-                        .attribute_signal("src", reader.image_src_signal(index, page.clone()))
+                        .attribute_signal("src", reader.image_src_signal(index, page.clone(), status))
                         .event(clone!(reader, page => move |_: events::Error| {
                             log::error!("error loading image");
                             let mut lock = reader.pages.lock_mut();
