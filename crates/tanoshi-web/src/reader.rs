@@ -10,7 +10,9 @@ use crate::{
 use dominator::{clone, html, routing, svg, with_node, Dom};
 use futures_signals::signal::{self, Mutable, Signal, SignalExt};
 use futures_signals::signal_vec::{MutableVec, SignalVec, SignalVecExt};
+use gloo_timers::callback::Timeout;
 use wasm_bindgen::{JsCast, JsValue, UnwrapThrowExt};
+use wasm_bindgen_futures::spawn_local;
 use web_sys::HtmlImageElement;
 
 #[derive(Debug)]
@@ -51,6 +53,7 @@ pub struct Reader {
     is_bar_visible: Mutable<bool>,
     loader: AsyncLoader,
     spinner: Rc<Spinner>,
+    timeout: Mutable<Option<Timeout>>
 }
 
 impl Reader {
@@ -72,6 +75,7 @@ impl Reader {
             is_bar_visible: Mutable::new(true),
             loader: AsyncLoader::new(),
             spinner: Spinner::new_with_fullscreen(true),
+            timeout: Mutable::new(None),
         })
     }
 
@@ -89,7 +93,6 @@ impl Reader {
 
                     let len = result.pages.len();
                     reader.pages_len.set_neq(len);
-
 
                     reader.reader_settings.load_by_manga_id(result.manga.id);
 
@@ -167,7 +170,6 @@ impl Reader {
             };
 
             error!("error replace_state_with_url: {}", message);
-            snackbar::show(format!("error replace_state_with_url: {:?}", message));
         }
     }
 
@@ -180,15 +182,20 @@ impl Reader {
         if page == 0 {
             return;
         }
+;
 
-        AsyncLoader::new().load(async move {
-            match query::update_page_read_at(chapter_id, page as i64).await {
-                Ok(_) => {}
-                Err(err) => {
-                    snackbar::show(format!("{}", err));
+        let timeout = Timeout::new(500, move || {
+            spawn_local(async move {
+                match query::update_page_read_at(chapter_id, page as i64).await {
+                    Ok(_) => {}
+                    Err(err) => {
+                        snackbar::show(format!("{}", err));
+                    }
                 }
-            }
+            });
         });
+            
+        reader.timeout.set(Some(timeout));
     }
 
     pub fn render_topbar(reader: Rc<Self>) -> Dom {
