@@ -13,6 +13,7 @@ $color-gray-900: darken($color-gray, $color--interval * 4);
 
 $font-stack:    Helvetica, Roboto, sans-serif;
 $primary-color: rgba(91, 116, 155, 1);
+$primary-color-100: darken($primary-color, $color--interval);
 
 $shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
 
@@ -41,7 +42,7 @@ $divide-color-dark-1: $color-gray-700;
 
     --topbar-background-color: #{$topbar-background-light};
     --topbar-button-color: white;
-    --topbar-bottom-border: none;
+    --topbar-bottom-border: 1px solid #{$primary-color-100};
     
     --bottombar-background-color: #{$bottombar-background-light};
     --color: #{$text-color-light};
