@@ -141,7 +141,7 @@ impl Reader {
                     }
 
                     info!("set current_page to {} nav: {:?}", page, nav);
-                    reader.current_page.set(page);
+                    reader.current_page.set_neq(page);
 
                     reader.pages_loaded.set(ContinousLoaded::Initial);
                     reader.pages.lock_mut().replace_cloned(result.pages.iter().map(|page| (page.clone(), PageStatus::Initial)).collect());
@@ -481,6 +481,9 @@ impl Reader {
 
     fn render_vertical(reader: Rc<Self>) -> Dom {
         html!("div", {
+            .class("animate__animated")
+            .class("animate__faster")
+            .class("animate__fadeIn")
             .style("display", "flex")
             .style("flex-direction", "column")
             .future(reader.pages_loaded.signal_cloned().for_each(clone!(reader => move |loaded| {
@@ -621,6 +624,9 @@ impl Reader {
 
     fn render_single(reader: Rc<Self>) -> Dom {
         html!("div", {
+            .class("animate__animated")
+            .class("animate__faster")
+            .class("animate__zoomIn")
             .style("display", "flex")
             .style("align-items", "center")
             .children_signal_vec(reader.pages_signal().map(clone!(reader => move |(index, page, status)|
@@ -699,6 +705,9 @@ impl Reader {
     fn render_double(reader: Rc<Self>) -> Dom {
         html!("div", {
             .attribute("id", "page-list")
+            .class("animate__animated")
+            .class("animate__faster")
+            .class("animate__zoomIn")
             .style("display", "flex")
             .style("width", "100vw")
             .style("height", "100vh")
@@ -789,7 +798,7 @@ impl Reader {
                             .event(clone!(reader, index => move |_: events::Load| {
                                 let current_page = reader.current_page.get();
                                 if index == current_page || index == current_page + 1 {
-                                    reader.current_page.replace(current_page);
+                                    reader.current_page.set_neq(current_page);
                                 }
                             }))
                         })
