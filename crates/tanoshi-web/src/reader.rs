@@ -200,7 +200,9 @@ impl Reader {
 
     pub fn render_topbar(reader: Rc<Self>) -> Dom {
         html!("div", {
-            .class(["animate__animated", "topbar"])
+            .class("topbar")
+            .class("animate__animated")
+            .class("animate__faster")
             .class_signal("animate__slideInDown", reader.is_bar_visible.signal())
             .class_signal("animate__slideOutUp", reader.is_bar_visible.signal().map(|x| !x))
             .children(&mut [
@@ -306,6 +308,7 @@ impl Reader {
             .style("color", "var(--color)")
             .style("z-index", "40")
             .class("animate__animated")
+            .class("animate__faster")
             .class_signal("animate__slideInUp", reader.is_bar_visible.signal())
             .class_signal("animate__slideOutDown", reader.is_bar_visible.signal().map(|x| !x))
             .children(&mut [

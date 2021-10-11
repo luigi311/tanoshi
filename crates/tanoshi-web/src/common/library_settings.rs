@@ -256,7 +256,7 @@ impl LibrarySettings {
                 }),
                 html!("div", {
                     .class("reader-settings")
-                    .class_signal(["modal", "animate__animated"], signal::always(use_modal))
+                    .class_signal(["modal", "animate__animated", "animate__faster"], signal::always(use_modal))
                     .class_signal("non-modal", signal::always(use_modal).map(|x| !x))
                     .class_signal("animate__slideInUp", settings.show.signal())
                     .class_signal("animate__slideOutDown", settings.show.signal().map(|x| !x))
