@@ -1,5 +1,4 @@
 use crate::{
-    assets,
     config::Config,
     db::{MangaDatabase, UserDatabase},
     proxy::Proxy,
@@ -94,8 +93,14 @@ fn init_app(
 
     let proxy = Proxy::new(config.secret.clone());
 
-    let mut app = Router::new()
-        .nest("/", get(assets::static_handler))
+    let mut app = Router::new().boxed();
+
+    #[cfg(feature = "embed")]
+    {
+        app = app.nest("/", get(crate::assets::static_handler)).boxed();
+    }
+
+    app = app
         .route("/image/:url", get(Proxy::proxy))
         .route("/health", get(health_check))
         .layer(AddExtensionLayer::new(proxy))

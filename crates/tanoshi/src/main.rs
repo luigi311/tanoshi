@@ -2,6 +2,7 @@
 extern crate log;
 extern crate argon2;
 
+#[cfg(feature = "embed")]
 mod assets;
 mod catalogue;
 mod config;

@@ -7,6 +7,10 @@ description = "Tanoshi"
 repository = "https://github.com/faldez/tanoshi"
 license = "MIT"
 
+[features]
+default = ["embed"]
+embed = ["rust-embed"]
+
 [dependencies]
 tanoshi-lib = { path = "../tanoshi-lib" }
 tanoshi-vm = { path = "../tanoshi-vm", default-features = false }
@@ -26,7 +30,9 @@ env_logger = "0.9.0"
 jsonwebtoken = { version = "7" }
 chrono = { version = "0.4", features = ["serde"] }
 anyhow = "1"
-rust-embed = { version = "6.0", features = ["interpolate-folder-path"] }
+rust-embed = { version = "6.0", features = [
+    "interpolate-folder-path",
+], optional = true }
 mime_guess = "2"
 clap = "^3.0.0-beta.1"
 bytes = "1"
