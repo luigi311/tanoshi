@@ -59,7 +59,7 @@ impl Proxy {
             let content_type = mime_guess::from_path(&file)
                 .first_or_octet_stream()
                 .to_string();
-            match std::fs::read(file) {
+            match tokio::fs::read(file).await {
                 Ok(buf) => Ok(http::Response::builder()
                     .header("Content-Type", content_type)
                     .body(Body::from(buf))
@@ -69,17 +69,37 @@ impl Proxy {
         } else {
             // else if its combination of archive files and path inside the archive
             // extract the file from archive
-            let filename = file.parent().unwrap().to_str().unwrap();
-            let path = file.file_name().unwrap().to_str().unwrap();
-            let content_type = mime_guess::from_path(path)
+            let filename = file
+                .parent()
+                .ok_or(StatusCode::INTERNAL_SERVER_ERROR)?
+                .to_str()
+                .ok_or(StatusCode::INTERNAL_SERVER_ERROR)?
+                .to_string();
+            let path = file
+                .file_name()
+                .ok_or(StatusCode::INTERNAL_SERVER_ERROR)?
+                .to_str()
+                .ok_or(StatusCode::INTERNAL_SERVER_ERROR)?
+                .to_string();
+            let content_type = mime_guess::from_path(&path)
                 .first_or_octet_stream()
                 .to_string();
-            match libarchive_rs::extract_archive_file(filename, path) {
-                Ok(buf) => Ok(http::Response::builder()
+            let res = tokio::task::spawn_blocking({
+                let filename = filename.clone();
+                let path = path.clone();
+                move || {
+                    libarchive_rs::extract_archive_file(&filename, &path)
+                        .map_err(|err| format!("{}", err))
+                }
+            })
+            .await;
+            match res {
+                Ok(Ok(buf)) => Ok(http::Response::builder()
                     .header("Content-Type", content_type)
                     .body(Body::from(buf))
                     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?),
-                Err(_) => Err(StatusCode::BAD_REQUEST),
+                Ok(Err(_)) => Err(StatusCode::BAD_REQUEST),
+                Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
             }
         }
     }
