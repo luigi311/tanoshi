@@ -9,6 +9,7 @@ $color-gray-500: $color-gray;
 $color-gray-600: darken($color-gray, $color--interval);
 $color-gray-700: darken($color-gray, $color--interval * 2);
 $color-gray-800: darken($color-gray, $color--interval * 3);
+$color-gray-850: darken($color-gray, $color--interval * 3.5);
 $color-gray-900: darken($color-gray, $color--interval * 4);
 
 $font-stack:    Helvetica, Roboto, sans-serif;
@@ -35,10 +36,11 @@ $divide-color-dark: $color-gray-800;
 $divide-color-dark-1: $color-gray-700;
 
 :root {
-    --animate-duration:  500ms;
     --background-color: white;
     --background-color-100: #{$color-gray-200};
     --background-color-200: #{$color-gray-300};
+
+    --modal-background-color: var(--background-color);
 
     --topbar-background-color: #{$topbar-background-light};
     --topbar-button-color: white;
@@ -62,6 +64,8 @@ body.dark {
     --background-color-100: #{$color-gray-800};
     --background-color-200: #{$color-gray-700};
 
+    --modal-background-color: #{$color-gray-850};
+
     --topbar-background-color: #{$topbar-background-dark};
     --topbar-button-color: #{$primary-color};
     --topbar-bottom-border: 1px solid var(--background-color-100);
@@ -72,10 +76,9 @@ body.dark {
     --divider-color: #{$divide-color-dark};
     --divider-color-1: #{$divide-color-dark-1};
 
+    --shadow: none;
     --list-group-background-color: #{$color-gray-800};
     --list-group-border: none;
-
-    --shadow: none
 }
 
 body {
@@ -592,6 +595,7 @@ $manga-grid: (
 }
 
 .reader-settings.modal {
+    background-color: var(--modal-background-color) !important;
     position: fixed;
     box-shadow: #{$shadow};
     padding-left: 0.5rem;
@@ -604,6 +608,8 @@ $manga-grid: (
     bottom: 0;
     z-index: 50;
     color: inherit;
+    max-width: 768px;
+    margin: auto;
 }
 
 .reader-settings.non-modal {
