@@ -1,9 +1,12 @@
 use dominator::{clone, events, html, Dom};
-use futures_signals::signal::{Mutable, SignalExt};
+use futures_signals::{
+    map_ref,
+    signal::{Mutable, Signal, SignalExt},
+};
 use serde::{Deserialize, Serialize};
 use std::rc::Rc;
 
-use crate::utils::{self, local_storage};
+use crate::utils::{apply_theme, local_storage};
 
 #[derive(PartialEq, Copy, Clone, Serialize, Deserialize)]
 pub enum Theme {
@@ -28,6 +31,10 @@ impl Default for Theme {
     }
 }
 
+pub struct AppearanceSettingsSignal {
+    pub theme: Theme,
+}
+
 #[derive(Clone, Default, Serialize, Deserialize)]
 pub struct AppearanceSettings {
     pub theme: Mutable<Theme>,
@@ -44,17 +51,21 @@ impl AppearanceSettings {
         Rc::new(settings)
     }
 
-    pub fn render_apply_button(reader: Rc<Self>) -> Dom {
-        html!("button", {
-            .text("Apply")
-            .event(clone!(reader => move |_: events::Click| {
-                let theme = reader.theme.get().to_string();
-                let _ = local_storage().set_item("settings:appearance", &serde_json::to_string(reader.as_ref()).unwrap());
-                let _ = local_storage().set_item("theme", &theme);
+    pub fn save(&self) {
+        let theme = self.theme.get().to_string();
+        let _ =
+            local_storage().set_item("settings:appearance", &serde_json::to_string(self).unwrap());
+        let _ = local_storage().set_item("theme", &theme);
+    }
 
-                utils::apply_theme(Some(theme));
-            }))
-        })
+    fn signal(&self) -> impl Signal<Item = AppearanceSettingsSignal> {
+        map_ref! {
+            let theme = self.theme.signal_cloned() =>
+
+            AppearanceSettingsSignal {
+                theme: *theme,
+            }
+        }
     }
 
     fn render_theme(reader: Rc<Self>) -> Dom {
@@ -105,6 +116,12 @@ impl AppearanceSettings {
 
     pub fn render(reader: Rc<Self>) -> Dom {
         html!("div", {
+            .future(reader.signal().for_each(clone!(reader => move |s| {
+                reader.save();
+                apply_theme(Some(s.theme.to_string()));
+
+                async {}
+            })))
             .class("reader-settings")
             .class("non-modal")
             .children(&mut [

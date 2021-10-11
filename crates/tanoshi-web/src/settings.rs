@@ -293,9 +293,6 @@ impl Settings {
                     .style("min-width", "5.5rem")
                     .child_signal(settings.page.signal_cloned().map(move |page| {
                         match page {
-                            SettingCategory::Appearance => {
-                                Some(AppearanceSettings::render_apply_button(settings.appearance_settings.clone()))
-                            }
                             SettingCategory::Users => {
                                 Some(link!(Route::Settings(SettingCategory::CreateUser).url(), {
                                     .text("Create User")
