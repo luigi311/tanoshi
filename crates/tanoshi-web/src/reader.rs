@@ -407,6 +407,26 @@ impl Reader {
         })
     }
 
+    fn go_to_next_page(&self) {
+        if let Some(next_page) = self.next_page.get() {
+            self.current_page.set_neq(next_page);
+        } else if let Some(next_chapter) = self.next_chapter.get() {
+            self.chapter_id.set(next_chapter);
+        } else {
+            info!("no next_page or next_chapter");
+        }
+    }
+
+    fn go_to_prev_page(&self) {
+        if let Some(prev_page) = self.prev_page.get() {
+            self.current_page.set_neq(prev_page);
+        } else if let Some(prev_chapter) = self.prev_chapter.get() {
+            self.chapter_id.set(prev_chapter);
+        } else {
+            info!("no prev_page or prev_chapter");
+        }
+    }
+
     fn render_navigation(reader: Rc<Self>) -> Dom {
         html!("div", {
             .style("display", "flex")
@@ -419,19 +439,29 @@ impl Reader {
                 Direction::LeftToRight => "row-reverse",
                 Direction::RightToLeft => "row",
             }))
+            .global_event(clone!(reader => move |e: events::KeyDown| {
+                let direction = reader.reader_settings.direction.get();
+                if e.key() == "ArrowLeft" {
+                    match direction {
+                        Direction::LeftToRight => reader.go_to_prev_page(),
+                        Direction::RightToLeft => reader.go_to_next_page(),
+                    }
+                } else if e.key() == " " {
+                    reader.is_bar_visible.set_neq(!reader.is_bar_visible.get());
+                } else if e.key() == "ArrowRight" {
+                    match direction {
+                        Direction::LeftToRight => reader.go_to_next_page(),
+                        Direction::RightToLeft => reader.go_to_prev_page(),
+                    }
+                }
+            }))
             .children(&mut [
                 html!("div", {
                     .style("height", "100%")
                     .style("width", "33.3333%")
                     .attribute("id", "next")
                     .event(clone!(reader => move |_: events::Click| {
-                        if let Some(next_page) = reader.next_page.get() {
-                            reader.current_page.set_neq(next_page);
-                        } else if let Some(next_chapter) = reader.next_chapter.get() {
-                            reader.chapter_id.set(next_chapter);
-                        } else {
-                            info!("no next_page or next_chapter");
-                        }
+                        reader.go_to_next_page();
                     }))
                 }),
                 html!("div", {
@@ -447,13 +477,7 @@ impl Reader {
                     .style("width", "33.3333%")
                     .attribute("id", "prev")
                     .event(clone!(reader => move |_: events::Click| {
-                        if let Some(prev_page) = reader.prev_page.get() {
-                            reader.current_page.set_neq(prev_page);
-                        } else if let Some(prev_chapter) = reader.prev_chapter.get() {
-                            reader.chapter_id.set(prev_chapter);
-                        } else {
-                            info!("no prev_page or prev_chapter");
-                        }
+                        reader.go_to_prev_page();
                     }))
                 })
             ])
@@ -597,6 +621,12 @@ impl Reader {
                     }))
                 })
             ])
+            .global_event_preventable(clone!(reader => move |e: events::KeyDown| {
+                if e.key() == " " {
+                    e.prevent_default(); 
+                    reader.is_bar_visible.set_neq(!reader.is_bar_visible.get());
+                }
+            }))
             .global_event(clone!(reader => move |_: events::Scroll| {
                 let mut page_no = 0;
                 let body_top = window().scroll_y().unwrap_throw();
