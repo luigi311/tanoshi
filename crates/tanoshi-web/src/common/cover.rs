@@ -60,6 +60,9 @@ impl Cover {
     pub fn render(&self) -> Dom {
         link!(self.link(), {
             .class("manga-cover")
+            .class("animate__animated")
+            .class("animate__faster")
+            .class("animate__fadeIn")
             .class_signal("favorite", self.is_favorite.signal())
             .children(&mut [
                 html!("img", {
