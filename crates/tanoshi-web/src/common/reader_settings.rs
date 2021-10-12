@@ -184,18 +184,45 @@ impl ReaderSettings {
             key = [key, (*self.manga_id.lock_ref()).to_string()].join(":");
         }
 
+        self.save_with_key(&key);
+    }
+
+    fn save_with_key(&self, key: &str) {
         let _ = local_storage().set_item(&key, &serde_json::to_string(self).unwrap());
         if self.use_modal {
             self.show.set_neq(false);
         }
     }
 
+    fn reset(&self) {
+        let mut key = KEY.to_string();
+        if *self.manga_id.lock_ref() > 0 {
+            key = [key, (*self.manga_id.lock_ref()).to_string()].join(":");
+        }
+
+        let _ = local_storage().delete(&key);
+        if self.use_modal {
+            self.show.set_neq(false);
+        }
+    }
+
     pub fn render_apply_button(settings: Rc<Self>) -> Dom {
-        html!("button", {
-            .text("Save")
-            .event(clone!(settings => move |_: events::Click| {
-                settings.save();
-            }))
+        html!("div", {
+            .children(&mut [
+                html!("button", {
+                    .text("Default")
+                    .event(clone!(settings => move |_: events::Click| {
+                        settings.reset();
+                        settings.save_with_key(KEY);
+                    }))
+                }),
+                html!("button", {
+                    .text("Save")
+                    .event(clone!(settings => move |_: events::Click| {
+                        settings.save();
+                    }))
+                })
+            ])
         })
     }
 
