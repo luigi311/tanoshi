@@ -776,9 +776,6 @@ impl Manga {
                    .class("topbar-spacing")
                 }),
                 html!("div", {
-                    .class("animate__animated")
-                    .class("animate__faster")
-                    .class("animate__slideInRight")
                     .child_signal(manga_page.loader.is_loading().map(clone!(manga_page => move |x| if x {
                         Some(html!("div", {
                             .style("height", "90vh")

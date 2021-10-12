@@ -481,9 +481,6 @@ impl Reader {
 
     fn render_vertical(reader: Rc<Self>) -> Dom {
         html!("div", {
-            .class("animate__animated")
-            .class("animate__faster")
-            .class("animate__fadeIn")
             .style("display", "flex")
             .style("flex-direction", "column")
             .future(reader.pages_loaded.signal_cloned().for_each(clone!(reader => move |loaded| {
@@ -624,9 +621,6 @@ impl Reader {
 
     fn render_single(reader: Rc<Self>) -> Dom {
         html!("div", {
-            .class("animate__animated")
-            .class("animate__faster")
-            .class("animate__zoomIn")
             .style("display", "flex")
             .style("align-items", "center")
             .children_signal_vec(reader.pages_signal().map(clone!(reader => move |(index, page, status)|
@@ -705,9 +699,6 @@ impl Reader {
     fn render_double(reader: Rc<Self>) -> Dom {
         html!("div", {
             .attribute("id", "page-list")
-            .class("animate__animated")
-            .class("animate__faster")
-            .class("animate__zoomIn")
             .style("display", "flex")
             .style("width", "100vw")
             .style("height", "100vh")
