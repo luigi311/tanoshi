@@ -81,7 +81,6 @@ impl Login {
                     // ])
                     .attribute("type", "username")
                     .attribute("placeholder", "Username")
-                    .property_signal("value", login.username.signal_cloned())
                     .with_node!(input => {
                         .event(clone!(login => move |_: events::Input| {
                             login.username.set(input.value());
@@ -104,10 +103,9 @@ impl Login {
                     // ])
                     .attribute("type", "password")
                     .attribute("placeholder", "Password")
-                    .property_signal("value", login.password.signal_cloned())
                     .with_node!(input => {
                         .event(clone!(login => move |_: events::Input| {
-                            login.password.set(input.value());
+                            login.password.set_neq(input.value());
                         }))
                     })
                 }),
