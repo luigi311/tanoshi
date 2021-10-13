@@ -62,8 +62,10 @@ impl Library {
                     .style("min-width", "5rem")
                     .children(&mut [
                         html!("button", {
+                            .style("margin-left","0.5rem")
+                            .style("margin-right","0.5rem")
                             .event(clone!(library => move |_: events::Click| {
-                                Self::fetch_libraries(library.clone(), true);
+                                library.library_settings.toggle_show();
                             }))
                             .children(&mut [
                                 svg!("svg", {
@@ -77,7 +79,7 @@ impl Library {
                                             .attribute("stroke-linecap", "round")
                                             .attribute("stroke-linejoin", "round")
                                             .attribute("stroke-width", "2")
-                                            .attribute("d", "M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15")
+                                            .attribute("d", "M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z")
                                         })
                                     ])
                                 }),
@@ -172,9 +174,6 @@ impl Library {
                         html!("button", {
                             .style("margin-left","0.5rem")
                             .style("margin-right","0.5rem")
-                            .event(clone!(library => move |_: events::Click| {
-                                library.library_settings.toggle_show();
-                            }))
                             .children(&mut [
                                 svg!("svg", {
                                     .attribute("xmlns", "http://www.w3.org/2000/svg")
