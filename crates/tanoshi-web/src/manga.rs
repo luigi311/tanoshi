@@ -307,7 +307,23 @@ impl Manga {
                     .text_signal(manga.title.signal_cloned().map(|x| x.unwrap_or_else(|| "".to_string())))
                 }),
                 html!("button", {
-                    .text("Refresh")
+                    .children(&mut [
+                        svg!("svg", {
+                            .attribute("xmlns", "http://www.w3.org/2000/svg")
+                            .attribute("fill", "none")
+                            .attribute("viewBox", "0 0 24 24")
+                            .attribute("stroke", "currentColor")
+                            .class("icon")
+                            .children(&mut [
+                                svg!("path", {
+                                    .attribute("stroke-linecap", "round")
+                                    .attribute("stroke-linejoin", "round")
+                                    .attribute("stroke-width", "2")
+                                    .attribute("d", "M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15")
+                                })
+                            ])
+                        }),
+                    ])
                     .event(clone!(manga => move |_: events::Click| {
                         if manga.id.get() != 0 {
                             manga.title.set_neq(None);
@@ -359,7 +375,8 @@ impl Manga {
                                 html!("div", {
                                     .style("margin-left", "0.5rem")
                                     .style("margin-bottom", "0.5rem")
-                                    .style("font-size", "large")
+                                    .style("font-size", "larger")
+                                    .style("font-weight", "bold")
                                     .text_signal(manga.title.signal_cloned().map(|x| {
                                         if let Some(title) = x {
                                             // Some(html!("span", {
