@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- Fade in animation for manga cover in library and catalogue
+- More breakpoint for manga grid in library and catalogue
+- Keyboard navigation
+
+### Changed
+- Reader now only preload few pages ahead and back
+- Load image from disk now async 
+- Modal width max at 768px
+- Animation is now faster
+- Appearance setting save on change
+- Title in manga page now bold
+
+### Fixed
+
 ## [0.25.18]
 
 ### Added
