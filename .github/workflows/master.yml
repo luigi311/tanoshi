@@ -85,11 +85,21 @@ jobs:
       - name: Install deps
         if: ${{ matrix.os == 'macos-latest' }}
         run: brew install icu4c libarchive bzip2 lz4 zlib expat llvm@11
+      - name: Cache LLVM and Clang
+        id: cache-llvm
+        if: ${{ matrix.os != 'macos-latest' }}
+        uses: actions/cache@v2
+        with:
+          path: |
+            C:/Program Files/LLVM
+            ./llvm
+          key: llvm-11.0
       - name: Install LLVM and Clang
-        if: ${{ matrix.os == 'ubuntu-latest' }}
+        if: ${{ matrix.os != 'macos-latest' }}
         uses: KyleMayes/install-llvm-action@v1
         with:
           version: "11.0"
+          cached: ${{ steps.cache-llvm.outputs.cache-hit }}
       - name: Download LLVM
         if: ${{ matrix.os == 'windows-latest' }}
         run: |
@@ -132,4 +142,4 @@ jobs:
           command: test
         env:
           LLVM_SYS_110_PREFIX: C:\LLVM
-          LIBCLANG_PATH: C:\msys64\mingw64\bin
+          LIBCLANG_PATH: ${{ env.LLVM_PATH }}\bin
