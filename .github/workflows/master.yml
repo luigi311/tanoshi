@@ -101,7 +101,6 @@ jobs:
           Invoke-WebRequest -Uri https://github.com/faldez/tanoshi-builder/releases/download/v0.1.0/LLVM.7z -OutFile LLVM.7z
           7z x .\LLVM.7z -o'C:\'
       - name: Cache vcpkg
-        id: cache-vcpkg
         uses: actions/cache@v2
         if: ${{ matrix.os == 'windows-latest' }}
         with:
@@ -114,7 +113,7 @@ jobs:
         run: |
           vcpkg integrate install
           vcpkg install --only-downloads libarchive:x64-windows-static-md
-          vcpkg install libarchive:x64-windows-static-md
+          vcpkg install libarchive:x64-windows-static-md --no-downloads
       - name: Test
         if: ${{ matrix.os == 'ubuntu-latest' }}
         uses: actions-rs/cargo@v1
