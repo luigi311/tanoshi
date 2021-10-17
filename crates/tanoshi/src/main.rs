@@ -18,7 +18,7 @@ mod user;
 mod utils;
 mod worker;
 
-use crate::{config::Config, notifier::pushover::Pushover};
+use crate::{config::{Config, GLOBAL_CONFIG}, notifier::pushover::Pushover};
 use clap::Clap;
 use futures::future::OptionFuture;
 use tanoshi_vm::{bus::ExtensionBus, vm};
@@ -48,7 +48,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
 
     let opts: Opts = Opts::parse();
-    let config = Config::open(opts.config)?;
+    let config = GLOBAL_CONFIG.get_or_init(|| Config::open(opts.config).expect("failed to init config"));
 
     let pool = db::establish_connection(&config.database_path).await?;
     let mangadb = db::MangaDatabase::new(pool.clone());

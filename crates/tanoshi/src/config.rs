@@ -1,8 +1,11 @@
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
 use serde::{Deserialize, Serialize};
+use once_cell::sync::OnceCell;
 use std::path::Path;
 use std::{iter, path::PathBuf};
+
+pub static GLOBAL_CONFIG: OnceCell<Config> = OnceCell::new();
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct TelegramConfig {

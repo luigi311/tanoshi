@@ -1,7 +1,7 @@
-use async_graphql::{Context, Object};
+use async_graphql::{Object, Result};
 use chrono::NaiveDateTime;
 
-use crate::{user::Secret, utils};
+use crate::{config::GLOBAL_CONFIG, utils};
 
 pub struct RecentChapter {
     pub manga_id: i64,
@@ -27,19 +27,9 @@ impl RecentChapter {
         self.manga_title.clone()
     }
 
-    async fn cover_url(&self, ctx: &Context<'_>) -> String {
-        if let Ok(secret) = ctx.data::<Secret>() {
-            match utils::encrypt_url(&secret.0, &self.cover_url) {
-                Ok(encrypted_url) => {
-                    return encrypted_url;
-                }
-                Err(e) => {
-                    error!("error encrypt url: {}", e);
-                }
-            }
-        }
-
-        "".to_string()
+    async fn cover_url(&self) -> Result<String> {
+        let secret = &GLOBAL_CONFIG.get().ok_or_else(|| "secret not set")?.secret;
+        Ok(utils::encrypt_url(secret, &self.cover_url)?)
     }
 
     async fn chapter_title(&self) -> String {
@@ -78,19 +68,9 @@ impl RecentUpdate {
         self.manga_title.clone()
     }
 
-    async fn cover_url(&self, ctx: &Context<'_>) -> String {
-        if let Ok(secret) = ctx.data::<Secret>() {
-            match utils::encrypt_url(&secret.0, &self.cover_url) {
-                Ok(encrypted_url) => {
-                    return encrypted_url;
-                }
-                Err(e) => {
-                    error!("error encrypt url: {}", e);
-                }
-            }
-        }
-
-        "".to_string()
+    async fn cover_url(&self) -> Result<String> {
+        let secret = &GLOBAL_CONFIG.get().ok_or_else(|| "secret not set")?.secret;
+        Ok(utils::encrypt_url(secret, &self.cover_url)?)
     }
 
     async fn chapter_title(&self) -> String {

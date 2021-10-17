@@ -1,12 +1,9 @@
-use crate::db::UserDatabase;
+use crate::{config::GLOBAL_CONFIG, db::UserDatabase};
 use async_graphql::{Context, InputObject, Object, Result};
 use rand::RngCore;
 
 use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
-
-#[derive(Debug, Clone)]
-pub struct Secret(pub String);
 
 /// Our claims struct, it needs to derive `Serialize` and/or `Deserialize`
 #[derive(Debug, Serialize, Deserialize)]
@@ -80,7 +77,7 @@ impl UserRoot {
             return Err("Wrong username or password".into());
         }
 
-        let secret = ctx.data::<Secret>()?;
+        let secret = &GLOBAL_CONFIG.get().ok_or_else(|| "secret not set")?.secret;
         let token = jsonwebtoken::encode(
             &Header::default(),
             &Claims {
@@ -89,7 +86,7 @@ impl UserRoot {
                 is_admin: user.is_admin,
                 exp: 10000000000,
             },
-            &EncodingKey::from_secret(secret.0.as_bytes()),
+            &EncodingKey::from_secret(secret.as_bytes()),
         )?;
 
         Ok(token)
@@ -218,10 +215,10 @@ pub fn get_claims(ctx: &Context<'_>) -> Result<Claims> {
     let token = ctx
         .data::<String>()
         .map_err(|_| "token not exists, please login")?;
-    let secret = ctx.data::<Secret>()?;
+    let secret = &GLOBAL_CONFIG.get().ok_or_else(|| "secret not set")?.secret;
     let claims = jsonwebtoken::decode::<Claims>(
         token,
-        &DecodingKey::from_secret(secret.0.as_bytes()),
+        &DecodingKey::from_secret(secret.as_bytes()),
         &Validation::default(),
     )
     .map_err(|e| format!("failed to decode token, reason: {}", e))?;

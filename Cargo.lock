@@ -3245,6 +3245,7 @@ dependencies = [
  "libarchive-rs",
  "log",
  "mime_guess",
+ "once_cell",
  "phf",
  "rand",
  "reqwest",

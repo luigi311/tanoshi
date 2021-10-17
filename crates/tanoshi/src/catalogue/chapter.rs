@@ -1,9 +1,5 @@
 use super::Manga;
-use crate::{
-    db::MangaDatabase,
-    user::{self, Secret},
-    utils,
-};
+use crate::{config::GLOBAL_CONFIG, db::MangaDatabase, user, utils};
 use async_graphql::{Context, Object, Result, SimpleObject};
 use chrono::NaiveDateTime;
 use tanoshi_vm::prelude::ExtensionBus;
@@ -195,10 +191,10 @@ impl Chapter {
             pages
         };
 
-        let secret = ctx.data::<Secret>()?;
+        let secret = &GLOBAL_CONFIG.get().ok_or_else(|| "secret not set")?.secret;
         let pages = pages
             .iter()
-            .map(|page| utils::encrypt_url(&secret.0, page).unwrap_or_default())
+            .map(|page| utils::encrypt_url(secret, page).unwrap_or_default())
             .collect();
 
         Ok(pages)

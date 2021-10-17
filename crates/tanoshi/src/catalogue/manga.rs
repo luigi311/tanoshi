@@ -1,9 +1,5 @@
 use super::{Chapter, Source};
-use crate::{
-    db::MangaDatabase,
-    user::{self, Secret},
-    utils,
-};
+use crate::{config::GLOBAL_CONFIG, db::MangaDatabase, user, utils};
 use async_graphql::{Context, Object, Result};
 use chrono::NaiveDateTime;
 use tanoshi_vm::prelude::ExtensionBus;
@@ -127,19 +123,9 @@ impl Manga {
         self.path.as_str().to_string()
     }
 
-    async fn cover_url(&self, ctx: &Context<'_>) -> String {
-        if let Ok(secret) = ctx.data::<Secret>() {
-            match utils::encrypt_url(&secret.0, &self.cover_url) {
-                Ok(encrypted_url) => {
-                    return encrypted_url;
-                }
-                Err(e) => {
-                    error!("error encrypt url: {}", e);
-                }
-            }
-        }
-
-        "".to_string()
+    async fn cover_url(&self) -> Result<String> {
+        let secret = &GLOBAL_CONFIG.get().ok_or_else(|| "secret not set")?.secret;
+        Ok(utils::encrypt_url(secret, &self.cover_url)?)
     }
 
     async fn is_favorite(&self, ctx: &Context<'_>) -> Result<bool> {

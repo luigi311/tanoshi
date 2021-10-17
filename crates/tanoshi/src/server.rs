@@ -3,7 +3,6 @@ use crate::{
     db::{MangaDatabase, UserDatabase},
     proxy::Proxy,
     schema::{MutationRoot, QueryRoot, TanoshiSchema},
-    user::Secret,
     worker::Command as WorkerCommand,
 };
 use tanoshi_vm::bus::ExtensionBus;
@@ -86,7 +85,6 @@ fn init_app(
     // .extension(ApolloTracing)
     .data(userdb)
     .data(mangadb)
-    .data(Secret(config.secret.clone()))
     .data(extension_bus)
     .data(worker_tx)
     .finish();
