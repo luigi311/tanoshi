@@ -1,10 +1,11 @@
 use std::rc::Rc;
 
-use crate::{common::events, utils::local_storage};
+use crate::{catalogue_list, common::events, utils::local_storage};
 
 use super::{Route, SettingCategory};
 use dominator::{html, link, routing, svg, Dom};
 use futures_signals::signal::SignalExt;
+use wasm_bindgen::UnwrapThrowExt;
 
 pub struct Bottombar {}
 
@@ -44,10 +45,10 @@ impl Bottombar {
                 }),
                 html!("button", {
                     // .class(LINK_CLASS)
-                    .class_signal("active", Route::signal().map(|x| matches!(x, Route::Catalogue{id: _, latest: _})))
+                    .class_signal("active", Route::signal().map(|x| matches!(x, Route::CatalogueList)))
                     .event_preventable(|_:events::Click| {
-                        local_storage().delete("catalogue").unwrap();
-                        routing::go_to_url(Route::Catalogue{id: 0, latest: false}.url().as_str());
+                        local_storage().delete(catalogue_list::STORAGE_KEY).unwrap_throw();
+                        routing::go_to_url(Route::CatalogueList.url().as_str());
                     })
                     .children(&mut [
                         svg!("svg", {

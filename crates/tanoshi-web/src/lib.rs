@@ -3,6 +3,7 @@ extern crate log;
 
 mod app;
 mod catalogue;
+mod catalogue_list;
 mod common;
 mod histories;
 mod library;

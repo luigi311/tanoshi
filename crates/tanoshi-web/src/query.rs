@@ -54,7 +54,7 @@ where
 #[graphql(
     schema_path = "graphql/schema.graphql",
     query_path = "graphql/browse_source.graphql",
-    response_derives = "Debug, Clone"
+    response_derives = "Debug, Clone, PartialEq"
 )]
 pub struct BrowseSource;
 

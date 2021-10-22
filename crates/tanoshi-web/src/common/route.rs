@@ -1,3 +1,4 @@
+use crate::query::browse_source::{SortByParam, SortOrderParam};
 use base64::{decode_config, encode_config, URL_SAFE_NO_PAD};
 use dominator::routing;
 use futures_signals::signal::{Signal, SignalExt};
@@ -20,7 +21,13 @@ pub enum SettingCategory {
 pub enum Route {
     Login,
     Library,
-    Catalogue { id: i64, latest: bool },
+    CatalogueList,
+    Catalogue {
+        id: i64,
+        keyword: Option<String>,
+        sort_by: SortByParam,
+        sort_order: SortOrderParam,
+    },
     Manga(i64),
     MangaBySourcePath(i64, String),
     Chapter(i64, i64),
@@ -44,20 +51,25 @@ impl Route {
                     [] => Route::Library,
                     ["updates"] => Route::Updates,
                     ["histories"] => Route::Histories,
-                    ["catalogue"] => Route::Catalogue {
-                        id: 0,
-                        latest: false,
-                    },
+                    ["catalogue"] => Route::CatalogueList,
                     ["catalogue", id] => {
                         if let Ok(id) = id.parse() {
-                            Route::Catalogue { id, latest: false }
-                        } else {
-                            Route::NotFound
-                        }
-                    }
-                    ["catalogue", id, "latest"] => {
-                        if let Ok(id) = id.parse() {
-                            Route::Catalogue { id, latest: true }
+                            let params = url.search_params();
+                            let keyword = params.get("keyword");
+                            let sort_by = params
+                                .get("sort_by")
+                                .and_then(|by| serde_plain::from_str(&by).ok())
+                                .unwrap_or(SortByParam::VIEWS);
+                            let sort_order = params
+                                .get("sort_order")
+                                .and_then(|order| serde_plain::from_str(&order).ok())
+                                .unwrap_or(SortOrderParam::DESC);
+                            Route::Catalogue {
+                                id,
+                                keyword,
+                                sort_by,
+                                sort_order,
+                            }
                         } else {
                             Route::NotFound
                         }
@@ -124,18 +136,26 @@ impl Route {
         match self {
             Route::Login => "/login".to_string(),
             Route::Library => "/".to_string(),
-            Route::Catalogue { id, latest } => {
-                if *id > 0 && *latest {
-                    [
-                        "/catalogue".to_string(),
-                        id.to_string(),
-                        "latest".to_string(),
-                    ]
-                    .join("/")
-                } else if *id > 0 && !*latest {
-                    ["/catalogue".to_string(), id.to_string()].join("/")
+            Route::CatalogueList => "/catalogue".to_string(),
+            Route::Catalogue {
+                id,
+                keyword,
+                sort_by,
+                sort_order,
+            } => {
+                let sort_by = serde_plain::to_string(sort_by).unwrap();
+                let sort_order = serde_plain::to_string(sort_order).unwrap();
+
+                if let Some(keyword) = keyword {
+                    format!(
+                        "/catalogue/{}?keyword={}&sort_by={}&sort_order={}",
+                        id, keyword, sort_by, sort_order
+                    )
                 } else {
-                    "/catalogue".to_string()
+                    format!(
+                        "/catalogue/{}?sort_by={}&sort_order={}",
+                        id, sort_by, sort_order
+                    )
                 }
             }
             Route::Manga(manga_id) => ["/manga".to_string(), manga_id.to_string()].join("/"),

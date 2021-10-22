@@ -6,6 +6,7 @@ use futures_signals::signal::{Mutable, SignalExt};
 use wasm_bindgen::UnwrapThrowExt;
 
 use crate::catalogue::Catalogue;
+use crate::catalogue_list::CatalogueList;
 use crate::common::{snackbar, ServerStatus};
 use crate::library::Library;
 use crate::login::Login;
@@ -94,8 +95,11 @@ impl App {
                     Route::Library => Some(
                         Library::render(Library::new()),
                     ),
-                    Route::Catalogue{id, latest} => Some(
-                        Catalogue::render(Catalogue::new(), id, latest),
+                    Route::CatalogueList => Some(
+                        CatalogueList::render(CatalogueList::new()),
+                    ),
+                    Route::Catalogue{id, keyword, sort_by, sort_order} => Some(
+                        Catalogue::render(Catalogue::new(id), keyword, sort_by, sort_order),
                     ),
                     Route::Manga(manga_id) => Some(
                         Manga::render(Manga::new(manga_id, 0, "".to_string())),
