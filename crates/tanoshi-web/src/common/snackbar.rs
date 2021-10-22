@@ -2,6 +2,7 @@ use std::rc::Rc;
 
 use dominator::{clone, html, svg, Dom};
 use futures_signals::signal::{Mutable, SignalExt};
+use gloo_timers::callback::Timeout;
 
 use crate::common::events;
 
@@ -9,8 +10,17 @@ thread_local! {
     static SNACKBAR: std::cell::RefCell<Rc<Snackbar>> = std::cell::RefCell::new(Snackbar::new());
 }
 
+fn close() {
+    SNACKBAR.with(|s| s.borrow().close());
+}
+
 pub fn show(message: String) {
     SNACKBAR.with(|s| s.borrow().show(message));
+
+    let timeout = Timeout::new(5_000, || {
+        close();
+    });
+    timeout.forget();
 }
 
 pub fn render() -> Dom {
@@ -32,6 +42,10 @@ impl Snackbar {
         self.message.set(Some(message));
     }
 
+    pub fn close(&self) {
+        self.message.set(None);
+    }
+
     pub fn render(snackbar: Rc<Self>) -> Dom {
         html!("div", {
             .class("snackbar")
@@ -44,7 +58,7 @@ impl Snackbar {
                     )))
                     .children(&mut [
                         html!("button", {
-                            .event(clone!(snackbar => move |_: events::Click| snackbar.message.set(None)))
+                            .event(clone!(snackbar => move |_: events::Click| snackbar.close()))
                             .children(&mut [
                                 svg!("svg", {
                                     .attribute("xmlns", "http://www.w3.org/2000/svg")
