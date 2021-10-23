@@ -179,15 +179,12 @@ impl Catalogue {
                         .attribute("type", "text")
                         .attribute("value", &catalogue.keyword.get_cloned())
                         .with_node!(input => {
-                            .event(clone!(catalogue => move |_: events::Input| {
-                                catalogue.keyword.set_neq(input.value());
-                            }))
-                            .event_preventable(clone!(catalogue => move |event: events::KeyDown| {
-                                if event.key() == "Enter" {
-                                    event.prevent_default();
+                            .event_preventable(clone!(catalogue => move |e: events::KeyDown| {
+                                if e.key() == "Enter" {
+                                    e.prevent_default();
                                     catalogue.cover_list.lock_mut().clear();
                                     catalogue.page.set_neq(1);
-                                    Self::fetch_mangas(catalogue.clone());
+                                    catalogue.keyword.set_neq(input.value());
                                 }
                             }))
                         })
@@ -208,7 +205,6 @@ impl Catalogue {
                                 catalogue.keyword.set_neq("".to_string());
                                 catalogue.cover_list.lock_mut().clear();
                                 catalogue.page.set_neq(1);
-                                Self::fetch_mangas(catalogue.clone());
                             }
                         }))
                         .children(&mut [
@@ -291,11 +287,11 @@ impl Catalogue {
         sort_order: SortOrderParam,
     ) -> Dom {
         let s = map_ref! {
-            let is_search = self.is_search.signal_cloned(),
+            let keyword = self.keyword.signal_cloned(),
             let sort_by = self.sort_by.signal_cloned(),
             let sort_order = self.sort_order.signal_cloned() =>
 
-            (*is_search, sort_by.clone(), sort_order.clone())
+            (keyword.clone(), sort_by.clone(), sort_order.clone())
         };
 
         if let Some(keyword) = keyword {
