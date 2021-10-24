@@ -162,7 +162,6 @@ impl CatalogueList {
                         .style("width", "100%")
                         .attribute("placeholder", "Search")
                         .attribute("type", "text")
-                        .attribute("value", &catalogue.keyword.get_cloned())
                         .with_node!(input => {
                             .event(clone!(catalogue => move |_: events::Input| {
                                 catalogue.keyword.set_neq(input.value());

@@ -42,7 +42,7 @@ struct SourceManga {
 #[serde(default)]
 pub struct Catalogue {
     source_id: i64,
-    keyword: Mutable<String>,
+    keyword: Mutable<Option<String>>,
     page: Mutable<i64>,
     sort_by: Mutable<SortByParam>,
     sort_order: Mutable<SortOrderParam>,
@@ -58,7 +58,7 @@ impl Default for Catalogue {
     fn default() -> Self {
         Self {
             source_id: 0,
-            keyword: Mutable::new("".to_string()),
+            keyword: Mutable::new(None),
             page: Mutable::new(1),
             sort_by: Mutable::new(SortByParam::VIEWS),
             sort_order: Mutable::new(SortOrderParam::DESC),
@@ -92,7 +92,7 @@ impl Catalogue {
         catalogue.replace_state_with_url();
         catalogue.spinner.set_active(true);
         catalogue.loader.load(clone!(catalogue => async move {
-            match query::fetch_manga_from_source(catalogue.source_id, catalogue.page.get(), Some(catalogue.keyword.get_cloned()), catalogue.sort_by.get_cloned(), catalogue.sort_order.get_cloned()).await {
+            match query::fetch_manga_from_source(catalogue.source_id, catalogue.page.get(), catalogue.keyword.get_cloned(), catalogue.sort_by.get_cloned(), catalogue.sort_order.get_cloned()).await {
                 Ok(covers) => {
                     let mut cover_list = catalogue.cover_list.lock_mut();
                     if catalogue.page.get() == 1 {
@@ -116,13 +116,10 @@ impl Catalogue {
     fn replace_state_with_url(&self) {
         let sort_by = serde_plain::to_string(&self.sort_by.lock_ref().clone()).unwrap();
         let sort_order = serde_plain::to_string(&self.sort_order.lock_ref().clone()).unwrap();
-        let url = if !self.keyword.lock_ref().is_empty() {
+        let url = if let Some(keyword) = self.keyword.lock_ref().clone() {
             format!(
                 "/catalogue/{}?keyword={}&sort_by={}&sort_order={}",
-                self.source_id,
-                self.keyword.lock_ref().clone(),
-                sort_by,
-                sort_order
+                self.source_id, keyword, sort_by, sort_order
             )
         } else {
             format!(
@@ -177,14 +174,16 @@ impl Catalogue {
                         .style("width", "100%")
                         .attribute("placeholder", "Search")
                         .attribute("type", "text")
-                        .attribute("value", &catalogue.keyword.get_cloned())
                         .with_node!(input => {
                             .event_preventable(clone!(catalogue => move |e: events::KeyDown| {
                                 if e.key() == "Enter" {
                                     e.prevent_default();
                                     catalogue.cover_list.lock_mut().clear();
                                     catalogue.page.set_neq(1);
-                                    catalogue.keyword.set_neq(input.value());
+                                    if !input.value().is_empty() {
+                                        catalogue.keyword.set_neq(Some(input.value()));
+                                        Self::fetch_mangas(catalogue.clone());
+                                    }
                                 }
                             }))
                         })
@@ -201,8 +200,8 @@ impl Catalogue {
                         .attribute("id", "cancel")
                         .event(clone!(catalogue => move |_: events::Click| {
                             catalogue.is_search.set_neq(false);
-                            if catalogue.keyword.get_cloned() != "" {
-                                catalogue.keyword.set_neq("".to_string());
+                            if catalogue.keyword.get_cloned().is_some() {
+                                catalogue.keyword.set_neq(None);
                                 catalogue.cover_list.lock_mut().clear();
                                 catalogue.page.set_neq(1);
                             }
@@ -294,10 +293,8 @@ impl Catalogue {
             (keyword.clone(), sort_by.clone(), sort_order.clone())
         };
 
-        if let Some(keyword) = keyword {
-            self.keyword.set_neq(keyword);
-            self.is_search.set_neq(true);
-        }
+        self.is_search.set_neq(keyword.is_some());
+        self.keyword.set_neq(keyword);
         self.sort_by.set_neq(sort_by);
         self.sort_order.set_neq(sort_order);
 
@@ -306,7 +303,6 @@ impl Catalogue {
                 let catalogue = self.clone();
                 move |_| {
                     catalogue.replace_state_with_url();
-                    Self::fetch_mangas(catalogue.clone());
 
                     async {}
                 }
