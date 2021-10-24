@@ -880,7 +880,7 @@ impl Reader {
 
     pub fn render(reader: Rc<Self>) -> Dom {
         html!("div", {
-            .class("reader")
+            .attribute("id", "reader")
             .future(reader.current_page.signal().for_each(clone!(reader => move |page| {
                 Self::update_page_read(reader.clone(), page);
 
@@ -903,11 +903,15 @@ impl Reader {
 
                 async {}
             })))
-            .global_event(clone!(reader => move |_:events::Resize| reader.reader_settings.display_mode.set(reader.reader_settings.display_mode.get())))
-            .class_signal("dark", reader.reader_settings.background.signal_cloned().map(|x| match x {
-                Background::White => false,
-                Background::Black => true,
+            .future(reader.reader_settings.background.signal_cloned().for_each(|x| {
+                document().body().map(|body| body.style().set_property("background-color", match x {
+                    Background::White => "white",
+                    Background::Black => "black",
+                }));
+
+                async {}
             }))
+            .global_event(clone!(reader => move |_:events::Resize| reader.reader_settings.display_mode.set(reader.reader_settings.display_mode.get())))
             .children(&mut [
                 Self::render_topbar(reader.clone()),
             ])
@@ -931,5 +935,11 @@ impl Reader {
                 Spinner::render(&reader.spinner)
             ])
         })
+    }
+}
+
+impl Drop for Reader {
+    fn drop(&mut self) {
+        document().body().map(|body| body.style().set_property("background-color", "var(--background-color)"));
     }
 }
