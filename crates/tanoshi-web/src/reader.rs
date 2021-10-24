@@ -548,6 +548,8 @@ impl Reader {
                         .class_signal("continuous-image-loading", signal::always(status).map(|s| matches!(s, PageStatus::Initial)))
                         .style("margin-left", "auto")
                         .style("margin-right", "auto")
+                        .style_signal("margin-top", reader.reader_settings.padding.signal().map(|x| x.then(|| "0.25rem")))
+                        .style_signal("margin-bottom", reader.reader_settings.padding.signal().map(|x| x.then(|| "0.25rem")))
                         .attribute("id", format!("{}", index).as_str())
                         .attribute_signal("src", reader.image_src_signal(index, 2, 3, page.clone(), status))
                         .style_signal("max-width", reader.reader_settings.fit.signal().map(|x| match x {

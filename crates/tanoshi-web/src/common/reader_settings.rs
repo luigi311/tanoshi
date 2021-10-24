@@ -104,6 +104,7 @@ impl Default for Fit {
 pub struct ReaderSettingSignal {
     pub use_modal: bool,
     pub reader_mode: ReaderMode,
+    pub padding: bool,
     pub display_mode: DisplayMode,
     pub direction: Direction,
     pub background: Background,
@@ -121,6 +122,7 @@ pub struct ReaderSettings {
     #[serde(skip)]
     manga_id: Mutable<i64>,
     pub reader_mode: Mutable<ReaderMode>,
+    pub padding: Mutable<bool>,
     pub display_mode: Mutable<DisplayMode>,
     pub direction: Mutable<Direction>,
     pub background: Mutable<Background>,
@@ -167,6 +169,7 @@ impl ReaderSettings {
             return;
         };
         self.reader_mode.replace(settings.reader_mode.get());
+        self.padding.replace(settings.padding.get());
         self.display_mode.replace(settings.display_mode.get());
         self.direction.replace(settings.direction.get());
         self.background.replace(settings.background.get());
@@ -269,6 +272,43 @@ impl ReaderSettings {
                             }))
                             .text("Paged")
                             .event(clone!(settings => move |_: events::Click| settings.reader_mode.set_neq(ReaderMode::Paged)))
+                        }),
+                    ])
+                })
+            ])
+        })
+    }
+
+    fn render_padding(settings: Rc<Self>) -> Dom {
+        html!("div", {
+            .style_signal("opacity", settings.reader_mode.signal_cloned().map(|x| match x {
+                ReaderMode::Continous => "1",
+                ReaderMode::Paged => "0.5",
+            }))
+            .attribute_signal("disabled", settings.reader_mode.signal_cloned().map(|x| match x {
+                ReaderMode::Continous => None,
+                ReaderMode::Paged => Some("true"),
+            }))
+            .children(&mut [
+                html!("label", {
+                    .style("margin", "0.5rem")
+                    .style("width", "50%")
+                    .text("Padding")
+                }),
+                html!("div", {
+                    .class("reader-settings-row")
+                    .children(&mut [
+                        html!("button", {
+                            .style("width", "50%")
+                            .class_signal("active", settings.padding.signal_cloned())
+                            .text("Enable")
+                            .event(clone!(settings => move |_: events::Click| settings.padding.set_neq(true)))
+                        }),
+                        html!("button", {
+                            .style("width", "50%")
+                            .class_signal("active", settings.padding.signal_cloned().map(|x| !x))
+                            .text("Disable")
+                            .event(clone!(settings => move |_: events::Click| settings.padding.set_neq(false)))
                         }),
                     ])
                 })
@@ -444,6 +484,7 @@ impl ReaderSettings {
         map_ref! {
             let use_modal = signal::always(self.use_modal),
             let reader_mode = self.reader_mode.signal_cloned(),
+            let padding = self.padding.signal_cloned(),
             let display_mode = self.display_mode.signal_cloned(),
             let direction = self.direction.signal_cloned(),
             let background = self.background.signal_cloned(),
@@ -452,6 +493,7 @@ impl ReaderSettings {
             ReaderSettingSignal {
                 use_modal: *use_modal,
                 reader_mode: *reader_mode,
+                padding: *padding,
                 display_mode: *display_mode,
                 direction: *direction,
                 background: *background,
@@ -493,6 +535,7 @@ impl ReaderSettings {
                     .children(&mut [
                         Self::render_header(settings.clone()),
                         Self::render_reader_mode(settings.clone()),
+                        Self::render_padding(settings.clone()),
                         Self::render_display_mode(settings.clone()),
                         Self::render_direction(settings.clone()),
                         Self::render_background(settings.clone()),
