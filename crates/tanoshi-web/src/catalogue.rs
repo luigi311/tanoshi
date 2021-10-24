@@ -285,6 +285,10 @@ impl Catalogue {
         sort_by: SortByParam,
         sort_order: SortOrderParam,
     ) -> Dom {
+        if self.cover_list.lock_ref().is_empty() {
+            Self::fetch_mangas(self.clone());
+        }
+
         let s = map_ref! {
             let keyword = self.keyword.signal_cloned(),
             let sort_by = self.sort_by.signal_cloned(),
