@@ -204,8 +204,6 @@ impl Reader {
     pub fn render_topbar(reader: Rc<Self>) -> Dom {
         html!("div", {
             .class("topbar")
-            .style_important("padding-bottom", "0.5rem")
-            .style_important("-webkit-padding-after", "0.5rem")
             .class("animate__animated")
             .class("animate__faster")
             .class_signal("animate__slideInDown", reader.is_bar_visible.signal())
