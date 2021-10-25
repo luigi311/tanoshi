@@ -174,6 +174,7 @@ impl Catalogue {
                         .style("width", "100%")
                         .attribute("placeholder", "Search")
                         .attribute("type", "text")
+                        .attribute("value", &catalogue.keyword.get_cloned().unwrap_or_else(|| "".to_string()))
                         .with_node!(input => {
                             .event_preventable(clone!(catalogue => move |e: events::KeyDown| {
                                 if e.key() == "Enter" {
