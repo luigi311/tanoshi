@@ -165,10 +165,10 @@ input {
     padding-top: calc(env(safe-area-inset-top) + 0.5rem);
     padding-left: 0.5rem;
     padding-right: 0.5rem;
-    padding-bottom: 0.25rem;
-    -webkit-padding-after: 0.25rem;
+    padding-bottom: 0.5rem;
     border-bottom: var(--topbar-bottom-border);
-    height: 1.5rem;
+    -webkit-padding-after: 0.5rem;
+    min-height: 1.5rem;
     
     span, input {
         background-color: inherit;
