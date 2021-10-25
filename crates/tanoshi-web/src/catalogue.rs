@@ -204,6 +204,7 @@ impl Catalogue {
                                 catalogue.keyword.set_neq(None);
                                 catalogue.cover_list.lock_mut().clear();
                                 catalogue.page.set_neq(1);
+                                Self::fetch_mangas(catalogue.clone());
                             }
                         }))
                         .children(&mut [
