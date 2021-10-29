@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.25.20]
+### Added
+- Zoom in and zoom out button in reader
+
+### Changed
+- Replace some text button with icon button
+- Auto close snackbar 
+- animate.css now bundled
+- Reader background color set for body instead of reader element
+
 ## [0.25.19]
 
 ### Added
@@ -293,7 +303,8 @@ Nothing changes, this release to build for multiarch docker image
 
 - fix panic when using local source
 
-[Unreleased]: https://github.com/faldez/tanoshi/compare/v0.25.19...HEAD
+[Unreleased]: https://github.com/faldez/tanoshi/compare/v0.25.20...HEAD
+[0.25.20]: https://github.com/faldez/tanoshi/compare/v0.25.19...v0.25.20
 [0.25.19]: https://github.com/faldez/tanoshi/compare/v0.25.18...v0.25.19
 [0.25.18]: https://github.com/faldez/tanoshi/compare/v0.25.17...v0.25.18
 [0.25.17]: https://github.com/faldez/tanoshi/compare/v0.25.16...v0.25.17
