@@ -170,6 +170,7 @@ impl Updates {
     pub fn render(updates: Rc<Self>, _app: Rc<App>) -> Dom {
         Self::fetch_recent_chapters(updates.clone());
         html! {"div", {
+            .class("main")
             .children(&mut [
                 Self::render_topbar(),
                 html!("div", {

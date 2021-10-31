@@ -200,6 +200,7 @@ impl Library {
 
     pub fn render_main(library: Rc<Self>, keyword: String) -> Dom {
         html!("div", {
+            .class("main")
             .style("padding", "0.5rem")
             .child_signal(library.library_settings.filter.signal_cloned().map(clone!(library => move |filter| Some(html!("div", {
                 .class("manga-grid")

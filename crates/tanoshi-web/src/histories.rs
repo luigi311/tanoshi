@@ -172,6 +172,7 @@ impl Histories {
     pub fn render(histories: Rc<Self>, _app: Rc<App>) -> Dom {
         Self::fetch_read_histories(histories.clone());
         html!("div", {
+            .class("main")
             .children(&mut [
                 Self::render_topbar(),
                 html!("div", {

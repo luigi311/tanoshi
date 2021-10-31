@@ -90,6 +90,12 @@ body {
     min-height: 100vh;
 }
 
+@media (min-width: 1024px) { 
+    .main {
+        margin-left: 5rem;
+    }
+}
+
 a {
     text-decoration: none;
     color: inherit;
@@ -205,6 +211,29 @@ input {
         background-color: transparent;
         width: 100%;
         height: 2.75rem;
+    }
+}
+
+@media (min-width: 1024px) { 
+    .bottombar {
+        flex-direction: column;
+        justify-content: start !important;
+        top: calc(env(safe-area-inset-top) + 2rem);
+        padding-top: 0.75rem !important;
+        right: initial !important;
+        height: initial !important;
+        width: 5rem !important;
+        border-top: none !important;
+        border-right: 1px solid var(--background-color-100);
+
+        a, button {
+            margin-top: 0.25rem !important;
+            margin-bottom: 0.25rem !important;
+        }
+
+        &-spacing {
+            display: none;
+        }
     }
 }
 

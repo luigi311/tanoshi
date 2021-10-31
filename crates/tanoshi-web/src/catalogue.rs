@@ -257,6 +257,7 @@ impl Catalogue {
 
     pub fn render_main(catalogue: Rc<Self>) -> Dom {
         html!("div", {
+            .class("main")
             .style("padding", "0.5rem")
             .children(&mut [
                 html!("div", {

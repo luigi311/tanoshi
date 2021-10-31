@@ -348,6 +348,7 @@ impl CatalogueList {
         }
 
         html!("div", {
+            .class("main")
             .children(&mut [
                 Self::render_topbar(self.clone()),
                 html!("div", {

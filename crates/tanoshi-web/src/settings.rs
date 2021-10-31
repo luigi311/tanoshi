@@ -578,6 +578,7 @@ impl Settings {
             _ => {}
         }
         html!("div", {
+            .class("main")
             .style("padding", "0.5rem")
             .children(&mut [
                 Self::render_topbar(settings.clone()),
