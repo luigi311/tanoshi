@@ -804,14 +804,14 @@ impl Manga {
                 Self::render_chapters(manga_page.clone()),
                 html!("div", {
                     .visible_signal(manga_page.is_edit_chapter.signal())
-                    .class("bottombar-spacing")
+                    .class("edit-action-spacing")
                 }),
                 ChapterSettings::render(manga_page.chapter_settings.clone()),
             ])
             .child_signal(manga_page.loader.is_loading().map(|is_loading| is_loading.then(|| Spinner::render_spinner(true))))
             .child_signal(manga_page.is_edit_chapter.signal().map(clone!(manga_page => move |is_edit| if is_edit {
                 Some(html!("div",{
-                    .class("bottombar")
+                    .class("edit-action")
                     .children(&mut [
                         html!("button", {
                             .style("margin", "auto")
