@@ -1,7 +1,7 @@
+use once_cell::sync::OnceCell;
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
 use serde::{Deserialize, Serialize};
-use once_cell::sync::OnceCell;
 use std::path::Path;
 use std::{iter, path::PathBuf};
 
@@ -34,6 +34,8 @@ pub struct Config {
     pub plugin_path: String,
     #[serde(default = "default_local_path")]
     pub local_path: String,
+    #[serde(default = "default_download_path")]
+    pub download_path: String,
     #[serde(default)]
     pub enable_playground: bool,
     pub telegram: Option<TelegramConfig>,
@@ -50,6 +52,7 @@ impl Default for Config {
             update_interval: default_update_interval(),
             plugin_path: default_plugin_path(),
             local_path: default_local_path(),
+            download_path: default_download_path(),
             enable_playground: false,
             telegram: None,
             pushover: None,
@@ -99,6 +102,14 @@ fn default_plugin_path() -> String {
 
 fn default_local_path() -> String {
     let path = tanoshi_home().join("manga");
+    if !path.exists() {
+        let _ = std::fs::create_dir_all(&path);
+    }
+    path.to_str().unwrap().to_string()
+}
+
+fn default_download_path() -> String {
+    let path = tanoshi_home().join("downloads");
     if !path.exists() {
         let _ = std::fs::create_dir_all(&path);
     }

@@ -10,3 +10,4 @@ config.yml
 *.db-wal
 node_modules
 extensions/
+downloads/

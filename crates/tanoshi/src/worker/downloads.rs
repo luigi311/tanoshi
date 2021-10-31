@@ -1,0 +1,125 @@
+use std::path::{Path, PathBuf};
+
+use crate::db::MangaDatabase;
+use reqwest::Url;
+use tokio::{
+    sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender},
+    task::JoinHandle,
+};
+
+pub struct DownloadWorker {
+    dir: PathBuf,
+    client: reqwest::Client,
+    db: MangaDatabase,
+    rx: UnboundedReceiver<()>,
+}
+
+impl DownloadWorker {
+    pub fn new<P: AsRef<Path>>(dir: P, db: MangaDatabase) -> (Self, UnboundedSender<()>) {
+        let (tx, rx) = unbounded_channel::<()>();
+        (
+            Self {
+                dir: PathBuf::new().join(dir),
+                client: reqwest::ClientBuilder::new().build().unwrap(),
+                db,
+                rx,
+            },
+            tx,
+        )
+    }
+
+    pub async fn run(&mut self) {
+        loop {
+            info!("start downloading...");
+            while let Ok(Some(queue)) = self.db.get_single_download_queue().await {
+                debug!("got {}", queue.url);
+                tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+
+                let url = if let Ok(url) = Url::parse(&queue.url) {
+                    url
+                } else {
+                    continue;
+                };
+
+                let res = if let Ok(res) = self.client.get(url.clone()).send().await {
+                    res
+                } else {
+                    continue;
+                };
+
+                let contents = if let Ok(contents) = res.bytes().await {
+                    contents
+                } else {
+                    continue;
+                };
+
+                let filename = if let Some(filename) = url
+                    .path_segments()
+                    .and_then(|seg| seg.last())
+                    .map(|s| s.to_string())
+                {
+                    filename
+                } else {
+                    continue;
+                };
+
+                let path = self
+                    .dir
+                    .join(&queue.source_name)
+                    .join(&queue.manga_title)
+                    .join(&queue.chapter_title)
+                    .join(&filename);
+
+                if let Some(parent) = path.parent() {
+                    if let Err(e) = tokio::fs::create_dir_all(parent).await {
+                        error!("error create parent directory, {}", e);
+                    }
+                } else {
+                    continue;
+                }
+
+                match tokio::fs::write(&path, &contents).await {
+                    Ok(_) => {
+                        info!("downloaded to {}", path.display());
+                        if self
+                            .db
+                            .update_page_by_url(&queue.url, path.display().to_string().as_str())
+                            .await
+                            .is_err()
+                        {
+                            continue;
+                        }
+                        if self
+                            .db
+                            .delete_single_download_queue_by_id(queue.id)
+                            .await
+                            .is_err()
+                        {
+                            continue;
+                        }
+                    }
+                    Err(e) => {
+                        error!("error downloading {}, reason {}", url, e);
+                    }
+                }
+            }
+            info!("done downloading");
+
+            let _ = self.rx.recv().await;
+            tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+        }
+    }
+}
+
+pub fn start<P: AsRef<Path>>(
+    dir: P,
+    mangadb: MangaDatabase,
+) -> (UnboundedSender<()>, JoinHandle<()>) {
+    let (mut download_worker, tx) = DownloadWorker::new(dir, mangadb);
+
+    let handle = tokio::spawn(async move {
+        download_worker.run().await;
+    });
+
+    (tx, handle)
+}

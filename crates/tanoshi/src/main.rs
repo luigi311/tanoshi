@@ -7,7 +7,7 @@ mod assets;
 mod catalogue;
 mod config;
 mod db;
-mod download;
+mod downloads;
 mod library;
 mod local;
 mod notifier;
@@ -86,7 +86,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .clone()
         .map(|pushover_cfg| Pushover::new(pushover_cfg.application_key));
 
-    let (worker_handle, worker_tx) = worker::worker::start(telegram_bot, pushover);
+    let (download_tx, download_worker_handle) =
+        worker::downloads::start(&config.download_path, mangadb.clone());
+
+    let (worker_handle, worker_tx) = worker::start(telegram_bot, pushover, download_tx);
 
     let update_worker_handle = worker::updates::start(
         config.update_interval,
@@ -110,6 +113,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         _ = update_worker_handle => {
             info!("update worker quit");
+        }
+        _ = download_worker_handle => {
+            info!("download worker quit");
         }
         Some(_) = telegram_bot_fut => {
             info!("worker shutdown");

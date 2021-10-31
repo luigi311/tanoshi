@@ -1105,6 +1105,22 @@ impl Db {
         Ok(())
     }
 
+    pub async fn update_page_by_url(&self, remote_url: &str, local_url: &str) -> Result<()> {
+        let mut conn = self.pool.acquire().await?;
+
+        sqlx::query(
+            r#"UPDATE page 
+            SET local_url = ?
+            WHERE remote_url = ?"#,
+        )
+        .bind(local_url)
+        .bind(remote_url)
+        .execute(&mut conn)
+        .await?;
+
+        Ok(())
+    }
+
     pub async fn get_pages_by_chapter_id(&self, chapter_id: i64) -> Result<Vec<String>> {
         let mut conn = self.pool.acquire().await?;
         let mut stream = sqlx::query("SELECT remote_url FROM page WHERE chapter_id = ?")
@@ -1315,16 +1331,15 @@ impl Db {
         }
 
         let mut values = vec![];
-        values.resize(items.len(), "(?, ?, ?, ?, ?, ?, ?)");
+        values.resize(items.len(), "(?, ?, ?, ?, ?, ?)");
 
         let query_str = format!(
-            r#"INSERT OR IGNORE INTO download_queue(
+            r#"INSERT INTO download_queue(
             source_name,
             manga_title,
             chapter_title,
             rank,
             url,
-            state,
             date_added
         ) VALUES {}"#,
             values.join(",")
@@ -1338,11 +1353,50 @@ impl Db {
                 .bind(&item.chapter_title)
                 .bind(item.rank)
                 .bind(&item.url)
-                .bind(item.state as i64)
                 .bind(item.date_added.timestamp())
         }
 
         query.execute(&mut conn).await?;
+
+        Ok(())
+    }
+
+    pub async fn get_single_download_queue(&self) -> Result<Option<DownloadQueue>> {
+        let mut conn = self.pool.acquire().await?;
+        let data = sqlx::query(
+            r#"SELECT 
+                    id,
+                    source_name,
+                    manga_title,
+                    chapter_title,
+                    rank,
+                    url,
+                    date_added 
+                FROM download_queue
+                ORDER BY date_added, source_name, manga_title, chapter_title, rank
+                LIMIT 1"#,
+        )
+        .fetch_optional(&mut conn)
+        .await?
+        .map(|row| DownloadQueue {
+            id: row.get(0),
+            source_name: row.get(1),
+            manga_title: row.get(2),
+            chapter_title: row.get(3),
+            rank: row.get(4),
+            url: row.get(5),
+            date_added: row.get(6),
+        });
+        Ok(data)
+    }
+
+    pub async fn delete_single_download_queue_by_id(&self, id: i64) -> Result<()> {
+        let mut conn = self.pool.acquire().await?;
+
+        sqlx::query(r#"DELETE FROM download_queue WHERE id = ?"#)
+            .bind(id)
+            .execute(&mut conn)
+            .await?;
 
         Ok(())
     }

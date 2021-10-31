@@ -1,5 +1,5 @@
 use crate::catalogue::{CatalogueRoot, SourceMutationRoot, SourceRoot};
-use crate::download::DownloadMutationRoot;
+use crate::downloads::DownloadMutationRoot;
 use crate::library::{LibraryMutationRoot, LibraryRoot};
 use crate::notifier::NotificationRoot;
 use crate::status::StatusRoot;
