@@ -162,12 +162,12 @@ input {
     left: 0px;
     right: 0px;
     z-index: 50;
-    padding-top: calc(env(safe-area-inset-top) + 0.5rem);
+    padding-top: calc(env(safe-area-inset-top) + 0.25rem);
     padding-left: 0.5rem;
     padding-right: 0.5rem;
-    padding-bottom: 0.5rem;
+    padding-bottom: 0.25rem;
     border-bottom: var(--topbar-bottom-border);
-    -webkit-padding-after: 0.5rem;
+    -webkit-padding-after: 0.25rem;
     min-height: 1.5rem;
     
     span, input {
