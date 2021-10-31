@@ -581,6 +581,7 @@ impl Manga {
         let filter = manga.chapter_settings.filter.clone();
 
         html!("div", {
+            .class("chapter-list")
             .attribute("id", "chapters")
             .children(&mut [
                 html!("div", {
@@ -793,35 +794,21 @@ impl Manga {
                    .class("topbar-spacing")
                 }),
                 html!("div", {
-                    .child_signal(manga_page.loader.is_loading().map(clone!(manga_page => move |x| if x {
-                        Some(html!("div", {
-                            .style("height", "90vh")
-                            .children(&mut [
-                                html!("div", {
-                                    .style("margin", "auto")
-                                    .children(&mut [
-                                        Spinner::render_spinner(true)
-                                    ])
-                                })
-                            ])
-                        }))
-                    } else {
-                        Some(html!("div", {
-                            .children(&mut [
-                                Self::render_header(manga_page.clone()),
-                                Self::render_action(manga_page.clone()),
-                                Self::render_description(manga_page.clone()),
-                                Self::render_chapters(manga_page.clone())
-                            ])
-                        }))
-                    })))
-                 }),
+                    .class("manga-detail")
+                    .children(&mut [
+                        Self::render_header(manga_page.clone()),
+                        Self::render_action(manga_page.clone()),
+                        Self::render_description(manga_page.clone()),
+                    ])
+                }),
+                Self::render_chapters(manga_page.clone()),
                 html!("div", {
                     .visible_signal(manga_page.is_edit_chapter.signal())
                     .class("bottombar-spacing")
                 }),
-                ChapterSettings::render(manga_page.chapter_settings.clone())
+                ChapterSettings::render(manga_page.chapter_settings.clone()),
             ])
+            .child_signal(manga_page.loader.is_loading().map(|is_loading| is_loading.then(|| Spinner::render_spinner(true))))
             .child_signal(manga_page.is_edit_chapter.signal().map(clone!(manga_page => move |is_edit| if is_edit {
                 Some(html!("div",{
                     .class("bottombar")

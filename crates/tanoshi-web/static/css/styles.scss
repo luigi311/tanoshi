@@ -379,17 +379,18 @@ $manga-grid: (
     
 }
 
-.manga-detail {
-    display: flex;
-    flex-direction: column;
+@media (min-width: 1024px) {
+    .manga-detail {
+        position: fixed;
+        width: 30%;
+        top: calc(env(safe-area-inset-top) + 2rem);
+        padding-top: 0.75rem !important;
+        padding-left: 0.5rem;
+        padding-right: 0.5rem;
+    }
 
-    &-header {
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        padding: 0.5rem;
-        margin-bottom: 0.5rem;
-        border-radius: 0.5rem;
+    .chapter-list {
+        margin-left: 30%;
     }
 }
 
