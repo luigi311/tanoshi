@@ -103,3 +103,21 @@ pub struct UserMangaLibrary {
     pub user_ids: Vec<i64>,
     pub manga: Manga,
 }
+
+#[derive(Debug, Clone, Copy)]
+pub enum DownloadState {
+    Initial = 0,
+    Downloading = 1,
+    Downloaded = 2,
+}
+
+#[derive(Debug, Clone)]
+pub struct DownloadQueue {
+    pub source_name: String,
+    pub manga_title: String,
+    pub chapter_title: String,
+    pub rank: i64,
+    pub url: String,
+    pub state: DownloadState,
+    pub date_added: NaiveDateTime,
+}

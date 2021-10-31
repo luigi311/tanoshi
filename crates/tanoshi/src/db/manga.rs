@@ -1,4 +1,4 @@
-use super::model::{Chapter, Manga, ReadProgress, UserMangaLibrary};
+use super::model::{Chapter, DownloadQueue, Manga, ReadProgress, UserMangaLibrary};
 use crate::library::{RecentChapter, RecentUpdate};
 use anyhow::{anyhow, Result};
 use chrono::NaiveDateTime;
@@ -1306,5 +1306,44 @@ impl Db {
                 .await?;
 
         Ok(row.get::<i64, _>(0))
+    }
+
+    pub async fn insert_download_queue(&self, items: &[DownloadQueue]) -> Result<()> {
+        let mut conn = self.pool.acquire().await?;
+        if items.is_empty() {
+            return Ok(());
+        }
+
+        let mut values = vec![];
+        values.resize(items.len(), "(?, ?, ?, ?, ?, ?, ?)");
+
+        let query_str = format!(
+            r#"INSERT OR IGNORE INTO download_queue(
+            source_name,
+            manga_title,
+            chapter_title,
+            rank,
+            url,
+            state,
+            date_added
+        ) VALUES {}"#,
+            values.join(",")
+        );
+
+        let mut query = sqlx::query(&query_str);
+        for item in items {
+            query = query
+                .bind(&item.source_name)
+                .bind(&item.manga_title)
+                .bind(&item.chapter_title)
+                .bind(item.rank)
+                .bind(&item.url)
+                .bind(item.state as i64)
+                .bind(item.date_added.timestamp())
+        }
+
+        query.execute(&mut conn).await?;
+
+        Ok(())
     }
 }
