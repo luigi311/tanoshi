@@ -89,7 +89,7 @@ fn default_database_path() -> String {
     if !path.exists() {
         let _ = std::fs::create_dir_all(&path);
     }
-    path.join("tanoshi.db").to_str().unwrap().to_string()
+    path.join("tanoshi.db").display().to_string()
 }
 
 fn default_plugin_path() -> String {
@@ -97,7 +97,7 @@ fn default_plugin_path() -> String {
     if !path.exists() {
         let _ = std::fs::create_dir_all(&path);
     }
-    path.to_str().unwrap().to_string()
+    path.display().to_string()
 }
 
 fn default_local_path() -> String {
@@ -105,7 +105,7 @@ fn default_local_path() -> String {
     if !path.exists() {
         let _ = std::fs::create_dir_all(&path);
     }
-    path.to_str().unwrap().to_string()
+    path.display().to_string()
 }
 
 fn default_download_path() -> String {
@@ -113,7 +113,7 @@ fn default_download_path() -> String {
     if !path.exists() {
         let _ = std::fs::create_dir_all(&path);
     }
-    path.to_str().unwrap().to_string()
+    path.display().to_string()
 }
 
 impl Config {
