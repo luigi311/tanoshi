@@ -1123,9 +1123,10 @@ impl Db {
 
     pub async fn get_pages_by_chapter_id(&self, chapter_id: i64) -> Result<Vec<String>> {
         let mut conn = self.pool.acquire().await?;
-        let mut stream = sqlx::query("SELECT remote_url FROM page WHERE chapter_id = ?")
-            .bind(chapter_id)
-            .fetch(&mut conn);
+        let mut stream =
+            sqlx::query("SELECT COALESCE(local_url, remote_url) FROM page WHERE chapter_id = ?")
+                .bind(chapter_id)
+                .fetch(&mut conn);
 
         let mut pages = vec![];
         while let Some(row) = stream.try_next().await? {
