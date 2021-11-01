@@ -26,12 +26,14 @@ impl DownloadMutationRoot {
         for id in ids {
             let chapter = db.get_chapter_by_id(id).await?;
             let manga = db.get_manga_by_id(chapter.manga_id).await?;
-            let mut pages = db.get_pages_by_chapter_id(id).await?;
-
-            if pages.is_empty() {
-                pages = ext.get_pages(manga.source_id, chapter.path.clone()).await?;
-                db.insert_pages(chapter.id, &pages).await?;
-            }
+            let pages = match db.get_pages_by_chapter_id(id).await {
+                Ok(pages) => pages,
+                Err(_) => {
+                    let pages = ext.get_pages(manga.source_id, chapter.path.clone()).await?;
+                    db.insert_pages(chapter.id, &pages).await?;
+                    pages
+                }
+            };
 
             let source = ext.detail(manga.source_id).await?;
 
