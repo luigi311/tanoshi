@@ -568,3 +568,20 @@ pub async fn mark_chapter_as_unread(chapter_ids: &[i64]) -> Result<(), Box<dyn E
     let _ = post_graphql::<MarkChapterAsUnread>(var).await?;
     Ok(())
 }
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/schema.graphql",
+    query_path = "graphql/download_chapters.graphql",
+    response_derives = "Debug"
+)]
+pub struct DownloadChapters;
+
+pub async fn download_chapters(chapter_ids: &[i64]) -> Result<(), Box<dyn Error>> {
+    let var = download_chapters::Variables {
+        ids: Some(chapter_ids.iter().map(|id| Some(*id)).collect()),
+    };
+
+    let _ = post_graphql::<DownloadChapters>(var).await?;
+    Ok(())
+}

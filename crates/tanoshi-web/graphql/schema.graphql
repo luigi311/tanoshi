@@ -102,6 +102,7 @@ type MutationRoot {
   installSource(sourceId: Int!): Int!
   uninstallSource(sourceId: Int!): Int!
   updateSource(sourceId: Int!): Int!
+  downloadChapters(ids: [Int!]!): Int!
 }
 
 scalar NaiveDateTime
