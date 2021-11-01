@@ -1,6 +1,6 @@
 use crate::{
     db::{model::DownloadQueue, MangaDatabase},
-    user,
+    local, user,
     worker::Command as WorkerCommand,
 };
 
@@ -25,6 +25,11 @@ impl DownloadMutationRoot {
         let mut len = 0_usize;
         for id in ids {
             let chapter = db.get_chapter_by_id(id).await?;
+            if chapter.source_id == local::ID {
+                info!("local source can't be downloaded");
+                continue;
+            }
+
             let manga = db.get_manga_by_id(chapter.manga_id).await?;
             let pages = match db.get_pages_by_chapter_id(id).await {
                 Ok(pages) => pages,
