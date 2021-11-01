@@ -33,22 +33,9 @@ impl DownloadWorker {
             info!("start downloading...");
             while let Ok(Some(queue)) = self.db.get_single_download_queue().await {
                 debug!("got {}", queue.url);
-                tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
 
                 let url = if let Ok(url) = Url::parse(&queue.url) {
                     url
-                } else {
-                    continue;
-                };
-
-                let res = if let Ok(res) = self.client.get(url.clone()).send().await {
-                    res
-                } else {
-                    continue;
-                };
-
-                let contents = if let Ok(contents) = res.bytes().await {
-                    contents
                 } else {
                     continue;
                 };
@@ -69,6 +56,25 @@ impl DownloadWorker {
                     .join(&queue.manga_title)
                     .join(&queue.chapter_title)
                     .join(&filename);
+
+                if path.exists() {
+                    info!("{} downloaded. continue...", path.display());
+                    continue;
+                }
+
+                tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+
+                let res = if let Ok(res) = self.client.get(url.clone()).send().await {
+                    res
+                } else {
+                    continue;
+                };
+
+                let contents = if let Ok(contents) = res.bytes().await {
+                    contents
+                } else {
+                    continue;
+                };
 
                 if let Some(parent) = path.parent() {
                     if let Err(e) = tokio::fs::create_dir_all(parent).await {
