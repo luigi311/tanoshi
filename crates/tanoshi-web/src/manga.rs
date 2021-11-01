@@ -225,6 +225,53 @@ impl Manga {
         }))
     }
 
+    fn download_chapters(manga: Rc<Self>) {
+        let mut selected_chapter_id: Vec<i64> = vec![];
+        for chapter in manga.chapters.lock_ref().to_vec() {
+            if chapter.selected.get() {
+                selected_chapter_id.push(chapter.id);
+            }
+        }
+
+        manga.loader.load(clone!(manga => async move {
+            match query::download_chapters(&selected_chapter_id).await {
+                Ok(_) => {},
+                Err(err) => {
+                    snackbar::show(format!("{}", err));
+                }
+            }
+
+            manga.is_edit_chapter.set(false);
+            if manga.id.get() != 0 {
+                Self::fetch_detail(manga.clone(), false);
+            } else if manga.source_id.get() != 0 && manga.path.get_cloned() != "" {
+                Self::fetch_detail_by_source_path(manga.clone());
+            }
+        }))
+    }
+
+    
+
+    fn remove_download_chapters(manga: Rc<Self>) {
+        let mut selected_chapter_id: Vec<i64> = vec![];
+        for chapter in manga.chapters.lock_ref().to_vec() {
+            if chapter.selected.get() {
+                selected_chapter_id.push(chapter.id);
+            }
+        }
+
+        manga.loader.load(clone!(manga => async move {
+            todo!();
+
+            manga.is_edit_chapter.set(false);
+            if manga.id.get() != 0 {
+                Self::fetch_detail(manga.clone(), false);
+            } else if manga.source_id.get() != 0 && manga.path.get_cloned() != "" {
+                Self::fetch_detail_by_source_path(manga.clone());
+            }
+        }))
+    }
+
     fn add_to_or_remove_from_library(manga: Rc<Self>) {
         if manga.id.get() == 0 {
             return;
@@ -814,8 +861,25 @@ impl Manga {
                     .class("edit-action")
                     .children(&mut [
                         html!("button", {
+                            .attribute("id", "select-all")
                             .style("margin", "auto")
-                            .text("Select All")
+                            .children(&mut [
+                                svg!("svg", {
+                                    .attribute("xmlns", "http://www.w3.org/2000/svg")
+                                    .attribute("fill", "none")
+                                    .attribute("viewBox", "0 0 24 24")
+                                    .attribute("stroke", "currentColor")
+                                    .class("icon")
+                                    .children(&mut [
+                                        svg!("path", {
+                                            .attribute("stroke-linecap", "round")
+                                            .attribute("stroke-linejoin", "round")
+                                            .attribute("stroke-width", "2")
+                                            .attribute("d", "M5 13l4 4L19 7")
+                                        })
+                                    ])
+                                }),
+                            ])
                             .event(clone!(manga_page => move |_:events::Click| {
                                 let chapters = manga_page.chapters.lock_ref();
                                 for chapter in chapters.iter() {
@@ -824,8 +888,25 @@ impl Manga {
                             }))
                         }),
                         html!("button", {
+                            .attribute("id", "deselect-all")
                             .style("margin", "auto")
-                            .text("Deselect All")
+                            .children(&mut [
+                                svg!("svg", {
+                                    .attribute("xmlns", "http://www.w3.org/2000/svg")
+                                    .attribute("fill", "none")
+                                    .attribute("viewBox", "0 0 24 24")
+                                    .attribute("stroke", "currentColor")
+                                    .class("icon")
+                                    .children(&mut [
+                                        svg!("path", {
+                                            .attribute("stroke-linecap", "round")
+                                            .attribute("stroke-linejoin", "round")
+                                            .attribute("stroke-width", "2")
+                                            .attribute("d", "M6 18L18 6M6 6l12 12")
+                                        })
+                                    ])
+                                }),
+                            ])
                             .event(clone!(manga_page => move |_:events::Click| {
                                 let chapters = manga_page.chapters.lock_ref();
                                 for chapter in chapters.iter() {
@@ -834,17 +915,99 @@ impl Manga {
                             }))
                         }),
                         html!("button", {
+                            .attribute("id", "mark-as-read")
                             .style("margin", "auto")
-                            .text("Mark as Read")
+                            .children(&mut [
+                                svg!("svg", {
+                                    .attribute("xmlns", "http://www.w3.org/2000/svg")
+                                    .attribute("fill", "currentColor")
+                                    .attribute("viewBox", "0 0 24 24")
+                                    .attribute("stroke", "currentColor")
+                                    .class("icon")
+                                    .children(&mut [
+                                        svg!("path", {
+                                            .attribute("stroke-linecap", "round")
+                                            .attribute("stroke-linejoin", "round")
+                                            .attribute("stroke-width", "2")
+                                            .attribute("d", "M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253")
+                                        })
+                                    ])
+                                }),
+                            ])
                             .event(clone!(manga_page => move |_:events::Click| {
                                 Self::mark_chapter_as_read(manga_page.clone());
                             }))
                         }),
                         html!("button", {
+                            .attribute("id", "mark-as-unread")
                             .style("margin", "auto")
-                            .text("Mark as Unread")
+                            .children(&mut [
+                                svg!("svg", {
+                                    .attribute("xmlns", "http://www.w3.org/2000/svg")
+                                    .attribute("fill", "none")
+                                    .attribute("viewBox", "0 0 24 24")
+                                    .attribute("stroke", "currentColor")
+                                    .class("icon")
+                                    .children(&mut [
+                                        svg!("path", {
+                                            .attribute("stroke-linecap", "round")
+                                            .attribute("stroke-linejoin", "round")
+                                            .attribute("stroke-width", "2")
+                                            .attribute("d", "M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253")
+                                        })
+                                    ])
+                                }),
+                            ])
                             .event(clone!(manga_page => move |_:events::Click| {
                                 Self::mark_chapter_as_unread(manga_page.clone());
+                            }))
+                        }),
+                        html!("button", {
+                            .attribute("id", "download")
+                            .style("margin", "auto")
+                            .children(&mut [
+                                svg!("svg", {
+                                    .attribute("xmlns", "http://www.w3.org/2000/svg")
+                                    .attribute("fill", "none")
+                                    .attribute("viewBox", "0 0 24 24")
+                                    .attribute("stroke", "currentColor")
+                                    .class("icon")
+                                    .children(&mut [
+                                        svg!("path", {
+                                            .attribute("stroke-linecap", "round")
+                                            .attribute("stroke-linejoin", "round")
+                                            .attribute("stroke-width", "2")
+                                            .attribute("d", "M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10")
+                                        })
+                                    ])
+                                }),
+                            ])
+                            .event(clone!(manga_page => move |_:events::Click| {
+                                Self::download_chapters(manga_page.clone());
+                            }))
+                        }),
+                        html!("button", {
+                            .attribute("id", "remove-download")
+                            .style("margin", "auto")
+                            .children(&mut [
+                                svg!("svg", {
+                                    .attribute("xmlns", "http://www.w3.org/2000/svg")
+                                    .attribute("fill", "none")
+                                    .attribute("viewBox", "0 0 24 24")
+                                    .attribute("stroke", "currentColor")
+                                    .class("icon")
+                                    .children(&mut [
+                                        svg!("path", {
+                                            .attribute("stroke-linecap", "round")
+                                            .attribute("stroke-linejoin", "round")
+                                            .attribute("stroke-width", "2")
+                                            .attribute("d", "M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16")
+                                        })
+                                    ])
+                                }),
+                            ])
+                            .event(clone!(manga_page => move |_:events::Click| {
+                                Self::remove_download_chapters(manga_page.clone());
                             }))
                         }),
                     ])
