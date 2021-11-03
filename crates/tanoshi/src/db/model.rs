@@ -44,6 +44,7 @@ pub struct Chapter {
     pub next: Option<i64>,
     pub uploaded: NaiveDateTime,
     pub date_added: NaiveDateTime,
+    pub downloaded: i64,
 }
 
 impl Default for Chapter {
@@ -60,6 +61,7 @@ impl Default for Chapter {
             next: None,
             uploaded: NaiveDateTime::from_timestamp(0, 0),
             date_added: NaiveDateTime::from_timestamp(0, 0),
+            downloaded: 0,
         }
     }
 }
@@ -107,10 +109,21 @@ pub struct UserMangaLibrary {
 #[derive(Debug, Clone)]
 pub struct DownloadQueue {
     pub id: i64,
+    pub source_id: i64,
     pub source_name: String,
+    pub manga_id: i64,
     pub manga_title: String,
+    pub chapter_id: i64,
     pub chapter_title: String,
     pub rank: i64,
     pub url: String,
     pub date_added: NaiveDateTime,
+}
+
+#[derive(Debug, Clone)]
+pub struct DownloadQueueStatus {
+    pub manga_title: String,
+    pub chapter_title: String,
+    pub downloaded: i64,
+    pub total: i64,
 }

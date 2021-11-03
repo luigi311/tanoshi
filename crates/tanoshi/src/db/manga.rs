@@ -1,4 +1,6 @@
-use super::model::{Chapter, DownloadQueue, Manga, ReadProgress, UserMangaLibrary};
+use super::model::{
+    Chapter, DownloadQueue, DownloadQueueStatus, Manga, ReadProgress, UserMangaLibrary,
+};
 use crate::library::{RecentChapter, RecentUpdate};
 use anyhow::{anyhow, Result};
 use chrono::NaiveDateTime;
@@ -770,7 +772,8 @@ impl Db {
             r#"
             SELECT *,
             (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number < chapter.number ORDER BY c.number DESC LIMIT 1) prev,
-            (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number > chapter.number ORDER BY c.number ASC LIMIT 1) next
+            (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number > chapter.number ORDER BY c.number ASC LIMIT 1) next,
+            (SELECT COUNT(1) FROM page p WHERE p.chapter_id = chapter.id AND p.local_url IS NOT NULL) downloaded
             FROM chapter WHERE id = ?"#,
         )
         .bind(id)
@@ -789,6 +792,7 @@ impl Db {
             date_added: row.get(8),
             prev: row.get(9),
             next: row.get(10),
+            downloaded: row.get(11),
         })?)
     }
 
@@ -861,7 +865,8 @@ impl Db {
             SELECT
                 chapter.*,
                 (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number < chapter.number ORDER BY c.number DESC LIMIT 1) prev,
-                (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number > chapter.number ORDER BY c.number ASC LIMIT 1) next
+                (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number > chapter.number ORDER BY c.number ASC LIMIT 1) next,
+                (SELECT COUNT(1) FROM page p WHERE p.chapter_id = chapter.id AND p.local_url IS NOT NULL) downloaded
             FROM
                 chapter
             WHERE
@@ -893,6 +898,7 @@ impl Db {
             date_added: row.get(8),
             prev: row.get(9),
             next: row.get(10),
+            downloaded: row.get(11),
         }))
     }
 
@@ -903,7 +909,8 @@ impl Db {
             r#"
             SELECT *,
             (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number < chapter.number ORDER BY c.number DESC LIMIT 1) prev,
-            (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number > chapter.number ORDER BY c.number ASC LIMIT 1) next
+            (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number > chapter.number ORDER BY c.number ASC LIMIT 1) next,
+            (SELECT COUNT(1) FROM page p WHERE p.chapter_id = chapter.id AND p.local_url IS NOT NULL) downloaded
             FROM chapter WHERE source_id = ? AND path = ?"#,
         )
         .bind(source_id)
@@ -924,6 +931,7 @@ impl Db {
             date_added: row.get(8),
             prev: row.get(9),
             next: row.get(10),
+            downloaded: row.get(11),
         })
     }
 
@@ -933,7 +941,8 @@ impl Db {
             r#"
             SELECT *,
             (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number < chapter.number ORDER BY c.number DESC LIMIT 1) prev,
-            (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number > chapter.number ORDER BY c.number ASC LIMIT 1) next
+            (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number > chapter.number ORDER BY c.number ASC LIMIT 1) next,
+            (SELECT COUNT(1) FROM page p WHERE p.chapter_id = chapter.id AND p.local_url IS NOT NULL) downloaded
             FROM chapter WHERE manga_id = ? ORDER BY number DESC"#
         )
         .bind(manga_id)
@@ -953,6 +962,7 @@ impl Db {
                 date_added: row.get(8),
                 prev: row.get(9),
                 next: row.get(10),
+                downloaded: row.get(11),
             });
         }
         if chapters.is_empty() {
@@ -968,7 +978,8 @@ impl Db {
             r#"
             SELECT *,
             (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number < chapter.number ORDER BY c.number DESC LIMIT 1) prev,
-            (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number > chapter.number ORDER BY c.number ASC LIMIT 1) next
+            (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number > chapter.number ORDER BY c.number ASC LIMIT 1) next,
+            (SELECT COUNT(1) FROM page p WHERE p.chapter_id = chapter.id AND p.local_url IS NOT NULL) downloaded
             FROM chapter WHERE manga_id = ? ORDER BY uploaded DESC LIMIT 1"#
         )
         .bind(manga_id)
@@ -988,6 +999,7 @@ impl Db {
             date_added: row.get(8),
             prev: row.get(9),
             next: row.get(10),
+            downloaded: row.get(11),
         })
     }
 
@@ -1332,16 +1344,19 @@ impl Db {
         }
 
         let mut values = vec![];
-        values.resize(items.len(), "(?, ?, ?, ?, ?, ?)");
+        values.resize(items.len(), "(?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
         let query_str = format!(
             r#"INSERT INTO download_queue(
-            source_name,
-            manga_title,
-            chapter_title,
-            rank,
-            url,
-            date_added
+                source_id,
+                source_name,
+                manga_id,
+                manga_title,
+                chapter_id,
+                chapter_title,
+                rank,
+                url,
+                date_added 
         ) VALUES {}"#,
             values.join(",")
         );
@@ -1349,8 +1364,11 @@ impl Db {
         let mut query = sqlx::query(&query_str);
         for item in items {
             query = query
+                .bind(&item.source_id)
                 .bind(&item.source_name)
+                .bind(&item.manga_id)
                 .bind(&item.manga_title)
+                .bind(&item.chapter_id)
                 .bind(&item.chapter_title)
                 .bind(item.rank)
                 .bind(&item.url)
@@ -1367,8 +1385,11 @@ impl Db {
         let data = sqlx::query(
             r#"SELECT 
                     id,
+                    source_id,
                     source_name,
+                    manga_id,
                     manga_title,
+                    chapter_id,
                     chapter_title,
                     rank,
                     url,
@@ -1381,13 +1402,38 @@ impl Db {
         .await?
         .map(|row| DownloadQueue {
             id: row.get(0),
-            source_name: row.get(1),
-            manga_title: row.get(2),
-            chapter_title: row.get(3),
-            rank: row.get(4),
-            url: row.get(5),
-            date_added: row.get(6),
+            source_id: row.get(1),
+            source_name: row.get(2),
+            manga_id: row.get(3),
+            manga_title: row.get(4),
+            chapter_id: row.get(5),
+            chapter_title: row.get(6),
+            rank: row.get(7),
+            url: row.get(8),
+            date_added: row.get(9),
         });
+        Ok(data)
+    }
+
+    pub async fn get_download_queue(&self) -> Result<Vec<DownloadQueueStatus>> {
+        let mut conn = self.pool.acquire().await?;
+        let data = sqlx::query(r#"SELECT 
+            manga_title, 
+            chapter_title, 
+            (SELECT COUNT(1) FROM page WHERE chapter_id = download_queue.chapter_id AND local_url IS NOT NULL) AS downloaded,
+            COUNT(1) as total
+        FROM download_queue
+        GROUP BY chapter_id;"#,
+        )
+        .fetch_all(&mut conn)
+        .await?
+        .iter()
+        .map(|row| DownloadQueueStatus {
+            manga_title: row.get(0),
+            chapter_title: row.get(1),
+            downloaded: row.get(2),
+            total: row.get(3),
+        }).collect();
         Ok(data)
     }
 

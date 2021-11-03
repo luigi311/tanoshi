@@ -1,5 +1,5 @@
 use crate::catalogue::{CatalogueRoot, SourceMutationRoot, SourceRoot};
-use crate::downloads::DownloadMutationRoot;
+use crate::downloads::{DownloadMutationRoot, DownloadRoot};
 use crate::library::{LibraryMutationRoot, LibraryRoot};
 use crate::notifier::NotificationRoot;
 use crate::status::StatusRoot;
@@ -16,6 +16,7 @@ pub struct QueryRoot(
     UserRoot,
     StatusRoot,
     NotificationRoot,
+    DownloadRoot,
 );
 
 #[derive(MergedObject, Default)]
