@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use crate::{
     db::{model, MangaDatabase},
     local, user,
@@ -100,6 +102,33 @@ impl DownloadMutationRoot {
                 .await?;
 
             len += queue.len()
+        }
+
+        Ok(len as _)
+    }
+
+    async fn remove_downloaded_chapters(&self, ctx: &Context<'_>, ids: Vec<i64>) -> Result<i64> {
+        if !user::check_is_admin(ctx)? {
+            return Err("Forbidden".into());
+        }
+
+        let db = ctx.data::<MangaDatabase>()?;
+
+        let mut len = 0_usize;
+        for id in ids {
+            let pages = db.get_pages_local_url_by_chapter_id(id).await?;
+            for page in pages {
+                if page.is_empty() {
+                    continue;
+                }
+                let page = PathBuf::new().join(page);
+
+                info!("removing {}...", page.display());
+                tokio::fs::remove_file(&page).await?;
+                db.delete_page_local_url(&page.display().to_string())
+                    .await?;
+                len += 1;
+            }
         }
 
         Ok(len as _)

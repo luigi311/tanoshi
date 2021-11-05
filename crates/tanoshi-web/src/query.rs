@@ -589,6 +589,23 @@ pub async fn download_chapters(chapter_ids: &[i64]) -> Result<(), Box<dyn Error>
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "graphql/schema.graphql",
+    query_path = "graphql/remove_downloaded_chapters.graphql",
+    response_derives = "Debug"
+)]
+pub struct RemoveDownloadedChapters;
+
+pub async fn remove_downloaded_chapters(chapter_ids: &[i64]) -> Result<(), Box<dyn Error>> {
+    let var = remove_downloaded_chapters::Variables {
+        ids: Some(chapter_ids.iter().map(|id| Some(*id)).collect()),
+    };
+
+    let _ = post_graphql::<RemoveDownloadedChapters>(var).await?;
+    Ok(())
+}
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/schema.graphql",
     query_path = "graphql/download_queue.graphql",
     response_derives = "Debug"
 )]

@@ -262,7 +262,12 @@ impl Manga {
         }
 
         manga.loader.load(clone!(manga => async move {
-            todo!();
+            match query::remove_downloaded_chapters(&selected_chapter_id).await {
+                Ok(_) => {},
+                Err(err) => {
+                    snackbar::show(format!("{}", err));
+                }
+            }
 
             manga.is_edit_chapter.set(false);
             if manga.id.get() != 0 {

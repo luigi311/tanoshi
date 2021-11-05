@@ -1133,6 +1133,21 @@ impl Db {
         Ok(())
     }
 
+    pub async fn delete_page_local_url(&self, local_url: &str) -> Result<()> {
+        let mut conn = self.pool.acquire().await?;
+
+        sqlx::query(
+            r#"UPDATE page 
+            SET local_url = NULL
+            WHERE local_url = ?"#,
+        )
+        .bind(local_url)
+        .execute(&mut conn)
+        .await?;
+
+        Ok(())
+    }
+
     pub async fn get_pages_by_chapter_id(&self, chapter_id: i64) -> Result<Vec<String>> {
         let mut conn = self.pool.acquire().await?;
         let mut stream =
