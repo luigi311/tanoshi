@@ -5,10 +5,7 @@ use crate::{
 };
 use chrono::NaiveDateTime;
 use dominator::{clone, events, html, routing, svg, with_node, Dom};
-use futures_signals::{
-    signal::{self, Mutable, SignalExt},
-    signal_vec::{MutableVec, SignalVecExt},
-};
+use futures_signals::{signal::{self, Mutable, SignalExt}, signal_vec::{MutableVec, SignalVecExt}};
 use std::rc::Rc;
 use wasm_bindgen::prelude::*;
 use web_sys::HtmlInputElement;
@@ -29,6 +26,7 @@ struct Chapter {
     pub uploaded: NaiveDateTime,
     pub read_progress: Option<ReadProgress>,
     pub selected: Mutable<bool>,
+    pub downloaded: bool
 }
 
 impl Default for Chapter {
@@ -41,6 +39,7 @@ impl Default for Chapter {
             uploaded: NaiveDateTime::from_timestamp(0, 0),
             read_progress: Default::default(),
             selected: Default::default(),
+            downloaded: Default::default(),
         }
     }
 }
@@ -118,7 +117,8 @@ impl Manga {
                             last_page: progress.last_page,
                             is_complete: progress.is_complete,
                         }),
-                        selected: Mutable::new(false)
+                        selected: Mutable::new(false),
+                        downloaded: chapter.downloaded,
                     })).collect());
 
                     manga.chapter_settings.load_by_manga_id(manga.id.get());                    
@@ -163,7 +163,8 @@ impl Manga {
                             last_page: progress.last_page,
                             is_complete: progress.is_complete,
                         }),
-                        selected: Mutable::new(false)
+                        selected: Mutable::new(false),
+                        downloaded: chapter.downloaded,
                     })).collect());
 
                     manga.chapter_settings.load_by_manga_id(manga.id.get());
@@ -626,7 +627,6 @@ impl Manga {
     pub fn render_chapters(manga: Rc<Self>) -> Dom {
         let is_edit_chapter = manga.is_edit_chapter.clone();
         let filter = manga.chapter_settings.filter.clone();
-
         html!("div", {
             .class("chapter-list")
             .attribute("id", "chapters")
@@ -799,6 +799,25 @@ impl Manga {
                                 ])
                             }),
                         ])
+                        .child_signal(signal::always(chapter.downloaded).map(|downloaded| downloaded.then(|| html!("div", {
+                            .style("align-self", "center")
+                            .style("padding", "0.25rem")
+                            .children(&mut [
+                                svg!("svg", {
+                                    .attribute("xmlns", "http://www.w3.org/2000/svg")
+                                    .attribute("viewBox", "0 0 20 20")
+                                    .attribute("fill", "currentColor")
+                                    .class("icon")
+                                    .children(&mut [
+                                        svg!("path", {
+                                            .attribute("fill-rule", "evenodd")
+                                            .attribute("clip-rule", "evenodd")
+                                            .attribute("d", "M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z")
+                                        })
+                                    ])
+                                })
+                            ])
+                        }))))
                     }))))
                 })
             ])
