@@ -773,7 +773,7 @@ impl Db {
             SELECT *,
             (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number < chapter.number ORDER BY c.number DESC LIMIT 1) prev,
             (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number > chapter.number ORDER BY c.number ASC LIMIT 1) next,
-            (SELECT COUNT(1) FROM page p WHERE p.chapter_id = chapter.id AND p.local_url IS NOT NULL) downloaded
+            (SELECT (COUNT(p.remote_url) > 0) & (COUNT(p.remote_url) = COUNT(p.local_url)) FROM page p WHERE p.chapter_id = chapter.id) downloaded
             FROM chapter WHERE id = ?"#,
         )
         .bind(id)
@@ -866,7 +866,7 @@ impl Db {
                 chapter.*,
                 (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number < chapter.number ORDER BY c.number DESC LIMIT 1) prev,
                 (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number > chapter.number ORDER BY c.number ASC LIMIT 1) next,
-                (SELECT COUNT(1) FROM page p WHERE p.chapter_id = chapter.id AND p.local_url IS NOT NULL) downloaded
+                (SELECT (COUNT(p.remote_url) > 0) & (COUNT(p.remote_url) = COUNT(p.local_url)) FROM page p WHERE p.chapter_id = chapter.id) downloaded
             FROM
                 chapter
             WHERE
@@ -910,7 +910,7 @@ impl Db {
             SELECT *,
             (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number < chapter.number ORDER BY c.number DESC LIMIT 1) prev,
             (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number > chapter.number ORDER BY c.number ASC LIMIT 1) next,
-            (SELECT COUNT(1) FROM page p WHERE p.chapter_id = chapter.id AND p.local_url IS NOT NULL) downloaded
+            (SELECT (COUNT(p.remote_url) > 0) & (COUNT(p.remote_url) = COUNT(p.local_url)) FROM page p WHERE p.chapter_id = chapter.id) downloaded
             FROM chapter WHERE source_id = ? AND path = ?"#,
         )
         .bind(source_id)
@@ -942,7 +942,7 @@ impl Db {
             SELECT *,
             (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number < chapter.number ORDER BY c.number DESC LIMIT 1) prev,
             (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number > chapter.number ORDER BY c.number ASC LIMIT 1) next,
-            (SELECT COUNT(1) FROM page p WHERE p.chapter_id = chapter.id AND p.local_url IS NOT NULL) downloaded
+            (SELECT (COUNT(p.remote_url) > 0) & (COUNT(p.remote_url) = COUNT(p.local_url)) FROM page p WHERE p.chapter_id = chapter.id) downloaded
             FROM chapter WHERE manga_id = ? ORDER BY number DESC"#
         )
         .bind(manga_id)
@@ -979,7 +979,7 @@ impl Db {
             SELECT *,
             (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number < chapter.number ORDER BY c.number DESC LIMIT 1) prev,
             (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number > chapter.number ORDER BY c.number ASC LIMIT 1) next,
-            (SELECT COUNT(1) FROM page p WHERE p.chapter_id = chapter.id AND p.local_url IS NOT NULL) downloaded
+            (SELECT (COUNT(p.remote_url) > 0) & (COUNT(p.remote_url) = COUNT(p.local_url)) FROM page p WHERE p.chapter_id = chapter.id) downloaded
             FROM chapter WHERE manga_id = ? ORDER BY uploaded DESC LIMIT 1"#
         )
         .bind(manga_id)
