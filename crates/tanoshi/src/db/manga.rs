@@ -1453,14 +1453,19 @@ impl Db {
 
     pub async fn get_download_queue(&self) -> Result<Vec<DownloadQueueStatus>> {
         let mut conn = self.pool.acquire().await?;
-        let data = sqlx::query(r#"SELECT
-            source_name,
-            manga_title, 
-            chapter_title, 
-            (SELECT COUNT(1) FROM page WHERE chapter_id = download_queue.chapter_id AND local_url IS NOT NULL) AS downloaded,
-            COUNT(1) as total
-        FROM download_queue
-        GROUP BY chapter_id;"#,
+        let data = sqlx::query(
+        r#"SELECT
+                source_name,
+                manga_title, 
+                chapter_title, 
+                downloaded,
+                total
+            FROM download_queue
+            JOIN (
+                SELECT chapter_id, COUNT(page.local_url) AS downloaded, COUNT(page.remote_url) AS total 
+                FROM page GROUP BY chapter_id
+            ) p ON p.chapter_id = download_queue.chapter_id
+            GROUP BY download_queue.chapter_id"#,
         )
         .fetch_all(&mut conn)
         .await?
