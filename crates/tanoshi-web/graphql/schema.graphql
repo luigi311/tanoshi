@@ -26,6 +26,7 @@ type Chapter {
 }
 
 type DownloadQueueStatus {
+  sourceName: String!
   mangaTitle: String!
   chapterTitle: String!
   downloaded: Int!

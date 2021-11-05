@@ -1,4 +1,4 @@
-use crate::{common::{AppearanceSettings, ChapterSettings, Login, Profile, ReaderSettings, Route, SettingCategory, Source, Spinner, User, events, snackbar}, query, utils::{AsyncLoader, window}};
+use crate::{common::{AppearanceSettings, ChapterSettings, DownloadQueue, Login, Profile, ReaderSettings, Route, SettingCategory, Source, Spinner, User, events, snackbar}, query, utils::{AsyncLoader, window}};
 use dominator::svg;
 use dominator::{clone, html, link, routing, Dom};
 use futures_signals::{signal::{self, Mutable, SignalExt}, signal_vec::{MutableSignalVec, MutableVec}, signal_vec::SignalVecExt};
@@ -12,6 +12,7 @@ pub struct Settings {
     available_sources: MutableVec<Source>,
     me: Mutable<Option<User>>,
     users: MutableVec<User>,
+    queue: MutableVec<DownloadQueue>,
     appearance_settings: Rc<AppearanceSettings>,
     reader_settings: Rc<ReaderSettings>,
     chapter_settings: Rc<ChapterSettings>,
@@ -28,6 +29,7 @@ impl Settings {
             available_sources: MutableVec::new(),
             me: Mutable::new(None),
             users: MutableVec::new(),
+            queue: MutableVec::new(),
             appearance_settings: AppearanceSettings::new(),
             reader_settings: ReaderSettings::new(true, false),
             chapter_settings: ChapterSettings::new(true, false),
@@ -221,6 +223,26 @@ impl Settings {
         });
     }
 
+    fn fetch_download_queue(settings: Rc<Self>) {
+        AsyncLoader::new().load(clone!(settings => async move {
+            match query::download_queue().await {
+                Ok(data) => {
+                    let queue = data.iter().map(|queue| DownloadQueue {
+                        source_name: queue.source_name.clone(),
+                        manga_title: queue.manga_title.clone(),
+                        chapter_title: queue.chapter_title.clone(),
+                        downloaded: queue.downloaded,
+                        total: queue.total,
+                    }).collect();
+                    settings.queue.lock_mut().replace_cloned(queue);
+                },
+                Err(err) => {
+                    snackbar::show(format!("{}", err));
+                }
+            }
+        }));
+    }
+
     pub fn render_topbar(settings: Rc<Self>) -> Dom {
         html!("div", {
             .class("topbar")
@@ -285,6 +307,7 @@ impl Settings {
                             SettingCategory::Users => "Users",
                             SettingCategory::CreateUser => "Create User",
                             SettingCategory::User => "User",
+                            SettingCategory::DownloadQueue => "Downloads"
                         }
                     ))
                 }),
@@ -311,6 +334,7 @@ impl Settings {
     pub fn render_categories(settings: Rc<Self>) -> Dom {
         html!("ul", {
             .class(["list", "group"])
+            .style("margin-bottom", "0.5rem")
             .children(&mut [
                 link!(Route::Settings(SettingCategory::Appearance).url(), {
                     .class("list-item")
@@ -346,92 +370,84 @@ impl Settings {
         })
     }
 
-    fn render_source_list(title: &str, settings: Rc<Self>, sources_signal: MutableSignalVec<Source>) -> Dom {
+    pub fn render_misc(settings: Rc<Self>) -> Dom {
+        html!("ul", {
+            .class(["list", "group"])
+            .child_signal(settings.me.signal_cloned().map(|me| {
+                if let Some(me) = me {
+                    if me.is_admin {
+                        Some(link!(Route::Settings(SettingCategory::DownloadQueue).url(), {
+                            .class("list-item")
+                            .text("Download Queue")
+                        }))
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            }))
+        })
+    }
+
+    fn render_download_queue(settings: Rc<Self>) -> Dom {
+        Self::fetch_download_queue(settings.clone());
+        
         html!("div", {
             .children(&mut [
-                html!("h1", {
-                    .text(title)
-                }),
                 html!("ul", {
                     .class([
                         "list",
                         "group"
                     ])
-                    .children_signal_vec(sources_signal.map(clone!(settings => move |x|
+                    .children_signal_vec(settings.queue.signal_vec_cloned().map(|queue|
                         html!("li", {
                             .class("list-item")
+                            .style("display", "flex")
+                            .style("flex-direction", "column")
                             .children(&mut [
-                                if x.installed {
-                                    link!(Route::Settings(SettingCategory::Source(x.id)).url(), {
-                                        .style("display", "flex")
-                                        .style("width", "100%")
-                                        .children(&mut [
-                                            html!("img", {
-                                                .style("width", "2.5rem")
-                                                .style("height", "2.5rem")
-                                                .style("margin-right", "0.5rem")
-                                                .attribute("src", &x.icon)
-                                            }),
-                                            html!("div", {
-                                                .style("display", "flex")
-                                                .style("flex-direction", "column")
-                                                .children(&mut [
-                                                    html!("span", {
-                                                        .text(&x.name)
-                                                    }),
-                                                    html!("span", {
-                                                        .text(&x.version)
-                                                    })
-                                                ])
-                                            })
-                                        ])
-                                    })
-                                } else {
-                                    html!("div", {
-                                        .style("display", "flex")
-                                        .style("width", "100%")
-                                        .children(&mut [
-                                            html!("img", {
-                                                .style("width", "2.5rem")
-                                                .style("height", "2.5rem")
-                                                .style("margin-right", "0.5rem")
-                                                .attribute("src", &x.icon)
-                                            }),
-                                            html!("div", {
-                                                .style("display", "flex")
-                                                .style("flex-direction", "column")
-                                                .children(&mut [
-                                                    html!("span", {
-                                                        .text(&x.name)
-                                                    }),
-                                                    html!("span", {
-                                                        .text(&x.version)
-                                                    })
-                                                ])
-                                            })
-                                        ])
-                                    })
-                                },
-                                if x.installed && x.has_update {
-                                    html!("button", {
-                                        .text("Update")
-                                        .event(clone!(settings => move |_: events::Click| {
-                                            Self::update_source(settings.clone(), x.id);
-                                        }))
-                                    })
-                                } else if !x.installed {
-                                    html!("button", {
-                                        .text("Install")
-                                        .event(clone!(settings => move |_: events::Click| {
-                                            Self::install_source(settings.clone(), x.id);
-                                        }))
-                                    })
-                                } else {
-                                    html!("div", {})
-                                }
+                                html!("div", {
+                                    .style("display", "flex")
+                                    .style("justify-content", "space-between")
+                                    .style("width", "100%")
+                                    .children(&mut [
+                                        html!("span", {
+                                            .style("font-weight", "600")
+                                            .text(&queue.manga_title)
+                                        }),
+                                        html!("span", {
+                                            .text(&queue.source_name)
+                                        }),
+                                    ])
+                                }),
+                                html!("div", {
+                                    .style("display", "flex")
+                                    .style("justify-content", "space-between")
+                                    .style("width", "100%")
+                                    .children(&mut [
+                                        html!("span", {
+                                            .text(&queue.chapter_title)
+                                        }),
+                                        html!("span", {
+                                            .text(&format!("{}/{}", queue.downloaded, queue.total))
+                                        })
+                                    ])
+                                }),
+                                html!("div", {
+                                    .style("height", "0.5rem")
+                                    .style("width", "100%")
+                                    .style("background-color", "var(--primary-color-300)")
+                                    .children(&mut [
+                                        html!("div", {
+                                            .style("width", &format!("{}%", (queue.downloaded / queue.total) * 100))
+                                            .style("height", "100%")
+                                            .style("background-color", "var(--primary-color)")
+                                        })
+                                    ])
+                                })
                             ])
                         })
-                    )))
+                    ))
                 })
             ])
         })
@@ -565,10 +581,104 @@ impl Settings {
         })
     }
 
+    
+    fn render_source_list(title: &str, settings: Rc<Self>, sources_signal: MutableSignalVec<Source>) -> Dom {
+        html!("div", {
+            .children(&mut [
+                html!("h1", {
+                    .text(title)
+                }),
+                html!("ul", {
+                    .class([
+                        "list",
+                        "group"
+                    ])
+                    .children_signal_vec(sources_signal.map(clone!(settings => move |x|
+                        html!("li", {
+                            .class("list-item")
+                            .children(&mut [
+                                if x.installed {
+                                    link!(Route::Settings(SettingCategory::Source(x.id)).url(), {
+                                        .style("display", "flex")
+                                        .style("width", "100%")
+                                        .children(&mut [
+                                            html!("img", {
+                                                .style("width", "2.5rem")
+                                                .style("height", "2.5rem")
+                                                .style("margin-right", "0.5rem")
+                                                .attribute("src", &x.icon)
+                                            }),
+                                            html!("div", {
+                                                .style("display", "flex")
+                                                .style("flex-direction", "column")
+                                                .children(&mut [
+                                                    html!("span", {
+                                                        .text(&x.name)
+                                                    }),
+                                                    html!("span", {
+                                                        .text(&x.version)
+                                                    })
+                                                ])
+                                            })
+                                        ])
+                                    })
+                                } else {
+                                    html!("div", {
+                                        .style("display", "flex")
+                                        .style("width", "100%")
+                                        .children(&mut [
+                                            html!("img", {
+                                                .style("width", "2.5rem")
+                                                .style("height", "2.5rem")
+                                                .style("margin-right", "0.5rem")
+                                                .attribute("src", &x.icon)
+                                            }),
+                                            html!("div", {
+                                                .style("display", "flex")
+                                                .style("flex-direction", "column")
+                                                .children(&mut [
+                                                    html!("span", {
+                                                        .text(&x.name)
+                                                    }),
+                                                    html!("span", {
+                                                        .text(&x.version)
+                                                    })
+                                                ])
+                                            })
+                                        ])
+                                    })
+                                },
+                                if x.installed && x.has_update {
+                                    html!("button", {
+                                        .text("Update")
+                                        .event(clone!(settings => move |_: events::Click| {
+                                            Self::update_source(settings.clone(), x.id);
+                                        }))
+                                    })
+                                } else if !x.installed {
+                                    html!("button", {
+                                        .text("Install")
+                                        .event(clone!(settings => move |_: events::Click| {
+                                            Self::install_source(settings.clone(), x.id);
+                                        }))
+                                    })
+                                } else {
+                                    html!("div", {})
+                                }
+                            ])
+                        })
+                    )))
+                })
+            ])
+        })
+    }
+
     pub fn render(settings: Rc<Self>, category: SettingCategory) -> Dom {
         settings.page.set(category.clone());
         match category {
-            SettingCategory::None => Self::fetch_me(settings.clone()),
+            SettingCategory::None => {
+                Self::fetch_me(settings.clone());
+            },
             SettingCategory::Source(id) => if id == 0 {
                 Self::fetch_sources(settings.clone())
             } else {
@@ -597,6 +707,7 @@ impl Settings {
                         .children(&mut [
                             Self::render_user(settings.clone()),
                             Self::render_categories(settings.clone()),
+                            Self::render_misc(settings.clone()),
                             html!("text", {
                                 .style("font-size", "small")
                                 .text(format!("v{}", settings.server_version).as_str())
@@ -614,6 +725,7 @@ impl Settings {
                     SettingCategory::Users => Some(Self::render_users_management(settings.clone())),
                     SettingCategory::User => Some(Profile::render(Profile::new())),
                     SettingCategory::CreateUser => Some(Login::render(Login::new())),
+                    SettingCategory::DownloadQueue => Some(Self::render_download_queue(settings.clone()))
                 }
             )))                
         })

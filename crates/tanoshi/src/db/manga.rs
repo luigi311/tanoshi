@@ -1453,7 +1453,8 @@ impl Db {
 
     pub async fn get_download_queue(&self) -> Result<Vec<DownloadQueueStatus>> {
         let mut conn = self.pool.acquire().await?;
-        let data = sqlx::query(r#"SELECT 
+        let data = sqlx::query(r#"SELECT
+            source_name,
             manga_title, 
             chapter_title, 
             (SELECT COUNT(1) FROM page WHERE chapter_id = download_queue.chapter_id AND local_url IS NOT NULL) AS downloaded,
@@ -1465,10 +1466,11 @@ impl Db {
         .await?
         .iter()
         .map(|row| DownloadQueueStatus {
-            manga_title: row.get(0),
-            chapter_title: row.get(1),
-            downloaded: row.get(2),
-            total: row.get(3),
+            source_name: row.get(0),
+            manga_title: row.get(1),
+            chapter_title: row.get(2),
+            downloaded: row.get(3),
+            total: row.get(4),
         }).collect();
         Ok(data)
     }

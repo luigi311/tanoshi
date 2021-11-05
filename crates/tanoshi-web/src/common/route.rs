@@ -5,7 +5,7 @@ use futures_signals::signal::{Signal, SignalExt};
 use wasm_bindgen::prelude::*;
 use web_sys::Url;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum SettingCategory {
     None,
     Appearance,
@@ -15,6 +15,7 @@ pub enum SettingCategory {
     Users,
     CreateUser,
     User,
+    DownloadQueue,
 }
 
 #[derive(Debug)]
@@ -117,6 +118,7 @@ impl Route {
                         "sources" => Route::Settings(SettingCategory::Source(0)),
                         "users" => Route::Settings(SettingCategory::Users),
                         "user" => Route::Settings(SettingCategory::User),
+                        "downloads" => Route::Settings(SettingCategory::DownloadQueue),
                         _ => Route::NotFound,
                     },
                     ["settings", "users", "create"] => Route::Settings(SettingCategory::CreateUser),
@@ -184,6 +186,7 @@ impl Route {
             Route::Settings(SettingCategory::Users) => "/settings/users".to_string(),
             Route::Settings(SettingCategory::CreateUser) => "/settings/users/create".to_string(),
             Route::Settings(SettingCategory::User) => "/settings/user".to_string(),
+            Route::Settings(SettingCategory::DownloadQueue) => "/settings/downloads".to_string(),
             Route::NotFound => "/notfound".to_string(),
         }
     }

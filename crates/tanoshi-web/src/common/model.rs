@@ -22,3 +22,12 @@ pub struct ServerStatus {
     pub activated: bool,
     pub version: String,
 }
+
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
+pub struct DownloadQueue {
+    pub source_name: String,
+    pub manga_title: String,
+    pub chapter_title: String,
+    pub downloaded: i64,
+    pub total: i64,
+}

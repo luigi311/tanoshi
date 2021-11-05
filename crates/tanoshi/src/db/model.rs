@@ -122,6 +122,7 @@ pub struct DownloadQueue {
 
 #[derive(Debug, Clone)]
 pub struct DownloadQueueStatus {
+    pub source_name: String,
     pub manga_title: String,
     pub chapter_title: String,
     pub downloaded: i64,

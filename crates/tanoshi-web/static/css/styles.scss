@@ -14,7 +14,16 @@ $color-gray-900: darken($color-gray, $color--interval * 4);
 
 $font-stack:    Helvetica, Roboto, sans-serif;
 $primary-color: rgba(91, 116, 155, 1);
-$primary-color-100: darken($primary-color, $color--interval);
+$primary-color-100: lighten($primary-color, $color--interval * 4);
+$primary-color-200: lighten($primary-color, $color--interval * 3);
+$primary-color-300: lighten($primary-color, $color--interval * 2);
+$primary-color-400: lighten($primary-color, $color--interval);
+$primary-color-500: $primary-color;
+$primary-color-600: darken($primary-color, $color--interval);
+$primary-color-700: darken($primary-color, $color--interval * 2);
+$primary-color-800: darken($primary-color, $color--interval * 3);
+$primary-color-850: darken($primary-color, $color--interval * 3.5);
+$primary-color-900: darken($primary-color, $color--interval * 4);
 
 $shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
 
@@ -44,7 +53,7 @@ $divide-color-dark-1: $color-gray-700;
 
     --topbar-background-color: #{$topbar-background-light};
     --topbar-button-color: white;
-    --topbar-bottom-border: 1px solid #{$primary-color-100};
+    --topbar-bottom-border: 1px solid #{$primary-color-600};
     
     --bottombar-background-color: #{$bottombar-background-light};
     --color: #{$text-color-light};
@@ -57,6 +66,7 @@ $divide-color-dark-1: $color-gray-700;
     --list-group-border: 1px solid var(--background-color-200);
     
     --primary-color: #{$primary-color};
+    --primary-color-300: #{$primary-color-300};
 }
 
 body.dark {

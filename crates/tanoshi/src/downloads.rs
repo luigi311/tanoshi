@@ -11,6 +11,7 @@ use tokio::sync::mpsc::Sender;
 
 #[derive(Debug, SimpleObject)]
 pub struct DownloadQueueStatus {
+    source_name: String,
     manga_title: String,
     chapter_title: String,
     downloaded: i64,
@@ -32,6 +33,7 @@ impl DownloadRoot {
         let queue = queue
             .iter()
             .map(|queue| DownloadQueueStatus {
+                source_name: queue.source_name.clone(),
                 manga_title: queue.manga_title.clone(),
                 chapter_title: queue.chapter_title.clone(),
                 downloaded: queue.downloaded,

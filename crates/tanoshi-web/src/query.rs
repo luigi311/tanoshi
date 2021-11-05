@@ -585,3 +585,18 @@ pub async fn download_chapters(chapter_ids: &[i64]) -> Result<(), Box<dyn Error>
     let _ = post_graphql::<DownloadChapters>(var).await?;
     Ok(())
 }
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/schema.graphql",
+    query_path = "graphql/download_queue.graphql",
+    response_derives = "Debug"
+)]
+pub struct DownloadQueue;
+
+pub async fn download_queue(
+) -> Result<Vec<download_queue::DownloadQueueDownloadQueue>, Box<dyn Error>> {
+    let var = download_queue::Variables {};
+
+    Ok(post_graphql::<DownloadQueue>(var).await?.download_queue)
+}
