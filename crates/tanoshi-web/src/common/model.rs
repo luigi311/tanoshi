@@ -17,10 +17,19 @@ pub struct User {
     pub telegram_chat_id: Option<i64>,
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ServerStatus {
     pub activated: bool,
     pub version: String,
+}
+
+impl Default for ServerStatus {
+    fn default() -> Self {
+        Self {
+            activated: false,
+            version: "0.0.0".to_string(),
+        }
+    }
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
