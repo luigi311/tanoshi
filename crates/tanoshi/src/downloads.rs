@@ -64,7 +64,7 @@ impl DownloadMutationRoot {
             }
 
             let manga = db.get_manga_by_id(chapter.manga_id).await?;
-            let pages = match db.get_pages_by_chapter_id(id).await {
+            let pages = match db.get_pages_remote_url_by_chapter_id(id).await {
                 Ok(pages) => pages,
                 Err(_) => {
                     let pages = ext.get_pages(manga.source_id, chapter.path.clone()).await?;
