@@ -30,6 +30,7 @@ query FetchMangaBySourcePath($sourceId: Int, $path: String) {
         lastPage
         isComplete
       }
+      downloaded
     }
   }
 }

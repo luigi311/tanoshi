@@ -22,6 +22,14 @@ type Chapter {
     # fetch from source
     fetch: Boolean! = false
   ): [String!]!
+  downloaded: Boolean!
+}
+
+type DownloadQueueStatus {
+  mangaTitle: String!
+  chapterTitle: String!
+  downloaded: Int!
+  total: Int!
 }
 
 type Filters {
@@ -202,6 +210,7 @@ type QueryRoot {
     # pushover user key
     userKey: String!
   ): Boolean!
+  downloadQueue: [DownloadQueueStatus!]!
 }
 
 type ReadProgress {

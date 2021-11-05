@@ -36,7 +36,7 @@ pub struct Chapter {
     pub uploaded: chrono::NaiveDateTime,
     pub date_added: chrono::NaiveDateTime,
     pub read_progress: Option<ReadProgress>,
-    pub downloaded: i64,
+    pub downloaded: bool,
 }
 
 impl From<tanoshi_lib::data::Chapter> for Chapter {
@@ -54,7 +54,7 @@ impl From<tanoshi_lib::data::Chapter> for Chapter {
             uploaded: ch.uploaded,
             date_added: chrono::NaiveDateTime::from_timestamp(chrono::Local::now().timestamp(), 0),
             read_progress: None,
-            downloaded: 0,
+            downloaded: false,
         }
     }
 }
@@ -93,7 +93,7 @@ impl From<tanoshi_lib::data::Chapter> for crate::db::model::Chapter {
             next: None,
             uploaded: ch.uploaded,
             date_added: chrono::NaiveDateTime::from_timestamp(chrono::Local::now().timestamp(), 0),
-            downloaded: 0,
+            downloaded: false,
         }
     }
 }
@@ -205,7 +205,7 @@ impl Chapter {
         Ok(pages)
     }
 
-    async fn downloaded(&self, ctx: &Context<'_>) -> i64 {
+    async fn downloaded(&self) -> bool {
         self.downloaded
     }
 }

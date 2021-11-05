@@ -59,6 +59,14 @@ impl DownloadWorker {
 
                 if path.exists() {
                     info!("{} downloaded. continue...", path.display());
+                    if self
+                        .db
+                        .delete_single_download_queue_by_id(queue.id)
+                        .await
+                        .is_err()
+                    {
+                        continue;
+                    }
                     continue;
                 }
 

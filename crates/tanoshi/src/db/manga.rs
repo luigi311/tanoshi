@@ -1152,6 +1152,42 @@ impl Db {
         }
     }
 
+    pub async fn get_pages_remote_url_by_chapter_id(&self, chapter_id: i64) -> Result<Vec<String>> {
+        let mut conn = self.pool.acquire().await?;
+        let mut stream = sqlx::query("SELECT remote_url FROM page WHERE chapter_id = ?")
+            .bind(chapter_id)
+            .fetch(&mut conn);
+
+        let mut pages = vec![];
+        while let Some(row) = stream.try_next().await? {
+            pages.push(row.get(0));
+        }
+
+        if pages.is_empty() {
+            Err(anyhow!("no pages"))
+        } else {
+            Ok(pages)
+        }
+    }
+
+    pub async fn get_pages_local_url_by_chapter_id(&self, chapter_id: i64) -> Result<Vec<String>> {
+        let mut conn = self.pool.acquire().await?;
+        let mut stream = sqlx::query("SELECT local_url FROM page WHERE chapter_id = ?")
+            .bind(chapter_id)
+            .fetch(&mut conn);
+
+        let mut pages = vec![];
+        while let Some(row) = stream.try_next().await? {
+            pages.push(row.get(0));
+        }
+
+        if pages.is_empty() {
+            Err(anyhow!("no pages"))
+        } else {
+            Ok(pages)
+        }
+    }
+
     pub async fn insert_user_library(&self, user_id: i64, manga_id: i64) -> Result<u64> {
         let mut conn = self.pool.acquire().await?;
         sqlx::query("INSERT INTO user_library (user_id, manga_id) VALUES (?, ?)")
