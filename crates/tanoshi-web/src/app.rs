@@ -116,9 +116,10 @@ impl App {
                     Route::Histories => Some(
                         Histories::render(Histories::new(), app.clone()),
                     ),
-                    Route::Settings(category) => Some(
-                        Settings::render(Settings::new(app.server_status.get_cloned().map(|status| status.version).unwrap_or_else(|| "0.0.0".to_string())), category),
-                    ),
+                    Route::Settings(category) => {
+                        let server_version = app.server_status.get_cloned().unwrap_or_default().version;
+                        Some(Settings::new(server_version, category).render())
+                    }
                     Route::NotFound => Some(
                         html!("div", {
                             .text("not found")

@@ -1,4 +1,4 @@
-use crate::{common::{AppearanceSettings, ChapterSettings, DownloadQueue, Login, Profile, ReaderSettings, Route, SettingCategory, Source, Spinner, User, events, snackbar}, query, utils::{AsyncLoader, window}};
+use crate::{common::{AppearanceSettings, ChapterSettings, DownloadQueue, Login, Profile, ReaderSettings, Route, SettingCategory, Source, Spinner, User, events, snackbar}, query, settings_downloads::SettingsDownloads, utils::{AsyncLoader, window}};
 use dominator::svg;
 use dominator::{clone, html, link, routing, Dom};
 use futures_signals::{signal::{self, Mutable, SignalExt}, signal_vec::{MutableSignalVec, MutableVec}, signal_vec::SignalVecExt};
@@ -12,7 +12,6 @@ pub struct Settings {
     available_sources: MutableVec<Source>,
     me: Mutable<Option<User>>,
     users: MutableVec<User>,
-    queue: MutableVec<DownloadQueue>,
     appearance_settings: Rc<AppearanceSettings>,
     reader_settings: Rc<ReaderSettings>,
     chapter_settings: Rc<ChapterSettings>,
@@ -20,16 +19,15 @@ pub struct Settings {
 }
 
 impl Settings {
-    pub fn new(server_version: String) -> Rc<Self> {
+    pub fn new(server_version: String, category: SettingCategory) -> Rc<Self> {
         Rc::new(Settings {
             server_version,
-            page: Mutable::new(SettingCategory::None),
+            page: Mutable::new(category),
             source: Mutable::new(None),
             installed_sources: MutableVec::new(),
             available_sources: MutableVec::new(),
             me: Mutable::new(None),
             users: MutableVec::new(),
-            queue: MutableVec::new(),
             appearance_settings: AppearanceSettings::new(),
             reader_settings: ReaderSettings::new(true, false),
             chapter_settings: ChapterSettings::new(true, false),
@@ -223,26 +221,6 @@ impl Settings {
         });
     }
 
-    fn fetch_download_queue(settings: Rc<Self>) {
-        AsyncLoader::new().load(clone!(settings => async move {
-            match query::download_queue().await {
-                Ok(data) => {
-                    let queue = data.iter().map(|queue| DownloadQueue {
-                        source_name: queue.source_name.clone(),
-                        manga_title: queue.manga_title.clone(),
-                        chapter_title: queue.chapter_title.clone(),
-                        downloaded: queue.downloaded,
-                        total: queue.total,
-                    }).collect();
-                    settings.queue.lock_mut().replace_cloned(queue);
-                },
-                Err(err) => {
-                    snackbar::show(format!("{}", err));
-                }
-            }
-        }));
-    }
-
     pub fn render_topbar(settings: Rc<Self>) -> Dom {
         html!("div", {
             .class("topbar")
@@ -387,69 +365,6 @@ impl Settings {
                     None
                 }
             }))
-        })
-    }
-
-    fn render_download_queue(settings: Rc<Self>) -> Dom {
-        Self::fetch_download_queue(settings.clone());
-        
-        html!("div", {
-            .children(&mut [
-                html!("ul", {
-                    .class([
-                        "list",
-                        "group"
-                    ])
-                    .children_signal_vec(settings.queue.signal_vec_cloned().map(|queue|
-                        html!("li", {
-                            .class("list-item")
-                            .style("display", "flex")
-                            .style("flex-direction", "column")
-                            .children(&mut [
-                                html!("div", {
-                                    .style("display", "flex")
-                                    .style("justify-content", "space-between")
-                                    .style("width", "100%")
-                                    .children(&mut [
-                                        html!("span", {
-                                            .style("font-weight", "600")
-                                            .text(&queue.manga_title)
-                                        }),
-                                        html!("span", {
-                                            .text(&queue.source_name)
-                                        }),
-                                    ])
-                                }),
-                                html!("div", {
-                                    .style("display", "flex")
-                                    .style("justify-content", "space-between")
-                                    .style("width", "100%")
-                                    .children(&mut [
-                                        html!("span", {
-                                            .text(&queue.chapter_title)
-                                        }),
-                                        html!("span", {
-                                            .text(&format!("{}/{}", queue.downloaded, queue.total))
-                                        })
-                                    ])
-                                }),
-                                html!("div", {
-                                    .style("height", "0.5rem")
-                                    .style("width", "100%")
-                                    .style("background-color", "var(--primary-color-300)")
-                                    .children(&mut [
-                                        html!("div", {
-                                            .style("width", &format!("{}%", (queue.downloaded / queue.total) * 100))
-                                            .style("height", "100%")
-                                            .style("background-color", "var(--primary-color)")
-                                        })
-                                    ])
-                                })
-                            ])
-                        })
-                    ))
-                })
-            ])
         })
     }
 
@@ -673,35 +588,37 @@ impl Settings {
         })
     }
 
-    pub fn render(settings: Rc<Self>, category: SettingCategory) -> Dom {
-        settings.page.set(category.clone());
-        match category {
+    pub fn render(self: &Rc<Self>) -> Dom {
+        match self.page.get() {
             SettingCategory::None => {
-                Self::fetch_me(settings.clone());
+                Self::fetch_me(self.clone());
             },
             SettingCategory::Source(id) => if id == 0 {
-                Self::fetch_sources(settings.clone())
+                Self::fetch_sources(self.clone())
             } else {
-                Self::fetch_source(settings.clone(), id)
+                Self::fetch_source(self.clone(), id)
             },
-            SettingCategory::Users => Self::fetch_user_list(settings.clone()),
+            SettingCategory::Users => Self::fetch_user_list(self.clone()),
             _ => {}
         }
+
         html!("div", {
             .class("main")
             .style("padding", "0.5rem")
             .children(&mut [
-                Self::render_topbar(settings.clone()),
+                Self::render_topbar(self.clone()),
                 html!("div", {
                     .class("topbar-spacing")
                 }),
             ])
-            .child_signal(settings.loader.is_loading().map(|x| if x {
+            .child_signal(self.loader.is_loading().map(|x| if x {
                 Some(Spinner::render_spinner(true))
             } else {
                 None
             }))
-            .child_signal(settings.page.signal_cloned().map(clone!(settings => move |x|
+            .child_signal(self.page.signal().map({
+                let settings = self.clone();
+                move |x|
                 match x {
                     SettingCategory::None => Some(html!("div", {
                         .children(&mut [
@@ -715,19 +632,15 @@ impl Settings {
                         ])
                     })),
                     SettingCategory::Appearance =>  Some(AppearanceSettings::render(settings.appearance_settings.clone())),
-                    SettingCategory::General => Some(html!("div", {
-                        .children(&mut [
-                            ChapterSettings::render(settings.chapter_settings.clone())
-                        ])
-                    })),
+                    SettingCategory::General => Some(ChapterSettings::render(settings.chapter_settings.clone())),
                     SettingCategory::Reader => Some(ReaderSettings::render(settings.reader_settings.clone())),
                     SettingCategory::Source(source_id) => Some(Self::render_source_settings(settings.clone(), source_id)),
                     SettingCategory::Users => Some(Self::render_users_management(settings.clone())),
                     SettingCategory::User => Some(Profile::render(Profile::new())),
                     SettingCategory::CreateUser => Some(Login::render(Login::new())),
-                    SettingCategory::DownloadQueue => Some(Self::render_download_queue(settings.clone()))
+                    SettingCategory::DownloadQueue => Some(SettingsDownloads::render(SettingsDownloads::new())),
                 }
-            )))                
+            }))            
         })
     }
 }
