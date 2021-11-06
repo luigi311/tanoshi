@@ -11,12 +11,12 @@ use tanoshi_vm::prelude::ExtensionBus;
 
 pub type UserFavoriteId = (i64, i64);
 
-pub struct FavoriteByIdLoader {
+pub struct FavoriteLoader {
     pub mangadb: MangaDatabase,
 }
 
 #[async_trait::async_trait]
-impl Loader<UserFavoriteId> for FavoriteByIdLoader {
+impl Loader<UserFavoriteId> for FavoriteLoader {
     type Value = bool;
 
     type Error = Arc<anyhow::Error>;
@@ -44,12 +44,8 @@ impl Loader<UserFavoriteId> for FavoriteByIdLoader {
 
 pub type UserFavoritePath = (i64, String);
 
-pub struct FavoriteByPathLoader {
-    pub mangadb: MangaDatabase,
-}
-
 #[async_trait::async_trait]
-impl Loader<UserFavoritePath> for FavoriteByPathLoader {
+impl Loader<UserFavoritePath> for FavoriteLoader {
     type Value = bool;
 
     type Error = Arc<anyhow::Error>;
@@ -70,6 +66,39 @@ impl Loader<UserFavoritePath> for FavoriteByPathLoader {
             .await?
             .into_iter()
             .map(|(manga_path, is_library)| ((user_id, manga_path), is_library))
+            .collect();
+        Ok(res)
+    }
+}
+
+pub type UserLastReadId = (i64, i64);
+
+pub struct UserLastReadLoader {
+    pub mangadb: MangaDatabase,
+}
+
+#[async_trait::async_trait]
+impl Loader<UserLastReadId> for UserLastReadLoader {
+    type Value = NaiveDateTime;
+
+    type Error = Arc<anyhow::Error>;
+
+    async fn load(
+        &self,
+        keys: &[UserLastReadId],
+    ) -> Result<HashMap<UserLastReadId, Self::Value>, Self::Error> {
+        let user_id = keys
+            .iter()
+            .next()
+            .map(|key| key.0)
+            .ok_or_else(|| anyhow::anyhow!("no user id"))?;
+        let manga_ids: Vec<i64> = keys.iter().map(|key| key.1).collect();
+        let res = self
+            .mangadb
+            .get_last_read_at_by_user_id_and_manga_ids(user_id, &manga_ids)
+            .await?
+            .into_iter()
+            .map(|(manga_id, read_at)| ((user_id, manga_id), read_at))
             .collect();
         Ok(res)
     }
@@ -202,11 +231,10 @@ impl Manga {
     async fn is_favorite(&self, ctx: &Context<'_>) -> Result<bool> {
         let user = user::get_claims(ctx)?;
 
-        let is_favorite = if self.id == 0 {
-            let loader = ctx.data::<DataLoader<FavoriteByPathLoader>>()?;
+        let loader = ctx.data::<DataLoader<FavoriteLoader>>()?;
+        let is_favorite: Option<bool> = if self.id == 0 {
             loader.load_one((user.sub, self.path.clone())).await?
         } else {
-            let loader = ctx.data::<DataLoader<FavoriteByIdLoader>>()?;
             loader.load_one((user.sub, self.id)).await?
         };
 
@@ -230,11 +258,8 @@ impl Manga {
 
     async fn last_read_at(&self, ctx: &Context<'_>) -> Result<Option<NaiveDateTime>> {
         let user = user::get_claims(ctx)?;
-        let mangadb = ctx.data::<MangaDatabase>()?;
-
-        Ok(mangadb
-            .get_last_read_at_by_user_id_and_manga_id(user.sub, self.id)
-            .await?)
+        let loader = ctx.data::<DataLoader<UserLastReadLoader>>()?;
+        Ok(loader.load_one((user.sub, self.id)).await?)
     }
 
     async fn source(&self, ctx: &Context<'_>) -> Result<Source> {

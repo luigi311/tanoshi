@@ -1,7 +1,7 @@
 use crate::{
     catalogue::{
         chapter::{NextChapterLoader, PrevChapterLoader, ReadProgressLoader},
-        manga::{FavoriteByIdLoader, FavoriteByPathLoader},
+        manga::{FavoriteLoader, UserLastReadLoader},
     },
     config::Config,
     db::{MangaDatabase, UserDatabase},
@@ -86,10 +86,10 @@ fn init_app(
         EmptySubscription::default(),
     )
     // .extension(ApolloTracing)
-    .data(DataLoader::new(FavoriteByIdLoader {
+    .data(DataLoader::new(FavoriteLoader {
         mangadb: mangadb.clone(),
     }))
-    .data(DataLoader::new(FavoriteByPathLoader {
+    .data(DataLoader::new(UserLastReadLoader {
         mangadb: mangadb.clone(),
     }))
     .data(DataLoader::new(ReadProgressLoader {

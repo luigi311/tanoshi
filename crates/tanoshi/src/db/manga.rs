@@ -812,24 +812,39 @@ impl Db {
         Ok(rows_affected)
     }
 
-    pub async fn get_last_read_at_by_user_id_and_manga_id(
+    pub async fn get_last_read_at_by_user_id_and_manga_ids(
         &self,
         user_id: i64,
-        manga_id: i64,
-    ) -> Result<Option<NaiveDateTime>> {
+        manga_ids: &[i64],
+    ) -> Result<HashMap<i64, NaiveDateTime>> {
         let mut conn = self.pool.acquire().await?;
-        let row = sqlx::query(
-            "SELECT read_at FROM (SELECT MAX(user_history.read_at) as read_at FROM chapter
-            JOIN user_history ON user_history.chapter_id = chapter.id AND user_history.user_id = ?
-            WHERE chapter.manga_id = ?)
-            WHERE read_at IS NOT NULL",
-        )
-        .bind(user_id)
-        .bind(manga_id)
-        .fetch_optional(&mut conn)
-        .await?;
 
-        Ok(row.map(|r| r.get::<chrono::NaiveDateTime, _>(0)))
+        let mut values = vec![];
+        values.resize(manga_ids.len(), "?");
+
+        let query_str = format!(
+            r#"SELECT manga_id, read_at FROM (
+                SELECT manga_id, MAX(user_history.read_at) as read_at FROM chapter
+                JOIN user_history ON user_history.chapter_id = chapter.id AND user_history.user_id = ?
+                WHERE chapter.manga_id IN ({})
+                GROUP BY chapter.manga_id
+            )
+            WHERE read_at IS NOT NULL"#,
+            values.join(",")
+        );
+
+        let mut query = sqlx::query(&query_str).bind(user_id);
+        for manga_id in manga_ids {
+            query = query.bind(manga_id)
+        }
+        let data = query
+            .fetch_all(&mut conn)
+            .await?
+            .iter()
+            .map(|row| (row.get(0), row.get::<chrono::NaiveDateTime, _>(1)))
+            .collect();
+
+        Ok(data)
     }
 
     pub async fn get_prev_chapter_id_by_ids(
