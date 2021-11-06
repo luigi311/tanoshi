@@ -496,7 +496,7 @@ mod test {
             #[cfg(target_family = "windows")]
             assert_eq!(
                 data.cover_url,
-                "../../test/data/manga\\Super Duck\\super_duck_1\\duck01.jpg"
+                "../../test/data/manga\\Super Duck\\super_duck_1/duck01.jpg"
             );
             #[cfg(target_family = "unix")]
             assert_eq!(
