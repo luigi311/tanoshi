@@ -1535,24 +1535,38 @@ impl Db {
         Ok(progress)
     }
 
-    pub async fn get_user_library_unread_chapter(
+    pub async fn get_user_library_unread_chapters(
         &self,
         user_id: i64,
-        manga_id: i64,
-    ) -> Result<i64> {
+        manga_ids: &[i64],
+    ) -> Result<HashMap<i64, i64>> {
         let mut conn = self.pool.acquire().await?;
-        let row =
-            sqlx::query(r#"
-                SELECT COUNT(1) FROM (
-                    SELECT IFNULL(user_history.is_complete, false) AS is_complete FROM chapter c LEFT JOIN user_history ON user_history.user_id = ? AND user_history.chapter_id = c.id WHERE c.manga_id = ?
-                )
-                WHERE is_complete = false"#)
-                .bind(user_id)
-                .bind(manga_id)
-                .fetch_one(&mut conn)
-                .await?;
 
-        Ok(row.get::<i64, _>(0))
+        let mut values = vec![];
+        values.resize(manga_ids.len(), "?");
+
+        let query_str = format!(
+            r#"SELECT manga_id, COUNT(1) FROM (
+                SELECT manga_id, IFNULL(user_history.is_complete, false) AS is_complete FROM chapter c LEFT JOIN user_history ON user_history.user_id = ? AND user_history.chapter_id = c.id WHERE c.manga_id IN ({})
+            )
+            WHERE is_complete = false
+            GROUP BY manga_id"#,
+            values.join(",")
+        );
+
+        let mut query = sqlx::query(&query_str).bind(user_id);
+        for manga_id in manga_ids {
+            query = query.bind(manga_id)
+        }
+
+        let data = query
+            .fetch_all(&mut conn)
+            .await?
+            .iter()
+            .map(|row| (row.get(0), row.get(1)))
+            .collect();
+
+        Ok(data)
     }
 
     pub async fn insert_download_queue(&self, items: &[DownloadQueue]) -> Result<()> {

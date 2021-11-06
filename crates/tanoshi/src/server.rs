@@ -1,7 +1,7 @@
 use crate::{
     catalogue::{
         chapter::{NextChapterLoader, PrevChapterLoader, ReadProgressLoader},
-        manga::{FavoriteLoader, UserLastReadLoader},
+        manga::{FavoriteLoader, UserLastReadLoader, UserUnreadChaptersLoader},
     },
     config::Config,
     db::{MangaDatabase, UserDatabase},
@@ -90,6 +90,9 @@ fn init_app(
         mangadb: mangadb.clone(),
     }))
     .data(DataLoader::new(UserLastReadLoader {
+        mangadb: mangadb.clone(),
+    }))
+    .data(DataLoader::new(UserUnreadChaptersLoader {
         mangadb: mangadb.clone(),
     }))
     .data(DataLoader::new(ReadProgressLoader {

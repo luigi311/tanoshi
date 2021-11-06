@@ -104,6 +104,39 @@ impl Loader<UserLastReadId> for UserLastReadLoader {
     }
 }
 
+pub type UserUnreadChaptersId = (i64, i64);
+
+pub struct UserUnreadChaptersLoader {
+    pub mangadb: MangaDatabase,
+}
+
+#[async_trait::async_trait]
+impl Loader<UserUnreadChaptersId> for UserUnreadChaptersLoader {
+    type Value = i64;
+
+    type Error = Arc<anyhow::Error>;
+
+    async fn load(
+        &self,
+        keys: &[UserUnreadChaptersId],
+    ) -> Result<HashMap<UserUnreadChaptersId, Self::Value>, Self::Error> {
+        let user_id = keys
+            .iter()
+            .next()
+            .map(|key| key.0)
+            .ok_or_else(|| anyhow::anyhow!("no user id"))?;
+        let manga_ids: Vec<i64> = keys.iter().map(|key| key.1).collect();
+        let res = self
+            .mangadb
+            .get_user_library_unread_chapters(user_id, &manga_ids)
+            .await?
+            .into_iter()
+            .map(|(manga_id, count)| ((user_id, manga_id), count))
+            .collect();
+        Ok(res)
+    }
+}
+
 /// A type represent manga details, normalized across source
 #[derive(Debug)]
 pub struct Manga {
@@ -247,13 +280,8 @@ impl Manga {
 
     async fn unread_chapter_count(&self, ctx: &Context<'_>) -> Result<i64> {
         let user = user::get_claims(ctx)?;
-        let mangadb = ctx.data::<MangaDatabase>()?;
-
-        let unread_chapter_count = mangadb
-            .get_user_library_unread_chapter(user.sub, self.id)
-            .await?;
-
-        Ok(unread_chapter_count)
+        let loader = ctx.data::<DataLoader<UserUnreadChaptersLoader>>()?;
+        Ok(loader.load_one((user.sub, self.id)).await?.unwrap_or(0))
     }
 
     async fn last_read_at(&self, ctx: &Context<'_>) -> Result<Option<NaiveDateTime>> {
