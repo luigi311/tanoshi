@@ -36,7 +36,7 @@ pub fn encrypt_url(key: &str, url: &str) -> Result<String, Box<dyn std::error::E
 
 pub fn decrypt_url(key: &str, data: &str) -> Result<String, Box<dyn std::error::Error>> {
     let mut decoded = base64::decode_config(data, base64::URL_SAFE_NO_PAD)?;
-    debug!("decoded: {:?}", decoded);
+    trace!("decoded: {:?}", decoded);
 
     let iv = [0_u8; 16];
 
@@ -46,41 +46,6 @@ pub fn decrypt_url(key: &str, data: &str) -> Result<String, Box<dyn std::error::
     let url = String::from_utf8(bytes)?;
     Ok(url)
 }
-
-/*
-use jsonwebtoken::{self, DecodingKey, EncodingKey, Header, Validation};
-use serde::{Deserialize, Serialize};
-
-#[derive(Debug, Serialize, Deserialize)]
-struct Claims {
-    pub url: String,
-    pub exp: i64,
-}
-
-pub fn sign_url(secret: &str, url: &str) -> Result<String, Box<dyn std::error::Error>> {
-    let token = jsonwebtoken::encode(
-        &Header::default(),
-        &Claims {
-            url: url.to_string(),
-            exp: 3600,
-        },
-        &EncodingKey::from_secret(secret.as_bytes()),
-    )?;
-
-    Ok(token)
-}
-
-pub fn validate_url(secret: &str, data: &str) -> Result<String, Box<dyn std::error::Error>> {
-    let token = jsonwebtoken::decode::<Claims>(
-        data,
-        &DecodingKey::from_secret(secret.as_bytes()),
-        &Validation::default(),
-    )?;
-
-    Ok(token.claims.url)
-}
-
-*/
 
 #[cfg(test)]
 mod test {

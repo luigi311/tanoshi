@@ -1396,6 +1396,7 @@ impl Db {
         }
     }
 
+    #[allow(dead_code)]
     pub async fn get_user_history_progress(
         &self,
         user_id: i64,
