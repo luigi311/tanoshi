@@ -1,7 +1,7 @@
 mod source;
 pub use source::{Source, SourceMutationRoot, SourceRoot};
 
-mod manga;
+pub mod manga;
 pub use manga::Manga;
 
 pub mod chapter;

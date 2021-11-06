@@ -125,6 +125,7 @@ impl Db {
         Ok(mangas)
     }
 
+    #[allow(dead_code)]
     pub async fn is_user_library(&self, user_id: i64, manga_id: i64) -> Result<bool> {
         let mut conn = self.pool.acquire().await?;
         let stream =
@@ -140,6 +141,69 @@ impl Db {
         } else {
             Ok(false)
         }
+    }
+
+    pub async fn is_user_library_by_manga_ids(
+        &self,
+        user_id: i64,
+        manga_ids: &[i64],
+    ) -> Result<HashMap<i64, bool>> {
+        let mut conn = self.pool.acquire().await?;
+
+        let mut values = vec![];
+        values.resize(manga_ids.len(), "?");
+
+        let query_str = format!(
+            r#"SELECT manga_id FROM user_library 
+            WHERE user_id = ? AND manga_id IN ({})"#,
+            values.join(",")
+        );
+
+        let mut query = sqlx::query(&query_str).bind(user_id);
+        for manga_id in manga_ids {
+            query = query.bind(manga_id)
+        }
+
+        let data = query
+            .fetch_all(&mut conn)
+            .await?
+            .iter()
+            .map(|row| (row.get(0), true))
+            .collect();
+
+        Ok(data)
+    }
+
+    pub async fn is_user_library_by_manga_paths(
+        &self,
+        user_id: i64,
+        manga_paths: &[String],
+    ) -> Result<HashMap<String, bool>> {
+        let mut conn = self.pool.acquire().await?;
+
+        let mut values = vec![];
+        values.resize(manga_paths.len(), "?");
+
+        let query_str = format!(
+            r#"SELECT manga.path FROM user_library
+            JOIN manga ON manga.id = user_library.manga_id
+            WHERE user_library.user_id = ? AND manga.path IN ({})"#,
+            values.join(",")
+        );
+
+        let mut query = sqlx::query(&query_str).bind(user_id);
+        for manga_path in manga_paths {
+            query = query.bind(manga_path)
+        }
+
+        let data = query
+            .fetch_all(&mut conn)
+            .await?
+            .iter()
+            .map(|row| (row.get(0), true))
+            .collect();
+
+        Ok(data)
     }
 
     pub async fn get_recent_updates(

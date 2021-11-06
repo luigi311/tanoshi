@@ -1,8 +1,79 @@
+use std::{collections::HashMap, sync::Arc};
+
 use super::{Chapter, Source};
 use crate::{config::GLOBAL_CONFIG, db::MangaDatabase, user, utils};
-use async_graphql::{Context, Object, Result};
+use async_graphql::{
+    dataloader::{DataLoader, Loader},
+    Context, Object, Result,
+};
 use chrono::NaiveDateTime;
 use tanoshi_vm::prelude::ExtensionBus;
+
+pub type UserFavoriteId = (i64, i64);
+
+pub struct FavoriteByIdLoader {
+    pub mangadb: MangaDatabase,
+}
+
+#[async_trait::async_trait]
+impl Loader<UserFavoriteId> for FavoriteByIdLoader {
+    type Value = bool;
+
+    type Error = Arc<anyhow::Error>;
+
+    async fn load(
+        &self,
+        keys: &[UserFavoriteId],
+    ) -> Result<HashMap<UserFavoriteId, Self::Value>, Self::Error> {
+        let user_id = keys
+            .iter()
+            .next()
+            .map(|key| key.0)
+            .ok_or_else(|| anyhow::anyhow!("no user id"))?;
+        let manga_ids: Vec<i64> = keys.iter().map(|key| key.1).collect();
+        let res = self
+            .mangadb
+            .is_user_library_by_manga_ids(user_id, &manga_ids)
+            .await?
+            .into_iter()
+            .map(|(manga_id, is_library)| ((user_id, manga_id), is_library))
+            .collect();
+        Ok(res)
+    }
+}
+
+pub type UserFavoritePath = (i64, String);
+
+pub struct FavoriteByPathLoader {
+    pub mangadb: MangaDatabase,
+}
+
+#[async_trait::async_trait]
+impl Loader<UserFavoritePath> for FavoriteByPathLoader {
+    type Value = bool;
+
+    type Error = Arc<anyhow::Error>;
+
+    async fn load(
+        &self,
+        keys: &[UserFavoritePath],
+    ) -> Result<HashMap<UserFavoritePath, Self::Value>, Self::Error> {
+        let user_id = keys
+            .iter()
+            .next()
+            .map(|key| key.0)
+            .ok_or_else(|| anyhow::anyhow!("no user id"))?;
+        let manga_paths: Vec<String> = keys.iter().map(|key| key.1.clone()).collect();
+        let res = self
+            .mangadb
+            .is_user_library_by_manga_paths(user_id, &manga_paths)
+            .await?
+            .into_iter()
+            .map(|(manga_path, is_library)| ((user_id, manga_path), is_library))
+            .collect();
+        Ok(res)
+    }
+}
 
 /// A type represent manga details, normalized across source
 #[derive(Debug)]
@@ -130,25 +201,16 @@ impl Manga {
 
     async fn is_favorite(&self, ctx: &Context<'_>) -> Result<bool> {
         let user = user::get_claims(ctx)?;
-        let mangadb = ctx.data::<MangaDatabase>()?;
 
-        let mut id = self.id;
-        if id == 0 {
-            if let Ok(manga) = mangadb
-                .get_manga_by_source_path(self.source_id, &self.path)
-                .await
-            {
-                id = manga.id;
-            } else {
-                return Ok(false);
-            }
-        }
-
-        if let Ok(fav) = mangadb.is_user_library(user.sub, id).await {
-            Ok(fav)
+        let is_favorite = if self.id == 0 {
+            let loader = ctx.data::<DataLoader<FavoriteByPathLoader>>()?;
+            loader.load_one((user.sub, self.path.clone())).await?
         } else {
-            Err("error query".into())
-        }
+            let loader = ctx.data::<DataLoader<FavoriteByIdLoader>>()?;
+            loader.load_one((user.sub, self.id)).await?
+        };
+
+        Ok(is_favorite.unwrap_or(false))
     }
 
     async fn date_added(&self) -> chrono::NaiveDateTime {
