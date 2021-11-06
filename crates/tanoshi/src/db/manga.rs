@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use super::model::{
     Chapter, DownloadQueue, DownloadQueueStatus, Manga, ReadProgress, UserMangaLibrary,
 };
@@ -766,13 +768,73 @@ impl Db {
         Ok(row.map(|r| r.get::<chrono::NaiveDateTime, _>(0)))
     }
 
+    pub async fn get_prev_chapter_id_by_ids(
+        &self,
+        chapter_ids: &[i64],
+    ) -> Result<HashMap<i64, i64>> {
+        let mut conn = self.pool.acquire().await?;
+
+        let mut values = vec![];
+        values.resize(chapter_ids.len(), "?");
+
+        let query_str = format!(
+            r#"SELECT id,
+            (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number < chapter.number ORDER BY c.number DESC LIMIT 1) prev
+            FROM chapter WHERE id IN ({}) AND prev IS NOT NULL"#,
+            values.join(",")
+        );
+
+        let mut query = sqlx::query(&query_str);
+        for chapter_id in chapter_ids {
+            query = query.bind(chapter_id)
+        }
+
+        let data = query
+            .fetch_all(&mut conn)
+            .await?
+            .iter()
+            .map(|row| (row.get(0), row.get(1)))
+            .collect();
+
+        Ok(data)
+    }
+
+    pub async fn get_next_chapter_id_by_ids(
+        &self,
+        chapter_ids: &[i64],
+    ) -> Result<HashMap<i64, i64>> {
+        let mut conn = self.pool.acquire().await?;
+
+        let mut values = vec![];
+        values.resize(chapter_ids.len(), "?");
+
+        let query_str = format!(
+            r#"SELECT id,
+            (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number > chapter.number ORDER BY c.number ASC LIMIT 1) next
+            FROM chapter WHERE id IN ({}) AND next IS NOT NULL"#,
+            values.join(",")
+        );
+
+        let mut query = sqlx::query(&query_str);
+        for chapter_id in chapter_ids {
+            query = query.bind(chapter_id)
+        }
+
+        let data = query
+            .fetch_all(&mut conn)
+            .await?
+            .iter()
+            .map(|row| (row.get(0), row.get(1)))
+            .collect();
+
+        Ok(data)
+    }
+
     pub async fn get_chapter_by_id(&self, id: i64) -> Result<Chapter> {
         let mut conn = self.pool.acquire().await?;
         let stream = sqlx::query(
             r#"
             SELECT *,
-            (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number < chapter.number ORDER BY c.number DESC LIMIT 1) prev,
-            (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number > chapter.number ORDER BY c.number ASC LIMIT 1) next,
             (SELECT (COUNT(p.remote_url) > 0) & (COUNT(p.remote_url) = COUNT(p.local_url)) FROM page p WHERE p.chapter_id = chapter.id) downloaded
             FROM chapter WHERE id = ?"#,
         )
@@ -790,9 +852,7 @@ impl Db {
             scanlator: row.get(6),
             uploaded: row.get(7),
             date_added: row.get(8),
-            prev: row.get(9),
-            next: row.get(10),
-            downloaded: row.get(11),
+            downloaded: row.get(9),
         })?)
     }
 
@@ -864,8 +924,6 @@ impl Db {
             )
             SELECT
                 chapter.*,
-                (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number < chapter.number ORDER BY c.number DESC LIMIT 1) prev,
-                (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number > chapter.number ORDER BY c.number ASC LIMIT 1) next,
                 (SELECT (COUNT(p.remote_url) > 0) & (COUNT(p.remote_url) = COUNT(p.local_url)) FROM page p WHERE p.chapter_id = chapter.id) downloaded
             FROM
                 chapter
@@ -896,9 +954,7 @@ impl Db {
             scanlator: row.get(6),
             uploaded: row.get(7),
             date_added: row.get(8),
-            prev: row.get(9),
-            next: row.get(10),
-            downloaded: row.get(11),
+            downloaded: row.get(9),
         }))
     }
 
@@ -929,9 +985,7 @@ impl Db {
             scanlator: row.get(6),
             uploaded: row.get(7),
             date_added: row.get(8),
-            prev: row.get(9),
-            next: row.get(10),
-            downloaded: row.get(11),
+            downloaded: row.get(9),
         })
     }
 
@@ -940,8 +994,6 @@ impl Db {
         let mut stream = sqlx::query(
             r#"
             SELECT *,
-            (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number < chapter.number ORDER BY c.number DESC LIMIT 1) prev,
-            (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number > chapter.number ORDER BY c.number ASC LIMIT 1) next,
             (SELECT (COUNT(p.remote_url) > 0) & (COUNT(p.remote_url) = COUNT(p.local_url)) FROM page p WHERE p.chapter_id = chapter.id) downloaded
             FROM chapter WHERE manga_id = ? ORDER BY number DESC"#
         )
@@ -960,9 +1012,7 @@ impl Db {
                 scanlator: row.get(6),
                 uploaded: row.get(7),
                 date_added: row.get(8),
-                prev: row.get(9),
-                next: row.get(10),
-                downloaded: row.get(11),
+                downloaded: row.get(9),
             });
         }
         if chapters.is_empty() {
@@ -997,9 +1047,7 @@ impl Db {
             scanlator: row.get(6),
             uploaded: row.get(7),
             date_added: row.get(8),
-            prev: row.get(9),
-            next: row.get(10),
-            downloaded: row.get(11),
+            downloaded: row.get(9),
         })
     }
 
@@ -1364,6 +1412,45 @@ impl Db {
                     last_page: row.get::<i64, _>(1),
                     is_complete: row.get::<bool, _>(2),
                 });
+
+        Ok(progress)
+    }
+
+    pub async fn get_user_history_progress_by_chapter_ids(
+        &self,
+        user_id: i64,
+        chapter_ids: &[i64],
+    ) -> Result<HashMap<i64, ReadProgress>> {
+        let mut conn = self.pool.acquire().await?;
+
+        let mut values = vec![];
+        values.resize(chapter_ids.len(), "?");
+
+        let query_str = format!(
+            r#"SELECT chapter_id, read_at, last_page, is_complete FROM user_history WHERE user_id = ? AND chapter_id IN ({})"#,
+            values.join(",")
+        );
+
+        let mut query = sqlx::query(&query_str).bind(user_id);
+        for chapter_id in chapter_ids {
+            query = query.bind(chapter_id)
+        }
+
+        let progress = query
+            .fetch_all(&mut conn)
+            .await?
+            .iter()
+            .map(|row| {
+                (
+                    row.get(0),
+                    ReadProgress {
+                        at: row.get::<chrono::NaiveDateTime, _>(1),
+                        last_page: row.get::<i64, _>(2),
+                        is_complete: row.get::<bool, _>(3),
+                    },
+                )
+            })
+            .collect();
 
         Ok(progress)
     }

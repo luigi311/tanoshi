@@ -1,6 +1,11 @@
+use std::{collections::HashMap, sync::Arc};
+
 use super::Manga;
 use crate::{config::GLOBAL_CONFIG, db::MangaDatabase, user, utils};
-use async_graphql::{Context, Object, Result, SimpleObject};
+use async_graphql::{
+    dataloader::{DataLoader, Loader},
+    Context, Object, Result, SimpleObject,
+};
 use chrono::NaiveDateTime;
 use tanoshi_vm::prelude::ExtensionBus;
 
@@ -21,6 +26,79 @@ impl From<crate::db::model::ReadProgress> for ReadProgress {
     }
 }
 
+pub type UserHistoryId = (i64, i64);
+
+pub struct ReadProgressLoader {
+    pub mangadb: MangaDatabase,
+}
+
+#[async_trait::async_trait]
+impl Loader<UserHistoryId> for ReadProgressLoader {
+    type Value = ReadProgress;
+
+    type Error = Arc<anyhow::Error>;
+
+    async fn load(
+        &self,
+        keys: &[UserHistoryId],
+    ) -> Result<HashMap<UserHistoryId, Self::Value>, Self::Error> {
+        let user_id = keys
+            .iter()
+            .next()
+            .map(|key| key.0)
+            .ok_or_else(|| anyhow::anyhow!("no user id"))?;
+        let chapter_ids: Vec<i64> = keys.iter().map(|key| key.1).collect();
+        let res = self
+            .mangadb
+            .get_user_history_progress_by_chapter_ids(user_id, &chapter_ids)
+            .await?
+            .into_iter()
+            .map(|(chapter_id, progress)| ((user_id, chapter_id), progress.into()))
+            .collect();
+        Ok(res)
+    }
+}
+
+pub type ChapterId = i64;
+
+pub struct PrevChapterLoader {
+    pub mangadb: MangaDatabase,
+}
+
+#[async_trait::async_trait]
+impl Loader<ChapterId> for PrevChapterLoader {
+    type Value = i64;
+
+    type Error = Arc<anyhow::Error>;
+
+    async fn load(
+        &self,
+        keys: &[ChapterId],
+    ) -> Result<HashMap<ChapterId, Self::Value>, Self::Error> {
+        let res = self.mangadb.get_prev_chapter_id_by_ids(keys).await?;
+        Ok(res)
+    }
+}
+
+pub struct NextChapterLoader {
+    pub mangadb: MangaDatabase,
+}
+
+#[async_trait::async_trait]
+impl Loader<ChapterId> for NextChapterLoader {
+    type Value = i64;
+
+    type Error = Arc<anyhow::Error>;
+
+    async fn load(
+        &self,
+        keys: &[ChapterId],
+    ) -> Result<HashMap<ChapterId, Self::Value>, Self::Error> {
+        let res = self.mangadb.get_next_chapter_id_by_ids(keys).await?;
+        Ok(res)
+    }
+}
+
 /// A type represent chapter, normalized across source
 #[derive(Debug, Clone)]
 pub struct Chapter {
@@ -31,8 +109,6 @@ pub struct Chapter {
     pub path: String,
     pub number: f64,
     pub scanlator: String,
-    pub prev: Option<i64>,
-    pub next: Option<i64>,
     pub uploaded: chrono::NaiveDateTime,
     pub date_added: chrono::NaiveDateTime,
     pub read_progress: Option<ReadProgress>,
@@ -49,8 +125,6 @@ impl From<tanoshi_lib::data::Chapter> for Chapter {
             path: ch.path,
             number: ch.number,
             scanlator: ch.scanlator,
-            prev: None,
-            next: None,
             uploaded: ch.uploaded,
             date_added: chrono::NaiveDateTime::from_timestamp(chrono::Local::now().timestamp(), 0),
             read_progress: None,
@@ -69,8 +143,6 @@ impl From<crate::db::model::Chapter> for Chapter {
             path: val.path,
             number: val.number,
             scanlator: val.scanlator,
-            prev: val.prev,
-            next: val.next,
             uploaded: val.uploaded,
             date_added: val.date_added,
             read_progress: None,
@@ -89,8 +161,6 @@ impl From<tanoshi_lib::data::Chapter> for crate::db::model::Chapter {
             path: ch.path,
             number: ch.number,
             scanlator: ch.scanlator,
-            prev: None,
-            next: None,
             uploaded: ch.uploaded,
             date_added: chrono::NaiveDateTime::from_timestamp(chrono::Local::now().timestamp(), 0),
             downloaded: false,
@@ -108,8 +178,6 @@ impl From<Chapter> for crate::db::model::Chapter {
             path: val.path,
             number: val.number,
             scanlator: val.scanlator,
-            prev: val.prev,
-            next: val.next,
             uploaded: val.uploaded,
             date_added: val.date_added,
             downloaded: val.downloaded,
@@ -139,23 +207,21 @@ impl Chapter {
         self.scanlator.clone()
     }
 
-    async fn prev(&self) -> Option<i64> {
-        self.prev
+    async fn prev(&self, ctx: &Context<'_>) -> Result<Option<i64>> {
+        let loader = ctx.data::<DataLoader<PrevChapterLoader>>()?;
+        Ok(loader.load_one(self.id).await?)
     }
 
-    async fn next(&self) -> Option<i64> {
-        self.next
+    async fn next(&self, ctx: &Context<'_>) -> Result<Option<i64>> {
+        let loader = ctx.data::<DataLoader<NextChapterLoader>>()?;
+        Ok(loader.load_one(self.id).await?)
     }
 
     async fn read_progress(&self, ctx: &Context<'_>) -> Result<Option<ReadProgress>> {
         let user = user::get_claims(ctx)?;
-        let progress = ctx
-            .data_unchecked::<MangaDatabase>()
-            .get_user_history_progress(user.sub, self.id)
-            .await?
-            .map(|r| r.into());
 
-        Ok(progress)
+        let loader = ctx.data::<DataLoader<ReadProgressLoader>>()?;
+        Ok(loader.load_one((user.sub, self.id)).await?)
     }
 
     async fn uploaded(&self) -> NaiveDateTime {

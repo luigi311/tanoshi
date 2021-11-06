@@ -1,4 +1,5 @@
 use crate::{
+    catalogue::chapter::{NextChapterLoader, PrevChapterLoader, ReadProgressLoader},
     config::Config,
     db::{MangaDatabase, UserDatabase},
     proxy::Proxy,
@@ -8,10 +9,9 @@ use crate::{
 use tanoshi_vm::bus::ExtensionBus;
 
 use async_graphql::{
-    // extensions::ApolloTracing,
+    dataloader::DataLoader,
     http::{playground_source, GraphQLPlaygroundConfig},
-    EmptySubscription,
-    Schema,
+    EmptySubscription, Schema,
 };
 use async_graphql_axum::{GraphQLRequest, GraphQLResponse};
 use axum::{async_trait, handler::get};
@@ -83,6 +83,15 @@ fn init_app(
         EmptySubscription::default(),
     )
     // .extension(ApolloTracing)
+    .data(DataLoader::new(ReadProgressLoader {
+        mangadb: mangadb.clone(),
+    }))
+    .data(DataLoader::new(PrevChapterLoader {
+        mangadb: mangadb.clone(),
+    }))
+    .data(DataLoader::new(NextChapterLoader {
+        mangadb: mangadb.clone(),
+    }))
     .data(userdb)
     .data(mangadb)
     .data(extension_bus)

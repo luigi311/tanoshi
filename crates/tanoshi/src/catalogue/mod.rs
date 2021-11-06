@@ -4,7 +4,7 @@ pub use source::{Source, SourceMutationRoot, SourceRoot};
 mod manga;
 pub use manga::Manga;
 
-mod chapter;
+pub mod chapter;
 pub use chapter::Chapter;
 use tanoshi_vm::prelude::ExtensionBus;
 
