@@ -7,6 +7,7 @@ use std::{
 
 use chrono::NaiveDateTime;
 use fancy_regex::Regex;
+use serde::{Deserialize, Serialize};
 use tanoshi_lib::prelude::{Chapter, Extension, ExtensionResult, Filters, Manga, Source, Version};
 
 pub static ID: i64 = 1;
@@ -15,6 +16,16 @@ static SUPPORTED_FILES: phf::Set<&'static str> = phf::phf_set! {
     "cbz",
     "cbr",
 };
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+pub struct MangaInfo {
+    pub title: Option<String>,
+    pub author: Option<Vec<String>>,
+    pub genre: Option<Vec<String>>,
+    pub status: Option<String>,
+    pub description: Option<String>,
+    pub cover_path: Option<String>,
+}
 
 pub struct Local {
     path: PathBuf,
@@ -64,6 +75,16 @@ impl Local {
             .and_then(|dir| dir.into_iter().next())
             .map(|entry| entry.path().display().to_string())
             .unwrap_or_else(Self::default_cover_url)
+    }
+
+    // find details from an archvie
+    fn find_details_from_archive(path: &Path) -> Option<Vec<u8>> {
+        libarchive_rs::extract_archive_file(&path.display().to_string(), "details.json").ok()
+    }
+
+    // find first image from a directory
+    fn find_details_from_dir(path: &Path) -> Option<Vec<u8>> {
+        std::fs::read(path.join("details.json")).ok()
     }
 
     fn sort_dir(dir: ReadDir) -> Vec<DirEntry> {
@@ -117,6 +138,16 @@ impl Local {
             Self::find_cover_from_archive(&path)
         } else {
             Self::default_cover_url()
+        }
+    }
+
+    fn find_details(path: &Path) -> Option<Vec<u8>> {
+        if path.is_dir() {
+            Self::find_details_from_dir(&path)
+        } else if path.is_file() {
+            Self::find_details_from_archive(&path)
+        } else {
+            None
         }
     }
 
@@ -264,7 +295,9 @@ impl Extension for Local {
             .and_then(OsStr::to_str)
             .unwrap_or("")
             .to_string();
-        ExtensionResult::ok(Manga {
+        let cover_url = Self::find_cover_url(&path);
+
+        let mut manga = Manga {
             source_id: ID,
             title: title.clone(),
             author: vec![],
@@ -272,8 +305,30 @@ impl Extension for Local {
             status: Some("".to_string()),
             description: Some(title),
             path: path.display().to_string(),
-            cover_url: Self::find_cover_url(&path),
-        })
+            cover_url,
+        };
+
+        if let Some(info) = Self::find_details(&path)
+            .and_then(|object| serde_json::from_slice::<MangaInfo>(&object).ok())
+        {
+            if let Some(title) = info.title {
+                manga.title = title;
+            }
+            if let Some(cover_path) = info.cover_path {
+                manga.cover_url = path.join(cover_path).display().to_string();
+            }
+            if let Some(author) = info.author {
+                manga.author = author;
+            }
+            if let Some(genre) = info.genre {
+                manga.genre = genre;
+            }
+            if let Some(description) = info.description {
+                manga.description = Some(description);
+            }
+        }
+
+        ExtensionResult::ok(manga)
     }
 
     fn get_chapters(&self, path: String) -> ExtensionResult<Vec<Chapter>> {
@@ -394,7 +449,7 @@ mod test {
     }
 
     #[test]
-    fn test_get_manga_info() {
+    fn test_get_manga_info_single_archive() {
         let local = Local::new("../../test/data/manga");
         #[cfg(target_family = "windows")]
         let manga = local.get_manga_info(
@@ -420,6 +475,33 @@ mod test {
             assert_eq!(
                 data.cover_url,
                 "../../test/data/manga/Space_Adventures_004__c2c__diff_ver.cbz/SPA00401.JPG"
+            );
+        }
+    }
+
+    #[test]
+    fn test_get_manga_info() {
+        let local = Local::new("../../test/data/manga");
+        #[cfg(target_family = "windows")]
+        let manga = local.get_manga_info("../../test/data/manga\\Super Duck".to_string());
+        #[cfg(target_family = "unix")]
+        let manga = local.get_manga_info("../../test/data/manga/Super Duck".to_string());
+
+        assert!(manga.data.is_some());
+        assert!(manga.error.is_none());
+
+        if let Some(data) = manga.data {
+            assert_eq!(data.source_id, 1);
+            assert_eq!(data.title, "Super Duck");
+            #[cfg(target_family = "windows")]
+            assert_eq!(
+                data.cover_url,
+                "../../test/data/manga\\Super Duck\\super_duck_1\\duck01.jpg"
+            );
+            #[cfg(target_family = "unix")]
+            assert_eq!(
+                data.cover_url,
+                "../../test/data/manga/Super Duck/super_duck_1/duck01.jpg"
             );
         }
     }
