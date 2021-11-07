@@ -304,157 +304,182 @@ impl Reader {
             .class("animate__faster")
             .class_signal("animate__slideInUp", reader.is_bar_visible.signal())
             .class_signal("animate__slideOutDown", reader.is_bar_visible.signal().map(|x| !x))
+            .style("display", "flex")
+            .style("width", "100%")
+            .style("justify-content", "space-between")
+            .style("align-items", "center")
+            .style("background-color", "var(--bottombar-background-color)")
+            .style("color", "var(--color)")
+            .style("border-top-width", "1px")
+            .style("border-top-style", "solid")
+            .style("border-top-color", "var(--background-color-100)")
+            .style("align-content", "flex-end")
+            .style("padding-top", "0.5rem")
+            .style("padding-bottom", "calc(env(safe-area-inset-bottom) + 0.5rem)")
             .children(&mut [
-                html!("div", {
-                    .style("display", "flex")
-                    .style("justify-content", "center")
-                    .style("align-items", "center")
-                    .style("width", "fit-content")
-                    .style("margin-left", "auto")
-                    .style("margin-right", "auto")
-                    .style("margin-bottom", "0.5rem")
-                    .style("padding-top", "0.25rem")
-                    .style("padding-bottom", "0.25rem")
-                    .style("background-color", "var(--bottombar-background-color)")
-                    .style("border-radius", "0.5rem")
-                    .style("border-width", "1px")
-                    .style("border-style", "solid")
-                    .style("border-top-color", "var(--background-color-100)")
-                    .style("border-bottom-color", "var(--background-color-100)")
-                    .style("border-left-color", "var(--background-color-100)")
-                    .style("border-right-color", "var(--background-color-100)")
+                html!("button", {
+                    .attribute_signal("disabled", reader.prev_chapter.signal().map(|prev_chapter| if prev_chapter.is_none() {Some("true")} else {None}))
                     .children(&mut [
-                        html!("button", {
-                            .attribute("id", "zoom-in")
-                            .event(clone!(reader => move |_: events::Click| {
-                                info!("zoom in");
-                                reader.zoom.set_neq(reader.zoom.get() + 0.5);   
-                            }))
+                        svg!("svg", {
+                            .attribute("xmlns", "http://www.w3.org/2000/svg")
+                            .attribute("fill", "none")
+                            .attribute("viewBox", "0 0 24 24")
+                            .attribute("stroke", "currentColor")
+                            .class("icon")
                             .children(&mut [
-                                svg!("svg", {
-                                    .attribute("xmlns", "http://www.w3.org/2000/svg")
-                                    .attribute("version", "1.1")
-                                    .attribute("width", "1.5rem")
-                                    .attribute("height", "1.5rem")
-                                    .attribute("viewBox", "0 0 24 24")
-                                    .attribute("stroke", "currentColor")
-                                    .attribute("fill", "none")
-                                    .children(&mut [
-                                        svg!("path", {
-                                            .attribute("stroke-linecap", "round")
-                                            .attribute("stroke-linejoin", "round")
-                                            .attribute("stroke-width", "2")
-                                            .class("heroicon-ui")
-                                            .attribute("d", "M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7")
-                                        })
-                                    ])
+                                svg!("path", {
+                                    .attribute("stroke-linecap", "round")
+                                    .attribute("stroke-linejoin", "round")
+                                    .attribute("stroke-width", "2")
+                                    .attribute("d", "M11 17l-5-5m0 0l5-5m-5 5h12")
                                 })
                             ])
-                        }),
-                        html!("span", {
-                            .text_signal(reader.zoom.signal().map(|zoom| format!("{}%", 100.0 * zoom)))
-                        }),
-                        html!("button", {
-                            .attribute("id", "zoom-out")
-                            .event(clone!(reader => move |_: events::Click| {
-                                info!("zoom out");
-                                let zoom = reader.zoom.get();
-                                if zoom > 0.0 {
-                                    reader.zoom.set_neq(reader.zoom.get() - 0.5);   
-                                }
-                            }))
-                            .children(&mut [
-                                svg!("svg", {
-                                    .attribute("xmlns", "http://www.w3.org/2000/svg")
-                                    .attribute("version", "1.1")
-                                    .attribute("width", "1.5rem")
-                                    .attribute("height", "1.5rem")
-                                    .attribute("viewBox", "0 0 24 24")
-                                    .attribute("stroke", "currentColor")
-                                    .attribute("fill", "none")
-                                    .children(&mut [
-                                        svg!("path", {
-                                            .attribute("stroke-linecap", "round")
-                                            .attribute("stroke-linejoin", "round")
-                                            .attribute("stroke-width", "2")
-                                            .class("heroicon-ui")
-                                            .attribute("d", "M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7")
-                                        })
-                                    ])
-                                })
-                            ])
-                        }),
-                    ])
-                }),
-                html!("div", {
-                    .style("display", "flex")
-                    .style("width", "100%")
-                    .style("justify-content", "space-between")
-                    .style("align-items", "center")
-                    .style("background-color", "var(--bottombar-background-color)")
-                    .style("color", "var(--color)")
-                    .style("border-top-width", "1px")
-                    .style("border-top-style", "solid")
-                    .style("border-top-color", "var(--background-color-100)")
-                    .style("align-content", "flex-end")
-                    .style("padding-top", "0.5rem")
-                    .style("padding-bottom", "calc(env(safe-area-inset-bottom) + 0.5rem)")
-                    .children(&mut [
-                        html!("button", {
-                            .attribute_signal("disabled", reader.prev_chapter.signal().map(|prev_chapter| if prev_chapter.is_none() {Some("true")} else {None}))
-                            .children(&mut [
-                                svg!("svg", {
-                                    .attribute("xmlns", "http://www.w3.org/2000/svg")
-                                    .attribute("fill", "none")
-                                    .attribute("viewBox", "0 0 24 24")
-                                    .attribute("stroke", "currentColor")
-                                    .class("icon")
-                                    .children(&mut [
-                                        svg!("path", {
-                                            .attribute("stroke-linecap", "round")
-                                            .attribute("stroke-linejoin", "round")
-                                            .attribute("stroke-width", "2")
-                                            .attribute("d", "M11 17l-5-5m0 0l5-5m-5 5h12")
-                                        })
-                                    ])
-                                })
-                            ])
-                            .event(clone!(reader => move |_: events::Click| {
-                               if let Some(prev) = reader.prev_chapter.get() {
-                                   reader.chapter_id.set(prev);
-                               }
-                            }))
-                        }),
-                        html!("button", {
-                            .attribute_signal("disabled", reader.next_chapter.signal().map(|next_chapter| if next_chapter.is_none() {Some("true")} else {None}))
-                            .children(&mut [
-                                svg!("svg", {
-                                    .attribute("xmlns", "http://www.w3.org/2000/svg")
-                                    .attribute("fill", "none")
-                                    .attribute("viewBox", "0 0 24 24")
-                                    .attribute("stroke", "currentColor")
-                                    .class("icon")
-                                    .children(&mut [
-                                        svg!("path", {
-                                            .attribute("stroke-linecap", "round")
-                                            .attribute("stroke-linejoin", "round")
-                                            .attribute("stroke-width", "2")
-                                            .attribute("d", "M13 7l5 5m0 0l-5 5m5-5H6")
-                                        })
-                                    ])
-                                })
-                            ])
-                            .event(clone!(reader => move |_: events::Click| {
-                               if let Some(next) = reader.next_chapter.get() {
-                                reader.chapter_id.set(next);
-                                if matches!(reader.reader_settings.reader_mode.get(), ReaderMode::Continous) {
-                                    window().scroll_to_with_x_and_y(0.0_f64, 0.0_f64);
-                                }
-                               }
-                            }))
                         })
                     ])
+                    .event(clone!(reader => move |_: events::Click| {
+                       if let Some(prev) = reader.prev_chapter.get() {
+                           reader.chapter_id.set(prev);
+                       }
+                    }))
+                }),
+                html!("button", {
+                    .attribute_signal("disabled", reader.next_chapter.signal().map(|next_chapter| if next_chapter.is_none() {Some("true")} else {None}))
+                    .children(&mut [
+                        svg!("svg", {
+                            .attribute("xmlns", "http://www.w3.org/2000/svg")
+                            .attribute("fill", "none")
+                            .attribute("viewBox", "0 0 24 24")
+                            .attribute("stroke", "currentColor")
+                            .class("icon")
+                            .children(&mut [
+                                svg!("path", {
+                                    .attribute("stroke-linecap", "round")
+                                    .attribute("stroke-linejoin", "round")
+                                    .attribute("stroke-width", "2")
+                                    .attribute("d", "M13 7l5 5m0 0l-5 5m5-5H6")
+                                })
+                            ])
+                        })
+                    ])
+                    .event(clone!(reader => move |_: events::Click| {
+                       if let Some(next) = reader.next_chapter.get() {
+                        reader.chapter_id.set(next);
+                        if matches!(reader.reader_settings.reader_mode.get(), ReaderMode::Continous) {
+                            window().scroll_to_with_x_and_y(0.0_f64, 0.0_f64);
+                        }
+                       }
+                    }))
                 })
+            ])
+        })
+    }
+
+    pub fn render_zoom_button(reader: Rc<Self>) -> Dom {
+        html!("div", {
+            .style("position", "fixed")
+            .style("display", "flex")
+            .style("flex-direction", "column")
+            .style("justify-content", "center")
+            .style("align-items", "center")
+            .style("right", "0.5rem")
+            .style("bottom", "calc(env(safe-area-inset-bottom) + 3.5rem)")
+            .style("height", "fit-content")
+            .style("padding-left", "0.5rem")
+            .style("padding-right", "0.5rem")
+            .style("-webkit-padding-start", "0.5rem")
+            .style("-webkit-padding-end", "0.5rem")
+            .style("background-color", "var(--bottombar-background-color)")
+            .style("border-radius", "0.5rem")
+            .style("border-width", "1px")
+            .style("border-style", "solid")
+            .style("border-top-color", "var(--background-color-100)")
+            .style("border-bottom-color", "var(--background-color-100)")
+            .style("border-left-color", "var(--background-color-100)")
+            .style("border-right-color", "var(--background-color-100)")
+            .class("animate__animated")
+            .class("animate__faster")
+            .class_signal("animate__fadeIn", reader.is_bar_visible.signal())
+            .class_signal("animate__fadeOut", reader.is_bar_visible.signal().map(|x| !x))
+            .children(&mut [
+                html!("button", {
+                    .attribute("id", "zoom-in")
+                    .style("margin-top", "0.5rem")
+                    .style("margin-bottom", "0.25rem")
+                    .style("margin-left", "0")
+                    .style("margin-right", "0")
+                    .style("-webkit-margin-start", "0")
+                    .style("-webkit-margin-end", "0")
+                    .event(clone!(reader => move |_: events::Click| {
+                        info!("zoom in");
+                        reader.zoom.set_neq(reader.zoom.get() + 0.5);   
+                    }))
+                    .children(&mut [
+                        svg!("svg", {
+                            .attribute("xmlns", "http://www.w3.org/2000/svg")
+                            .attribute("version", "1.1")
+                            .attribute("width", "24px")
+                            .attribute("height", "24px")
+                            .attribute("viewBox", "0 0 24 24")
+                            .attribute("stroke", "currentColor")
+                            .attribute("fill", "none")
+                            .children(&mut [
+                                svg!("path", {
+                                    .attribute("stroke-linecap", "round")
+                                    .attribute("stroke-linejoin", "round")
+                                    .attribute("stroke-width", "2")
+                                    .class("heroicon-ui")
+                                    .attribute("d", "M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7")
+                                })
+                            ])
+                        })
+                    ])
+                }),
+                html!("span", {
+                    .style("margin-top", "0.25rem")
+                    .style("margin-bottom", "0.25rem")
+                    .style("margin-left", "0")
+                    .style("margin-right", "0")
+                    .style("-webkit-margin-start", "0")
+                    .style("-webkit-margin-end", "0")
+                    .style("font-size", "smaller")
+                    .text_signal(reader.zoom.signal().map(|zoom| format!("{}%", 100.0 * zoom)))
+                }),
+                html!("button", {
+                    .attribute("id", "zoom-out")
+                    .style("margin-top", "0.25rem")
+                    .style("margin-bottom", "0.5rem")
+                    .style("margin-left", "0")
+                    .style("margin-right", "0")
+                    .style("-webkit-margin-start", "0")
+                    .style("-webkit-margin-end", "0")
+                    .event(clone!(reader => move |_: events::Click| {
+                        info!("zoom out");
+                        let zoom = reader.zoom.get();
+                        if zoom > 0.0 {
+                            reader.zoom.set_neq(reader.zoom.get() - 0.5);   
+                        }
+                    }))
+                    .children(&mut [
+                        svg!("svg", {
+                            .attribute("xmlns", "http://www.w3.org/2000/svg")
+                            .attribute("version", "1.1")
+                            .attribute("width", "24px")
+                            .attribute("height", "24px")
+                            .attribute("viewBox", "0 0 24 24")
+                            .attribute("stroke", "currentColor")
+                            .attribute("fill", "none")
+                            .children(&mut [
+                                svg!("path", {
+                                    .attribute("stroke-linecap", "round")
+                                    .attribute("stroke-linejoin", "round")
+                                    .attribute("stroke-width", "2")
+                                    .class("heroicon-ui")
+                                    .attribute("d", "M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7")
+                                })
+                            ])
+                        })
+                    ])
+                }),
             ])
         })
     }
@@ -1035,6 +1060,7 @@ impl Reader {
                 }))
             })))
             .children(&mut [
+                Self::render_zoom_button(reader.clone()),
                 Self::render_page_indicator(reader.clone()),
                 Self::render_bottombar(reader.clone()),
                 ReaderSettings::render(reader.reader_settings.clone()),
