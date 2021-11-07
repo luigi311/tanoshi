@@ -469,13 +469,13 @@ impl Reader {
             .style("right", "50%")
             .style("bottom", "0")
             .style("background-color", "transparent")
-            .style("padding-top", "0.5rem")
-            .style("padding-bottom", "calc(env(safe-area-inset-bottom) + 0.5rem)")
             .style("z-index", "50")
+            .style("padding-top", "0.5rem")
+            .style_signal("padding-bottom", reader.is_bar_visible.signal().map(|visible| if visible { Some("calc(env(safe-area-inset-bottom) + 0.5rem)") } else { Some("env(safe-area-inset-bottom)") }))
             .children(&mut [
                 html!("div", {
                     .style("border-radius", "10%")
-                    .style("padding", "0.5rem")
+                    .style_signal("padding", reader.is_bar_visible.signal().map(|visible| visible.then( || "0.5rem")))
                     .style_signal("color", reader.is_bar_visible.signal().map(|visible| if visible { Some("inherit") } else { Some("white") }))
                     .style_signal("font-weight", reader.is_bar_visible.signal().map(|visible| if visible { None } else { Some("bold") }))
                     .style_signal("-webkit-text-fill-color", reader.is_bar_visible.signal().map(|visible| if visible { None } else { Some("white") }))
