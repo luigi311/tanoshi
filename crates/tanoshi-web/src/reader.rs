@@ -181,12 +181,6 @@ impl Reader {
 
         Self::replace_state_with_url(chapter_id, page + 1);
 
-        // just opening a chapter shouldn't be considered as reading
-        if page == 0 {
-            return;
-        }
-;
-
         let timeout = Timeout::new(500, move || {
             spawn_local(async move {
                 match query::update_page_read_at(chapter_id, page as i64).await {
