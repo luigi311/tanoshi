@@ -179,7 +179,14 @@ impl Reader {
     fn update_page_read(reader: Rc<Self>, page: usize) {
         let chapter_id = reader.chapter_id.get();
 
+        let page = if matches!(reader.reader_settings.reader_mode.get(), ReaderMode::Paged) && matches!(reader.reader_settings.display_mode.get().get(), DisplayMode::Double) && page + 2 == reader.pages_len.get() {
+            page + 1
+        } else {
+            page
+        };
+
         Self::replace_state_with_url(chapter_id, page + 1);
+        
 
         let timeout = Timeout::new(500, move || {
             spawn_local(async move {
