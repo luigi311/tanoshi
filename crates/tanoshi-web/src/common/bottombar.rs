@@ -20,7 +20,6 @@ impl Bottombar {
             .class("bottombar")
             .children(&mut [
                 link!(Route::Library.url(), {
-                    // .class(LINK_CLASS)
                     .class_signal("active", Route::signal().map(|x| matches!(x, Route::Library)))
                     .children(&mut [
                         svg!("svg", {
@@ -43,12 +42,10 @@ impl Bottombar {
                         })
                     ])
                 }),
-                html!("button", {
-                    // .class(LINK_CLASS)
+                link!(Route::CatalogueList.url(), {
                     .class_signal("active", Route::signal().map(|x| matches!(x, Route::CatalogueList)))
-                    .event_preventable(|_:events::Click| {
+                    .event(|_:events::Click| {
                         local_storage().delete(catalogue_list::STORAGE_KEY).unwrap_throw();
-                        routing::go_to_url(Route::CatalogueList.url().as_str());
                     })
                     .children(&mut [
                         svg!("svg", {
@@ -72,7 +69,6 @@ impl Bottombar {
                     ])
                 }),
                 link!(Route::Updates.url(), {
-                    // .class(LINK_CLASS)
                     .class_signal("active", Route::signal().map(|x| matches!(x, Route::Updates)))
                     .children(&mut [
                         svg!("svg", {
@@ -96,7 +92,6 @@ impl Bottombar {
                     ])
                 }),
                 link!(Route::Histories.url(), {
-                    // .class(LINK_CLASS)
                     .class_signal("active", Route::signal().map(|x| matches!(x, Route::Histories)))
                     .children(&mut [
                         svg!("svg", {
@@ -120,7 +115,6 @@ impl Bottombar {
                     ])
                 }),
                 link!(Route::Settings(SettingCategory::None).url(), {
-                    // .class(LINK_CLASS)
                     .class_signal("active", Route::signal().map(|x| matches!(x, Route::Settings(_))))
                     .children(&mut [
                         svg!("svg", {
@@ -134,19 +128,12 @@ impl Bottombar {
                                     .attribute("stroke-linejoin", "round")
                                     .attribute("stroke-width", "1")
                                     .class("heroicon-ui")
-                                    .attribute("d", "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z")
+                                    .attribute("d", "M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z")
                                 }),
-                                svg!("path", {
-                                    .attribute("stroke-linecap", "round")
-                                    .attribute("stroke-linejoin", "round")
-                                    .attribute("stroke-width", "1")
-                                    .class("heroicon-ui")
-                                    .attribute("d", "M15 12a3 3 0 11-6 0 3 3 0 016 0z")
-                                })
                             ])
                         }),
                         html!("span", {
-                            .text("Settings")
+                            .text("More")
                         })
                     ])
                 }),
