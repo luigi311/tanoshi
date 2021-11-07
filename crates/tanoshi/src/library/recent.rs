@@ -28,7 +28,7 @@ impl RecentChapter {
     }
 
     async fn cover_url(&self) -> Result<String> {
-        let secret = &GLOBAL_CONFIG.get().ok_or_else(|| "secret not set")?.secret;
+        let secret = &GLOBAL_CONFIG.get().ok_or("secret not set")?.secret;
         Ok(utils::encrypt_url(secret, &self.cover_url)?)
     }
 
@@ -69,7 +69,7 @@ impl RecentUpdate {
     }
 
     async fn cover_url(&self) -> Result<String> {
-        let secret = &GLOBAL_CONFIG.get().ok_or_else(|| "secret not set")?.secret;
+        let secret = &GLOBAL_CONFIG.get().ok_or("secret not set")?.secret;
         Ok(utils::encrypt_url(secret, &self.cover_url)?)
     }
 

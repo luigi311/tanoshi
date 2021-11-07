@@ -90,8 +90,9 @@ impl CatalogueList {
                         let mut cover_list = catalogue.cover_list_map.lock_mut();
                         cover_list.insert_cloned(source.id, SourceManga { name: source.name.clone(), covers } );
                     }
-                    Err(_) => {
+                    Err(e) => {
                         // snackbar::show(format!("Fetch manga from source failed: {}", e))
+                        error!("Fetch manga from source failed: {}", e);
                     }
                 }
 

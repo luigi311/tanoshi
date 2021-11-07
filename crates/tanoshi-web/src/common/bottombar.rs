@@ -3,7 +3,7 @@ use std::rc::Rc;
 use crate::{catalogue_list, common::events, utils::local_storage};
 
 use super::{Route, SettingCategory};
-use dominator::{html, link, routing, svg, Dom};
+use dominator::{html, link, svg, Dom};
 use futures_signals::signal::SignalExt;
 use wasm_bindgen::UnwrapThrowExt;
 

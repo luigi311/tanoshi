@@ -30,6 +30,7 @@ pub struct ExtensionProxy {
 }
 
 impl ExtensionProxy {
+    #[allow(clippy::new_ret_no_self)]
     pub fn new<P: AsRef<Path>>(path: P) -> Arc<dyn Extension> {
         let path = PathBuf::new().join(path);
         Arc::new(Self { path })

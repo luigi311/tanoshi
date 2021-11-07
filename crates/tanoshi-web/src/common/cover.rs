@@ -19,6 +19,7 @@ pub struct Cover {
 }
 
 impl Cover {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         id: i64,
         source_id: i64,

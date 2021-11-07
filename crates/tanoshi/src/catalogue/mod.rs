@@ -36,6 +36,7 @@ pub struct CatalogueRoot;
 
 #[Object]
 impl CatalogueRoot {
+    #[allow(clippy::too_many_arguments)]
     async fn browse_source(
         &self,
         ctx: &Context<'_>,

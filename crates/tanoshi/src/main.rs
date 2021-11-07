@@ -99,7 +99,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         worker_tx.clone(),
     );
 
-    let server_fut = server::serve::<()>(userdb, mangadb, &config, extension_bus, worker_tx);
+    let server_fut = server::serve::<()>(userdb, mangadb, config, extension_bus, worker_tx);
 
     tokio::select! {
         _ = server_fut => {

@@ -77,7 +77,7 @@ impl UserRoot {
             return Err("Wrong username or password".into());
         }
 
-        let secret = &GLOBAL_CONFIG.get().ok_or_else(|| "secret not set")?.secret;
+        let secret = &GLOBAL_CONFIG.get().ok_or("secret not set")?.secret;
         let token = jsonwebtoken::encode(
             &Header::default(),
             &Claims {
@@ -215,7 +215,7 @@ pub fn get_claims(ctx: &Context<'_>) -> Result<Claims> {
     let token = ctx
         .data::<String>()
         .map_err(|_| "token not exists, please login")?;
-    let secret = &GLOBAL_CONFIG.get().ok_or_else(|| "secret not set")?.secret;
+    let secret = &GLOBAL_CONFIG.get().ok_or("secret not set")?.secret;
     let claims = jsonwebtoken::decode::<Claims>(
         token,
         &DecodingKey::from_secret(secret.as_bytes()),

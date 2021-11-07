@@ -191,7 +191,7 @@ impl ReaderSettings {
     }
 
     fn save_with_key(&self, key: &str) {
-        let _ = local_storage().set_item(&key, &serde_json::to_string(self).unwrap());
+        let _ = local_storage().set_item(key, &serde_json::to_string(self).unwrap());
         if self.use_modal {
             self.show.set_neq(false);
         }

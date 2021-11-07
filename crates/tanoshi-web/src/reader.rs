@@ -585,7 +585,7 @@ impl Reader {
 
     fn image_src_signal(&self, index: usize, preload_prev: usize, preload_next: usize, page: String, status: PageStatus)-> impl Signal<Item = Option<String>> {
         self.current_page.signal_cloned().map(move |current_page| {
-            if (index >= current_page.checked_sub(preload_prev).unwrap_or(0) && index <= current_page + preload_next) || matches!(status, PageStatus::Loaded) {
+            if (index >= current_page.saturating_sub(preload_prev) && index <= current_page + preload_next) || matches!(status, PageStatus::Loaded) {
                 Some(proxied_image_url(&page))
             } else {
                 None

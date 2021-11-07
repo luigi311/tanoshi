@@ -7,7 +7,6 @@ use axum::{
 };
 
 use http::Request;
-use mime_guess;
 use rust_embed::RustEmbed;
 
 // static_handler is a handler that serves static files from the

@@ -262,7 +262,7 @@ impl Chapter {
             pages
         };
 
-        let secret = &GLOBAL_CONFIG.get().ok_or_else(|| "secret not set")?.secret;
+        let secret = &GLOBAL_CONFIG.get().ok_or("secret not set")?.secret;
         let pages = pages
             .iter()
             .map(|page| utils::encrypt_url(secret, page).unwrap_or_default())

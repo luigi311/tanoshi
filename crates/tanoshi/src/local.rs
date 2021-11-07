@@ -143,9 +143,9 @@ impl Local {
 
     fn find_details(path: &Path) -> Option<Vec<u8>> {
         if path.is_dir() {
-            Self::find_details_from_dir(&path)
+            Self::find_details_from_dir(path)
         } else if path.is_file() {
-            Self::find_details_from_archive(&path)
+            Self::find_details_from_archive(path)
         } else {
             None
         }
