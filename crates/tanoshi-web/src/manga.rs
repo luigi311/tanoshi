@@ -595,6 +595,7 @@ impl Manga {
             .child_signal(manga.description.signal_cloned().map(|x| {
                 if let Some(description) = x {
                     Some(html!("p", {
+                        .style("white-space", "pre-wrap")
                         .text(&description)
                     }))
                 } else {
