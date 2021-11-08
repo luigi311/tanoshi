@@ -33,7 +33,7 @@ impl Bottombar {
                                     .attribute("stroke-linejoin", "round")
                                     .attribute("stroke-width", "1")
                                     .class("heroicon-ui")
-                                    .attribute("d", "M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z")
+                                    .attribute("d", "M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z")
                                 })
                             ])
                         }),
