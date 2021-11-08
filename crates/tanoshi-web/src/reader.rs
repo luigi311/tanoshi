@@ -383,9 +383,7 @@ impl Reader {
             .style("align-items", "center")
             .style("right", "0.5rem")
             .style("bottom", "calc(env(safe-area-inset-bottom) + 3.5rem)")
-            .style("height", "fit-content")
-            .style("padding-left", "0.5rem")
-            .style("padding-right", "0.5rem")
+            .style("width", "2rem")
             .style("-webkit-padding-start", "0.5rem")
             .style("-webkit-padding-end", "0.5rem")
             .style("background-color", "var(--bottombar-background-color)")
@@ -405,10 +403,7 @@ impl Reader {
                     .attribute("id", "zoom-in")
                     .style("margin-top", "0.5rem")
                     .style("margin-bottom", "0.25rem")
-                    .style("margin-left", "0")
-                    .style("margin-right", "0")
-                    .style("-webkit-margin-start", "0")
-                    .style("-webkit-margin-end", "0")
+                    .style("text-align", "center")
                     .event(clone!(reader => move |_: events::Click| {
                         info!("zoom in");
                         reader.zoom.set_neq(reader.zoom.get() + 0.5);   
@@ -416,19 +411,18 @@ impl Reader {
                     .children(&mut [
                         svg!("svg", {
                             .attribute("xmlns", "http://www.w3.org/2000/svg")
-                            .attribute("version", "1.1")
-                            .attribute("width", "24px")
-                            .attribute("height", "24px")
-                            .attribute("viewBox", "0 0 24 24")
-                            .attribute("stroke", "currentColor")
-                            .attribute("fill", "none")
+                            .attribute("width", "20px")
+                            .attribute("height", "20px")
+                            .attribute("viewBox", "0 0 20 20")
+                            .attribute("fill", "currentColor")
                             .children(&mut [
                                 svg!("path", {
-                                    .attribute("stroke-linecap", "round")
-                                    .attribute("stroke-linejoin", "round")
-                                    .attribute("stroke-width", "2")
-                                    .class("heroicon-ui")
-                                    .attribute("d", "M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7")
+                                    .attribute("d", "M5 8a1 1 0 011-1h1V6a1 1 0 012 0v1h1a1 1 0 110 2H9v1a1 1 0 11-2 0V9H6a1 1 0 01-1-1z")
+                                }),
+                                svg!("path", {
+                                    .attribute("fill-rule", "evenodd")
+                                    .attribute("clip-rule", "evenodd")
+                                    .attribute("d", "M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z")
                                 })
                             ])
                         })
@@ -437,10 +431,6 @@ impl Reader {
                 html!("span", {
                     .style("margin-top", "0.25rem")
                     .style("margin-bottom", "0.25rem")
-                    .style("margin-left", "0")
-                    .style("margin-right", "0")
-                    .style("-webkit-margin-start", "0")
-                    .style("-webkit-margin-end", "0")
                     .style("font-size", "smaller")
                     .text_signal(reader.zoom.signal().map(|zoom| format!("{}%", 100.0 * zoom)))
                 }),
@@ -448,10 +438,7 @@ impl Reader {
                     .attribute("id", "zoom-out")
                     .style("margin-top", "0.25rem")
                     .style("margin-bottom", "0.5rem")
-                    .style("margin-left", "0")
-                    .style("margin-right", "0")
-                    .style("-webkit-margin-start", "0")
-                    .style("-webkit-margin-end", "0")
+                    .style("text-align", "center")
                     .event(clone!(reader => move |_: events::Click| {
                         info!("zoom out");
                         let zoom = reader.zoom.get();
@@ -462,19 +449,20 @@ impl Reader {
                     .children(&mut [
                         svg!("svg", {
                             .attribute("xmlns", "http://www.w3.org/2000/svg")
-                            .attribute("version", "1.1")
-                            .attribute("width", "24px")
-                            .attribute("height", "24px")
-                            .attribute("viewBox", "0 0 24 24")
-                            .attribute("stroke", "currentColor")
-                            .attribute("fill", "none")
+                            .attribute("width", "20px")
+                            .attribute("height", "20px")
+                            .attribute("viewBox", "0 0 20 20")
+                            .attribute("fill", "currentColor")
                             .children(&mut [
                                 svg!("path", {
-                                    .attribute("stroke-linecap", "round")
-                                    .attribute("stroke-linejoin", "round")
-                                    .attribute("stroke-width", "2")
-                                    .class("heroicon-ui")
-                                    .attribute("d", "M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7")
+                                    .attribute("fill-rule", "evenodd")
+                                    .attribute("clip-rule", "evenodd")
+                                    .attribute("d", "M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z")
+                                }),
+                                svg!("path", {
+                                    .attribute("fill-rule", "evenodd")
+                                    .attribute("clip-rule", "evenodd")
+                                    .attribute("d", "M5 8a1 1 0 011-1h4a1 1 0 110 2H6a1 1 0 01-1-1z")
                                 })
                             ])
                         })
