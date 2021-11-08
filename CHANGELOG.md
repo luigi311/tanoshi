@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- Download chapters from external sources
+- Add details to local manga with `details.json` inside series folder
+- Opening first page will update history
+
+### Changes
+- Few ui changes
+- Desktop layout
+- Performance improvement for library and manga details page
+
 ## [0.25.20]
 ### Added
 - Zoom in and zoom out button in reader
