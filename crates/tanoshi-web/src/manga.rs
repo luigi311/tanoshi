@@ -825,6 +825,9 @@ impl Manga {
                             ])
                         }))))
                     }))))
+                }),
+                html!("div", {
+                    .style("height", "env(safe-area-inset-bottom)")
                 })
             ])
         })
