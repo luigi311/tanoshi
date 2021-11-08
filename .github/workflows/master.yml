@@ -113,7 +113,7 @@ jobs:
         run: |
           vcpkg integrate install
           vcpkg install --only-downloads libarchive:x64-windows-static-md
-          vcpkg install libarchive:x64-windows-static-md --no-downloads
+          vcpkg install libarchive:x64-windows-static-md
       - name: Test
         if: ${{ matrix.os == 'ubuntu-latest' }}
         uses: actions-rs/cargo@v1
