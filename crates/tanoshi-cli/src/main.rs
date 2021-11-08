@@ -4,12 +4,11 @@ mod data;
 mod generate;
 mod test;
 
-use clap::{AppSettings, Clap};
+use clap::Parser;
 use tanoshi_vm::{bus::ExtensionBus, vm};
 
-#[derive(Clap)]
+#[derive(Parser)]
 #[clap(version = "0.1.1", author = "Muhammad Fadhlika <fadhlika@gmail.com>")]
-#[clap(setting = AppSettings::ColoredHelp)]
 struct Opts {
     #[clap(short, long, default_value = "target/wasm32-wasi/release")]
     path: String,
@@ -17,7 +16,7 @@ struct Opts {
     subcmd: SubCommand,
 }
 
-#[derive(Clap)]
+#[derive(Parser)]
 enum SubCommand {
     #[cfg(not(feature = "disable-compiler"))]
     Compile(CompileOption),
@@ -25,13 +24,13 @@ enum SubCommand {
     Test(TestOption),
 }
 
-#[derive(Clap)]
+#[derive(Parser)]
 struct TestOption {
     #[clap(long)]
     selector: Option<String>,
 }
 
-#[derive(Clap)]
+#[derive(Parser)]
 struct CompileOption {
     #[clap(long)]
     target: String,
