@@ -38,7 +38,7 @@ rust-embed = { version = "6.0", features = [
     "interpolate-folder-path",
 ], optional = true }
 mime_guess = "2"
-clap = "^3.0.0-beta.1"
+clap = "=3.0.0-beta.5"
 bytes = "1"
 dirs = "4"
 base64 = "0.13"

@@ -23,14 +23,14 @@ use crate::{
     config::{Config, GLOBAL_CONFIG},
     notifier::pushover::Pushover,
 };
-use clap::Clap;
+use clap::Parser;
 use futures::future::OptionFuture;
 use tanoshi_vm::{bus::ExtensionBus, vm};
 
 use std::sync::Arc;
 use teloxide::prelude::RequesterExt;
 
-#[derive(Clap)]
+#[derive(Parser)]
 struct Opts {
     /// Path to config file
     #[clap(long)]
