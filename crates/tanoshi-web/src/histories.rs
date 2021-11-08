@@ -7,7 +7,7 @@ use crate::{
     app::App,
     common::{Route, Spinner},
 };
-use dominator::{class, clone, events, html, link, routing, svg, Dom};
+use dominator::{clone, events, html, link, routing, svg, Dom};
 use futures_signals::signal::{Mutable, SignalExt};
 use futures_signals::signal_vec::{MutableVec, SignalVecExt};
 use wasm_bindgen::UnwrapThrowExt;
