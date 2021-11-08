@@ -257,7 +257,7 @@ impl Settings {
                                         ])
                                     }),
                                     html!("span", {
-                                        .text("Settings")
+                                        .text("More")
                                     })
                                 ])
                             }))
@@ -277,7 +277,7 @@ impl Settings {
                     .style("text-overflow", "ellipsis")
                     .text_signal(settings.page.signal_cloned().map(|x|
                         match x {
-                            SettingCategory::None => "Settings",
+                            SettingCategory::None => "More",
                             SettingCategory::Appearance => "Appearance",
                             SettingCategory::General => "General",
                             SettingCategory::Reader => "Reader",
