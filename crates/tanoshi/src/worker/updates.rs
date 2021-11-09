@@ -1,5 +1,6 @@
 use std::{collections::HashMap, fmt::Display, str::FromStr};
 
+use chrono::Utc;
 use serde::Deserialize;
 use tanoshi_lib::prelude::Version;
 
@@ -10,6 +11,9 @@ use tokio::{
     time::{self, Instant},
 };
 
+use crate::config::GLOBAL_CONFIG;
+use crate::db::model;
+use crate::local;
 use crate::{
     db::{
         model::{Chapter, User},
@@ -40,6 +44,7 @@ struct UpdatesWorker {
     userdb: UserDatabase,
     mangadb: MangaDatabase,
     extensions: ExtensionBus,
+    auto_download_chapters: bool,
     worker_tx: Sender<WorkerCommand>,
 }
 
@@ -58,14 +63,78 @@ impl UpdatesWorker {
             period
         };
         info!("periodic updates every {} seconds", period);
+
+        let auto_download_chapters = GLOBAL_CONFIG
+            .get()
+            .map(|cfg| cfg.auto_download_chapters)
+            .unwrap_or(false);
+
         Self {
             period,
             client: reqwest::Client::new(),
             userdb,
             mangadb,
             extensions,
+            auto_download_chapters,
             worker_tx,
         }
+    }
+
+    async fn add_chapter_to_download_queue(&self, chapter: &Chapter) -> Result<(), anyhow::Error> {
+        let chapter = self
+            .mangadb
+            .get_chapter_by_source_path(chapter.source_id, &chapter.path)
+            .await
+            .ok_or_else(|| anyhow::anyhow!("chapter not found"))?;
+        if chapter.source_id == local::ID {
+            info!("local source can't be downloaded");
+            return Ok(());
+        }
+
+        let manga = self.mangadb.get_manga_by_id(chapter.manga_id).await?;
+        let pages = match self
+            .mangadb
+            .get_pages_remote_url_by_chapter_id(chapter.id)
+            .await
+        {
+            Ok(pages) => pages,
+            Err(_) => {
+                let pages = self
+                    .extensions
+                    .get_pages(manga.source_id, chapter.path.clone())
+                    .await
+                    .map_err(|e| anyhow::anyhow!("{}", e))?;
+                self.mangadb.insert_pages(chapter.id, &pages).await?;
+                pages
+            }
+        };
+
+        let source = self
+            .extensions
+            .detail(manga.source_id)
+            .await
+            .map_err(|e| anyhow::anyhow!("{}", e))?;
+
+        let mut queue = vec![];
+        let date_added = Utc::now().naive_utc();
+        for (rank, page) in pages.iter().enumerate() {
+            queue.push(model::DownloadQueue {
+                id: 0,
+                source_id: source.id,
+                source_name: source.name.clone(),
+                manga_id: manga.id,
+                manga_title: manga.title.clone(),
+                chapter_id: chapter.id,
+                chapter_title: chapter.title.clone(),
+                rank: rank as _,
+                url: page.clone(),
+                date_added,
+            })
+        }
+        debug!("queue: {:?}", queue);
+        self.mangadb.insert_download_queue(&queue).await?;
+
+        Ok(())
     }
 
     async fn check_chapter_update(&self) -> Result<(), anyhow::Error> {
@@ -159,6 +228,15 @@ impl UpdatesWorker {
                             error!("failed to send PushoverMessage, reason: {}", e);
                         }
                     }
+                }
+
+                if self.auto_download_chapters {
+                    info!("add chapter to download queue");
+                    if let Err(e) = self.add_chapter_to_download_queue(&chapter).await {
+                        error!("failed to add chapter to download queue, reason: {}", e);
+                        continue;
+                    }
+                    let _ = self.worker_tx.send(WorkerCommand::StartDownload).await;
                 }
             }
 

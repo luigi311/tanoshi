@@ -30,6 +30,8 @@ pub struct Config {
     pub secret: String,
     #[serde(default = "default_update_interval")]
     pub update_interval: u64,
+    #[serde(default)]
+    pub auto_download_chapters: bool,
     #[serde(default = "default_plugin_path")]
     pub plugin_path: String,
     #[serde(default = "default_local_path")]
@@ -50,6 +52,7 @@ impl Default for Config {
             database_path: default_database_path(),
             secret: default_secret(),
             update_interval: default_update_interval(),
+            auto_download_chapters: false,
             plugin_path: default_plugin_path(),
             local_path: default_local_path(),
             download_path: default_download_path(),

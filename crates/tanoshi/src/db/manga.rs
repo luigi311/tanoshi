@@ -1579,7 +1579,7 @@ impl Db {
         values.resize(items.len(), "(?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
         let query_str = format!(
-            r#"INSERT INTO download_queue(
+            r#"INSERT OR IGNORE INTO download_queue(
                 source_id,
                 source_name,
                 manga_id,
