@@ -1686,4 +1686,199 @@ impl Db {
 
         Ok(())
     }
+
+    pub async fn get_first_downloaded_chapters(
+        &self,
+        after_timestamp: i64,
+        after_id: i64,
+        before_timestamp: i64,
+        before_id: i64,
+        first: i32,
+    ) -> Result<Vec<Chapter>> {
+        let mut conn = self.pool.acquire().await?;
+        let mut stream = sqlx::query(
+            r#"
+        SELECT 
+            chapter.*, 
+            (COUNT(remote_url) > 0) & (COUNT(remote_url) = COUNT(local_url)) AS downloaded 
+        FROM page JOIN chapter ON chapter.id = page.chapter_id
+        WHERE
+            (date_added, chapter.id) < (datetime(?, 'unixepoch'), ?) AND
+            (date_added, chapter.id) > (datetime(?, 'unixepoch'), ?)
+        GROUP BY chapter_id HAVING downloaded = true
+        ORDER BY chapter.date_added DESC, chapter.id DESC
+        LIMIT ?"#,
+        )
+        .bind(after_timestamp)
+        .bind(after_id)
+        .bind(before_timestamp)
+        .bind(before_id)
+        .bind(first)
+        .fetch(&mut conn);
+
+        let mut chapters = vec![];
+        while let Some(row) = stream.try_next().await? {
+            chapters.push(Chapter {
+                id: row.get(0),
+                source_id: row.get(1),
+                manga_id: row.get(2),
+                title: row.get(3),
+                path: row.get(4),
+                number: row.get(5),
+                scanlator: row.get(6),
+                uploaded: row.get(7),
+                date_added: row.get(8),
+                downloaded: row.get(9),
+            });
+        }
+        Ok(chapters)
+    }
+
+    pub async fn get_last_downloaded_chapters(
+        &self,
+        after_timestamp: i64,
+        after_id: i64,
+        before_timestamp: i64,
+        before_id: i64,
+        last: i32,
+    ) -> Result<Vec<Chapter>> {
+        let mut conn = self.pool.acquire().await?;
+        let mut stream = sqlx::query(
+            r#"
+            SELECT * FROM (
+                SELECT 
+                    chapter.*, 
+                    (COUNT(remote_url) > 0) & (COUNT(remote_url) = COUNT(local_url)) AS downloaded 
+                FROM page JOIN chapter ON chapter.id = page.chapter_id
+                WHERE
+                    (date_added, chapter.id) < (datetime(?, 'unixepoch'), ?) AND
+                    (date_added, chapter.id) > (datetime(?, 'unixepoch'), ?)
+                GROUP BY chapter_id HAVING downloaded = true
+                ORDER BY chapter.date_added ASC, chapter.id ASC
+                LIMIT ?) c
+            ORDER BY c.date_added DESC, c.id DESC"#,
+        )
+        .bind(after_timestamp)
+        .bind(after_id)
+        .bind(before_timestamp)
+        .bind(before_id)
+        .bind(last)
+        .fetch(&mut conn);
+
+        let mut chapters = vec![];
+        while let Some(row) = stream.try_next().await? {
+            chapters.push(Chapter {
+                id: row.get(0),
+                source_id: row.get(1),
+                manga_id: row.get(2),
+                title: row.get(3),
+                path: row.get(4),
+                number: row.get(5),
+                scanlator: row.get(6),
+                uploaded: row.get(7),
+                date_added: row.get(8),
+                downloaded: row.get(9),
+            });
+        }
+        Ok(chapters)
+    }
+
+    pub async fn get_downloaded_chapters(
+        &self,
+        after_timestamp: i64,
+        after_id: i64,
+        before_timestamp: i64,
+        before_id: i64,
+    ) -> Result<Vec<Chapter>> {
+        let mut conn = self.pool.acquire().await?;
+        let mut stream = sqlx::query(
+            r#"
+            SELECT 
+                chapter.*, 
+                (COUNT(remote_url) > 0) & (COUNT(remote_url) = COUNT(local_url)) AS downloaded 
+            FROM page JOIN chapter ON chapter.id = page.chapter_id
+            WHERE
+                (date_added, chapter.id) < (datetime(?, 'unixepoch'), ?) AND
+                (date_added, chapter.id) > (datetime(?, 'unixepoch'), ?)
+            GROUP BY chapter_id HAVING downloaded = true
+            ORDER BY chapter.date_added DESC, chapter.id DESC
+            LIMIT ?"#,
+        )
+        .bind(after_timestamp)
+        .bind(after_id)
+        .bind(before_timestamp)
+        .bind(before_id)
+        .fetch(&mut conn);
+
+        let mut chapters = vec![];
+        while let Some(row) = stream.try_next().await? {
+            chapters.push(Chapter {
+                id: row.get(0),
+                source_id: row.get(1),
+                manga_id: row.get(2),
+                title: row.get(3),
+                path: row.get(4),
+                number: row.get(5),
+                scanlator: row.get(6),
+                uploaded: row.get(7),
+                date_added: row.get(8),
+                downloaded: row.get(9),
+            });
+        }
+        Ok(chapters)
+    }
+
+    pub async fn get_downloaded_chapter_has_next_page(&self, timestamp: i64, id: i64) -> bool {
+        let mut conn = if let Ok(conn) = self.pool.acquire().await {
+            conn
+        } else {
+            return false;
+        };
+        let stream = sqlx::query(
+            r#"
+            SELECT 
+                chapter.*, 
+                (COUNT(remote_url) > 0) & (COUNT(remote_url) = COUNT(local_url)) AS downloaded 
+            FROM page JOIN chapter ON chapter.id = page.chapter_id
+            WHERE
+                (date_added, chapter.id) < (datetime(?, 'unixepoch'), ?)
+            GROUP BY chapter_id HAVING downloaded = true
+            ORDER BY chapter.date_added DESC, chapter.id DESC
+            LIMIT 1"#,
+        )
+        .bind(timestamp)
+        .bind(id)
+        .fetch_one(&mut conn)
+        .await
+        .ok();
+
+        stream.is_some()
+    }
+
+    pub async fn get_downloaded_chapter_has_before_page(&self, timestamp: i64, id: i64) -> bool {
+        let mut conn = if let Ok(conn) = self.pool.acquire().await {
+            conn
+        } else {
+            return false;
+        };
+        let stream = sqlx::query(
+            r#"
+            SELECT 
+                chapter.*, 
+                (COUNT(remote_url) > 0) & (COUNT(remote_url) = COUNT(local_url)) AS downloaded 
+            FROM page JOIN chapter ON chapter.id = page.chapter_id
+            WHERE
+                (date_added, chapter.id) > (datetime(?, 'unixepoch'), ?)
+            GROUP BY chapter_id HAVING downloaded = true
+            ORDER BY chapter.date_added DESC, chapter.id DESC
+            LIMIT 1"#,
+        )
+        .bind(timestamp)
+        .bind(id)
+        .fetch_one(&mut conn)
+        .await
+        .ok();
+
+        stream.is_some()
+    }
 }

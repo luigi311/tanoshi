@@ -47,6 +47,24 @@ pub fn decrypt_url(key: &str, data: &str) -> Result<String, Box<dyn std::error::
     Ok(url)
 }
 
+pub fn decode_cursor(cursor: &str) -> std::result::Result<(i64, i64), base64::DecodeError> {
+    match base64::decode(cursor) {
+        Ok(res) => {
+            let cursor = String::from_utf8(res).unwrap();
+            let decoded = cursor
+                .split('#')
+                .map(|s| s.parse::<i64>().unwrap())
+                .collect::<Vec<i64>>();
+            Ok((decoded[0], decoded[1]))
+        }
+        Err(err) => Err(err),
+    }
+}
+
+pub fn encode_cursor(timestamp: i64, id: i64) -> String {
+    base64::encode(format!("{}#{}", timestamp, id))
+}
+
 #[cfg(test)]
 mod test {
     use super::*;

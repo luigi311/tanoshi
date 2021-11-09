@@ -1,13 +1,18 @@
 use std::path::PathBuf;
 
 use crate::{
+    catalogue::Chapter,
     db::{model, MangaDatabase},
     local, user,
+    utils::{decode_cursor, encode_cursor},
     worker::Command as WorkerCommand,
 };
 
-use async_graphql::{Context, Object, Result, SimpleObject};
-use chrono::Utc;
+use async_graphql::{
+    connection::{query, Connection, Edge, EmptyFields},
+    Context, Object, Result, SimpleObject,
+};
+use chrono::{Local, Utc};
 use tanoshi_vm::prelude::ExtensionBus;
 use tokio::sync::mpsc::Sender;
 
@@ -44,6 +49,91 @@ impl DownloadRoot {
             .collect();
 
         Ok(queue)
+    }
+
+    async fn get_downloaded_chapters(
+        &self,
+        ctx: &Context<'_>,
+        after: Option<String>,
+        before: Option<String>,
+        first: Option<i32>,
+        last: Option<i32>,
+    ) -> Result<Connection<String, Chapter, EmptyFields, EmptyFields>> {
+        if !user::check_is_admin(ctx)? {
+            return Err("forbidden".into());
+        }
+        let db = ctx.data::<MangaDatabase>()?;
+        query(
+            after,
+            before,
+            first,
+            last,
+            |after, before, first, last| async move {
+                let (after_timestamp, after_id) = after
+                    .and_then(|cursor: String| decode_cursor(&cursor).ok())
+                    .unwrap_or((Local::now().naive_local().timestamp(), 1));
+                let (before_timestamp, before_id) = before
+                    .and_then(|cursor: String| decode_cursor(&cursor).ok())
+                    .unwrap_or((0, 0));
+
+                let edges = if let Some(first) = first {
+                    db.get_first_downloaded_chapters(
+                        after_timestamp,
+                        after_id,
+                        before_timestamp,
+                        before_id,
+                        first as i32,
+                    )
+                    .await
+                } else if let Some(last) = last {
+                    db.get_last_downloaded_chapters(
+                        after_timestamp,
+                        after_id,
+                        before_timestamp,
+                        before_id,
+                        last as i32,
+                    )
+                    .await
+                } else {
+                    db.get_downloaded_chapters(
+                        after_timestamp,
+                        after_id,
+                        before_timestamp,
+                        before_id,
+                    )
+                    .await
+                };
+                let edges: Vec<Chapter> = edges
+                    .unwrap_or_default()
+                    .into_iter()
+                    .map(|ch| ch.into())
+                    .collect();
+
+                let mut has_previous_page = false;
+                let mut has_next_page = false;
+                if !edges.is_empty() {
+                    if let Some(e) = edges.first() {
+                        has_previous_page = db
+                            .get_downloaded_chapter_has_before_page(e.date_added.timestamp(), e.id)
+                            .await;
+                    }
+                    if let Some(e) = edges.last() {
+                        has_next_page = db
+                            .get_downloaded_chapter_has_next_page(e.date_added.timestamp(), e.id)
+                            .await;
+                    }
+                }
+
+                let mut connection = Connection::new(has_previous_page, has_next_page);
+                connection.append(
+                    edges
+                        .into_iter()
+                        .map(|e| Edge::new(encode_cursor(e.uploaded.timestamp(), e.id), e)),
+                );
+                Ok(connection)
+            },
+        )
+        .await
     }
 }
 #[derive(Default)]

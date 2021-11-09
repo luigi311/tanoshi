@@ -1,6 +1,9 @@
-use crate::catalogue::Manga;
-use crate::db::MangaDatabase;
-use crate::user;
+use crate::{
+    catalogue::Manga,
+    db::MangaDatabase,
+    user,
+    utils::{decode_cursor, encode_cursor},
+};
 use async_graphql::connection::{query, Connection, Edge, EmptyFields};
 use async_graphql::{Context, Object, Result};
 use chrono::{Local, NaiveDateTime};
@@ -214,24 +217,6 @@ impl LibraryRoot {
         )
         .await
     }
-}
-
-fn decode_cursor(cursor: &str) -> std::result::Result<(i64, i64), base64::DecodeError> {
-    match base64::decode(cursor) {
-        Ok(res) => {
-            let cursor = String::from_utf8(res).unwrap();
-            let decoded = cursor
-                .split('#')
-                .map(|s| s.parse::<i64>().unwrap())
-                .collect::<Vec<i64>>();
-            Ok((decoded[0], decoded[1]))
-        }
-        Err(err) => Err(err),
-    }
-}
-
-fn encode_cursor(timestamp: i64, id: i64) -> String {
-    base64::encode(format!("{}#{}", timestamp, id))
 }
 
 #[derive(Default)]
