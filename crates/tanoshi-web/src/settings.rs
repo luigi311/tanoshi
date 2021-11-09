@@ -279,7 +279,7 @@ impl Settings {
                         match x {
                             SettingCategory::None => "More",
                             SettingCategory::Appearance => "Appearance",
-                            SettingCategory::General => "General",
+                            SettingCategory::Chapters => "Chapters",
                             SettingCategory::Reader => "Reader",
                             SettingCategory::Source(_) => "Sources",
                             SettingCategory::Users => "Users",
@@ -318,9 +318,9 @@ impl Settings {
                     .class("list-item")
                     .text("Appearance")
                 }),
-                link!(Route::Settings(SettingCategory::General).url(), {
+                link!(Route::Settings(SettingCategory::Chapters).url(), {
                     .class("list-item")
-                    .text("General")
+                    .text("Chapters")
                 }),
                 link!(Route::Settings(SettingCategory::Reader).url(), {
                     .class("list-item")
@@ -632,7 +632,7 @@ impl Settings {
                         ])
                     })),
                     SettingCategory::Appearance =>  Some(AppearanceSettings::render(settings.appearance_settings.clone())),
-                    SettingCategory::General => Some(ChapterSettings::render(settings.chapter_settings.clone())),
+                    SettingCategory::Chapters => Some(ChapterSettings::render(settings.chapter_settings.clone())),
                     SettingCategory::Reader => Some(ReaderSettings::render(settings.reader_settings.clone())),
                     SettingCategory::Source(source_id) => Some(Self::render_source_settings(settings.clone(), source_id)),
                     SettingCategory::Users => Some(Self::render_users_management(settings.clone())),

@@ -9,7 +9,7 @@ use web_sys::Url;
 pub enum SettingCategory {
     None,
     Appearance,
-    General,
+    Chapters,
     Reader,
     Source(i64),
     Users,
@@ -113,7 +113,7 @@ impl Route {
                     ["settings"] => Route::Settings(SettingCategory::None),
                     ["settings", cat] => match *cat {
                         "appearance" => Route::Settings(SettingCategory::Appearance),
-                        "general" => Route::Settings(SettingCategory::General),
+                        "chapters" => Route::Settings(SettingCategory::Chapters),
                         "reader" => Route::Settings(SettingCategory::Reader),
                         "sources" => Route::Settings(SettingCategory::Source(0)),
                         "users" => Route::Settings(SettingCategory::Users),
@@ -174,7 +174,7 @@ impl Route {
             Route::Histories => "/histories".to_string(),
             Route::Settings(SettingCategory::None) => "/settings".to_string(),
             Route::Settings(SettingCategory::Appearance) => "/settings/appearance".to_string(),
-            Route::Settings(SettingCategory::General) => "/settings/general".to_string(),
+            Route::Settings(SettingCategory::Chapters) => "/settings/chapters".to_string(),
             Route::Settings(SettingCategory::Reader) => "/settings/reader".to_string(),
             Route::Settings(SettingCategory::Source(source_id)) => {
                 if *source_id > 0 {
