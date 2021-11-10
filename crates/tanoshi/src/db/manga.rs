@@ -41,6 +41,37 @@ impl Db {
         })?)
     }
 
+    pub async fn get_manga_by_ids(&self, ids: &[i64]) -> Result<Vec<Manga>> {
+        let mut conn = self.pool.acquire().await?;
+        let query_str = format!(
+            r#"SELECT * FROM manga WHERE id IN ({})"#,
+            vec!["?"; ids.len()].join(",")
+        );
+        let mut query = sqlx::query(&query_str);
+        for id in ids {
+            query = query.bind(id);
+        }
+        let manga = query
+            .fetch_all(&mut conn)
+            .await?
+            .iter()
+            .map(|row| Manga {
+                id: row.get(0),
+                source_id: row.get(1),
+                title: row.get(2),
+                author: serde_json::from_str(row.get::<String, _>(3).as_str()).unwrap_or_default(),
+                genre: serde_json::from_str(row.get::<String, _>(4).as_str()).unwrap_or_default(),
+                status: row.get(5),
+                description: row.get(6),
+                path: row.get(7),
+                cover_url: row.get(8),
+                date_added: row.get(9),
+            })
+            .collect();
+
+        Ok(manga)
+    }
+
     pub async fn get_manga_by_source_path(&self, source_id: i64, path: &str) -> Result<Manga> {
         let mut conn = self.pool.acquire().await?;
         let stream = sqlx::query(r#"SELECT * FROM manga WHERE source_id = ? AND path = ?"#)

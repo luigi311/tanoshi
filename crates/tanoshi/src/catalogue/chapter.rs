@@ -80,6 +80,30 @@ impl Loader<ChapterId> for PrevChapterLoader {
     }
 }
 
+pub type MangaId = i64;
+
+pub struct MangaLoader {
+    pub mangadb: MangaDatabase,
+}
+
+#[async_trait::async_trait]
+impl Loader<MangaId> for MangaLoader {
+    type Value = Manga;
+
+    type Error = Arc<anyhow::Error>;
+
+    async fn load(&self, keys: &[ChapterId]) -> Result<HashMap<MangaId, Self::Value>, Self::Error> {
+        let res = self
+            .mangadb
+            .get_manga_by_ids(keys)
+            .await?
+            .into_iter()
+            .map(|m| (m.id, m.into()))
+            .collect();
+        Ok(res)
+    }
+}
+
 pub struct NextChapterLoader {
     pub mangadb: MangaDatabase,
 }
@@ -233,11 +257,11 @@ impl Chapter {
     }
 
     async fn manga(&self, ctx: &Context<'_>) -> Result<Manga> {
-        Ok(ctx
-            .data::<MangaDatabase>()?
-            .get_manga_by_id(self.manga_id)
+        let loader = ctx.data::<DataLoader<MangaLoader>>()?;
+        loader
+            .load_one(self.manga_id)
             .await?
-            .into())
+            .ok_or_else(|| "manga not found".into())
     }
 
     async fn pages(

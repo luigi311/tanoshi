@@ -138,7 +138,7 @@ impl Loader<UserUnreadChaptersId> for UserUnreadChaptersLoader {
 }
 
 /// A type represent manga details, normalized across source
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Manga {
     pub id: i64,
     pub source_id: i64,
