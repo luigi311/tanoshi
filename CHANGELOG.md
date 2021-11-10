@@ -9,13 +9,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Download chapters from external sources
-- Add details to local manga with `details.json` inside series folder
-- Opening first page will update history
+- Add details to local manga with `details.json` inside series folder. All values are optional
+  ```
+  {
+    "title": "An Interesting Manga",
+    "author: ["Author 1", "Author 2"],
+    "genre: ": ["Romance", "Action"],
+    "status": "Ongoing",
+    "description": "This manga is so interesting",
+    "cover_path": "relative/path/from/root/series/folder/to/thumbail.jpg",
+  }
+  ```
+- Automatically download new chapters on update
 
 ### Changes
-- Few ui changes
+- Few icon changes
 - Desktop layout
 - Performance improvement for library and manga details page
+- Opening first page will update history
+- Zoom button move to bottom right in vertical
+- Hide bottombar inside settings page
 
 ## [0.25.20]
 ### Added
