@@ -20,7 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     "cover_path": "relative/path/from/root/series/folder/to/thumbail.jpg",
   }
   ```
-- Automatically download new chapters on update
+- Automatically download new chapters on update. Enable with set `auto_download_chapters: true` on `config.yml`
 
 ### Changes
 - Few icon changes
