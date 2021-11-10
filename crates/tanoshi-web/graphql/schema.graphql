@@ -42,9 +42,12 @@ type ChapterEdge {
   cursor: String!
 }
 
-type DownloadQueueStatus {
+type DownloadQueueEntry {
+  sourceId: Int!
   sourceName: String!
+  mangaId: Int!
   mangaTitle: String!
+  chapterId: Int!
   chapterTitle: String!
   downloaded: Int!
   total: Int!
@@ -131,6 +134,7 @@ type MutationRoot {
   updateSource(sourceId: Int!): Int!
   downloadChapters(ids: [Int!]!): Int!
   removeDownloadedChapters(ids: [Int!]!): Int!
+  updateChapterPriority(id: Int!, priority: Int!): Boolean!
 }
 
 scalar NaiveDateTime
@@ -230,7 +234,7 @@ type QueryRoot {
     # pushover user key
     userKey: String!
   ): Boolean!
-  downloadQueue: [DownloadQueueStatus!]!
+  downloadQueue: [DownloadQueueEntry!]!
   getDownloadedChapters(
     after: String
     before: String

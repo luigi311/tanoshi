@@ -17,13 +17,16 @@ use tanoshi_vm::prelude::ExtensionBus;
 use tokio::sync::mpsc::Sender;
 
 #[derive(Debug, SimpleObject)]
-pub struct DownloadQueueStatus {
-    source_name: String,
-    manga_title: String,
-    chapter_title: String,
-    downloaded: i64,
-    total: i64,
-    priority: i64,
+pub struct DownloadQueueEntry {
+    pub source_id: i64,
+    pub source_name: String,
+    pub manga_id: i64,
+    pub manga_title: String,
+    pub chapter_id: i64,
+    pub chapter_title: String,
+    pub downloaded: i64,
+    pub total: i64,
+    pub priority: i64,
 }
 
 #[derive(Default)]
@@ -31,18 +34,21 @@ pub struct DownloadRoot;
 
 #[Object]
 impl DownloadRoot {
-    async fn download_queue(&self, ctx: &Context<'_>) -> Result<Vec<DownloadQueueStatus>> {
+    async fn download_queue(&self, ctx: &Context<'_>) -> Result<Vec<DownloadQueueEntry>> {
         if !user::check_is_admin(ctx)? {
             return Err("Forbidden".into());
         }
 
         let db = ctx.data::<MangaDatabase>()?;
-        let queue: Vec<model::DownloadQueueStatus> = db.get_download_queue().await?;
+        let queue: Vec<model::DownloadQueueEntry> = db.get_download_queue().await?;
         let queue = queue
             .iter()
-            .map(|queue| DownloadQueueStatus {
+            .map(|queue| DownloadQueueEntry {
+                source_id: queue.source_id,
                 source_name: queue.source_name.clone(),
+                manga_id: queue.manga_id,
                 manga_title: queue.manga_title.clone(),
+                chapter_id: queue.chapter_id,
                 chapter_title: queue.chapter_title.clone(),
                 downloaded: queue.downloaded,
                 total: queue.total,
@@ -151,6 +157,12 @@ impl DownloadMutationRoot {
         let db = ctx.data::<MangaDatabase>()?;
         let ext = ctx.data::<ExtensionBus>()?;
 
+        let mut priority = db
+            .get_download_queue_last_priority()
+            .await?
+            .map(|p| p + 1)
+            .unwrap_or(0);
+
         let mut len = 0_usize;
         for id in ids {
             let chapter = db.get_chapter_by_id(id).await?;
@@ -184,7 +196,7 @@ impl DownloadMutationRoot {
                     chapter_title: format!("{} - {}", chapter.number, chapter.title.clone()),
                     rank: rank as _,
                     url: page.clone(),
-                    priority: 0,
+                    priority,
                     date_added,
                 })
             }
@@ -194,7 +206,8 @@ impl DownloadMutationRoot {
                 .send(WorkerCommand::StartDownload)
                 .await?;
 
-            len += queue.len()
+            len += queue.len();
+            priority += 1;
         }
 
         Ok(len as _)

@@ -36,6 +36,7 @@ impl Default for ServerStatus {
 pub struct DownloadQueue {
     pub source_name: String,
     pub manga_title: String,
+    pub chapter_id: i64,
     pub chapter_title: String,
     pub downloaded: i64,
     pub total: i64,

@@ -1,13 +1,11 @@
 use std::collections::HashMap;
 
-use super::model::{
-    Chapter, DownloadQueue, DownloadQueueStatus, Manga, ReadProgress, UserMangaLibrary,
-};
+use super::model::{Chapter, DownloadQueue, DownloadQueueEntry, Manga, ReadProgress, UserMangaLibrary};
 use crate::library::{RecentChapter, RecentUpdate};
 use anyhow::{anyhow, Result};
 use chrono::NaiveDateTime;
 use sqlx::sqlite::{SqliteArguments, SqlitePool};
-use sqlx::{Arguments, Row};
+use sqlx::{Arguments, Connection, Executor, Row};
 use tokio_stream::StreamExt;
 
 #[derive(Debug, Clone)]
@@ -1661,7 +1659,7 @@ impl Db {
                     priority,
                     date_added 
                 FROM download_queue
-                ORDER BY priority DESC, date_added ASC, chapter_id ASC, rank ASC
+                ORDER BY priority ASC, date_added ASC, chapter_id ASC, rank ASC
                 LIMIT 1"#,
         )
         .fetch_optional(&mut conn)
@@ -1682,34 +1680,51 @@ impl Db {
         Ok(data)
     }
 
-    pub async fn get_download_queue(&self) -> Result<Vec<DownloadQueueStatus>> {
+    pub async fn get_download_queue_last_priority(&self) -> Result<Option<i64>> {
+        let mut conn = self.pool.acquire().await?;
+        let data = sqlx::query(
+            r#"SELECT MAX(priority) FROM download_queue"#,
+        )
+        .fetch_optional(&mut conn)
+        .await?
+        .and_then(|row| row.try_get(0).ok());
+        Ok(data)
+    }
+
+    pub async fn get_download_queue(&self) -> Result<Vec<DownloadQueueEntry>> {
         let mut conn = self.pool.acquire().await?;
         let data = sqlx::query(
         r#"SELECT
-                source_name,
-                manga_title, 
-                chapter_title, 
+                download_queue.source_id,
+                download_queue.source_name,
+                download_queue.manga_id,
+                download_queue.manga_title, 
+                download_queue.chapter_id,
+                download_queue.chapter_title, 
                 downloaded,
                 total,
-                priority
+                download_queue.priority
             FROM download_queue
             JOIN (
                 SELECT chapter_id, COUNT(page.local_url) AS downloaded, COUNT(page.remote_url) AS total
                 FROM page GROUP BY chapter_id
             ) p ON p.chapter_id = download_queue.chapter_id
             GROUP BY download_queue.chapter_id
-            ORDER BY download_queue.priority DESC, download_queue.date_added ASC, download_queue.chapter_id ASC"#,
+            ORDER BY download_queue.priority ASC, download_queue.date_added ASC, download_queue.chapter_id ASC"#,
         )
         .fetch_all(&mut conn)
         .await?
         .iter()
-        .map(|row| DownloadQueueStatus {
-            source_name: row.get(0),
-            manga_title: row.get(1),
-            chapter_title: row.get(2),
-            downloaded: row.get(3),
-            total: row.get(4),
-            priority: row.get(5),
+        .map(|row| DownloadQueueEntry {
+            source_id: row.get(0), 
+            source_name: row.get(1),
+            manga_id: row.get(2),
+            manga_title: row.get(3),
+            chapter_id: row.get(4),
+            chapter_title: row.get(5),
+            downloaded: row.get(6),
+            total: row.get(7),
+            priority: row.get(8),
         }).collect();
         Ok(data)
     }
@@ -1730,13 +1745,21 @@ impl Db {
         chapter_id: i64,
         priority: i64,
     ) -> Result<()> {
-        let mut conn = self.pool.acquire().await?;
-
+        let mut tx = self.pool.begin().await?;;
+        sqlx::query(r#"UPDATE download_queue SET priority = priority - 1 WHERE priority > (SELECT priority FROM download_queue WHERE chapter_id = ?)"#)
+            .bind(chapter_id)
+            .execute(&mut tx)
+            .await?;
+        sqlx::query(r#"UPDATE download_queue SET priority = priority + 1 WHERE priority >= ?"#)
+            .bind(priority)
+            .execute(&mut tx)
+            .await?;
         sqlx::query(r#"UPDATE download_queue SET priority = ? WHERE chapter_id = ?"#)
             .bind(priority)
             .bind(chapter_id)
-            .execute(&mut conn)
+            .execute(&mut tx)
             .await?;
+        tx.commit().await?;
 
         Ok(())
     }

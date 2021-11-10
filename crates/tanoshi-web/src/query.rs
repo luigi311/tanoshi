@@ -639,3 +639,20 @@ pub async fn fetch_downloaded_chapters(
     let data = post_graphql::<FetchDownloadedChapters>(var).await?;
     Ok(data.get_downloaded_chapters)
 }
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/schema.graphql",
+    query_path = "graphql/update_chapter_priority.graphql",
+    response_derives = "Debug"
+)]
+pub struct UpdateChapterPriority;
+
+pub async fn update_chapter_priority(chapter_id: i64, priority: i64) -> Result<(), Box<dyn Error>> {
+    let var = update_chapter_priority::Variables {
+        id: Some(chapter_id),
+        priority: Some(priority),
+    };
+    let _ = post_graphql::<UpdateChapterPriority>(var).await?;
+    Ok(())
+}
