@@ -5,7 +5,7 @@ use crate::library::{RecentChapter, RecentUpdate};
 use anyhow::{anyhow, Result};
 use chrono::NaiveDateTime;
 use sqlx::sqlite::{SqliteArguments, SqlitePool};
-use sqlx::{Arguments, Connection, Executor, Row};
+use sqlx::{Arguments, Row};
 use tokio_stream::StreamExt;
 
 #[derive(Debug, Clone)]
@@ -1745,7 +1745,7 @@ impl Db {
         chapter_id: i64,
         priority: i64,
     ) -> Result<()> {
-        let mut tx = self.pool.begin().await?;;
+        let mut tx = self.pool.begin().await?;
         sqlx::query(r#"UPDATE download_queue SET priority = priority - 1 WHERE priority > (SELECT priority FROM download_queue WHERE chapter_id = ?)"#)
             .bind(chapter_id)
             .execute(&mut tx)
