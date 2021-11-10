@@ -226,4 +226,21 @@ impl DownloadMutationRoot {
 
         Ok(len as _)
     }
+
+    async fn update_chapter_priority(
+        &self,
+        ctx: &Context<'_>,
+        id: i64,
+        priority: i64,
+    ) -> Result<bool> {
+        if !user::check_is_admin(ctx)? {
+            return Err("Forbidden".into());
+        }
+
+        ctx.data::<MangaDatabase>()?
+            .update_download_queue_priority(id, priority)
+            .await?;
+
+        Ok(true)
+    }
 }

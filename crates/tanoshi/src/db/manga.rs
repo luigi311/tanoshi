@@ -1697,7 +1697,8 @@ impl Db {
                 SELECT chapter_id, COUNT(page.local_url) AS downloaded, COUNT(page.remote_url) AS total
                 FROM page GROUP BY chapter_id
             ) p ON p.chapter_id = download_queue.chapter_id
-            GROUP BY download_queue.chapter_id"#,
+            GROUP BY download_queue.chapter_id
+            ORDER BY download_queue.priority DESC, download_queue.date_added ASC, download_queue.chapter_id ASC"#,
         )
         .fetch_all(&mut conn)
         .await?
@@ -1718,6 +1719,22 @@ impl Db {
 
         sqlx::query(r#"DELETE FROM download_queue WHERE id = ?"#)
             .bind(id)
+            .execute(&mut conn)
+            .await?;
+
+        Ok(())
+    }
+
+    pub async fn update_download_queue_priority(
+        &self,
+        chapter_id: i64,
+        priority: i64,
+    ) -> Result<()> {
+        let mut conn = self.pool.acquire().await?;
+
+        sqlx::query(r#"UPDATE download_queue SET priority = ? WHERE chapter_id = ?"#)
+            .bind(priority)
+            .bind(chapter_id)
             .execute(&mut conn)
             .await?;
 
