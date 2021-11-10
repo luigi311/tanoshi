@@ -50,12 +50,36 @@ impl DownloadWorker {
                     continue;
                 };
 
+                let source_name = if cfg!(windows) {
+                    queue
+                        .source_name
+                        .replace(&['\\', '/', ':', '*', '?', '\"', '<', '>', '|'][..], "")
+                } else {
+                    queue.source_name
+                };
+
+                let manga_title = if cfg!(windows) {
+                    queue
+                        .manga_title
+                        .replace(&['\\', '/', ':', '*', '?', '\"', '<', '>', '|'][..], "")
+                } else {
+                    queue.manga_title
+                };
+
+                let chapter_title = if cfg!(windows) {
+                    queue
+                        .chapter_title
+                        .replace(&['\\', '/', ':', '*', '?', '\"', '<', '>', '|'][..], "")
+                } else {
+                    queue.chapter_title
+                };
+
                 let path = self
                     .dir
-                    .join(&queue.source_name)
-                    .join(&queue.manga_title)
-                    .join(&queue.chapter_title)
-                    .join(&filename);
+                    .join(source_name)
+                    .join(manga_title)
+                    .join(chapter_title)
+                    .join(filename);
 
                 if path.exists() {
                     info!("{} downloaded. continue...", path.display());
@@ -70,7 +94,7 @@ impl DownloadWorker {
                     continue;
                 }
 
-                tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
+                tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
 
                 let res = if let Ok(res) = self.client.get(url.clone()).send().await {
                     res
@@ -86,7 +110,7 @@ impl DownloadWorker {
 
                 if let Some(parent) = path.parent() {
                     if let Err(e) = tokio::fs::create_dir_all(parent).await {
-                        error!("error create parent directory, {}", e);
+                        error!("error create parent directory {}, {}", parent.display(), e);
                     }
                 } else {
                     continue;
