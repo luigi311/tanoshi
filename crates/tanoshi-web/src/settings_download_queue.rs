@@ -28,7 +28,7 @@ impl SettingsDownloads {
         self.loader.load({
             let settings = self.clone();
             async move {
-                match query::download_queue().await {
+                match query::fetch_download_queue().await {
                     Ok(data) => {
                         let queue = data
                             .iter()
@@ -38,6 +38,7 @@ impl SettingsDownloads {
                                 chapter_title: queue.chapter_title.clone(),
                                 downloaded: queue.downloaded,
                                 total: queue.total,
+                                priority: queue.priority,
                             })
                             .collect();
                         settings.queue.lock_mut().replace_cloned(queue);

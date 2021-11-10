@@ -606,16 +606,18 @@ pub async fn remove_downloaded_chapters(chapter_ids: &[i64]) -> Result<(), Box<d
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "graphql/schema.graphql",
-    query_path = "graphql/download_queue.graphql",
+    query_path = "graphql/fetch_download_queue.graphql",
     response_derives = "Debug"
 )]
-pub struct DownloadQueue;
+pub struct FetchDownloadQueue;
 
-pub async fn download_queue(
-) -> Result<Vec<download_queue::DownloadQueueDownloadQueue>, Box<dyn Error>> {
-    let var = download_queue::Variables {};
+pub async fn fetch_download_queue(
+) -> Result<Vec<fetch_download_queue::FetchDownloadQueueDownloadQueue>, Box<dyn Error>> {
+    let var = fetch_download_queue::Variables {};
 
-    Ok(post_graphql::<DownloadQueue>(var).await?.download_queue)
+    Ok(post_graphql::<FetchDownloadQueue>(var)
+        .await?
+        .download_queue)
 }
 
 #[derive(GraphQLQuery)]

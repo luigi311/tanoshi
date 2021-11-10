@@ -23,6 +23,7 @@ pub struct DownloadQueueStatus {
     chapter_title: String,
     downloaded: i64,
     total: i64,
+    priority: i64,
 }
 
 #[derive(Default)]
@@ -45,6 +46,7 @@ impl DownloadRoot {
                 chapter_title: queue.chapter_title.clone(),
                 downloaded: queue.downloaded,
                 total: queue.total,
+                priority: queue.priority,
             })
             .collect();
 
@@ -182,6 +184,7 @@ impl DownloadMutationRoot {
                     chapter_title: chapter.title.clone(),
                     rank: rank as _,
                     url: page.clone(),
+                    priority: 0,
                     date_added,
                 })
             }

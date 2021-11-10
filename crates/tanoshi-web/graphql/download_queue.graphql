@@ -1,9 +1,0 @@
-query DownloadQueue {
-  downloadQueue {
-    sourceName,
-    mangaTitle,
-    chapterTitle,
-    downloaded,
-    total
-  }
-}

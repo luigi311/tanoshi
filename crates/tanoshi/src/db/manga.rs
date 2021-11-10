@@ -1607,7 +1607,7 @@ impl Db {
         }
 
         let mut values = vec![];
-        values.resize(items.len(), "(?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        values.resize(items.len(), "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
         let query_str = format!(
             r#"INSERT OR IGNORE INTO download_queue(
@@ -1619,6 +1619,7 @@ impl Db {
                 chapter_title,
                 rank,
                 url,
+                priority,
                 date_added 
         ) VALUES {}"#,
             values.join(",")
@@ -1635,6 +1636,7 @@ impl Db {
                 .bind(&item.chapter_title)
                 .bind(item.rank)
                 .bind(&item.url)
+                .bind(&item.priority)
                 .bind(item.date_added.timestamp())
         }
 
@@ -1656,9 +1658,10 @@ impl Db {
                     chapter_title,
                     rank,
                     url,
+                    priority,
                     date_added 
                 FROM download_queue
-                ORDER BY date_added, source_name, manga_title, chapter_title, rank
+                ORDER BY priority DESC, date_added ASC, chapter_id ASC, rank ASC
                 LIMIT 1"#,
         )
         .fetch_optional(&mut conn)
@@ -1673,7 +1676,8 @@ impl Db {
             chapter_title: row.get(6),
             rank: row.get(7),
             url: row.get(8),
-            date_added: row.get(9),
+            priority: row.get(9),
+            date_added: row.get(10),
         });
         Ok(data)
     }
@@ -1686,10 +1690,11 @@ impl Db {
                 manga_title, 
                 chapter_title, 
                 downloaded,
-                total
+                total,
+                priority
             FROM download_queue
             JOIN (
-                SELECT chapter_id, COUNT(page.local_url) AS downloaded, COUNT(page.remote_url) AS total 
+                SELECT chapter_id, COUNT(page.local_url) AS downloaded, COUNT(page.remote_url) AS total
                 FROM page GROUP BY chapter_id
             ) p ON p.chapter_id = download_queue.chapter_id
             GROUP BY download_queue.chapter_id"#,
@@ -1703,6 +1708,7 @@ impl Db {
             chapter_title: row.get(2),
             downloaded: row.get(3),
             total: row.get(4),
+            priority: row.get(5),
         }).collect();
         Ok(data)
     }

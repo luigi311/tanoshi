@@ -128,6 +128,7 @@ impl UpdatesWorker {
                 chapter_title: chapter.title.clone(),
                 rank: rank as _,
                 url: page.clone(),
+                priority: 0,
                 date_added,
             })
         }

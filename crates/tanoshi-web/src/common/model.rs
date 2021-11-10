@@ -39,4 +39,5 @@ pub struct DownloadQueue {
     pub chapter_title: String,
     pub downloaded: i64,
     pub total: i64,
+    pub priority: i64,
 }

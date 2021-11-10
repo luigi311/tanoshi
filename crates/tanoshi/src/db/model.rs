@@ -113,6 +113,7 @@ pub struct DownloadQueue {
     pub chapter_title: String,
     pub rank: i64,
     pub url: String,
+    pub priority: i64,
     pub date_added: NaiveDateTime,
 }
 
@@ -123,4 +124,5 @@ pub struct DownloadQueueStatus {
     pub chapter_title: String,
     pub downloaded: i64,
     pub total: i64,
+    pub priority: i64,
 }

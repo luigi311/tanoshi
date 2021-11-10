@@ -1,0 +1,10 @@
+query FetchDownloadQueue {
+  downloadQueue {
+    sourceName
+    mangaTitle
+    chapterTitle
+    downloaded
+    total
+    priority
+  }
+}

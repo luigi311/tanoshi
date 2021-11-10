@@ -48,6 +48,7 @@ type DownloadQueueStatus {
   chapterTitle: String!
   downloaded: Int!
   total: Int!
+  priority: Int!
 }
 
 type Filters {
