@@ -73,7 +73,7 @@ impl SettingsDownloads {
         html!("div", {
             .after_inserted(clone!(settings => move |_| {
                 settings.interval.set(Some(Interval::new(1_000, clone!(settings => move || {
-                    // settings.fetch_download_queue();
+                    settings.fetch_download_queue();
                 }))));
             }))
             .after_removed(clone!(settings => move |_| {
