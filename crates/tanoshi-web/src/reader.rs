@@ -1003,6 +1003,8 @@ impl Reader {
             .future(reader.current_page.signal().for_each(clone!(reader => move |page| {
                 Self::update_page_read(reader.clone(), page);
 
+                reader.is_bar_visible.set_neq(false);
+
                 if page == 0 {
                     reader.prev_page.set(None);
                 } else if page + 1 == reader.pages_len.get() {
