@@ -96,8 +96,9 @@ impl SettingsDownloads {
                                     .style("align-items", "center")
                                     .children(&mut [
                                         html!("button", {
-                                            .attribute("id", "deselect-all")
-                                            .style("margin", "0.25rem")
+                                            .attribute("id", "move-up-btn")
+                                            .style("margin-top", "0.25rem")
+                                            .style("margin-bottom", "0.25rem")
                                             .children(&mut [
                                                 svg!("svg", {
                                                     .attribute("xmlns", "http://www.w3.org/2000/svg")
@@ -120,7 +121,9 @@ impl SettingsDownloads {
                                             }))
                                         }),
                                         html!("button", {
-                                            .attribute("id", "deselect-all")
+                                            .attribute("id", "move-down-btn")
+                                            .style("margin-top", "0.25rem")
+                                            .style("margin-bottom", "0.25rem")
                                             .style("margin", "0.25rem")
                                             .children(&mut [
                                                 svg!("svg", {
