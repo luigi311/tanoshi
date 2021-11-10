@@ -181,7 +181,7 @@ impl DownloadMutationRoot {
                     manga_id: manga.id,
                     manga_title: manga.title.clone(),
                     chapter_id: chapter.id,
-                    chapter_title: chapter.title.clone(),
+                    chapter_title: format!("{} - {}", chapter.number, chapter.title.clone()),
                     rank: rank as _,
                     url: page.clone(),
                     priority: 0,
