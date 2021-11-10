@@ -540,7 +540,7 @@ impl Manga {
                             ])
                         }),
                         html!("span", {
-                            .text("Favorite")
+                            .text_signal(manga.is_favorite.signal().map(|x| if x { "Unfavorite" } else { "Favorite" }))
                         })
                     ])
                     .event(clone!(manga => move |_: events::Click| {
