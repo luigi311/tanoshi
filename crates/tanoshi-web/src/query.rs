@@ -617,3 +617,23 @@ pub async fn download_queue(
 
     Ok(post_graphql::<DownloadQueue>(var).await?.download_queue)
 }
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/schema.graphql",
+    query_path = "graphql/fetch_downloaded_chapters.graphql",
+    response_derives = "Debug"
+)]
+pub struct FetchDownloadedChapters;
+
+pub async fn fetch_downloaded_chapters(
+    cursor: Option<String>,
+) -> Result<fetch_downloaded_chapters::FetchDownloadedChaptersGetDownloadedChapters, Box<dyn Error>>
+{
+    let var = fetch_downloaded_chapters::Variables {
+        first: Some(20),
+        cursor,
+    };
+    let data = post_graphql::<FetchDownloadedChapters>(var).await?;
+    Ok(data.get_downloaded_chapters)
+}

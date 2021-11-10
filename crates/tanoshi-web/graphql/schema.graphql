@@ -25,6 +25,23 @@ type Chapter {
   downloaded: Boolean!
 }
 
+type ChapterConnection {
+  # Information to aid in pagination.
+  pageInfo: PageInfo!
+
+  # A list of edges.
+  edges: [ChapterEdge]
+}
+
+# An edge in a connection.
+type ChapterEdge {
+  # The item at the end of the edge
+  node: Chapter!
+
+  # A cursor for use in pagination
+  cursor: String!
+}
+
 type DownloadQueueStatus {
   sourceName: String!
   mangaTitle: String!
@@ -213,6 +230,12 @@ type QueryRoot {
     userKey: String!
   ): Boolean!
   downloadQueue: [DownloadQueueStatus!]!
+  getDownloadedChapters(
+    after: String
+    before: String
+    first: Int
+    last: Int
+  ): ChapterConnection!
 }
 
 type ReadProgress {

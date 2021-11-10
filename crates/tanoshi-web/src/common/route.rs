@@ -15,6 +15,7 @@ pub enum SettingCategory {
     Users,
     CreateUser,
     User,
+    ManageDownloads,
     DownloadQueue,
 }
 
@@ -118,7 +119,8 @@ impl Route {
                         "sources" => Route::Settings(SettingCategory::Source(0)),
                         "users" => Route::Settings(SettingCategory::Users),
                         "user" => Route::Settings(SettingCategory::User),
-                        "downloads" => Route::Settings(SettingCategory::DownloadQueue),
+                        "downloads" => Route::Settings(SettingCategory::ManageDownloads),
+                        "downloads-queue" => Route::Settings(SettingCategory::DownloadQueue),
                         _ => Route::NotFound,
                     },
                     ["settings", "users", "create"] => Route::Settings(SettingCategory::CreateUser),
@@ -186,7 +188,10 @@ impl Route {
             Route::Settings(SettingCategory::Users) => "/settings/users".to_string(),
             Route::Settings(SettingCategory::CreateUser) => "/settings/users/create".to_string(),
             Route::Settings(SettingCategory::User) => "/settings/user".to_string(),
-            Route::Settings(SettingCategory::DownloadQueue) => "/settings/downloads".to_string(),
+            Route::Settings(SettingCategory::ManageDownloads) => "/settings/downloads".to_string(),
+            Route::Settings(SettingCategory::DownloadQueue) => {
+                "/settings/downloads-queue".to_string()
+            }
             Route::NotFound => "/notfound".to_string(),
         }
     }

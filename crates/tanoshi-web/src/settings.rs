@@ -1,4 +1,4 @@
-use crate::{common::{AppearanceSettings, ChapterSettings, Login, Profile, ReaderSettings, Route, SettingCategory, Source, Spinner, User, events, snackbar}, query, settings_downloads::SettingsDownloads, utils::{AsyncLoader, window}};
+use crate::{common::{AppearanceSettings, ChapterSettings, Login, Profile, ReaderSettings, Route, SettingCategory, Source, Spinner, User, events, snackbar}, query, settings_download_queue::SettingsDownloads, settings_manage_downloads::SettingsManageDownloads, utils::{AsyncLoader, window}};
 use dominator::svg;
 use dominator::{clone, html, link, routing, Dom};
 use futures_signals::{signal::{self, Mutable, SignalExt}, signal_vec::{MutableSignalVec, MutableVec}, signal_vec::SignalVecExt};
@@ -285,7 +285,8 @@ impl Settings {
                             SettingCategory::Users => "Users",
                             SettingCategory::CreateUser => "Create User",
                             SettingCategory::User => "User",
-                            SettingCategory::DownloadQueue => "Downloads"
+                            SettingCategory::ManageDownloads => "Manage Downloads",
+                            SettingCategory::DownloadQueue => "Downloads Queue"
                         }
                     ))
                 }),
@@ -351,6 +352,20 @@ impl Settings {
     pub fn render_misc(settings: Rc<Self>) -> Dom {
         html!("ul", {
             .class(["list", "group"])
+            .child_signal(settings.me.signal_cloned().map(|me| {
+                if let Some(me) = me {
+                    if me.is_admin {
+                        Some(link!(Route::Settings(SettingCategory::ManageDownloads).url(), {
+                            .class("list-item")
+                            .text("Manage Downloads")
+                        }))
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            }))
             .child_signal(settings.me.signal_cloned().map(|me| {
                 if let Some(me) = me {
                     if me.is_admin {
@@ -638,6 +653,7 @@ impl Settings {
                     SettingCategory::Users => Some(Self::render_users_management(settings.clone())),
                     SettingCategory::User => Some(Profile::render(Profile::new())),
                     SettingCategory::CreateUser => Some(Login::render(Login::new())),
+                    SettingCategory::ManageDownloads => Some(SettingsManageDownloads::render(SettingsManageDownloads::new())),
                     SettingCategory::DownloadQueue => Some(SettingsDownloads::render(SettingsDownloads::new())),
                 }
             }))            

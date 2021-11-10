@@ -13,7 +13,8 @@ mod manga;
 mod query;
 mod reader;
 mod settings;
-mod settings_downloads;
+mod settings_download_queue;
+mod settings_manage_downloads;
 mod updates;
 mod utils;
 
