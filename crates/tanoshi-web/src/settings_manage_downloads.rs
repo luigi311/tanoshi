@@ -1,5 +1,5 @@
 use crate::{
-    common::{events, snackbar, DownloadQueue},
+    common::{events, snackbar, Spinner},
     query,
     utils::AsyncLoader,
 };
@@ -27,6 +27,7 @@ pub struct SettingsManageDownloads {
     entries: MutableVec<Entry>,
     is_entries_empty: Mutable<bool>,
     loader: AsyncLoader,
+    spinner: Rc<Spinner>,
 }
 
 impl SettingsManageDownloads {
@@ -35,10 +36,12 @@ impl SettingsManageDownloads {
             entries: MutableVec::new(),
             is_entries_empty: Mutable::new(true),
             loader: AsyncLoader::new(),
+            spinner: Spinner::new(),
         })
     }
 
     fn fetch_downloaded_chapter(self: &Rc<Self>) {
+        self.spinner.set_active(true);
         self.loader.load({
             let settings = self.clone();
             async move {
@@ -67,11 +70,14 @@ impl SettingsManageDownloads {
                         snackbar::show(format!("{}", err));
                     }
                 }
+
+                settings.spinner.set_active(false);
             }
         });
     }
 
     fn remove_download_chapters(settings: Rc<Self>, ids: Vec<i64>) {
+        settings.spinner.set_active(true);
         settings.loader.load(clone!(settings => async move {
             match query::remove_downloaded_chapters(&ids).await {
                 Ok(_) => {},
@@ -79,6 +85,8 @@ impl SettingsManageDownloads {
                     snackbar::show(format!("{}", err));
                 }
             }
+
+            settings.spinner.set_active(false);
 
             settings.entries.lock_mut().clear();
             settings.fetch_downloaded_chapter();
@@ -253,6 +261,26 @@ impl SettingsManageDownloads {
                             })
                         ])
                     }))))
+                }),
+                html!("div", {
+                    .class("load-more-btn")
+                    .child_signal(settings.spinner.signal().map(clone!(settings => move |x| if x {
+                        Some(Spinner::render(&settings.spinner))
+                    } else {
+                        Some(html!("button", {
+                            .class_signal("disabled", settings.is_entries_empty.signal())
+                            .text_signal(settings.is_entries_empty.signal().map(|x|
+                                if x {
+                                    "No downloaded chapter(s)"
+                                } else {
+                                    "Load More"
+                                }
+                            ))
+                            .event(clone!(settings => move |_: events::Click| {
+                                settings.fetch_downloaded_chapter();
+                            }))
+                        }))
+                    })))
                 })
             ])
         })

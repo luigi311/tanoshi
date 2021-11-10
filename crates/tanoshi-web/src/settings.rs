@@ -618,7 +618,7 @@ impl Settings {
         }
 
         html!("div", {
-            .class("main")
+            .class_signal("main", self.page.signal().map(|x| matches!(x, SettingCategory::None)))
             .style("padding", "0.5rem")
             .children(&mut [
                 Self::render_topbar(self.clone()),

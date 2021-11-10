@@ -7,7 +7,7 @@ use wasm_bindgen::UnwrapThrowExt;
 
 use crate::catalogue::Catalogue;
 use crate::catalogue_list::CatalogueList;
-use crate::common::{snackbar, ServerStatus};
+use crate::common::{snackbar, ServerStatus, SettingCategory};
 use crate::library::Library;
 use crate::login::Login;
 use crate::manga::Manga;
@@ -129,7 +129,8 @@ impl App {
             })))
             .child_signal(Route::signal().map(|x| {
                 match x {
-                    Route::Login | Route::Manga(_) | Route::MangaBySourcePath(_, _) | Route::Chapter(_, _) => None,
+                    Route::Login | Route::Manga(_) | Route::MangaBySourcePath(_, _) | Route::Chapter(_, _)  => None,
+                    Route::Settings(category) if !matches!(category, SettingCategory::None) => None,
                     _ => Some(html!("div", {
                         .children(&mut [
                             html!("div", {
