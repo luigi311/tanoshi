@@ -42,6 +42,7 @@ struct SourceManga {
 #[serde(default)]
 pub struct Catalogue {
     source_id: i64,
+    source_name: Mutable<String>,
     keyword: Mutable<Option<String>>,
     page: Mutable<i64>,
     sort_by: Mutable<SortByParam>,
@@ -58,6 +59,7 @@ impl Default for Catalogue {
     fn default() -> Self {
         Self {
             source_id: 0,
+            source_name: Mutable::new("Catalogue".to_string()),
             keyword: Mutable::new(None),
             page: Mutable::new(1),
             sort_by: Mutable::new(SortByParam::VIEWS),
@@ -86,6 +88,19 @@ impl Catalogue {
 
     pub fn serialize_into_json(&self) -> String {
         serde_json::to_string(self).unwrap_throw()
+    }
+
+    pub fn fetch_source_detail(catalogue: Rc<Self>) {
+        AsyncLoader::new().load(clone!(catalogue => async move {
+            match query::fetch_source(catalogue.source_id).await {
+                Ok(source) => {
+                    catalogue.source_name.set(source.name.clone());
+                }
+                Err(e) => {
+                    snackbar::show(format!("Fetch source detail failed: {}", e))
+                }
+            }
+        }));
     }
 
     pub fn fetch_mangas(catalogue: Rc<Self>) {
@@ -199,7 +214,7 @@ impl Catalogue {
                     }))
                 } else {
                     Some(html!("span", {
-                        .text("Catalogue")
+                        .text_signal(catalogue.source_name.signal_cloned())
                     }))
                 }
             })))
@@ -235,27 +250,34 @@ impl Catalogue {
                         ])
                     }))
                 } else {
-                    Some(html!("button", {
-                        .attribute("id", "search")
-                        .event(clone!(catalogue => move |_: events::Click| {
-                            catalogue.is_search.set_neq(true);
-                        }))
+                    Some(html!("div", {
+                        .style("min-width", "5rem")
+                        .style("display", "flex")
+                        .style("justify-content", "flex-end")
                         .children(&mut [
-                            svg!("svg", {
-                                .attribute("xmlns", "http://www.w3.org/2000/svg")
-                                .attribute("fill", "none")
-                                .attribute("viewBox", "0 0 24 24")
-                                .attribute("stroke", "currentColor")
-                                .class("icon")
+                            html!("button", {
+                                .attribute("id", "search")
+                                .event(clone!(catalogue => move |_: events::Click| {
+                                    catalogue.is_search.set_neq(true);
+                                }))
                                 .children(&mut [
-                                    svg!("path", {
-                                        .attribute("stroke-linecap", "round")
-                                        .attribute("stroke-linejoin", "round")
-                                        .attribute("stroke-width", "2")
-                                        .attribute("d", "M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z")
-                                    })
+                                    svg!("svg", {
+                                        .attribute("xmlns", "http://www.w3.org/2000/svg")
+                                        .attribute("fill", "none")
+                                        .attribute("viewBox", "0 0 24 24")
+                                        .attribute("stroke", "currentColor")
+                                        .class("icon")
+                                        .children(&mut [
+                                            svg!("path", {
+                                                .attribute("stroke-linecap", "round")
+                                                .attribute("stroke-linejoin", "round")
+                                                .attribute("stroke-width", "2")
+                                                .attribute("d", "M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z")
+                                            })
+                                        ])
+                                    }),
                                 ])
-                            }),
+                            })
                         ])
                     }))
                 }
@@ -295,6 +317,7 @@ impl Catalogue {
         sort_by: SortByParam,
         sort_order: SortOrderParam,
     ) -> Dom {
+        Self::fetch_source_detail(self.clone());
         if self.cover_list.lock_ref().is_empty() {
             Self::fetch_mangas(self.clone());
         }
