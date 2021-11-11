@@ -60,7 +60,15 @@ impl Local {
 
     // find first image from an archvie
     fn find_cover_from_archive(path: &Path) -> String {
-        libarchive_rs::list_archive_files(path.display().to_string().as_str())
+        let source = match std::fs::File::open(path) {
+            Ok(file) => file,
+            Err(e) => {
+                error!("error open {}, reason {}", path.display(), e);
+                return Self::default_cover_url();
+            }
+        };
+
+        compress_tools::list_archive_files(source)
             .ok()
             .and_then(|files| files.first().cloned())
             .map(|page| path.join(page).display().to_string())
@@ -79,7 +87,14 @@ impl Local {
 
     // find details from an archvie
     fn find_details_from_archive(path: &Path) -> Option<Vec<u8>> {
-        libarchive_rs::extract_archive_file(&path.display().to_string(), "details.json").ok()
+        if let Ok(source) = std::fs::File::open(path) {
+            let mut data = vec![];
+            if compress_tools::uncompress_archive_file(source, &mut data, "details.json").is_ok() {
+                return Some(data);
+            }
+        }
+
+        None
     }
 
     // find first image from a directory
@@ -151,11 +166,9 @@ impl Local {
         }
     }
 
-    fn get_pages_from_archive(
-        path: &Path,
-        filename: String,
-    ) -> Result<Vec<String>, Box<dyn std::error::Error>> {
-        match libarchive_rs::list_archive_files(&filename) {
+    fn get_pages_from_archive(path: &Path, filename: String) -> Result<Vec<String>, anyhow::Error> {
+        let source = std::fs::File::open(&filename)?;
+        match compress_tools::list_archive_files(source) {
             Ok(files) => {
                 let pages = files
                     .into_iter()
@@ -163,7 +176,7 @@ impl Local {
                     .collect();
                 Ok(pages)
             }
-            Err(e) => Err(e),
+            Err(e) => Err(anyhow::anyhow!("{}", e)),
         }
     }
 

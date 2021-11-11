@@ -84,23 +84,21 @@ impl Proxy {
             let content_type = mime_guess::from_path(&path)
                 .first_or_octet_stream()
                 .to_string();
-            let res = tokio::task::spawn_blocking({
-                let filename = filename.clone();
-                let path = path.clone();
-                move || {
-                    libarchive_rs::extract_archive_file(&filename, &path)
-                        .map_err(|err| format!("{}", err))
-                }
-            })
-            .await;
-            match res {
-                Ok(Ok(buf)) => Ok(http::Response::builder()
-                    .header("Content-Type", content_type)
-                    .body(Body::from(buf))
-                    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?),
-                Ok(Err(_)) => Err(StatusCode::BAD_REQUEST),
-                Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
-            }
+            let filename = filename.clone();
+            let path = path.clone();
+            let source = tokio::fs::File::open(filename)
+                .await
+                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+            let mut buf = vec![];
+            compress_tools::tokio_support::uncompress_archive_file(source, &mut buf, &path)
+                .await
+                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+            Ok(http::Response::builder()
+                .header("Content-Type", content_type)
+                .body(Body::from(buf))
+                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?)
         }
     }
 
