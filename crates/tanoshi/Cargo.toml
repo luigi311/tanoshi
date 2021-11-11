@@ -55,9 +55,9 @@ rust-argon2 = "^0.8.3"
 ron = "^0.6.5"
 fancy-regex = "0.7"
 compress-tools = { git = "https://github.com/faldez/compress-tools-rs", features = [
-    "tokio_support",
     "static",
 ] }
+zip = { version = "0.5", default-features = false }
 teloxide = { version = "^0.5.2", features = ["auto-send", "macros"] }
 html-escape = "^0.2.9"
 phf = { version = "^0.10", features = ["macros"] }

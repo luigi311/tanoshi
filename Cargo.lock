@@ -515,17 +515,9 @@ name = "compress-tools"
 version = "0.12.2"
 source = "git+https://github.com/faldez/compress-tools-rs#42898715c22265b850fac1e3b6c6f6f7683ce391"
 dependencies = [
- "async-trait",
  "derive_more",
- "futures-channel",
- "futures-core",
- "futures-executor",
- "futures-io",
- "futures-util",
  "libc",
  "pkg-config",
- "tokio",
- "tokio-util",
  "vcpkg",
 ]
 
@@ -3163,6 +3155,7 @@ dependencies = [
  "teloxide",
  "tokio",
  "tokio-stream",
+ "zip",
 ]
 
 [[package]]
@@ -4279,4 +4272,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "56c1936c4cc7a1c9ab21a1ebb602eb942ba868cbd44a99cb7cdc5892335e1c85"
 dependencies = [
  "linked-hash-map",
+]
+
+[[package]]
+name = "zip"
+version = "0.5.13"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "93ab48844d61251bb3835145c521d88aa4031d7139e8485990f60ca911fa0815"
+dependencies = [
+ "byteorder",
+ "crc32fast",
+ "thiserror",
 ]

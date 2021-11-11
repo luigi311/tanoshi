@@ -229,8 +229,14 @@ impl DownloadMutationRoot {
                 }
                 let page = PathBuf::new().join(page);
 
-                info!("removing {}...", page.display());
-                tokio::fs::remove_file(&page).await?;
+                if let Some(parent) = page.parent() {
+                    if parent.exists() {
+                        info!("removing {}...", parent.display());
+                        tokio::fs::remove_file(parent).await?;
+                    }
+                }
+
+                info!("removing {} from db...", page.display());
                 db.delete_page_local_url(&page.display().to_string())
                     .await?;
                 len += 1;

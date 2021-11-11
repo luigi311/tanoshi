@@ -1,4 +1,7 @@
-use std::path::{Path, PathBuf};
+use std::{
+    io::Write,
+    path::{Path, PathBuf},
+};
 
 use crate::db::MangaDatabase;
 use reqwest::Url;
@@ -74,25 +77,29 @@ impl DownloadWorker {
                     queue.chapter_title
                 };
 
-                let path = self
-                    .dir
-                    .join(source_name)
-                    .join(manga_title)
-                    .join(chapter_title)
-                    .join(filename);
+                let manga_path = self.dir.join(&source_name).join(&manga_title);
 
-                if path.exists() {
-                    info!("{} downloaded. continue...", path.display());
-                    if self
-                        .db
-                        .delete_single_download_queue_by_id(queue.id)
-                        .await
-                        .is_err()
-                    {
-                        continue;
+                let archive_path = manga_path.join(format!("{}.cbz", chapter_title));
+
+                let mut zip = if let Ok(file) = std::fs::OpenOptions::new()
+                    .read(true)
+                    .write(true)
+                    .open(&archive_path)
+                {
+                    match zip::ZipWriter::new_append(file) {
+                        Ok(zip) => zip,
+                        Err(e) => {
+                            error!("failed to creaopente archive file, reason {}", e);
+                            continue;
+                        }
                     }
+                } else if let Ok(file) = std::fs::create_dir_all(manga_path)
+                    .and_then(|_| std::fs::File::create(&archive_path))
+                {
+                    zip::ZipWriter::new(file)
+                } else {
                     continue;
-                }
+                };
 
                 tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
 
@@ -108,20 +115,20 @@ impl DownloadWorker {
                     continue;
                 };
 
-                if let Some(parent) = path.parent() {
-                    if let Err(e) = tokio::fs::create_dir_all(parent).await {
-                        error!("error create parent directory {}, {}", parent.display(), e);
-                    }
-                } else {
+                if let Err(e) = zip.start_file(&filename, Default::default()) {
+                    error!("failed to create file inside archive, reason {}", e);
                     continue;
                 }
 
-                match tokio::fs::write(&path, &contents).await {
+                match zip.write_all(contents.to_vec().as_slice()) {
                     Ok(_) => {
-                        info!("downloaded to {}", path.display());
+                        info!("downloaded to {}", archive_path.display());
                         if self
                             .db
-                            .update_page_by_url(&queue.url, path.display().to_string().as_str())
+                            .update_page_by_url(
+                                &queue.url,
+                                archive_path.join(&filename).display().to_string().as_str(),
+                            )
                             .await
                             .is_err()
                         {
@@ -134,6 +141,10 @@ impl DownloadWorker {
                             .is_err()
                         {
                             continue;
+                        }
+
+                        if let Err(e) = zip.finish() {
+                            error!("error finishing zip, reason {}", e);
                         }
                     }
                     Err(e) => {
