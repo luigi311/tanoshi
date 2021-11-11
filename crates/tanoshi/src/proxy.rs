@@ -72,8 +72,7 @@ impl Proxy {
             let filename = file
                 .parent()
                 .ok_or(StatusCode::INTERNAL_SERVER_ERROR)?
-                .to_str()
-                .ok_or(StatusCode::INTERNAL_SERVER_ERROR)?
+                .display()
                 .to_string();
             let path = file
                 .file_name()
@@ -86,14 +85,19 @@ impl Proxy {
                 .to_string();
             let filename = filename.clone();
             let path = path.clone();
-            let source = tokio::fs::File::open(filename)
-                .await
-                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+            let buf: Vec<u8> =
+                tokio::task::spawn_blocking(move || -> Result<Vec<u8>, StatusCode> {
+                    let source = std::fs::File::open(filename)
+                        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-            let mut buf = vec![];
-            compress_tools::tokio_support::uncompress_archive_file(source, &mut buf, &path)
+                    let mut buf: Vec<u8> = vec![];
+                    compress_tools::uncompress_archive_file(source, &mut buf, &path)
+                        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+                    Ok(buf)
+                })
                 .await
-                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)??;
 
             Ok(http::Response::builder()
                 .header("Content-Type", content_type)
