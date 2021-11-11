@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use crate::utils::history;
+use crate::utils::{history, window};
 use crate::{
     common::snackbar,
     query::{
@@ -13,7 +13,7 @@ use crate::{
     common::{Cover, Spinner},
     utils::AsyncLoader,
 };
-use dominator::{clone, events, html, svg, with_node, Dom};
+use dominator::{clone, events, html, routing, svg, with_node, Dom};
 use futures_signals::map_ref;
 use futures_signals::signal::{Mutable, SignalExt};
 use futures_signals::signal_vec::{MutableVec, SignalVecExt};
@@ -143,30 +143,38 @@ impl Catalogue {
         html!("div", {
             .class("topbar")
             .child_signal(catalogue.is_search.signal().map(|is_search| {
-                if is_search {
-                    None
-                } else {
-                    Some(html!("button", {
-                        .attribute("id", "filter")
-                        .children(&mut [
-                            svg!("svg", {
-                                .attribute("xmlns", "http://www.w3.org/2000/svg")
-                                .attribute("fill", "none")
-                                .attribute("viewBox", "0 0 24 24")
-                                .attribute("stroke", "currentColor")
-                                .class("icon")
-                                .children(&mut [
-                                    svg!("path", {
-                                        .attribute("stroke-linecap", "round")
-                                        .attribute("stroke-linejoin", "round")
-                                        .attribute("stroke-width", "2")
-                                        .attribute("d", "M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z")
-                                    })
-                                ])
-                            }),
-                        ])
-                    }))
-                }
+                (!is_search).then(|| html!("button", {
+                    .style("display", "flex")
+                    .style("align-items", "center")
+                    .event(|_: events::Click| {
+                        let history = window().history().unwrap();
+                        if history.length().unwrap() > 1 {
+                            let _ = history.back();
+                        } else {
+                            routing::go_to_url("/");
+                        }
+                    })
+                    .children(&mut [
+                        svg!("svg", {
+                            .attribute("xmlns", "http://www.w3.org/2000/svg")
+                            .attribute("fill", "none")
+                            .attribute("viewBox", "0 0 24 24")
+                            .attribute("stroke", "currentColor")
+                            .class("icon")
+                            .children(&mut [
+                                svg!("path", {
+                                    .attribute("stroke-linecap", "round")
+                                    .attribute("stroke-linejoin", "round")
+                                    .attribute("stroke-width", "2")
+                                    .attribute("d", "M15 19l-7-7 7-7")
+                                })
+                            ])
+                        }),
+                        html!("span", {
+                            .text("Sources")
+                        })
+                    ])
+                }))
             }))
             .child_signal(catalogue.is_search.signal().map(clone!(catalogue => move |is_search| {
                 if is_search {
@@ -257,7 +265,6 @@ impl Catalogue {
 
     pub fn render_main(catalogue: Rc<Self>) -> Dom {
         html!("div", {
-            .class("main")
             .style("padding", "0.5rem")
             .children(&mut [
                 html!("div", {

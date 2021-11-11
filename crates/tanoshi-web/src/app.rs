@@ -129,9 +129,7 @@ impl App {
             })))
             .child_signal(Route::signal().map(|x| {
                 match x {
-                    Route::Login | Route::Manga(_) | Route::MangaBySourcePath(_, _) | Route::Chapter(_, _)  => None,
-                    Route::Settings(category) if !matches!(category, SettingCategory::None) => None,
-                    _ => Some(html!("div", {
+                    Route::Library | Route::CatalogueList | Route::Updates | Route::Histories | Route::Settings(SettingCategory::None) => Some(html!("div", {
                         .children(&mut [
                             html!("div", {
                                 .class("bottombar-spacing")
@@ -139,6 +137,7 @@ impl App {
                             Bottombar::render(),
                         ])
                     })),
+                    _ => None,
                 }
             }))
             .children(&mut [
