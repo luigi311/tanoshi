@@ -1289,15 +1289,15 @@ impl Db {
         Ok(())
     }
 
-    pub async fn delete_page_local_url(&self, local_url: &str) -> Result<()> {
+    pub async fn delete_page_local_url_by_chapter_id(&self, id: i64) -> Result<()> {
         let mut conn = self.pool.acquire().await?;
 
         sqlx::query(
             r#"UPDATE page 
             SET local_url = NULL
-            WHERE local_url = ?"#,
+            WHERE chapter_id = ?"#,
         )
-        .bind(local_url)
+        .bind(id)
         .execute(&mut conn)
         .await?;
 

@@ -189,25 +189,23 @@ impl DownloadMutationRoot {
 
         let mut len = 0_usize;
         for id in ids {
-            let pages = db.get_pages_local_url_by_chapter_id(id).await?;
-            for page in pages {
-                if page.is_empty() {
-                    continue;
+            let page: String = db
+                .get_pages_local_url_by_chapter_id(id)
+                .await?
+                .first()
+                .cloned()
+                .ok_or_else(|| "pages empty")?;
+            let page = PathBuf::new().join(page);
+            if let Some(parent) = page.parent() {
+                if parent.exists() {
+                    info!("removing {}...", parent.display());
+                    tokio::fs::remove_file(parent).await?;
                 }
-                let page = PathBuf::new().join(page);
-
-                if let Some(parent) = page.parent() {
-                    if parent.exists() {
-                        info!("removing {}...", parent.display());
-                        tokio::fs::remove_file(parent).await?;
-                    }
-                }
-
-                info!("removing {} from db...", page.display());
-                db.delete_page_local_url(&page.display().to_string())
-                    .await?;
-                len += 1;
             }
+
+            info!("removing {} from db...", page.display());
+            db.delete_page_local_url_by_chapter_id(id).await?;
+            len += 1;
         }
 
         Ok(len as _)
