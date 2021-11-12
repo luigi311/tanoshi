@@ -148,6 +148,20 @@ pub struct DownloadMutationRoot;
 
 #[Object]
 impl DownloadMutationRoot {
+    async fn pause_download(&self, ctx: &Context<'_>) -> Result<bool> {
+        ctx.data::<UnboundedSender<DownloadCommand>>()?
+            .send(DownloadCommand::Pause)?;
+
+        Ok(true)
+    }
+
+    async fn resume_download(&self, ctx: &Context<'_>) -> Result<bool> {
+        ctx.data::<UnboundedSender<DownloadCommand>>()?
+            .send(DownloadCommand::Resume)?;
+
+        Ok(true)
+    }
+
     async fn download_chapters(&self, ctx: &Context<'_>, ids: Vec<i64>) -> Result<i64> {
         if !user::check_is_admin(ctx)? {
             return Err("Forbidden".into());
