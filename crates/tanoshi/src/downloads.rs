@@ -3,18 +3,17 @@ use std::path::PathBuf;
 use crate::{
     catalogue::Chapter,
     db::{model, MangaDatabase},
-    local, user,
+    user,
     utils::{decode_cursor, encode_cursor},
-    worker::Command as WorkerCommand,
+    worker::downloads::Command as DownloadCommand,
 };
 
 use async_graphql::{
     connection::{query, Connection, Edge, EmptyFields},
     Context, Object, Result, SimpleObject,
 };
-use chrono::{Local, Utc};
-use tanoshi_vm::prelude::ExtensionBus;
-use tokio::sync::mpsc::Sender;
+use chrono::Local;
+use tokio::sync::mpsc::UnboundedSender;
 
 #[derive(Debug, SimpleObject)]
 pub struct DownloadQueueEntry {
@@ -154,60 +153,12 @@ impl DownloadMutationRoot {
             return Err("Forbidden".into());
         }
 
-        let db = ctx.data::<MangaDatabase>()?;
-        let ext = ctx.data::<ExtensionBus>()?;
-
-        let mut priority = db
-            .get_download_queue_last_priority()
-            .await?
-            .map(|p| p + 1)
-            .unwrap_or(0);
-
         let mut len = 0_usize;
         for id in ids {
-            let chapter = db.get_chapter_by_id(id).await?;
-            if chapter.source_id == local::ID {
-                info!("local source can't be downloaded");
-                continue;
-            }
+            ctx.data::<UnboundedSender<DownloadCommand>>()?
+                .send(DownloadCommand::InsertIntoQueue(id))?;
 
-            let manga = db.get_manga_by_id(chapter.manga_id).await?;
-            let pages = match db.get_pages_remote_url_by_chapter_id(id).await {
-                Ok(pages) => pages,
-                Err(_) => {
-                    let pages = ext.get_pages(manga.source_id, chapter.path.clone()).await?;
-                    db.insert_pages(chapter.id, &pages).await?;
-                    pages
-                }
-            };
-
-            let source = ext.detail(manga.source_id).await?;
-
-            let mut queue = vec![];
-            let date_added = Utc::now().naive_utc();
-            for (rank, page) in pages.iter().enumerate() {
-                queue.push(model::DownloadQueue {
-                    id: 0,
-                    source_id: source.id,
-                    source_name: source.name.clone(),
-                    manga_id: manga.id,
-                    manga_title: manga.title.clone(),
-                    chapter_id: chapter.id,
-                    chapter_title: format!("{} - {}", chapter.number, chapter.title.clone()),
-                    rank: rank as _,
-                    url: page.clone(),
-                    priority,
-                    date_added,
-                })
-            }
-            debug!("queue: {:?}", queue);
-            db.insert_download_queue(&queue).await?;
-            ctx.data::<Sender<WorkerCommand>>()?
-                .send(WorkerCommand::StartDownload)
-                .await?;
-
-            len += queue.len();
-            priority += 1;
+            len += 1;
         }
 
         Ok(len as _)

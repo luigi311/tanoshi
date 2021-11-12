@@ -5,9 +5,10 @@ use crate::{
     },
     config::Config,
     db::{MangaDatabase, UserDatabase},
+    notifier::pushover::Pushover,
     proxy::Proxy,
     schema::{MutationRoot, QueryRoot, TanoshiSchema},
-    worker::Command as WorkerCommand,
+    worker::downloads::Command as DownloadCommand,
 };
 use tanoshi_vm::bus::ExtensionBus;
 
@@ -32,7 +33,11 @@ use std::{
     net::{IpAddr, SocketAddr},
     str::FromStr,
 };
-use tokio::sync::mpsc::Sender;
+use teloxide::{
+    adaptors::{AutoSend, DefaultParseMode},
+    Bot,
+};
+use tokio::sync::mpsc::UnboundedSender;
 
 struct Token(String);
 
@@ -78,9 +83,11 @@ fn init_app(
     mangadb: MangaDatabase,
     config: &Config,
     extension_bus: ExtensionBus,
-    worker_tx: Sender<WorkerCommand>,
+    download_tx: UnboundedSender<DownloadCommand>,
+    telegram_bot: Option<DefaultParseMode<AutoSend<Bot>>>,
+    pushover: Option<Pushover>,
 ) -> Router<BoxRoute> {
-    let schema: TanoshiSchema = Schema::build(
+    let mut schemabuilder = Schema::build(
         QueryRoot::default(),
         MutationRoot::default(),
         EmptySubscription::default(),
@@ -110,8 +117,17 @@ fn init_app(
     .data(userdb)
     .data(mangadb)
     .data(extension_bus)
-    .data(worker_tx)
-    .finish();
+    .data(download_tx);
+
+    if let Some(telegram_bot) = telegram_bot {
+        schemabuilder = schemabuilder.data(telegram_bot);
+    }
+
+    if let Some(pushover) = pushover {
+        schemabuilder = schemabuilder.data(pushover);
+    }
+
+    let schema: TanoshiSchema = schemabuilder.finish();
 
     let proxy = Proxy::new(config.secret.clone());
 
@@ -147,9 +163,19 @@ pub async fn serve<T>(
     mangadb: MangaDatabase,
     config: &Config,
     extension_bus: ExtensionBus,
-    worker_tx: Sender<WorkerCommand>,
+    download_tx: UnboundedSender<DownloadCommand>,
+    telegram_bot: Option<DefaultParseMode<AutoSend<Bot>>>,
+    pushover: Option<Pushover>,
 ) -> Result<(), anyhow::Error> {
-    let app = init_app(userdb, mangadb, config, extension_bus, worker_tx);
+    let app = init_app(
+        userdb,
+        mangadb,
+        config,
+        extension_bus,
+        download_tx,
+        telegram_bot,
+        pushover,
+    );
 
     let addr = SocketAddr::from((IpAddr::from_str("0.0.0.0")?, config.port));
     Server::bind(&addr).serve(app.into_make_service()).await?;

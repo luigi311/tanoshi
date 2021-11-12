@@ -34,6 +34,7 @@ struct Response {
     pub status: i32,
 }
 
+#[derive(Debug, Clone)]
 pub struct Pushover {
     client: reqwest::Client,
     token: String,

@@ -86,20 +86,33 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .clone()
         .map(|pushover_cfg| Pushover::new(pushover_cfg.application_key));
 
-    let (download_tx, download_worker_handle) =
-        worker::downloads::start(&config.download_path, mangadb.clone());
-
-    let (worker_handle, worker_tx) = worker::start(telegram_bot, pushover, download_tx);
+    let (download_tx, download_worker_handle) = worker::downloads::start(
+        &config.download_path,
+        mangadb.clone(),
+        extension_bus.clone(),
+        telegram_bot.clone(),
+        pushover.clone(),
+    );
 
     let update_worker_handle = worker::updates::start(
         config.update_interval,
         userdb.clone(),
         mangadb.clone(),
         extension_bus.clone(),
-        worker_tx.clone(),
+        download_tx.clone(),
+        telegram_bot.clone(),
+        pushover.clone(),
     );
 
-    let server_fut = server::serve::<()>(userdb, mangadb, config, extension_bus, worker_tx);
+    let server_fut = server::serve::<()>(
+        userdb,
+        mangadb,
+        config,
+        extension_bus,
+        download_tx,
+        telegram_bot,
+        pushover,
+    );
 
     tokio::select! {
         _ = server_fut => {
@@ -107,9 +120,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         _ = vm_handle => {
             info!("vm quit");
-        }
-        _ = worker_handle => {
-            info!("worker quit");
         }
         _ = update_worker_handle => {
             info!("update worker quit");

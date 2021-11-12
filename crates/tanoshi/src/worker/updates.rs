@@ -1,25 +1,28 @@
 use std::{collections::HashMap, fmt::Display, str::FromStr};
 
-use chrono::Utc;
 use serde::Deserialize;
 use tanoshi_lib::prelude::Version;
 
 use tanoshi_vm::prelude::ExtensionBus;
-use tokio::sync::mpsc::Sender;
+use teloxide::{
+    adaptors::{AutoSend, DefaultParseMode},
+    prelude::Requester,
+    Bot,
+};
 use tokio::{
+    sync::mpsc::UnboundedSender,
     task::JoinHandle,
     time::{self, Instant},
 };
 
-use crate::config::GLOBAL_CONFIG;
-use crate::db::model;
-use crate::local;
 use crate::{
+    config::GLOBAL_CONFIG,
     db::{
         model::{Chapter, User},
         MangaDatabase, UserDatabase,
     },
-    worker::Command as WorkerCommand,
+    notifier::pushover::Pushover,
+    worker::downloads::Command as DownloadCommand,
 };
 
 #[derive(Debug, Clone)]
@@ -45,7 +48,9 @@ struct UpdatesWorker {
     mangadb: MangaDatabase,
     extensions: ExtensionBus,
     auto_download_chapters: bool,
-    worker_tx: Sender<WorkerCommand>,
+    download_tx: UnboundedSender<DownloadCommand>,
+    telegram_bot: Option<DefaultParseMode<AutoSend<Bot>>>,
+    pushover: Option<Pushover>,
 }
 
 impl UpdatesWorker {
@@ -54,7 +59,9 @@ impl UpdatesWorker {
         userdb: UserDatabase,
         mangadb: MangaDatabase,
         extensions: ExtensionBus,
-        worker_tx: Sender<WorkerCommand>,
+        download_tx: UnboundedSender<DownloadCommand>,
+        telegram_bot: Option<DefaultParseMode<AutoSend<Bot>>>,
+        pushover: Option<Pushover>,
     ) -> Self {
         #[cfg(not(debug_assertions))]
         let period = if period > 0 && period < 3600 {
@@ -76,64 +83,42 @@ impl UpdatesWorker {
             mangadb,
             extensions,
             auto_download_chapters,
-            worker_tx,
+            download_tx,
+            telegram_bot,
+            pushover,
         }
     }
 
-    async fn add_chapter_to_download_queue(&self, chapter: &Chapter) -> Result<(), anyhow::Error> {
-        let chapter = self
-            .mangadb
-            .get_chapter_by_source_path(chapter.source_id, &chapter.path)
-            .await
-            .ok_or_else(|| anyhow::anyhow!("chapter not found"))?;
-        if chapter.source_id == local::ID {
-            info!("local source can't be downloaded");
-            return Ok(());
+    async fn send_message_to_telegram(
+        &self,
+        chat_id: i64,
+        message: &str,
+    ) -> Result<(), anyhow::Error> {
+        self.telegram_bot
+            .as_ref()
+            .ok_or(anyhow::anyhow!("telegram bot not set"))?
+            .send_message(chat_id, message)
+            .await?;
+        Ok(())
+    }
+
+    async fn send_message_to_pushover(
+        &self,
+        user_key: &str,
+        title: Option<String>,
+        body: &str,
+    ) -> Result<(), anyhow::Error> {
+        let pushover = self
+            .pushover
+            .as_ref()
+            .ok_or(anyhow::anyhow!("pushover not set"))?;
+        if let Some(title) = title {
+            pushover
+                .send_notification_with_title(&user_key, &title, &body)
+                .await?;
+        } else {
+            pushover.send_notification(&user_key, body).await?;
         }
-
-        let manga = self.mangadb.get_manga_by_id(chapter.manga_id).await?;
-        let pages = match self
-            .mangadb
-            .get_pages_remote_url_by_chapter_id(chapter.id)
-            .await
-        {
-            Ok(pages) => pages,
-            Err(_) => {
-                let pages = self
-                    .extensions
-                    .get_pages(manga.source_id, chapter.path.clone())
-                    .await
-                    .map_err(|e| anyhow::anyhow!("{}", e))?;
-                self.mangadb.insert_pages(chapter.id, &pages).await?;
-                pages
-            }
-        };
-
-        let source = self
-            .extensions
-            .detail(manga.source_id)
-            .await
-            .map_err(|e| anyhow::anyhow!("{}", e))?;
-
-        let mut queue = vec![];
-        let date_added = Utc::now().naive_utc();
-        for (rank, page) in pages.iter().enumerate() {
-            queue.push(model::DownloadQueue {
-                id: 0,
-                source_id: source.id,
-                source_name: source.name.clone(),
-                manga_id: manga.id,
-                manga_title: manga.title.clone(),
-                chapter_id: chapter.id,
-                chapter_title: chapter.title.clone(),
-                rank: rank as _,
-                url: page.clone(),
-                priority: 0,
-                date_added,
-            })
-        }
-        debug!("queue: {:?}", queue);
-        self.mangadb.insert_download_queue(&queue).await?;
 
         Ok(())
     }
@@ -208,8 +193,7 @@ impl UpdatesWorker {
                             title: chapter.title.clone(),
                         };
                         if let Err(e) = self
-                            .worker_tx
-                            .send(WorkerCommand::TelegramMessage(chat_id, update.to_string()))
+                            .send_message_to_telegram(chat_id, update.to_string().as_str())
                             .await
                         {
                             error!("failed to send message, reason: {}", e);
@@ -218,12 +202,11 @@ impl UpdatesWorker {
 
                     if let Some(user_key) = user.pushover_user_key {
                         if let Err(e) = self
-                            .worker_tx
-                            .send(WorkerCommand::PushoverMessage {
-                                user_key,
-                                title: Some(item.manga.title.clone()),
-                                body: chapter.title.clone(),
-                            })
+                            .send_message_to_pushover(
+                                &user_key,
+                                Some(item.manga.title.clone()),
+                                &chapter.title,
+                            )
                             .await
                         {
                             error!("failed to send PushoverMessage, reason: {}", e);
@@ -233,11 +216,9 @@ impl UpdatesWorker {
 
                 if self.auto_download_chapters {
                     info!("add chapter to download queue");
-                    if let Err(e) = self.add_chapter_to_download_queue(&chapter).await {
-                        error!("failed to add chapter to download queue, reason: {}", e);
-                        continue;
-                    }
-                    let _ = self.worker_tx.send(WorkerCommand::StartDownload).await;
+                    let _ = self
+                        .download_tx
+                        .send(DownloadCommand::InsertIntoQueue(chapter.id));
                 }
             }
 
@@ -286,23 +267,14 @@ impl UpdatesWorker {
                 for admin in admins.iter() {
                     let message = format!("{} extension update available", source.name);
                     if let Some(chat_id) = admin.telegram_chat_id {
-                        if let Err(e) = self
-                            .worker_tx
-                            .send(WorkerCommand::TelegramMessage(chat_id, message.clone()))
-                            .await
-                        {
-                            error!("failed to send message, reason: {}", e);
+                        if let Err(e) = self.send_message_to_telegram(chat_id, &message).await {
+                            error!("failed to send telegram message, reason: {}", e);
                         }
                     }
 
                     if let Some(user_key) = admin.pushover_user_key.clone() {
                         if let Err(e) = self
-                            .worker_tx
-                            .send(WorkerCommand::PushoverMessage {
-                                user_key,
-                                title: None,
-                                body: message.clone(),
-                            })
+                            .send_message_to_pushover(&user_key, None, &message)
                             .await
                         {
                             error!("failed to send PushoverMessage, reason: {}", e);
@@ -343,25 +315,13 @@ impl UpdatesWorker {
                 let msg = format!("Tanoshi {} Released\n{}", release.tag_name, release.body);
 
                 if let Some(chat_id) = admin.telegram_chat_id {
-                    if let Err(e) = self
-                        .worker_tx
-                        .send(WorkerCommand::TelegramMessage(chat_id, msg.clone()))
-                        .await
-                    {
-                        error!("failed to send message, reason: {}", e);
+                    if let Err(e) = self.send_message_to_telegram(chat_id, &msg).await {
+                        error!("failed to send telegram message, reason: {}", e);
                     }
                 }
 
                 if let Some(user_key) = admin.pushover_user_key.clone() {
-                    if let Err(e) = self
-                        .worker_tx
-                        .send(WorkerCommand::PushoverMessage {
-                            user_key,
-                            title: None,
-                            body: msg.clone(),
-                        })
-                        .await
-                    {
+                    if let Err(e) = self.send_message_to_pushover(&user_key, None, &msg).await {
                         error!("failed to send PushoverMessage, reason: {}", e);
                     }
                 }
@@ -416,9 +376,19 @@ pub fn start(
     userdb: UserDatabase,
     mangadb: MangaDatabase,
     extensions: ExtensionBus,
-    worker_tx: Sender<WorkerCommand>,
+    download_tx: UnboundedSender<DownloadCommand>,
+    telegram_bot: Option<DefaultParseMode<AutoSend<Bot>>>,
+    pushover: Option<Pushover>,
 ) -> JoinHandle<()> {
-    let worker = UpdatesWorker::new(period, userdb, mangadb, extensions, worker_tx);
+    let worker = UpdatesWorker::new(
+        period,
+        userdb,
+        mangadb,
+        extensions,
+        download_tx,
+        telegram_bot,
+        pushover,
+    );
 
     tokio::spawn(async move {
         worker.run().await;
