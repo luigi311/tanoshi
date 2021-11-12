@@ -161,6 +161,9 @@ impl DownloadMutationRoot {
             len += 1;
         }
 
+        ctx.data::<UnboundedSender<DownloadCommand>>()?
+            .send(DownloadCommand::Download)?;
+
         Ok(len as _)
     }
 

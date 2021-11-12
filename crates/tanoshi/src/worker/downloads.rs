@@ -22,7 +22,7 @@ use tokio::{
 #[derive(Debug)]
 pub enum Command {
     InsertIntoQueue(i64),
-    Download(DownloadQueue),
+    Download,
     Pause,
     Resume,
 }
@@ -48,6 +48,7 @@ impl DownloadWorker {
         pushover: Option<Pushover>,
     ) -> (Self, UnboundedSender<Command>) {
         let (tx, rx) = unbounded_channel::<Command>();
+        tx.send(Command::Download).unwrap();
         (
             Self {
                 dir: PathBuf::new().join(dir),
@@ -129,7 +130,14 @@ impl DownloadWorker {
                             error!("failed to insert queue, reason {}", e);
                         }
                     }
-                    Command::Download(queue) => {
+                    Command::Download => {
+                        let queue =
+                            if let Ok(Some(queue)) = self.db.get_single_download_queue().await {
+                                queue
+                            } else {
+                                continue;
+                            };
+
                         debug!("got {}", queue.url);
 
                         let url = if let Ok(url) = Url::parse(&queue.url) {
@@ -258,9 +266,7 @@ impl DownloadWorker {
                     }
                     Command::Resume => {
                         self.paused = false;
-                        if let Ok(Some(queue)) = self.db.get_single_download_queue().await {
-                            let _ = self.tx.send(Command::Download(queue));
-                        }
+                        self.tx.send(Command::Download).unwrap();
                     }
                 }
             }
