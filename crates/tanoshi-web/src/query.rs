@@ -660,6 +660,20 @@ pub async fn update_chapter_priority(chapter_id: i64, priority: i64) -> Result<(
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "graphql/schema.graphql",
+    query_path = "graphql/remove_chapter_from_queue.graphql",
+    response_derives = "Debug"
+)]
+pub struct RemoveChapterFromQueue;
+
+pub async fn remove_chapter_from_queue(ids: &[i64]) -> Result<(), Box<dyn Error>> {
+    let var = remove_chapter_from_queue::Variables { ids: Some(ids.iter().map(|id| Some(*id)).collect()) };
+    let _ = post_graphql::<RemoveChapterFromQueue>(var).await?;
+    Ok(())
+}
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/schema.graphql",
     query_path = "graphql/pause_download.graphql",
     response_derives = "Debug"
 )]

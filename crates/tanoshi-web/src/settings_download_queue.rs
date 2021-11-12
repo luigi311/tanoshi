@@ -80,6 +80,22 @@ impl SettingsDownloads {
         });
     }
 
+    fn remove_chapter_from_queue(self: &Rc<Self>, id: i64) {
+        self.loader.load({
+            let settings = self.clone();
+            async move {
+                match query::remove_chapter_from_queue(&[id]).await {
+                    Ok(_) => {
+                        settings.fetch_download_queue();
+                    }
+                    Err(err) => {
+                        snackbar::show(format!("{}", err));
+                    }
+                }
+            }
+        });
+    }
+
     fn fetch_download_status(self: &Rc<Self>) {
         AsyncLoader::new().load({
             let settings = self.clone();
@@ -234,8 +250,8 @@ impl SettingsDownloads {
                                     .children(&mut [
                                         html!("button", {
                                             .attribute("id", "move-up-btn")
-                                            .style("margin-top", "0.25rem")
-                                            .style("margin-bottom", "0.25rem")
+                                            .style("margin-top", "0.175rem")
+                                            .style("margin-bottom", "0.175rem")
                                             .children(&mut [
                                                 svg!("svg", {
                                                     .attribute("xmlns", "http://www.w3.org/2000/svg")
@@ -258,10 +274,33 @@ impl SettingsDownloads {
                                             }))
                                         }),
                                         html!("button", {
+                                            .attribute("id", "remove-btn")
+                                            .style("margin-top", "0.175rem")
+                                            .style("margin-bottom", "0.175rem")
+                                            .style("color", "red")
+                                            .children(&mut [
+                                                svg!("svg", {
+                                                    .attribute("xmlns", "http://www.w3.org/2000/svg")
+                                                    .attribute("viewBox", "0 0 20 20")
+                                                    .attribute("fill", "currentColor")
+                                                    .class("icon")
+                                                    .children(&mut [
+                                                        svg!("path", {
+                                                            .attribute("fill-rule", "evenodd")
+                                                            .attribute("d", "M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z")
+                                                            .attribute("clip-rule", "evenodd")
+                                                        })
+                                                    ])
+                                                })
+                                            ])
+                                            .event(clone!(settings, queue => move |_:events::Click| {
+                                                settings.remove_chapter_from_queue(queue.chapter_id);
+                                            }))
+                                        }),
+                                        html!("button", {
                                             .attribute("id", "move-down-btn")
-                                            .style("margin-top", "0.25rem")
-                                            .style("margin-bottom", "0.25rem")
-                                            .style("margin", "0.25rem")
+                                            .style("margin-top", "0.175rem")
+                                            .style("margin-bottom", "0.175rem")
                                             .children(&mut [
                                                 svg!("svg", {
                                                     .attribute("xmlns", "http://www.w3.org/2000/svg")

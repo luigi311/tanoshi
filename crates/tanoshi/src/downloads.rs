@@ -209,6 +209,24 @@ impl DownloadMutationRoot {
         let mut len = 0;
         for id in ids {
             db.delete_download_queue_by_chapter_id(id).await?;
+
+            let page: String = db
+                .get_pages_local_url_by_chapter_id(id)
+                .await?
+                .first()
+                .cloned()
+                .ok_or_else(|| "pages empty")?;
+            let page = PathBuf::new().join(page);
+            if let Some(parent) = page.parent() {
+                if parent.exists() {
+                    info!("removing {}...", parent.display());
+                    tokio::fs::remove_file(parent).await?;
+                }
+            }
+
+            info!("removing pages from db...");
+            db.delete_page_local_url_by_chapter_id(id).await?;
+
             len += 1;
         }
 

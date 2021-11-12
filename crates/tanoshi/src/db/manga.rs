@@ -1293,9 +1293,7 @@ impl Db {
         let mut conn = self.pool.acquire().await?;
 
         sqlx::query(
-            r#"UPDATE page 
-            SET local_url = NULL
-            WHERE chapter_id = ?"#,
+            r#"UPDATE page SET local_url = NULL WHERE chapter_id = ?"#,
         )
         .bind(id)
         .execute(&mut conn)
