@@ -8,7 +8,7 @@ use crate::{
     notifier::pushover::Pushover,
     proxy::Proxy,
     schema::{MutationRoot, QueryRoot, TanoshiSchema},
-    worker::downloads::Command as DownloadCommand,
+    worker::downloads::DownloadSender,
 };
 use tanoshi_vm::bus::ExtensionBus;
 
@@ -37,7 +37,6 @@ use teloxide::{
     adaptors::{AutoSend, DefaultParseMode},
     Bot,
 };
-use tokio::sync::mpsc::Sender;
 
 struct Token(String);
 
@@ -83,7 +82,7 @@ fn init_app(
     mangadb: MangaDatabase,
     config: &Config,
     extension_bus: ExtensionBus,
-    download_tx: Sender<DownloadCommand>,
+    download_tx: DownloadSender,
     telegram_bot: Option<DefaultParseMode<AutoSend<Bot>>>,
     pushover: Option<Pushover>,
 ) -> Router<BoxRoute> {
@@ -163,7 +162,7 @@ pub async fn serve<T>(
     mangadb: MangaDatabase,
     config: &Config,
     extension_bus: ExtensionBus,
-    download_tx: Sender<DownloadCommand>,
+    download_tx: DownloadSender,
     telegram_bot: Option<DefaultParseMode<AutoSend<Bot>>>,
     pushover: Option<Pushover>,
 ) -> Result<(), anyhow::Error> {

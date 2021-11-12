@@ -6,7 +6,7 @@ use crate::{
     db::{model, MangaDatabase},
     user,
     utils::{decode_cursor, encode_cursor},
-    worker::downloads::Command as DownloadCommand,
+    worker::downloads::{Command as DownloadCommand, DownloadSender},
 };
 
 use async_graphql::{
@@ -14,7 +14,6 @@ use async_graphql::{
     Context, Object, Result, SimpleObject,
 };
 use chrono::Local;
-use tokio::sync::mpsc::Sender;
 
 #[derive(Debug, SimpleObject)]
 pub struct DownloadQueueEntry {
@@ -175,9 +174,8 @@ impl DownloadMutationRoot {
             .ok_or("config not initialized")?;
         tokio::fs::remove_file(pause_path).await?;
 
-        ctx.data::<Sender<DownloadCommand>>()?
-            .send(DownloadCommand::Download)
-            .await?;
+        ctx.data::<DownloadSender>()?
+            .send(DownloadCommand::Download)?;
 
         Ok(true)
     }
@@ -189,16 +187,14 @@ impl DownloadMutationRoot {
 
         let mut len = 0_usize;
         for id in ids {
-            ctx.data::<Sender<DownloadCommand>>()?
-                .send(DownloadCommand::InsertIntoQueue(id))
-                .await?;
+            ctx.data::<DownloadSender>()?
+                .send(DownloadCommand::InsertIntoQueue(id))?;
 
             len += 1;
         }
 
-        ctx.data::<Sender<DownloadCommand>>()?
-            .send(DownloadCommand::Download)
-            .await?;
+        ctx.data::<DownloadSender>()?
+            .send(DownloadCommand::Download)?;
 
         Ok(len as _)
     }

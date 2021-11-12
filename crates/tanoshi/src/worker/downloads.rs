@@ -15,9 +15,12 @@ use teloxide::{
     Bot,
 };
 use tokio::{
-    sync::mpsc::{channel, Receiver, Sender},
+    sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender},
     task::JoinHandle,
 };
+
+pub type DownloadSender = UnboundedSender<Command>;
+type DownloadReceiver = UnboundedReceiver<Command>;
 
 #[derive(Debug)]
 pub enum Command {
@@ -32,8 +35,8 @@ pub struct DownloadWorker {
     ext: ExtensionBus,
     _telegram_bot: Option<DefaultParseMode<AutoSend<Bot>>>,
     _pushover: Option<Pushover>,
-    tx: Sender<Command>,
-    rx: Receiver<Command>,
+    tx: DownloadSender,
+    rx: DownloadReceiver,
 }
 
 impl DownloadWorker {
@@ -43,8 +46,8 @@ impl DownloadWorker {
         ext: ExtensionBus,
         telegram_bot: Option<DefaultParseMode<AutoSend<Bot>>>,
         pushover: Option<Pushover>,
-    ) -> (Self, Sender<Command>) {
-        let (tx, rx) = channel::<Command>(1);
+    ) -> (Self, DownloadSender) {
+        let (tx, rx) = unbounded_channel::<Command>();
         (
             Self {
                 dir: PathBuf::new().join(dir),
@@ -122,7 +125,7 @@ impl DownloadWorker {
 
     pub async fn run(&mut self) {
         if !self.paused().await {
-            self.tx.send(Command::Download).await.unwrap();
+            self.tx.send(Command::Download).unwrap();
         }
 
         while let Some(cmd) = self.rx.recv().await {
@@ -263,7 +266,7 @@ impl DownloadWorker {
                     }
 
                     if !self.paused().await {
-                        self.tx.send(Command::Download).await.unwrap();
+                        self.tx.send(Command::Download).unwrap();
                     }
                 }
             }
@@ -277,7 +280,7 @@ pub fn start<P: AsRef<Path>>(
     ext: ExtensionBus,
     telegram_bot: Option<DefaultParseMode<AutoSend<Bot>>>,
     pushover: Option<Pushover>,
-) -> (Sender<Command>, JoinHandle<()>) {
+) -> (DownloadSender, JoinHandle<()>) {
     let (mut download_worker, tx) = DownloadWorker::new(dir, mangadb, ext, telegram_bot, pushover);
 
     let handle = tokio::spawn(async move {
