@@ -218,7 +218,10 @@ impl UpdatesWorker {
                 if self.auto_download_chapters {
                     info!("add chapter to download queue");
                     self.download_tx
-                        .send(DownloadCommand::InsertIntoQueue(chapter.id))
+                        .send(DownloadCommand::InsertIntoQueueBySourcePath(
+                            chapter.source_id,
+                            chapter.path,
+                        ))
                         .unwrap();
                 }
             }

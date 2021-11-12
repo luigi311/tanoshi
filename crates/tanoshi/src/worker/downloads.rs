@@ -4,7 +4,10 @@ use std::{
 };
 
 use crate::{
-    db::{model::DownloadQueue, MangaDatabase},
+    db::{
+        model::{Chapter, DownloadQueue},
+        MangaDatabase,
+    },
     local,
     notifier::pushover::Pushover,
 };
@@ -25,6 +28,7 @@ type DownloadReceiver = UnboundedReceiver<Command>;
 #[derive(Debug)]
 pub enum Command {
     InsertIntoQueue(i64),
+    InsertIntoQueueBySourcePath(i64, String),
     Download,
 }
 
@@ -63,7 +67,11 @@ impl DownloadWorker {
         )
     }
 
-    async fn insert_to_queue(&mut self, chapter_id: i64) -> Result<(), anyhow::Error> {
+    async fn insert_to_queue(&mut self, chapter: &Chapter) -> Result<(), anyhow::Error> {
+        if chapter.source_id == local::ID {
+            anyhow::bail!("local source can't be downloaded");
+        }
+
         let priority = self
             .db
             .get_download_queue_last_priority()
@@ -71,13 +79,8 @@ impl DownloadWorker {
             .map(|p| p + 1)
             .unwrap_or(0);
 
-        let chapter = self.db.get_chapter_by_id(chapter_id).await?;
-        if chapter.source_id == local::ID {
-            anyhow::bail!("local source can't be downloaded");
-        }
-
         let manga = self.db.get_manga_by_id(chapter.manga_id).await?;
-        let pages = match self.db.get_pages_remote_url_by_chapter_id(chapter_id).await {
+        let pages = match self.db.get_pages_remote_url_by_chapter_id(chapter.id).await {
             Ok(pages) => pages,
             Err(_) => {
                 let pages = self
@@ -131,8 +134,27 @@ impl DownloadWorker {
         while let Some(cmd) = self.rx.recv().await {
             match cmd {
                 Command::InsertIntoQueue(chapter_id) => {
-                    if let Err(e) = self.insert_to_queue(chapter_id).await {
-                        error!("failed to insert queue, reason {}", e);
+                    match self.db.get_chapter_by_id(chapter_id).await {
+                        Ok(chapter) => {
+                            if let Err(e) = self.insert_to_queue(&chapter).await {
+                                error!("failed to insert queue, reason {}", e);
+                            }
+                        }
+                        Err(e) => {
+                            error!("chapter {} not found, {}", chapter_id, e);
+                        }
+                    }
+                }
+                Command::InsertIntoQueueBySourcePath(source_id, path) => {
+                    match self.db.get_chapter_by_source_path(source_id, &path).await {
+                        Some(chapter) => {
+                            if let Err(e) = self.insert_to_queue(&chapter).await {
+                                error!("failed to insert queue, reason {}", e);
+                            }
+                        }
+                        None => {
+                            error!("chapter {} {} not found", source_id, path);
+                        }
                     }
                 }
                 Command::Download => {
