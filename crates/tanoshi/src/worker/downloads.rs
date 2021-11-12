@@ -15,7 +15,7 @@ use teloxide::{
     Bot,
 };
 use tokio::{
-    sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender},
+    sync::mpsc::{channel, Receiver, Sender},
     task::JoinHandle,
 };
 
@@ -23,8 +23,6 @@ use tokio::{
 pub enum Command {
     InsertIntoQueue(i64),
     Download,
-    Pause,
-    Resume,
 }
 
 pub struct DownloadWorker {
@@ -32,11 +30,10 @@ pub struct DownloadWorker {
     client: reqwest::Client,
     db: MangaDatabase,
     ext: ExtensionBus,
-    paused: bool,
     _telegram_bot: Option<DefaultParseMode<AutoSend<Bot>>>,
     _pushover: Option<Pushover>,
-    tx: UnboundedSender<Command>,
-    rx: UnboundedReceiver<Command>,
+    tx: Sender<Command>,
+    rx: Receiver<Command>,
 }
 
 impl DownloadWorker {
@@ -46,15 +43,14 @@ impl DownloadWorker {
         ext: ExtensionBus,
         telegram_bot: Option<DefaultParseMode<AutoSend<Bot>>>,
         pushover: Option<Pushover>,
-    ) -> (Self, UnboundedSender<Command>) {
-        let (tx, rx) = unbounded_channel::<Command>();
+    ) -> (Self, Sender<Command>) {
+        let (tx, rx) = channel::<Command>(1);
         (
             Self {
                 dir: PathBuf::new().join(dir),
                 client: reqwest::ClientBuilder::new().build().unwrap(),
                 db,
                 ext,
-                paused: false,
                 _telegram_bot: telegram_bot,
                 _pushover: pushover,
                 rx,
@@ -120,11 +116,13 @@ impl DownloadWorker {
         Ok(())
     }
 
+    async fn paused(&self) -> bool {
+        self.dir.join(".pause").exists()
+    }
+
     pub async fn run(&mut self) {
-        if self.dir.join(".pause").exists() {
-            self.paused = true;
-        } else {
-            self.tx.send(Command::Download).unwrap();
+        if !self.paused().await {
+            self.tx.send(Command::Download).await.unwrap();
         }
 
         while let Some(cmd) = self.rx.recv().await {
@@ -135,6 +133,10 @@ impl DownloadWorker {
                     }
                 }
                 Command::Download => {
+                    if self.paused().await {
+                        continue;
+                    }
+
                     let queue = if let Ok(Some(queue)) = self.db.get_single_download_queue().await {
                         queue
                     } else {
@@ -260,24 +262,9 @@ impl DownloadWorker {
                         error!("error finishing zip, reason {}", e);
                     }
 
-                    if !self.paused {
-                        self.tx.send(Command::Download).unwrap();
+                    if !self.paused().await {
+                        self.tx.send(Command::Download).await.unwrap();
                     }
-                }
-                Command::Pause => {
-                    if let Err(e) = tokio::fs::write(self.dir.join(".pause"), b"").await {
-                        error!("failed to write pause file, reason {}", e);
-                        continue;
-                    }
-                    self.paused = true;
-                }
-                Command::Resume => {
-                    if let Err(e) = tokio::fs::remove_file(self.dir.join(".pause")).await {
-                        error!("failed to delete pause file, reason {}", e);
-                        continue;
-                    }
-                    self.paused = false;
-                    self.tx.send(Command::Download).unwrap();
                 }
             }
         }
@@ -290,7 +277,7 @@ pub fn start<P: AsRef<Path>>(
     ext: ExtensionBus,
     telegram_bot: Option<DefaultParseMode<AutoSend<Bot>>>,
     pushover: Option<Pushover>,
-) -> (UnboundedSender<Command>, JoinHandle<()>) {
+) -> (Sender<Command>, JoinHandle<()>) {
     let (mut download_worker, tx) = DownloadWorker::new(dir, mangadb, ext, telegram_bot, pushover);
 
     let handle = tokio::spawn(async move {

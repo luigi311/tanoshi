@@ -132,7 +132,10 @@ type MutationRoot {
   installSource(sourceId: Int!): Int!
   uninstallSource(sourceId: Int!): Int!
   updateSource(sourceId: Int!): Int!
+  pauseDownload: Boolean!
+  resumeDownload: Boolean!
   downloadChapters(ids: [Int!]!): Int!
+  removeChaptersFromQueue(ids: [Int!]!): Int!
   removeDownloadedChapters(ids: [Int!]!): Int!
   updateChapterPriority(id: Int!, priority: Int!): Boolean!
 }
@@ -234,6 +237,7 @@ type QueryRoot {
     # pushover user key
     userKey: String!
   ): Boolean!
+  downloadStatus: Boolean!
   downloadQueue: [DownloadQueueEntry!]!
   getDownloadedChapters(
     after: String

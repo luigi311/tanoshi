@@ -37,7 +37,7 @@ use teloxide::{
     adaptors::{AutoSend, DefaultParseMode},
     Bot,
 };
-use tokio::sync::mpsc::UnboundedSender;
+use tokio::sync::mpsc::Sender;
 
 struct Token(String);
 
@@ -83,7 +83,7 @@ fn init_app(
     mangadb: MangaDatabase,
     config: &Config,
     extension_bus: ExtensionBus,
-    download_tx: UnboundedSender<DownloadCommand>,
+    download_tx: Sender<DownloadCommand>,
     telegram_bot: Option<DefaultParseMode<AutoSend<Bot>>>,
     pushover: Option<Pushover>,
 ) -> Router<BoxRoute> {
@@ -163,7 +163,7 @@ pub async fn serve<T>(
     mangadb: MangaDatabase,
     config: &Config,
     extension_bus: ExtensionBus,
-    download_tx: UnboundedSender<DownloadCommand>,
+    download_tx: Sender<DownloadCommand>,
     telegram_bot: Option<DefaultParseMode<AutoSend<Bot>>>,
     pushover: Option<Pushover>,
 ) -> Result<(), anyhow::Error> {

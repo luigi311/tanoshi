@@ -10,7 +10,7 @@ use teloxide::{
     Bot,
 };
 use tokio::{
-    sync::mpsc::UnboundedSender,
+    sync::mpsc::Sender,
     task::JoinHandle,
     time::{self, Instant},
 };
@@ -48,7 +48,7 @@ struct UpdatesWorker {
     mangadb: MangaDatabase,
     extensions: ExtensionBus,
     auto_download_chapters: bool,
-    download_tx: UnboundedSender<DownloadCommand>,
+    download_tx: Sender<DownloadCommand>,
     telegram_bot: Option<DefaultParseMode<AutoSend<Bot>>>,
     pushover: Option<Pushover>,
 }
@@ -59,7 +59,7 @@ impl UpdatesWorker {
         userdb: UserDatabase,
         mangadb: MangaDatabase,
         extensions: ExtensionBus,
-        download_tx: UnboundedSender<DownloadCommand>,
+        download_tx: Sender<DownloadCommand>,
         telegram_bot: Option<DefaultParseMode<AutoSend<Bot>>>,
         pushover: Option<Pushover>,
     ) -> Self {
@@ -216,9 +216,10 @@ impl UpdatesWorker {
 
                 if self.auto_download_chapters {
                     info!("add chapter to download queue");
-                    let _ = self
-                        .download_tx
-                        .send(DownloadCommand::InsertIntoQueue(chapter.id));
+                    self.download_tx
+                        .send(DownloadCommand::InsertIntoQueue(chapter.id))
+                        .await
+                        .unwrap();
                 }
             }
 
@@ -376,7 +377,7 @@ pub fn start(
     userdb: UserDatabase,
     mangadb: MangaDatabase,
     extensions: ExtensionBus,
-    download_tx: UnboundedSender<DownloadCommand>,
+    download_tx: Sender<DownloadCommand>,
     telegram_bot: Option<DefaultParseMode<AutoSend<Bot>>>,
     pushover: Option<Pushover>,
 ) -> JoinHandle<()> {

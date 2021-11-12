@@ -656,3 +656,45 @@ pub async fn update_chapter_priority(chapter_id: i64, priority: i64) -> Result<(
     let _ = post_graphql::<UpdateChapterPriority>(var).await?;
     Ok(())
 }
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/schema.graphql",
+    query_path = "graphql/pause_download.graphql",
+    response_derives = "Debug"
+)]
+pub struct PauseDownload;
+
+pub async fn pause_download() -> Result<bool, Box<dyn Error>> {
+    let var = pause_download::Variables {};
+    let data = post_graphql::<PauseDownload>(var).await?;
+    Ok(data.pause_download)
+}
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/schema.graphql",
+    query_path = "graphql/resume_download.graphql",
+    response_derives = "Debug"
+)]
+pub struct ResumeDownload;
+
+pub async fn resume_download() -> Result<bool, Box<dyn Error>> {
+    let var = resume_download::Variables {};
+    let data = post_graphql::<ResumeDownload>(var).await?;
+    Ok(data.resume_download)
+}
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/schema.graphql",
+    query_path = "graphql/download_status.graphql",
+    response_derives = "Debug"
+)]
+pub struct DownloadStatus;
+
+pub async fn download_status() -> Result<bool, Box<dyn Error>> {
+    let var = download_status::Variables {};
+    let data = post_graphql::<DownloadStatus>(var).await?;
+    Ok(data.download_status)
+}

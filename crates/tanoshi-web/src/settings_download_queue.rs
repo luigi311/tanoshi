@@ -5,11 +5,16 @@ use crate::{
 };
 use dominator::{clone, html, svg, Dom};
 
-use futures_signals::{signal::Mutable, signal_vec::MutableVec, signal_vec::SignalVecExt};
+use futures_signals::{
+    signal::{Mutable, SignalExt},
+    signal_vec::MutableVec,
+    signal_vec::SignalVecExt,
+};
 use gloo_timers::callback::Interval;
 use std::rc::Rc;
 
 pub struct SettingsDownloads {
+    status: Mutable<bool>,
     queue: MutableVec<DownloadQueue>,
     interval: Mutable<Option<Interval>>,
     loader: AsyncLoader,
@@ -18,10 +23,77 @@ pub struct SettingsDownloads {
 impl SettingsDownloads {
     pub fn new() -> Rc<Self> {
         Rc::new(Self {
+            status: Mutable::new(false),
             queue: MutableVec::new(),
             interval: Mutable::new(None),
             loader: AsyncLoader::new(),
         })
+    }
+
+    fn pause_download(self: &Rc<Self>) {
+        AsyncLoader::new().load({
+            let settings = self.clone();
+            async move {
+                match query::pause_download().await {
+                    Ok(status) => {
+                        settings.status.set(status);
+                    }
+                    Err(err) => {
+                        snackbar::show(format!("{}", err));
+                    }
+                }
+
+                match query::download_status().await {
+                    Ok(status) => {
+                        settings.status.set(status);
+                    }
+                    Err(err) => {
+                        snackbar::show(format!("{}", err));
+                    }
+                }
+            }
+        });
+    }
+
+    fn resume_download(self: &Rc<Self>) {
+        AsyncLoader::new().load({
+            let settings = self.clone();
+            async move {
+                match query::resume_download().await {
+                    Ok(status) => {
+                        settings.status.set(status);
+                    }
+                    Err(err) => {
+                        snackbar::show(format!("{}", err));
+                    }
+                }
+
+                match query::download_status().await {
+                    Ok(status) => {
+                        settings.status.set(status);
+                    }
+                    Err(err) => {
+                        snackbar::show(format!("{}", err));
+                    }
+                }
+            }
+        });
+    }
+
+    fn fetch_download_status(self: &Rc<Self>) {
+        AsyncLoader::new().load({
+            let settings = self.clone();
+            async move {
+                match query::download_status().await {
+                    Ok(status) => {
+                        settings.status.set(status);
+                    }
+                    Err(err) => {
+                        snackbar::show(format!("{}", err));
+                    }
+                }
+            }
+        });
     }
 
     fn fetch_download_queue(self: &Rc<Self>) {
@@ -69,6 +141,7 @@ impl SettingsDownloads {
     }
 
     pub fn render(settings: Rc<Self>) -> Dom {
+        settings.fetch_download_status();
         settings.fetch_download_queue();
         html!("div", {
             .after_inserted(clone!(settings => move |_| {
@@ -82,6 +155,70 @@ impl SettingsDownloads {
                 }
             }))
             .children(&mut [
+                html!("div",{
+                    .style("font-size", "smaller")
+                    .style("display", "flex")
+                    .style("justify-content", "flex-end")
+                    .child_signal(settings.status.signal().map(clone!(settings => move |status| {
+                        if status {
+                            Some(html!("button", {
+                                .attribute("id", "select-all")
+                                .style("display", "flex")
+                                .style("align-items", "center")
+                                .children(&mut [
+                                    svg!("svg", {
+                                        .attribute("xmlns", "http://www.w3.org/2000/svg")
+                                        .attribute("viewBox", "0 0 20 20")
+                                        .attribute("fill", "currentColor")
+                                        .class("icon")
+                                        .children(&mut [
+                                            svg!("path", {
+                                                .attribute("fill-rule", "evenodd")
+                                                .attribute("d", "M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z")
+                                                .attribute("clip-rule", "evenodd")
+                                            })
+                                        ])
+                                    }),
+                                    html!("span", {
+                                        .style("margin", "0.25rem")
+                                        .text("Pause")
+                                    })
+                                ])
+                                .event(clone!(settings => move |_:events::Click| {
+                                    settings.pause_download();
+                                }))
+                            }))
+                        } else {
+                            Some(html!("button", {
+                                .attribute("id", "select-all")
+                                .style("display", "flex")
+                                .style("align-items", "center")
+                                .children(&mut [
+                                    svg!("svg", {
+                                        .attribute("xmlns", "http://www.w3.org/2000/svg")
+                                        .attribute("viewBox", "0 0 20 20")
+                                        .attribute("fill", "currentColor")
+                                        .class("icon")
+                                        .children(&mut [
+                                            svg!("path", {
+                                                .attribute("fill-rule", "evenodd")
+                                                .attribute("d", "M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z")
+                                                .attribute("clip-rule", "evenodd")
+                                            }),
+                                        ])
+                                    }),
+                                    html!("span", {
+                                        .style("margin", "0.25rem")
+                                        .text("Resume")
+                                    })
+                                ])
+                                .event(clone!(settings => move |_:events::Click| {
+                                    settings.resume_download();
+                                }))
+                            }))
+                        }
+                    })))
+                }),
                 html!("ul", {
                     .class("list")
                     .children_signal_vec(settings.queue.signal_vec_cloned().map(clone!(settings => move |queue|

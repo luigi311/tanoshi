@@ -2,6 +2,7 @@ use std::path::PathBuf;
 
 use crate::{
     catalogue::Chapter,
+    config::GLOBAL_CONFIG,
     db::{model, MangaDatabase},
     user,
     utils::{decode_cursor, encode_cursor},
@@ -13,7 +14,7 @@ use async_graphql::{
     Context, Object, Result, SimpleObject,
 };
 use chrono::Local;
-use tokio::sync::mpsc::UnboundedSender;
+use tokio::sync::mpsc::Sender;
 
 #[derive(Debug, SimpleObject)]
 pub struct DownloadQueueEntry {
@@ -33,6 +34,15 @@ pub struct DownloadRoot;
 
 #[Object]
 impl DownloadRoot {
+    async fn download_status(&self) -> Result<bool> {
+        let pause_path = GLOBAL_CONFIG
+            .get()
+            .map(|cfg| PathBuf::new().join(&cfg.download_path).join(".pause"))
+            .ok_or("config not initialized")?;
+
+        Ok(!pause_path.exists())
+    }
+
     async fn download_queue(&self, ctx: &Context<'_>) -> Result<Vec<DownloadQueueEntry>> {
         if !user::check_is_admin(ctx)? {
             return Err("Forbidden".into());
@@ -148,16 +158,26 @@ pub struct DownloadMutationRoot;
 
 #[Object]
 impl DownloadMutationRoot {
-    async fn pause_download(&self, ctx: &Context<'_>) -> Result<bool> {
-        ctx.data::<UnboundedSender<DownloadCommand>>()?
-            .send(DownloadCommand::Pause)?;
+    async fn pause_download(&self) -> Result<bool> {
+        let pause_path = GLOBAL_CONFIG
+            .get()
+            .map(|cfg| PathBuf::new().join(&cfg.download_path).join(".pause"))
+            .ok_or("config not initialized")?;
+        tokio::fs::write(pause_path, b"").await?;
 
         Ok(true)
     }
 
     async fn resume_download(&self, ctx: &Context<'_>) -> Result<bool> {
-        ctx.data::<UnboundedSender<DownloadCommand>>()?
-            .send(DownloadCommand::Resume)?;
+        let pause_path = GLOBAL_CONFIG
+            .get()
+            .map(|cfg| PathBuf::new().join(&cfg.download_path).join(".pause"))
+            .ok_or("config not initialized")?;
+        tokio::fs::remove_file(pause_path).await?;
+
+        ctx.data::<Sender<DownloadCommand>>()?
+            .send(DownloadCommand::Download)
+            .await?;
 
         Ok(true)
     }
@@ -169,14 +189,16 @@ impl DownloadMutationRoot {
 
         let mut len = 0_usize;
         for id in ids {
-            ctx.data::<UnboundedSender<DownloadCommand>>()?
-                .send(DownloadCommand::InsertIntoQueue(id))?;
+            ctx.data::<Sender<DownloadCommand>>()?
+                .send(DownloadCommand::InsertIntoQueue(id))
+                .await?;
 
             len += 1;
         }
 
-        ctx.data::<UnboundedSender<DownloadCommand>>()?
-            .send(DownloadCommand::Download)?;
+        ctx.data::<Sender<DownloadCommand>>()?
+            .send(DownloadCommand::Download)
+            .await?;
 
         Ok(len as _)
     }
