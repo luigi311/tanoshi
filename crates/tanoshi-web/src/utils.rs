@@ -99,7 +99,38 @@ impl AsyncLoader {
 }
 
 pub fn proxied_image_url(image_url: &str) -> String {
-    format!("/image/{}", image_url)
+    let prefix = if cfg!(tauri) {
+        if window()
+            .navigator()
+            .user_agent()
+            .unwrap_throw()
+            .contains("Windows")
+        {
+            "https://images.tanoshi"
+        } else {
+            "images://tanoshi"
+        }
+    } else {
+        "/image"
+    };
+    format!("{}/{}", prefix, image_url)
+}
+
+pub fn is_tauri() -> bool {
+    match js_sys::eval("window.__TAURI__") {
+        Ok(val) => {
+            debug!("{:?}", val);
+            if val.is_undefined() {
+                false
+            } else {
+                true
+            }
+        }
+        Err(e) => {
+            error!("{:?}", e);
+            false
+        }
+    }
 }
 
 pub fn apply_theme(theme: Option<String>) {

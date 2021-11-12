@@ -6,24 +6,38 @@ type NaiveDateTime = String;
 
 use crate::{
     common::Cover,
-    utils::{local_storage, window},
+    utils::{is_tauri, local_storage, window},
 };
 
 async fn post_graphql<Q>(var: Q::Variables) -> Result<Q::ResponseData, Box<dyn std::error::Error>>
 where
     Q: GraphQLQuery,
 {
-    let url = [
-        window()
-            .document()
+    let url = if is_tauri() {
+        if window()
+            .navigator()
+            .user_agent()
             .unwrap_throw()
-            .location()
-            .unwrap_throw()
-            .origin()
-            .unwrap(),
-        "/graphql".to_string(),
-    ]
-    .join("");
+            .contains("Windows")
+        {
+            "https://graphql.tanoshi".to_string()
+        } else {
+            "graphql://tanoshi".to_string()
+        }
+    } else {
+        [
+            window()
+                .document()
+                .unwrap_throw()
+                .location()
+                .unwrap_throw()
+                .origin()
+                .unwrap(),
+            "/graphql".to_string(),
+        ]
+        .join("")
+    };
+
     let token = local_storage()
         .get("token")
         .unwrap_throw()
@@ -666,7 +680,9 @@ pub async fn update_chapter_priority(chapter_id: i64, priority: i64) -> Result<(
 pub struct RemoveChapterFromQueue;
 
 pub async fn remove_chapter_from_queue(ids: &[i64]) -> Result<(), Box<dyn Error>> {
-    let var = remove_chapter_from_queue::Variables { ids: Some(ids.iter().map(|id| Some(*id)).collect()) };
+    let var = remove_chapter_from_queue::Variables {
+        ids: Some(ids.iter().map(|id| Some(*id)).collect()),
+    };
     let _ = post_graphql::<RemoveChapterFromQueue>(var).await?;
     Ok(())
 }
