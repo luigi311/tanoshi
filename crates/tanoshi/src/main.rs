@@ -104,15 +104,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         pushover.clone(),
     );
 
-    let server_fut = server::serve::<()>(
+    let schema = schema::build(
         userdb,
         mangadb,
-        config,
         extension_bus,
         download_tx,
         telegram_bot,
         pushover,
     );
+
+    let server_fut = server::serve::<()>(config, schema);
 
     tokio::select! {
         _ = server_fut => {

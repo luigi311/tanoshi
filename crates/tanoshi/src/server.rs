@@ -1,22 +1,6 @@
-use crate::{
-    catalogue::{
-        chapter::{MangaLoader, NextChapterLoader, PrevChapterLoader, ReadProgressLoader},
-        manga::{FavoriteLoader, UserLastReadLoader, UserUnreadChaptersLoader},
-    },
-    config::Config,
-    db::{MangaDatabase, UserDatabase},
-    notifier::pushover::Pushover,
-    proxy::Proxy,
-    schema::{MutationRoot, QueryRoot, TanoshiSchema},
-    worker::downloads::DownloadSender,
-};
-use tanoshi_vm::bus::ExtensionBus;
+use crate::{ config::Config, proxy::Proxy, schema::TanoshiSchema};
 
-use async_graphql::{
-    dataloader::DataLoader,
-    http::{playground_source, GraphQLPlaygroundConfig},
-    EmptySubscription, Schema,
-};
+use async_graphql::http::{playground_source, GraphQLPlaygroundConfig};
 use async_graphql_axum::{GraphQLRequest, GraphQLResponse};
 use axum::{async_trait, handler::get};
 use axum::{
@@ -32,10 +16,6 @@ use headers::{authorization::Bearer, Authorization};
 use std::{
     net::{IpAddr, SocketAddr},
     str::FromStr,
-};
-use teloxide::{
-    adaptors::{AutoSend, DefaultParseMode},
-    Bot,
 };
 
 struct Token(String);
@@ -77,57 +57,7 @@ async fn health_check() -> impl IntoResponse {
     response::Html("OK")
 }
 
-fn init_app(
-    userdb: UserDatabase,
-    mangadb: MangaDatabase,
-    config: &Config,
-    extension_bus: ExtensionBus,
-    download_tx: DownloadSender,
-    telegram_bot: Option<DefaultParseMode<AutoSend<Bot>>>,
-    pushover: Option<Pushover>,
-) -> Router<BoxRoute> {
-    let mut schemabuilder = Schema::build(
-        QueryRoot::default(),
-        MutationRoot::default(),
-        EmptySubscription::default(),
-    )
-    // .extension(ApolloTracing)
-    .data(DataLoader::new(FavoriteLoader {
-        mangadb: mangadb.clone(),
-    }))
-    .data(DataLoader::new(UserLastReadLoader {
-        mangadb: mangadb.clone(),
-    }))
-    .data(DataLoader::new(UserUnreadChaptersLoader {
-        mangadb: mangadb.clone(),
-    }))
-    .data(DataLoader::new(ReadProgressLoader {
-        mangadb: mangadb.clone(),
-    }))
-    .data(DataLoader::new(PrevChapterLoader {
-        mangadb: mangadb.clone(),
-    }))
-    .data(DataLoader::new(NextChapterLoader {
-        mangadb: mangadb.clone(),
-    }))
-    .data(DataLoader::new(MangaLoader {
-        mangadb: mangadb.clone(),
-    }))
-    .data(userdb)
-    .data(mangadb)
-    .data(extension_bus)
-    .data(download_tx);
-
-    if let Some(telegram_bot) = telegram_bot {
-        schemabuilder = schemabuilder.data(telegram_bot);
-    }
-
-    if let Some(pushover) = pushover {
-        schemabuilder = schemabuilder.data(pushover);
-    }
-
-    let schema: TanoshiSchema = schemabuilder.finish();
-
+fn init_app(config: &Config, schema: TanoshiSchema) -> Router<BoxRoute> {
     let proxy = Proxy::new(config.secret.clone());
 
     let mut app = Router::new().boxed();
@@ -157,24 +87,8 @@ fn init_app(
     app
 }
 
-pub async fn serve<T>(
-    userdb: UserDatabase,
-    mangadb: MangaDatabase,
-    config: &Config,
-    extension_bus: ExtensionBus,
-    download_tx: DownloadSender,
-    telegram_bot: Option<DefaultParseMode<AutoSend<Bot>>>,
-    pushover: Option<Pushover>,
-) -> Result<(), anyhow::Error> {
-    let app = init_app(
-        userdb,
-        mangadb,
-        config,
-        extension_bus,
-        download_tx,
-        telegram_bot,
-        pushover,
-    );
+pub async fn serve<T>(config: &Config, schema: TanoshiSchema) -> Result<(), anyhow::Error> {
+    let app = init_app(config, schema);
 
     let addr = SocketAddr::from((IpAddr::from_str("0.0.0.0")?, config.port));
     Server::bind(&addr).serve(app.into_make_service()).await?;
