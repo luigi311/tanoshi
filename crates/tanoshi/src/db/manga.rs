@@ -1740,6 +1740,14 @@ impl Db {
         Ok(())
     }
 
+    pub async fn delete_download_queue_by_chapter_id(&self, id: i64) -> Result<()> {
+        let mut tx = self.pool.begin().await?;
+        sqlx::query("UPDATE download_queue SET priority = priority - 1 WHERE priority > (SELECT priority FROM download_queue WHERE chapter_id = ? LIMIT 1)").bind(id).execute(&mut tx).await?;
+        sqlx::query("DELETE FROM download_queue WHERE chapter_id = ?").bind(id).execute(&mut tx).await?;
+        tx.commit().await?;
+        Ok(())
+    }
+
     pub async fn update_download_queue_priority(
         &self,
         chapter_id: i64,

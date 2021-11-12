@@ -213,6 +213,22 @@ impl DownloadMutationRoot {
         Ok(len as _)
     }
 
+    async fn remove_chapters_from_queue(&self, ctx: &Context<'_>, ids: Vec<i64>) -> Result<i64> {
+        if !user::check_is_admin(ctx)? {
+            return Err("Forbidden".into());
+        }
+
+        let db = ctx.data::<MangaDatabase>()?;
+
+        let mut len = 0;
+        for id in ids {
+            db.delete_download_queue_by_chapter_id(id).await?;
+            len += 1;
+        }
+
+        Ok(len)
+    }
+
     async fn remove_downloaded_chapters(&self, ctx: &Context<'_>, ids: Vec<i64>) -> Result<i64> {
         if !user::check_is_admin(ctx)? {
             return Err("Forbidden".into());
