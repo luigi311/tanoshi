@@ -99,7 +99,7 @@ impl AsyncLoader {
 }
 
 pub fn proxied_image_url(image_url: &str) -> String {
-    let prefix = if cfg!(tauri) {
+    let prefix = if is_tauri() {
         if window()
             .navigator()
             .user_agent()
