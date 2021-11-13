@@ -3,20 +3,21 @@
   windows_subsystem = "windows"
 )]
 
-use tauri::{async_runtime::block_on, http::ResponseBuilder, Manager};
-
-use tanoshi::{
-  config::{Config, GLOBAL_CONFIG},
-  db, local,
-  proxy::Proxy,
-  schema::{self, TanoshiSchema},
-  worker,
-};
-use tanoshi_vm::{bus::ExtensionBus, vm};
-
-use std::sync::Arc;
-
+#[cfg(not(target_os = "macos"))]
 fn main() {
+  use tauri::{async_runtime::block_on, http::ResponseBuilder, Manager};
+
+  use tanoshi::{
+    config::{Config, GLOBAL_CONFIG},
+    db, local,
+    proxy::Proxy,
+    schema::{self, TanoshiSchema},
+    worker,
+  };
+  use tanoshi_vm::{bus::ExtensionBus, vm};
+
+  use std::sync::Arc;
+
   let config =
     GLOBAL_CONFIG.get_or_init(|| Config::open::<String>(None).expect("failed to init config"));
 
@@ -152,3 +153,6 @@ fn main() {
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
 }
+
+#[cfg(target_os = "macos")]
+fn main() {}
