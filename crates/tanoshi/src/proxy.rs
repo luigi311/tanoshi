@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+#[cfg(feature = "server")]
 use axum::{
     body::Body,
     extract::{Extension, Path},
@@ -22,6 +23,7 @@ impl Proxy {
         })
     }
 
+    #[cfg(feature = "server")]
     pub async fn proxy(Path(url): Path<String>, state: Extension<Arc<Self>>) -> impl IntoResponse {
         debug!("encrypted image url: {}", url);
         let url = match utils::decrypt_url(&state.secret, &url) {
@@ -43,6 +45,7 @@ impl Proxy {
         res
     }
 
+    #[cfg(feature = "server")]
     pub async fn get_image(&self, url: &str) -> Result<http::Response<Body>, StatusCode> {
         match url {
             url if url.starts_with("http") => Ok(self.get_image_from_url_stream(url).await?),
@@ -102,6 +105,7 @@ impl Proxy {
         }
     }
 
+    #[cfg(feature = "server")]
     async fn get_image_from_url_stream(
         &self,
         url: &str,

@@ -13,6 +13,7 @@ pub mod local;
 pub mod notifier;
 pub mod proxy;
 pub mod schema;
+#[cfg(feature = "server")]
 pub mod server;
 pub mod status;
 pub mod user;
