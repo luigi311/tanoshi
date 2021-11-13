@@ -120,7 +120,7 @@ fn default_download_path() -> String {
 }
 
 impl Config {
-    pub fn open<P: AsRef<Path>>(path: Option<P>) -> Result<Config, Box<dyn std::error::Error>> {
+    pub fn open<P: AsRef<Path>>(path: Option<P>) -> Result<Config, anyhow::Error> {
         let config_path = match path {
             Some(p) => PathBuf::new().join(p),
             None => tanoshi_home().join("config.yml"),
@@ -145,7 +145,7 @@ impl Config {
         }
     }
 
-    pub fn save(&self) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn save(&self) -> Result<(), anyhow::Error> {
         std::fs::write(&self.path, serde_yaml::to_string(&self)?)?;
 
         Ok(())

@@ -12,9 +12,7 @@ pub use user::Db as UserDatabase;
 
 pub mod model;
 
-pub async fn establish_connection(
-    database_path: &str,
-) -> Result<SqlitePool, Box<dyn std::error::Error>> {
+pub async fn establish_connection(database_path: &str) -> Result<SqlitePool, anyhow::Error> {
     if !Sqlite::database_exists(database_path).await? {
         Sqlite::create_database(database_path).await?;
     }

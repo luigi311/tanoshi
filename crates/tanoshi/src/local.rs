@@ -180,7 +180,7 @@ impl Local {
         }
     }
 
-    fn get_pages_from_dir(path: &Path) -> Result<Vec<String>, Box<dyn std::error::Error>> {
+    fn get_pages_from_dir(path: &Path) -> Result<Vec<String>, anyhow::Error> {
         let pages = path
             .read_dir()?
             .into_iter()

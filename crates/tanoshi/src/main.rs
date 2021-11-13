@@ -38,7 +38,7 @@ struct Opts {
 }
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> Result<(), anyhow::Error> {
     if let Ok(rust_log) = std::env::var("RUST_LOG") {
         info!("rust_log: {}", rust_log);
     } else if let Ok(tanoshi_log) = std::env::var("TANOSHI_LOG") {
@@ -60,7 +60,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let userdb = db::UserDatabase::new(pool.clone());
 
     let (vm_handle, extension_tx) = vm::start();
-    vm::load(&config.plugin_path, extension_tx.clone()).await?;
+    vm::load(&config.plugin_path, extension_tx.clone())
+        .await
+        .map_err(|e| anyhow::anyhow!("{}", e))?;
 
     let extension_bus = ExtensionBus::new(&config.plugin_path, extension_tx);
 
@@ -69,7 +71,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             local::ID,
             Arc::new(local::Local::new(config.local_path.clone())),
         )
-        .await?;
+        .await
+        .map_err(|e| anyhow::anyhow!("{}", e))?;
 
     let mut telegram_bot = None;
     let mut telegram_bot_fut: OptionFuture<_> = None.into();

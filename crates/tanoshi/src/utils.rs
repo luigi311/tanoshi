@@ -20,7 +20,7 @@ fn generate_iv() -> String {
     String::from_utf8(chars).unwrap()
 }
 
-pub fn encrypt_url(key: &str, url: &str) -> Result<String, Box<dyn std::error::Error>> {
+pub fn encrypt_url(key: &str, url: &str) -> Result<String, anyhow::Error> {
     let pos = url.len();
     let mut buffer = vec![0_u8; pos * 2];
     buffer.splice(..pos, url.as_bytes().to_vec());
@@ -34,7 +34,7 @@ pub fn encrypt_url(key: &str, url: &str) -> Result<String, Box<dyn std::error::E
     Ok(encoded)
 }
 
-pub fn decrypt_url(key: &str, data: &str) -> Result<String, Box<dyn std::error::Error>> {
+pub fn decrypt_url(key: &str, data: &str) -> Result<String, anyhow::Error> {
     let mut decoded = base64::decode_config(data, base64::URL_SAFE_NO_PAD)?;
     trace!("decoded: {:?}", decoded);
 
