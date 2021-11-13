@@ -3,6 +3,10 @@
   windows_subsystem = "windows"
 )]
 
+extern crate tiny_http;
+
+mod proxy;
+
 #[cfg(not(target_os = "macos"))]
 fn main() {
   use tauri::{async_runtime::block_on, http::ResponseBuilder, Manager};
@@ -10,16 +14,19 @@ fn main() {
   use tanoshi::{
     config::{Config, GLOBAL_CONFIG},
     db, local,
-    proxy::Proxy,
     schema::{self, TanoshiSchema},
     worker,
   };
   use tanoshi_vm::{bus::ExtensionBus, vm};
 
+  use proxy::Proxy;
+
   use std::sync::Arc;
 
   let config =
     GLOBAL_CONFIG.get_or_init(|| Config::open::<String>(None).expect("failed to init config"));
+
+  let port = portpicker::pick_unused_port().unwrap();
 
   tauri::Builder::default()
     .setup(|app| {
@@ -139,17 +146,17 @@ fn main() {
         ResponseBuilder::new().status(404).body(vec![])
       }
     })
-    .register_uri_scheme_protocol("images", move |app, req| {
-      let proxy = app.try_state::<Arc<Proxy>>().ok_or("no proxy set")?;
-
+    .register_uri_scheme_protocol("images", move |_app, req| {
       let encrypted_url = req.uri().split("/").last().ok_or("no last part")?;
-      let (content_type, data) = block_on(proxy.get_image_raw(encrypted_url))?;
       ResponseBuilder::new()
-        .status(200)
-        .header("Content-Type", content_type)
-        .body(data)
+        .status(301)
+        .header(
+          "Location",
+          format!("http://localhost:{}/{}", port, encrypted_url),
+        )
+        .body(vec![])
     })
-    .manage(Proxy::new(config.secret.clone()))
+    .plugin(Proxy::new(port, &config.secret))
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
 }

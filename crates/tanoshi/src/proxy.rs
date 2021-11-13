@@ -10,17 +10,18 @@ use axum::{
 
 use crate::utils;
 
+#[derive(Clone)]
 pub struct Proxy {
     client: reqwest::Client,
     secret: String,
 }
 
 impl Proxy {
-    pub fn new(secret: String) -> Arc<Self> {
-        Arc::new(Self {
+    pub fn new(secret: String) -> Self {
+        Self {
             client: reqwest::Client::new(),
             secret,
-        })
+        }
     }
 
     #[cfg(feature = "server")]

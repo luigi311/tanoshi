@@ -1,4 +1,4 @@
-use crate::{ config::Config, proxy::Proxy, schema::TanoshiSchema};
+use crate::{config::Config, proxy::Proxy, schema::TanoshiSchema};
 
 use async_graphql::http::{playground_source, GraphQLPlaygroundConfig};
 use async_graphql_axum::{GraphQLRequest, GraphQLResponse};
@@ -13,6 +13,7 @@ use axum::{
 };
 use axum::{AddExtensionLayer, Router, Server};
 use headers::{authorization::Bearer, Authorization};
+use std::sync::Arc;
 use std::{
     net::{IpAddr, SocketAddr},
     str::FromStr,
@@ -58,7 +59,7 @@ async fn health_check() -> impl IntoResponse {
 }
 
 fn init_app(config: &Config, schema: TanoshiSchema) -> Router<BoxRoute> {
-    let proxy = Proxy::new(config.secret.clone());
+    let proxy = Arc::new(Proxy::new(config.secret.clone()));
 
     let mut app = Router::new().boxed();
 
