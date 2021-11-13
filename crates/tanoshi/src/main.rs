@@ -116,7 +116,8 @@ async fn main() -> Result<(), anyhow::Error> {
         pushover,
     );
 
-    let server_fut = server::serve::<()>(config, schema);
+    let app = server::init_app(&config, schema);
+    let server_fut = server::serve("0.0.0.0", config.port, app);
 
     tokio::select! {
         _ = server_fut => {

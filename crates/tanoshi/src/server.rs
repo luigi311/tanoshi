@@ -55,7 +55,7 @@ async fn health_check() -> impl IntoResponse {
     response::Html("OK")
 }
 
-fn init_app(config: &Config, schema: TanoshiSchema) -> Router<axum::body::Body> {
+pub fn init_app(config: &Config, schema: TanoshiSchema) -> Router<axum::body::Body> {
     let proxy = Arc::new(Proxy::new(config.secret.clone()));
 
     let mut app = Router::new();
@@ -81,11 +81,15 @@ fn init_app(config: &Config, schema: TanoshiSchema) -> Router<axum::body::Body> 
     app
 }
 
-pub async fn serve<T>(config: &Config, schema: TanoshiSchema) -> Result<(), anyhow::Error> {
-    let app = init_app(config, schema);
-
-    let addr = SocketAddr::from((IpAddr::from_str("0.0.0.0")?, config.port));
-    Server::bind(&addr).serve(app.into_make_service()).await?;
+pub async fn serve(
+    addr: &str,
+    port: u16,
+    router: Router<axum::body::Body>,
+) -> Result<(), anyhow::Error> {
+    let addr = SocketAddr::from((IpAddr::from_str(addr)?, port));
+    Server::bind(&addr)
+        .serve(router.into_make_service())
+        .await?;
 
     Ok(())
 }
