@@ -30,6 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Opening first page will update history
 - Zoom button move to bottom right in vertical
 - Hide bottombar inside settings page
+- Topbar and bottombar autohide on reader, tap image or middle screen to bring back
 
 ## [0.25.20]
 ### Added
