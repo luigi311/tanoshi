@@ -25,6 +25,13 @@ impl<R: Runtime> Plugin<R> for Proxy {
     "proxy"
   }
 
+  fn initialization_script(&self) -> Option<String> {
+    Some(format!(
+      "window.__TANOSHI_IMAGE_PROXY_PORT__ = {};",
+      self.port
+    ))
+  }
+
   fn initialize(&mut self, _app: &AppHandle<R>, _config: serde_json::Value) -> PluginResult<()> {
     let port = self.port;
     let handle = self.handle.clone();

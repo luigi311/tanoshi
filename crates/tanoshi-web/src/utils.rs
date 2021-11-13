@@ -1,4 +1,7 @@
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::{
+    borrow::BorrowMut,
+    sync::atomic::{AtomicUsize, Ordering},
+};
 
 use futures::{
     future::{abortable, AbortHandle},
@@ -16,6 +19,7 @@ thread_local! {
     static BODY: HtmlElement = DOCUMENT.with(|d| d.body().unwrap_throw());
     static LOCAL_STORAGE: Storage = WINDOW.with(|w| w.local_storage().unwrap_throw().unwrap_throw());
     static HISTORY: History = WINDOW.with(|w| w.history().unwrap_throw());
+    static IMAGE_PROXY_PORT: std::cell::RefCell<i64> = std::cell::RefCell::new(80);
 }
 
 pub struct AsyncState {
@@ -100,18 +104,12 @@ impl AsyncLoader {
 
 pub fn proxied_image_url(image_url: &str) -> String {
     let prefix = if is_tauri() {
-        if window()
-            .navigator()
-            .user_agent()
-            .unwrap_throw()
-            .contains("Windows")
-        {
-            "https://images.tanoshi"
-        } else {
-            "images://tanoshi"
-        }
+        format!(
+            "http://localhost:{}",
+            IMAGE_PROXY_PORT.with(|s| s.borrow().clone())
+        )
     } else {
-        "/image"
+        "/image".to_string()
     };
     format!("{}/{}", prefix, image_url)
 }
@@ -130,6 +128,15 @@ pub fn is_tauri() -> bool {
             error!("{:?}", e);
             false
         }
+    }
+}
+
+pub fn get_image_proxy_port() {
+    match js_sys::eval("window.__TANOSHI_IMAGE_PROXY_PORT__") {
+        Ok(val) => {
+            IMAGE_PROXY_PORT.with(|s| *s.borrow_mut() = val.as_f64().unwrap_or_default() as i64);
+        }
+        Err(_) => {}
     }
 }
 

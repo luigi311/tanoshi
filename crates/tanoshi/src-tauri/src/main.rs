@@ -145,16 +145,6 @@ fn main() {
         ResponseBuilder::new().status(404).body(vec![])
       }
     })
-    .register_uri_scheme_protocol("images", move |_app, req| {
-      let encrypted_url = req.uri().split("/").last().ok_or("no last part")?;
-      ResponseBuilder::new()
-        .status(301)
-        .header(
-          "Location",
-          format!("http://localhost:{}/{}", port, encrypted_url),
-        )
-        .body(vec![])
-    })
     .plugin(Proxy::new(port, &config.secret))
     .run(tauri::generate_context!())
     .expect("error while running tauri application");

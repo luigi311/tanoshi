@@ -18,7 +18,7 @@ mod settings_manage_downloads;
 mod updates;
 mod utils;
 
-use utils::{local_storage, window};
+use utils::{get_image_proxy_port, local_storage, window};
 use wasm_bindgen::{prelude::*, JsCast};
 
 use app::App;
@@ -29,6 +29,8 @@ pub async fn main_js() -> Result<(), JsValue> {
     #[cfg(debug_assertions)]
     console_error_panic_hook::set_once();
     wasm_logger::init(wasm_logger::Config::default());
+
+    get_image_proxy_port();
 
     utils::apply_theme(local_storage().get("theme").unwrap_throw());
 
