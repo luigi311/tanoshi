@@ -2,21 +2,18 @@ use crate::{config::Config, proxy::Proxy, schema::TanoshiSchema};
 
 use async_graphql::http::{playground_source, GraphQLPlaygroundConfig};
 use async_graphql_axum::{GraphQLRequest, GraphQLResponse};
-use axum::{async_trait, handler::get};
 use axum::{
+    async_trait,
     extract::{Extension, FromRequest, RequestParts, TypedHeader},
-    routing::BoxRoute,
-};
-use axum::{
-    handler::post,
     response::{self, IntoResponse},
+    routing::{get, post},
+    AddExtensionLayer, Router, Server,
 };
-use axum::{AddExtensionLayer, Router, Server};
 use headers::{authorization::Bearer, Authorization};
-use std::sync::Arc;
 use std::{
     net::{IpAddr, SocketAddr},
     str::FromStr,
+    sync::Arc,
 };
 
 struct Token(String);
@@ -58,32 +55,28 @@ async fn health_check() -> impl IntoResponse {
     response::Html("OK")
 }
 
-fn init_app(config: &Config, schema: TanoshiSchema) -> Router<BoxRoute> {
+fn init_app(config: &Config, schema: TanoshiSchema) -> Router<axum::body::Body> {
     let proxy = Arc::new(Proxy::new(config.secret.clone()));
 
-    let mut app = Router::new().boxed();
+    let mut app = Router::new();
 
     #[cfg(feature = "embed")]
     {
-        app = app.nest("/", get(crate::assets::static_handler)).boxed();
+        app = app.nest("/", get(crate::assets::static_handler));
     }
 
     app = app
         .route("/image/:url", get(Proxy::proxy))
         .route("/health", get(health_check))
-        .layer(AddExtensionLayer::new(proxy))
-        .boxed();
+        .layer(AddExtensionLayer::new(proxy));
+
     if config.enable_playground {
-        app = app
-            .nest("/graphql", get(graphql_playground).post(graphql_handler))
-            .layer(AddExtensionLayer::new(schema))
-            .boxed();
-    } else {
-        app = app
-            .nest("/graphql", post(graphql_handler))
-            .layer(AddExtensionLayer::new(schema))
-            .boxed();
+        app = app.nest("/playground", get(graphql_playground));
     }
+
+    app = app
+        .nest("/graphql", post(graphql_handler))
+        .layer(AddExtensionLayer::new(schema));
 
     app
 }

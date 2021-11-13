@@ -172,7 +172,7 @@ checksum = "0c8a8eeada647750b0ad1a244ef4e40f24d70adc7304f3e13ac549927d4192fb"
 dependencies = [
  "async-graphql",
  "async-trait",
- "axum 0.3.2",
+ "axum",
  "bytes",
  "futures-util",
  "headers",
@@ -342,34 +342,6 @@ name = "autocfg"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cdb031dd78e28731d87d56cc8ffef4a8f36ca26c38fe2de700543e627f8a464a"
-
-[[package]]
-name = "axum"
-version = "0.2.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b6519a24c07bab4effe38e226c447faef56869f99aa66aa92502aba7ad47b168"
-dependencies = [
- "async-trait",
- "bitflags",
- "bytes",
- "futures-util",
- "headers",
- "http",
- "http-body",
- "hyper",
- "pin-project-lite",
- "regex",
- "serde",
- "serde_json",
- "serde_urlencoded 0.7.0",
- "sync_wrapper",
- "tokio",
- "tokio-util",
- "tower",
- "tower-http",
- "tower-layer",
- "tower-service",
-]
 
 [[package]]
 name = "axum"
@@ -4830,7 +4802,7 @@ dependencies = [
  "async-graphql",
  "async-graphql-axum",
  "async-trait",
- "axum 0.2.5",
+ "axum",
  "base64 0.13.0",
  "block-modes",
  "bytes",
