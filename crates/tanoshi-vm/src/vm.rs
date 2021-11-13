@@ -36,7 +36,7 @@ impl ExtensionProxy {
         Arc::new(Self { path })
     }
 
-    fn load(&self) -> Result<(Instance, ExtensionEnv), Box<dyn std::error::Error>> {
+    fn load(&self) -> Result<(Instance, ExtensionEnv), anyhow::Error> {
         let instant = Instant::now();
         let store = Self::init_store_headless();
         let module = unsafe { Module::deserialize_from_file(&store, &self.path)? };
@@ -89,10 +89,7 @@ impl ExtensionProxy {
     }
 
     #[cfg(feature = "compiler")]
-    pub fn compile_from_file<P: AsRef<Path>>(
-        path: P,
-        target: Target,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn compile_from_file<P: AsRef<Path>>(path: P, target: Target) -> Result<(), anyhow::Error> {
         let wasm_bytes = std::fs::read(&path)?;
 
         let output = std::path::PathBuf::new()
@@ -108,7 +105,7 @@ impl ExtensionProxy {
         wasm_bytes: &[u8],
         output: P,
         target: Target,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    ) -> Result<(), anyhow::Error> {
         let store = Self::init_store(target);
 
         debug!("compiling extension");
@@ -118,7 +115,7 @@ impl ExtensionProxy {
         Ok(module.serialize_to_file(output)?)
     }
 
-    fn call<T>(&self, name: &str) -> Result<T, Box<dyn std::error::Error>>
+    fn call<T>(&self, name: &str) -> Result<T, anyhow::Error>
     where
         T: DeserializeOwned,
     {
@@ -130,7 +127,7 @@ impl ExtensionProxy {
         Ok(ron::from_str(&object_str)?)
     }
 
-    fn call_with_args<T, U>(&self, name: &str, param: &U) -> Result<T, Box<dyn std::error::Error>>
+    fn call_with_args<T, U>(&self, name: &str, param: &U) -> Result<T, anyhow::Error>
     where
         T: DeserializeOwned,
         U: Serialize + Debug,
@@ -197,10 +194,7 @@ pub fn start() -> (JoinHandle<()>, Sender<Command>) {
     (handle, tx)
 }
 
-pub async fn load<P: AsRef<Path>>(
-    path: P,
-    tx: Sender<Command>,
-) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn load<P: AsRef<Path>>(path: P, tx: Sender<Command>) -> Result<(), anyhow::Error> {
     match tokio::fs::read_dir(&path).await {
         Ok(_) => {}
         Err(_) => {
@@ -224,7 +218,9 @@ pub async fn load<P: AsRef<Path>>(
         let path = entry.path();
         info!("found compiled plugin at {:?}", path.clone());
         tx.send(Command::Load(
-            path.to_str().ok_or("no path str")?.to_string(),
+            path.to_str()
+                .ok_or_else(|| anyhow::anyhow!("no path str"))?
+                .to_string(),
         ))
         .await?;
     }
@@ -233,7 +229,7 @@ pub async fn load<P: AsRef<Path>>(
 }
 
 #[cfg(feature = "compiler")]
-pub async fn compile<P: AsRef<Path>>(path: P) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn compile<P: AsRef<Path>>(path: P) -> Result<(), anyhow::Error> {
     compile_with_target(path, env!("TARGET"), true).await?;
 
     Ok(())
@@ -244,7 +240,7 @@ pub async fn compile_with_target<P: AsRef<Path>>(
     path: P,
     triple: &str,
     remove_wasm: bool,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), anyhow::Error> {
     use std::str::FromStr;
     use wasmer::{CpuFeature, RuntimeError, Triple};
 
@@ -269,7 +265,8 @@ pub async fn compile_with_target<P: AsRef<Path>>(
 
         let path = entry.path();
         info!("found wasm file at {:?}", path.clone());
-        ExtensionProxy::compile_from_file(&path, target.clone()).map_err(|e| format!("{}", e))?;
+        ExtensionProxy::compile_from_file(&path, target.clone())
+            .map_err(|e| anyhow::anyhow!("{}", e))?;
 
         if remove_wasm {
             debug!("remove wasm file");
@@ -387,28 +384,37 @@ async fn process<F, T>(
     }
 }
 
-fn wasi_read_err(env: &ExtensionEnv) -> Result<String, Box<dyn std::error::Error>> {
+fn wasi_read_err(env: &ExtensionEnv) -> Result<String, anyhow::Error> {
     let mut state = env.wasi_env.state();
-    let wasm_stderr = state.fs.stderr_mut()?.as_mut().ok_or("no wasi sterr")?;
+    let wasm_stderr = state
+        .fs
+        .stderr_mut()?
+        .as_mut()
+        .ok_or_else(|| anyhow::anyhow!("no wasi sterr"))?;
     let mut buf = String::new();
     wasm_stderr.read_to_string(&mut buf)?;
     Ok(buf)
 }
 
-fn wasi_read(env: &ExtensionEnv) -> Result<String, Box<dyn std::error::Error>> {
+fn wasi_read(env: &ExtensionEnv) -> Result<String, anyhow::Error> {
     let mut state = env.wasi_env.state();
-    let wasm_stdout = state.fs.stdout_mut()?.as_mut().ok_or("no wasi stdout")?;
+    let wasm_stdout = state
+        .fs
+        .stdout_mut()?
+        .as_mut()
+        .ok_or_else(|| anyhow::anyhow!("no wasi stdout"))?;
     let mut buf = String::new();
     wasm_stdout.read_to_string(&mut buf)?;
     Ok(buf)
 }
 
-fn wasi_write(
-    env: &ExtensionEnv,
-    param: &impl Serialize,
-) -> Result<(), Box<dyn std::error::Error>> {
+fn wasi_write(env: &ExtensionEnv, param: &impl Serialize) -> Result<(), anyhow::Error> {
     let mut state = env.wasi_env.state();
-    let wasm_stdout = state.fs.stdin_mut()?.as_mut().ok_or("no wasi stdin")?;
+    let wasm_stdout = state
+        .fs
+        .stdin_mut()?
+        .as_mut()
+        .ok_or_else(|| anyhow::anyhow!("no wasi stdin"))?;
 
     let buf = ron::to_string(param)?;
     wasm_stdout.write_all(buf.as_bytes())?;
