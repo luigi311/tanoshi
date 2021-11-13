@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   }
   ```
 - Automatically download new chapters on update. Enable with set `auto_download_chapters: true` on `config.yml`
+- Desktop version built with tauri if you don't plan to host it
 
 ### Changes
 - Few icon changes

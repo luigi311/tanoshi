@@ -161,4 +161,20 @@ Tanoshi backend use [rust-embed](https://github.com/pyros2097/rust-embed) to emb
     cargo build
     ```
 
+### Desktop
+1. Do steps for both frontend and backend
+2. Install depedencies for tauri
+3. Install tauri cli
+   ```
+   cargo install tauri-cli --version ^1.0.0-beta
+   ```
+4. Run
+   ```
+   cd crates/tanoshi-web
+   tauri serve
+   
+   cd crates/tanoshi
+   cargo tauri dev
+   ```
+
 PS. On linux you may need to install libssl-dev on ubuntu/debian or openssl-dev on fedora/centos
