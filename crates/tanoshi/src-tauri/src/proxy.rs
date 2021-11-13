@@ -14,7 +14,8 @@ pub struct Proxy {
 }
 
 impl Proxy {
-  pub fn new(port: u16, secret: &str) -> Self {
+  pub fn new(secret: &str) -> Self {
+    let port = portpicker::pick_unused_port().unwrap();
     let handle = tanoshi::proxy::Proxy::new(secret.to_string());
     Self { port, handle }
   }

@@ -6,44 +6,23 @@ type NaiveDateTime = String;
 
 use crate::{
     common::Cover,
-    utils::{is_tauri, local_storage, window},
+    utils::{graphql_host, local_storage},
 };
 
 async fn post_graphql<Q>(var: Q::Variables) -> Result<Q::ResponseData, Box<dyn std::error::Error>>
 where
     Q: GraphQLQuery,
 {
-    let url = if is_tauri() {
-        if window()
-            .navigator()
-            .user_agent()
-            .unwrap_throw()
-            .contains("Windows")
-        {
-            "https://graphql.tanoshi".to_string()
-        } else {
-            "graphql://tanoshi".to_string()
-        }
-    } else {
-        [
-            window()
-                .document()
-                .unwrap_throw()
-                .location()
-                .unwrap_throw()
-                .origin()
-                .unwrap(),
-            "/graphql".to_string(),
-        ]
-        .join("")
-    };
+    let url = graphql_host();
 
     let token = local_storage()
         .get("token")
         .unwrap_throw()
         .unwrap_or_else(|| "".to_string());
     let request_body = Q::build_query(var);
+
     let client = reqwest::Client::new();
+
     let mut req = client.post(url);
     if !token.is_empty() {
         req = req.header("Authorization", format!("Bearer {}", token));

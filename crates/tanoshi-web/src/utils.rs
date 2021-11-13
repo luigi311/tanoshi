@@ -1,7 +1,4 @@
-use std::{
-    borrow::BorrowMut,
-    sync::atomic::{AtomicUsize, Ordering},
-};
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use futures::{
     future::{abortable, AbortHandle},
@@ -19,7 +16,8 @@ thread_local! {
     static BODY: HtmlElement = DOCUMENT.with(|d| d.body().unwrap_throw());
     static LOCAL_STORAGE: Storage = WINDOW.with(|w| w.local_storage().unwrap_throw().unwrap_throw());
     static HISTORY: History = WINDOW.with(|w| w.history().unwrap_throw());
-    static IMAGE_PROXY_PORT: std::cell::RefCell<i64> = std::cell::RefCell::new(80);
+    static IMAGE_PROXY_HOST: std::cell::RefCell<String> = std::cell::RefCell::new("/image".to_string());
+    static GRAPHQL_HOST: std::cell::RefCell<String> = std::cell::RefCell::new("/graphql".to_string());
 }
 
 pub struct AsyncState {
@@ -103,41 +101,52 @@ impl AsyncLoader {
 }
 
 pub fn proxied_image_url(image_url: &str) -> String {
-    let prefix = if is_tauri() {
-        format!(
-            "http://localhost:{}",
-            IMAGE_PROXY_PORT.with(|s| s.borrow().clone())
-        )
-    } else {
-        "/image".to_string()
+    format!("{}/{}", image_proxy_host(), image_url)
+}
+
+pub fn initialize_urls() {
+    let image_proxy_host = match js_sys::eval("window.__TANOSHI_IMAGE_PROXY_PORT__") {
+        Ok(val) if !val.is_undefined() => {
+            format!(
+                "http://localhost:{}",
+                val.as_f64().unwrap_or_default() as i64
+            )
+        }
+        _ => "/image".to_string(),
     };
-    format!("{}/{}", prefix, image_url)
+
+    IMAGE_PROXY_HOST.with(|s| *s.borrow_mut() = image_proxy_host);
+
+    let graphql_host = match js_sys::eval("window.__TANOSHI_GRAPHQL_PORT__") {
+        Ok(val) if !val.is_undefined() => {
+            format!(
+                "http://localhost:{}",
+                val.as_f64().unwrap_or_default() as i64
+            )
+        }
+        _ => {
+            format!(
+                "{}/graphql",
+                window()
+                    .document()
+                    .unwrap_throw()
+                    .location()
+                    .unwrap_throw()
+                    .origin()
+                    .unwrap()
+            )
+        }
+    };
+
+    GRAPHQL_HOST.with(|s| *s.borrow_mut() = graphql_host);
 }
 
-pub fn is_tauri() -> bool {
-    match js_sys::eval("window.__TAURI__") {
-        Ok(val) => {
-            debug!("{:?}", val);
-            if val.is_undefined() {
-                false
-            } else {
-                true
-            }
-        }
-        Err(e) => {
-            error!("{:?}", e);
-            false
-        }
-    }
+pub fn image_proxy_host() -> String {
+    IMAGE_PROXY_HOST.with(|v| v.borrow().clone())
 }
 
-pub fn get_image_proxy_port() {
-    match js_sys::eval("window.__TANOSHI_IMAGE_PROXY_PORT__") {
-        Ok(val) => {
-            IMAGE_PROXY_PORT.with(|s| *s.borrow_mut() = val.as_f64().unwrap_or_default() as i64);
-        }
-        Err(_) => {}
-    }
+pub fn graphql_host() -> String {
+    GRAPHQL_HOST.with(|v| v.borrow().clone())
 }
 
 pub fn apply_theme(theme: Option<String>) {
