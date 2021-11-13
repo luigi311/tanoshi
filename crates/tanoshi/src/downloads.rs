@@ -215,7 +215,7 @@ impl DownloadMutationRoot {
                 .await?
                 .first()
                 .cloned()
-                .ok_or_else(|| "pages empty")?;
+                .ok_or("pages empty")?;
             let page = PathBuf::new().join(page);
             if let Some(parent) = page.parent() {
                 if parent.exists() {
@@ -247,7 +247,7 @@ impl DownloadMutationRoot {
                 .await?
                 .first()
                 .cloned()
-                .ok_or_else(|| "pages empty")?;
+                .ok_or("pages empty")?;
             let page = PathBuf::new().join(page);
             if let Some(parent) = page.parent() {
                 if parent.exists() {

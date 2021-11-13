@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 #[cfg(feature = "server")]
 use axum::{
     body::Body,
@@ -25,7 +23,10 @@ impl Proxy {
     }
 
     #[cfg(feature = "server")]
-    pub async fn proxy(Path(url): Path<String>, state: Extension<Arc<Self>>) -> impl IntoResponse {
+    pub async fn proxy(
+        Path(url): Path<String>,
+        state: Extension<std::sync::Arc<Self>>,
+    ) -> impl IntoResponse {
         debug!("encrypted image url: {}", url);
         let url = match utils::decrypt_url(&state.secret, &url) {
             Ok(url) => url,
@@ -79,14 +80,14 @@ impl Proxy {
             // extract the file from archive
             let filename = file
                 .parent()
-                .ok_or(anyhow::anyhow!("no parent"))?
+                .ok_or_else(|| anyhow::anyhow!("no parent"))?
                 .display()
                 .to_string();
             let path = file
                 .file_name()
-                .ok_or(anyhow::anyhow!("no filename"))?
+                .ok_or_else(|| anyhow::anyhow!("no filename"))?
                 .to_str()
-                .ok_or(anyhow::anyhow!("failed convert to string"))?
+                .ok_or_else(|| anyhow::anyhow!("failed convert to string"))?
                 .to_string();
             let content_type = mime_guess::from_path(&path)
                 .first_or_octet_stream()

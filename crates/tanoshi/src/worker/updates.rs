@@ -97,7 +97,7 @@ impl UpdatesWorker {
     ) -> Result<(), anyhow::Error> {
         self.telegram_bot
             .as_ref()
-            .ok_or(anyhow::anyhow!("telegram bot not set"))?
+            .ok_or_else(|| anyhow::anyhow!("telegram bot not set"))?
             .send_message(chat_id, message)
             .await?;
         Ok(())
@@ -112,13 +112,13 @@ impl UpdatesWorker {
         let pushover = self
             .pushover
             .as_ref()
-            .ok_or(anyhow::anyhow!("pushover not set"))?;
+            .ok_or_else(|| anyhow::anyhow!("pushover not set"))?;
         if let Some(title) = title {
             pushover
-                .send_notification_with_title(&user_key, &title, &body)
+                .send_notification_with_title(user_key, &title, body)
                 .await?;
         } else {
-            pushover.send_notification(&user_key, body).await?;
+            pushover.send_notification(user_key, body).await?;
         }
 
         Ok(())
