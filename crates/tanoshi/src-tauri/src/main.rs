@@ -9,7 +9,6 @@ extern crate tiny_http;
 #[cfg(not(target_os = "macos"))]
 mod proxy;
 
-#[cfg(not(target_os = "macos"))]
 fn main() {
   use tauri::{async_runtime::block_on, http::ResponseBuilder, Manager};
 
@@ -162,6 +161,3 @@ fn main() {
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
 }
-
-#[cfg(target_os = "macos")]
-fn main() {}
