@@ -3,8 +3,10 @@
   windows_subsystem = "windows"
 )]
 
+#[cfg(not(target_os = "macos"))]
 extern crate tiny_http;
 
+#[cfg(not(target_os = "macos"))]
 mod proxy;
 
 #[cfg(not(target_os = "macos"))]
