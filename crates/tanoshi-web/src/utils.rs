@@ -4,7 +4,7 @@ use futures::{
     future::{abortable, AbortHandle},
     Future,
 };
-use futures_signals::signal::{Mutable, Signal};
+use futures_signals::signal::{self, Mutable, Signal};
 use wasm_bindgen_futures::spawn_local;
 
 use wasm_bindgen::prelude::*;
@@ -18,6 +18,7 @@ thread_local! {
     static HISTORY: History = WINDOW.with(|w| w.history().unwrap_throw());
     static IMAGE_PROXY_HOST: std::cell::RefCell<String> = std::cell::RefCell::new("/image".to_string());
     static GRAPHQL_HOST: std::cell::RefCell<String> = std::cell::RefCell::new("/graphql".to_string());
+    static IS_TAURI: std::cell::RefCell<bool> = std::cell::RefCell::new(false);
 }
 
 pub struct AsyncState {
@@ -105,6 +106,13 @@ pub fn proxied_image_url(image_url: &str) -> String {
 }
 
 pub fn initialize_urls() {
+    match js_sys::eval("window.__TAURI__") {
+        Ok(val) if !val.is_undefined() => {
+            IS_TAURI.with(|s| *s.borrow_mut() = true);
+        }
+        _ => {}
+    };
+
     let image_proxy_host = match js_sys::eval("window.__TANOSHI_IMAGE_PROXY_PORT__") {
         Ok(val) if !val.is_undefined() => {
             format!(
@@ -139,6 +147,14 @@ pub fn initialize_urls() {
     };
 
     GRAPHQL_HOST.with(|s| *s.borrow_mut() = graphql_host);
+}
+
+pub fn is_tauri() -> bool {
+    IS_TAURI.with(|v| v.borrow().clone())
+}
+
+pub fn is_tauri_signal() -> impl Signal<Item = bool> {
+    signal::always(is_tauri())
 }
 
 pub fn image_proxy_host() -> String {

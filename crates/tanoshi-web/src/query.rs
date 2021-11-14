@@ -531,6 +531,20 @@ pub async fn test_pushover(user_key: &str) -> Result<(), Box<dyn Error>> {
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "graphql/schema.graphql",
+    query_path = "graphql/test_desktop_notification.graphql",
+    response_derives = "Debug"
+)]
+pub struct TestDesktopNotification;
+
+pub async fn test_desktop_notification() -> Result<(), Box<dyn Error>> {
+    let var = test_desktop_notification::Variables {};
+    let _ = post_graphql::<TestDesktopNotification>(var).await?;
+    Ok(())
+}
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/schema.graphql",
     query_path = "graphql/mark_chapter_as_read.graphql",
     response_derives = "Debug"
 )]

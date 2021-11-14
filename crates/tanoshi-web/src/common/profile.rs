@@ -8,7 +8,7 @@ use web_sys::HtmlInputElement;
 
 use crate::common::{events, snackbar};
 use crate::query;
-use crate::utils::AsyncLoader;
+use crate::utils::{is_tauri_signal, AsyncLoader};
 
 pub struct Profile {
     old_password: Mutable<String>,
@@ -73,6 +73,17 @@ impl Profile {
                 }
             });
         }
+    }
+
+    fn test_dekstop_notification(profile: Rc<Self>) {
+        profile.loader.load(async move {
+            match query::test_desktop_notification().await {
+                Ok(_) => {}
+                Err(err) => {
+                    snackbar::show(format!("{}", err));
+                }
+            }
+        });
     }
 
     fn change_password(profile: Rc<Self>) {
@@ -205,6 +216,24 @@ impl Profile {
                 html!("span", {
                     .style("margin-left", "0.5rem")
                     .text("Notification")
+                }),
+                html!("div", {
+                    .style("display", "flex")
+                    .style("justify-content", "flex-end")
+                    .style("margin-right", "0.5rem")
+                    .style("margin-top", "0.5rem")
+                    .visible_signal(is_tauri_signal())
+                    .children(&mut [
+                        html!("input", {
+                            .attribute("type", "button")
+                            .attribute("value", "Test Desktop Notification")
+                            .text("Test Desktop Notification")
+                            .event_preventable(clone!(profile => move |e: events::Click| {
+                                e.prevent_default();
+                                Self::test_dekstop_notification(profile.clone());
+                            }))
+                        }),
+                    ])
                 }),
                 html!("input" => HtmlInputElement, {
                     .attribute("type", "text")

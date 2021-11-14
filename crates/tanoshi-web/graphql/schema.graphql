@@ -140,6 +140,11 @@ type MutationRoot {
   updateChapterPriority(id: Int!, priority: Int!): Boolean!
 }
 
+# ISO 8601 combined date and time without timezone.
+#
+# # Examples
+#
+# * `2015-07-01T08:59:60.123`,
 scalar NaiveDateTime
 
 # Information about pagination in a connection
@@ -237,6 +242,7 @@ type QueryRoot {
     # pushover user key
     userKey: String!
   ): Boolean!
+  testDesktopNotification: Boolean!
   downloadStatus: Boolean!
   downloadQueue: [DownloadQueueEntry!]!
   getDownloadedChapters(
