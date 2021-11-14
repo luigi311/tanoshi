@@ -1,10 +1,5 @@
-use crate::{notifier::pushover::Pushover, user};
+use crate::{notifier::Notifier, user};
 use async_graphql::{Context, Object, Result};
-use teloxide::{
-    adaptors::{AutoSend, DefaultParseMode},
-    prelude::Requester,
-    Bot,
-};
 
 #[derive(Default)]
 pub struct NotificationRoot;
@@ -17,8 +12,8 @@ impl NotificationRoot {
         #[graphql(desc = "telegram chat id")] chat_id: i64,
     ) -> Result<bool> {
         let _ = user::get_claims(ctx)?;
-        ctx.data::<DefaultParseMode<AutoSend<Bot>>>()?
-            .send_message(chat_id, "Test Notification")
+        ctx.data::<Notifier>()?
+            .send_message_to_telegram(chat_id, "Test Notification")
             .await?;
 
         Ok(true)
@@ -30,8 +25,8 @@ impl NotificationRoot {
         #[graphql(desc = "pushover user key")] user_key: String,
     ) -> Result<bool> {
         let _ = user::get_claims(ctx)?;
-        ctx.data::<Pushover>()?
-            .send_notification(&user_key, "Test Notification")
+        ctx.data::<Notifier>()?
+            .send_message_to_pushover(&user_key, None, "Test Notification")
             .await?;
 
         Ok(true)

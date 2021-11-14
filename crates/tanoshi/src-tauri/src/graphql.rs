@@ -8,7 +8,7 @@ use tauri::{
 
 use tiny_http::{Header, Response, Server};
 
-use tanoshi::{config::GLOBAL_CONFIG, db, local, schema, worker};
+use tanoshi::{config::GLOBAL_CONFIG, db, local, notifier, schema, worker};
 use tanoshi_vm::{bus::ExtensionBus, vm};
 
 use std::sync::Arc;
@@ -66,25 +66,24 @@ impl<R: Runtime> Plugin<R> for GraphQL {
         return;
       }
 
+      let notifier = notifier::Builder::new(userdb.clone()).finish();
+
       let (download_tx, download_worker_handle) = worker::downloads::start(
         &config.download_path,
         mangadb.clone(),
         extension_bus.clone(),
-        None,
-        None,
+        notifier.clone(),
       );
 
       let update_worker_handle = worker::updates::start(
         config.update_interval,
-        userdb.clone(),
         mangadb.clone(),
         extension_bus.clone(),
         download_tx.clone(),
-        None,
-        None,
+        notifier.clone(),
       );
 
-      let schema = schema::build(userdb, mangadb, extension_bus, download_tx, None, None);
+      let schema = schema::build(userdb, mangadb, extension_bus, download_tx, notifier);
 
       tx.send(schema).unwrap();
 

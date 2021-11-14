@@ -40,7 +40,7 @@ impl Builder {
         }
     }
 
-    pub fn build(self) -> Notifier {
+    pub fn finish(self) -> Notifier {
         Notifier {
             userdb: self.userdb,
             telegram: self.telegram,
@@ -49,6 +49,7 @@ impl Builder {
     }
 }
 
+#[derive(Clone)]
 pub struct Notifier {
     userdb: UserDatabase,
     pushover: Option<Pushover>,
@@ -56,7 +57,7 @@ pub struct Notifier {
 }
 
 impl Notifier {
-    pub async fn send_all(
+    pub async fn send_all_to_user(
         &self,
         user_id: i64,
         title: Option<String>,
@@ -64,11 +65,31 @@ impl Notifier {
     ) -> Result<(), anyhow::Error> {
         let user = self.userdb.get_user_by_id(user_id).await?;
         if let Some(user_key) = user.pushover_user_key {
-            let _ = self.send_message_to_pushover(&user_key, title, body).await;
+            let _ = self
+                .send_message_to_pushover(&user_key, title.clone(), body)
+                .await;
         }
         if let Some(chat_id) = user.telegram_chat_id {
-            let _ = self.send_message_to_telegram(chat_id, body).await;
+            let mut message = "".to_string();
+            if let Some(title) = title {
+                message = format!("<b>{}</b>\n", title);
+            }
+            message = format!("{}{}", message, body);
+            let _ = self.send_message_to_telegram(chat_id, &message).await;
         }
+        Ok(())
+    }
+
+    pub async fn send_all_to_admins(
+        &self,
+        title: Option<String>,
+        body: &str,
+    ) -> Result<(), anyhow::Error> {
+        let admins = self.userdb.get_admins().await?;
+        for user in admins {
+            let _ = self.send_all_to_user(user.id, title.clone(), body).await;
+        }
+
         Ok(())
     }
 

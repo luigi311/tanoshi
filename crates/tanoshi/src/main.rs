@@ -75,47 +75,40 @@ async fn main() -> Result<(), anyhow::Error> {
         .await
         .map_err(|e| anyhow::anyhow!("{}", e))?;
 
-    let mut telegram_bot = None;
+    let mut notifier_builder = notifier::Builder::new(userdb.clone());
+
     let mut telegram_bot_fut: OptionFuture<_> = None.into();
     if let Some(telegram_config) = config.telegram.clone() {
         let bot = teloxide::Bot::new(telegram_config.token)
             .auto_send()
             .parse_mode(teloxide::types::ParseMode::Html);
         telegram_bot_fut = Some(notifier::telegram::run(telegram_config.name, bot.clone())).into();
-        telegram_bot = Some(bot);
+        notifier_builder = notifier_builder.telegram(bot);
     }
 
-    let pushover = config
-        .pushover
-        .clone()
-        .map(|pushover_cfg| Pushover::new(pushover_cfg.application_key));
+    if let Some(pushover_cfg) = config.pushover.as_ref() {
+        notifier_builder =
+            notifier_builder.pushover(Pushover::new(pushover_cfg.application_key.clone()));
+    }
+
+    let notifier = notifier_builder.finish();
 
     let (download_tx, download_worker_handle) = worker::downloads::start(
         &config.download_path,
         mangadb.clone(),
         extension_bus.clone(),
-        telegram_bot.clone(),
-        pushover.clone(),
+        notifier.clone(),
     );
 
     let update_worker_handle = worker::updates::start(
         config.update_interval,
-        userdb.clone(),
         mangadb.clone(),
         extension_bus.clone(),
         download_tx.clone(),
-        telegram_bot.clone(),
-        pushover.clone(),
+        notifier.clone(),
     );
 
-    let schema = schema::build(
-        userdb,
-        mangadb,
-        extension_bus,
-        download_tx,
-        telegram_bot,
-        pushover,
-    );
+    let schema = schema::build(userdb, mangadb, extension_bus, download_tx, notifier);
 
     let app = server::init_app(&config, schema);
     let server_fut = server::serve("0.0.0.0", config.port, app);

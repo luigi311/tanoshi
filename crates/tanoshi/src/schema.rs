@@ -8,7 +8,7 @@ use crate::{
     downloads::{DownloadMutationRoot, DownloadRoot},
     library::{LibraryMutationRoot, LibraryRoot},
     notification::NotificationRoot,
-    notifier::pushover::Pushover,
+    notifier::Notifier,
     status::StatusRoot,
     user::{UserMutationRoot, UserRoot},
     worker::downloads::DownloadSender,
@@ -16,10 +16,6 @@ use crate::{
 use tanoshi_vm::bus::ExtensionBus;
 
 use async_graphql::{dataloader::DataLoader, EmptySubscription, MergedObject, Schema};
-use teloxide::{
-    adaptors::{AutoSend, DefaultParseMode},
-    Bot,
-};
 
 pub type TanoshiSchema = Schema<QueryRoot, MutationRoot, EmptySubscription>;
 
@@ -47,10 +43,9 @@ pub fn build(
     mangadb: MangaDatabase,
     extension_bus: ExtensionBus,
     download_tx: DownloadSender,
-    telegram_bot: Option<DefaultParseMode<AutoSend<Bot>>>,
-    pushover: Option<Pushover>,
+    notifier: Notifier,
 ) -> TanoshiSchema {
-    let mut schemabuilder = Schema::build(
+    let schemabuilder = Schema::build(
         QueryRoot::default(),
         MutationRoot::default(),
         EmptySubscription::default(),
@@ -80,15 +75,8 @@ pub fn build(
     .data(userdb)
     .data(mangadb)
     .data(extension_bus)
+    .data(notifier)
     .data(download_tx);
-
-    if let Some(telegram_bot) = telegram_bot {
-        schemabuilder = schemabuilder.data(telegram_bot);
-    }
-
-    if let Some(pushover) = pushover {
-        schemabuilder = schemabuilder.data(pushover);
-    }
 
     schemabuilder.finish()
 }

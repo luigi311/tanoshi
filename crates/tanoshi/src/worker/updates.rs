@@ -4,11 +4,7 @@ use serde::Deserialize;
 use tanoshi_lib::prelude::Version;
 
 use tanoshi_vm::prelude::ExtensionBus;
-use teloxide::{
-    adaptors::{AutoSend, DefaultParseMode},
-    prelude::Requester,
-    Bot,
-};
+
 use tokio::{
     task::JoinHandle,
     time::{self, Instant},
@@ -16,53 +12,30 @@ use tokio::{
 
 use crate::{
     config::GLOBAL_CONFIG,
-    db::{
-        model::{Chapter, User},
-        MangaDatabase, UserDatabase,
-    },
-    notifier::pushover::Pushover,
+    db::{model::Chapter, MangaDatabase},
+    notifier::Notifier,
     worker::downloads::Command as DownloadCommand,
 };
 
 use super::downloads::DownloadSender;
 
-#[derive(Debug, Clone)]
-struct ChapterUpdate {
-    manga_title: String,
-    cover_url: String,
-    title: String,
-}
-
-impl Display for ChapterUpdate {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let manga_title = html_escape::encode_safe(&self.manga_title).to_string();
-        let title = html_escape::encode_safe(&self.title).to_string();
-
-        write!(f, "<b>{}</b>\n{}", manga_title, title)
-    }
-}
-
 struct UpdatesWorker {
     period: u64,
     client: reqwest::Client,
-    userdb: UserDatabase,
     mangadb: MangaDatabase,
     extensions: ExtensionBus,
     auto_download_chapters: bool,
     download_tx: DownloadSender,
-    telegram_bot: Option<DefaultParseMode<AutoSend<Bot>>>,
-    pushover: Option<Pushover>,
+    notifier: Notifier,
 }
 
 impl UpdatesWorker {
     fn new(
         period: u64,
-        userdb: UserDatabase,
         mangadb: MangaDatabase,
         extensions: ExtensionBus,
         download_tx: DownloadSender,
-        telegram_bot: Option<DefaultParseMode<AutoSend<Bot>>>,
-        pushover: Option<Pushover>,
+        notifier: Notifier,
     ) -> Self {
         #[cfg(not(debug_assertions))]
         let period = if period > 0 && period < 3600 {
@@ -80,54 +53,16 @@ impl UpdatesWorker {
         Self {
             period,
             client: reqwest::Client::new(),
-            userdb,
             mangadb,
             extensions,
             auto_download_chapters,
             download_tx,
-            telegram_bot,
-            pushover,
+            notifier,
         }
-    }
-
-    async fn send_message_to_telegram(
-        &self,
-        chat_id: i64,
-        message: &str,
-    ) -> Result<(), anyhow::Error> {
-        self.telegram_bot
-            .as_ref()
-            .ok_or_else(|| anyhow::anyhow!("telegram bot not set"))?
-            .send_message(chat_id, message)
-            .await?;
-        Ok(())
-    }
-
-    async fn send_message_to_pushover(
-        &self,
-        user_key: &str,
-        title: Option<String>,
-        body: &str,
-    ) -> Result<(), anyhow::Error> {
-        let pushover = self
-            .pushover
-            .as_ref()
-            .ok_or_else(|| anyhow::anyhow!("pushover not set"))?;
-        if let Some(title) = title {
-            pushover
-                .send_notification_with_title(user_key, &title, body)
-                .await?;
-        } else {
-            pushover.send_notification(user_key, body).await?;
-        }
-
-        Ok(())
     }
 
     async fn check_chapter_update(&self) -> Result<(), anyhow::Error> {
         let manga_in_library = self.mangadb.get_all_user_library().await?;
-
-        let mut user_map: HashMap<i64, User> = HashMap::new();
 
         for item in manga_in_library {
             let last_uploaded_chapter = self
@@ -178,40 +113,12 @@ impl UpdatesWorker {
 
             for chapter in chapters {
                 for user_id in item.user_ids.iter() {
-                    let user = match user_map.get(user_id) {
-                        Some(user) => user.to_owned(),
-                        None => {
-                            let user = self.userdb.get_user_by_id(*user_id).await?;
-                            user_map.insert(*user_id, user.to_owned());
-                            user
-                        }
-                    };
-
-                    if let Some(chat_id) = user.telegram_chat_id {
-                        let update = ChapterUpdate {
-                            manga_title: item.manga.title.clone(),
-                            cover_url: item.manga.cover_url.clone(),
-                            title: chapter.title.clone(),
-                        };
-                        if let Err(e) = self
-                            .send_message_to_telegram(chat_id, update.to_string().as_str())
-                            .await
-                        {
-                            error!("failed to send message, reason: {}", e);
-                        }
-                    }
-
-                    if let Some(user_key) = user.pushover_user_key {
-                        if let Err(e) = self
-                            .send_message_to_pushover(
-                                &user_key,
-                                Some(item.manga.title.clone()),
-                                &chapter.title,
-                            )
-                            .await
-                        {
-                            error!("failed to send PushoverMessage, reason: {}", e);
-                        }
+                    if let Err(e) = self
+                        .notifier
+                        .send_all_to_user(*user_id, Some(item.manga.title.clone()), &chapter.title)
+                        .await
+                    {
+                        error!("failed to send notification, reason {}", e);
                     }
                 }
 
@@ -254,7 +161,6 @@ impl UpdatesWorker {
             .map(|source| (source.id, source))
             .collect::<HashMap<i64, SourceIndex>>();
 
-        let admins = self.userdb.get_admins().await?;
         let installed_sources = self
             .extensions
             .list()
@@ -268,22 +174,9 @@ impl UpdatesWorker {
                 .map(|v| v > source.version)
                 .unwrap_or(false)
             {
-                for admin in admins.iter() {
-                    let message = format!("{} extension update available", source.name);
-                    if let Some(chat_id) = admin.telegram_chat_id {
-                        if let Err(e) = self.send_message_to_telegram(chat_id, &message).await {
-                            error!("failed to send telegram message, reason: {}", e);
-                        }
-                    }
-
-                    if let Some(user_key) = admin.pushover_user_key.clone() {
-                        if let Err(e) = self
-                            .send_message_to_pushover(&user_key, None, &message)
-                            .await
-                        {
-                            error!("failed to send PushoverMessage, reason: {}", e);
-                        }
-                    }
+                let message = format!("{} extension update available", source.name);
+                if let Err(e) = self.notifier.send_all_to_admins(None, &message).await {
+                    error!("failed to send extension update to admin, {}", e);
                 }
             }
         }
@@ -314,21 +207,9 @@ impl UpdatesWorker {
             > Version::from_str(env!("CARGO_PKG_VERSION"))?
         {
             info!("new server update found!");
-            let admins = self.userdb.get_admins().await?;
-            for admin in admins {
-                let msg = format!("Tanoshi {} Released\n{}", release.tag_name, release.body);
-
-                if let Some(chat_id) = admin.telegram_chat_id {
-                    if let Err(e) = self.send_message_to_telegram(chat_id, &msg).await {
-                        error!("failed to send telegram message, reason: {}", e);
-                    }
-                }
-
-                if let Some(user_key) = admin.pushover_user_key.clone() {
-                    if let Err(e) = self.send_message_to_pushover(&user_key, None, &msg).await {
-                        error!("failed to send PushoverMessage, reason: {}", e);
-                    }
-                }
+            let message = format!("Tanoshi {} Released\n{}", release.tag_name, release.body);
+            if let Err(e) = self.notifier.send_all_to_admins(None, &message).await {
+                error!("failed to send extension update to admin, {}", e);
             }
         } else {
             info!("no tanoshi update found");
@@ -377,22 +258,12 @@ impl UpdatesWorker {
 
 pub fn start(
     period: u64,
-    userdb: UserDatabase,
     mangadb: MangaDatabase,
     extensions: ExtensionBus,
     download_tx: DownloadSender,
-    telegram_bot: Option<DefaultParseMode<AutoSend<Bot>>>,
-    pushover: Option<Pushover>,
+    notifier: Notifier,
 ) -> JoinHandle<()> {
-    let worker = UpdatesWorker::new(
-        period,
-        userdb,
-        mangadb,
-        extensions,
-        download_tx,
-        telegram_bot,
-        pushover,
-    );
+    let worker = UpdatesWorker::new(period, mangadb, extensions, download_tx, notifier);
 
     tokio::spawn(async move {
         worker.run().await;

@@ -9,14 +9,11 @@ use crate::{
         MangaDatabase,
     },
     local,
-    notifier::pushover::Pushover,
+    notifier::Notifier,
 };
 use reqwest::Url;
 use tanoshi_vm::prelude::ExtensionBus;
-use teloxide::{
-    adaptors::{AutoSend, DefaultParseMode},
-    Bot,
-};
+
 use tokio::{
     sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender},
     task::JoinHandle,
@@ -37,8 +34,7 @@ pub struct DownloadWorker {
     client: reqwest::Client,
     db: MangaDatabase,
     ext: ExtensionBus,
-    _telegram_bot: Option<DefaultParseMode<AutoSend<Bot>>>,
-    _pushover: Option<Pushover>,
+    _notifier: Notifier,
     tx: DownloadSender,
     rx: DownloadReceiver,
 }
@@ -48,8 +44,7 @@ impl DownloadWorker {
         dir: P,
         db: MangaDatabase,
         ext: ExtensionBus,
-        telegram_bot: Option<DefaultParseMode<AutoSend<Bot>>>,
-        pushover: Option<Pushover>,
+        notifier: Notifier,
     ) -> (Self, DownloadSender) {
         let (tx, rx) = unbounded_channel::<Command>();
         (
@@ -58,8 +53,7 @@ impl DownloadWorker {
                 client: reqwest::ClientBuilder::new().build().unwrap(),
                 db,
                 ext,
-                _telegram_bot: telegram_bot,
-                _pushover: pushover,
+                _notifier: notifier,
                 rx,
                 tx: tx.clone(),
             },
@@ -300,10 +294,9 @@ pub fn start<P: AsRef<Path>>(
     dir: P,
     mangadb: MangaDatabase,
     ext: ExtensionBus,
-    telegram_bot: Option<DefaultParseMode<AutoSend<Bot>>>,
-    pushover: Option<Pushover>,
+    notifier: Notifier,
 ) -> (DownloadSender, JoinHandle<()>) {
-    let (mut download_worker, tx) = DownloadWorker::new(dir, mangadb, ext, telegram_bot, pushover);
+    let (mut download_worker, tx) = DownloadWorker::new(dir, mangadb, ext, notifier);
 
     let handle = tokio::spawn(async move {
         download_worker.run().await;
