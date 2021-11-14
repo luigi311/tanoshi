@@ -143,6 +143,7 @@ jobs:
           path: |
             target/release/bundle/**/*.deb
             target/release/bundle/**/*.AppImage
+            !target/release/bundle/**/linuxdeploy-x86_64.AppImage
       - name: Upload dist
         uses: actions/upload-artifact@v2
         if: ${{ matrix.os == 'macos-latest' }}
