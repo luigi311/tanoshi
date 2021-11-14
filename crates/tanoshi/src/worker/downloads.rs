@@ -132,7 +132,9 @@ impl DownloadWorker {
                         Ok(chapter) => {
                             if let Err(e) = self.insert_to_queue(&chapter).await {
                                 error!("failed to insert queue, reason {}", e);
+                                continue;
                             }
+                            self.tx.send(Command::Download).unwrap();
                         }
                         Err(e) => {
                             error!("chapter {} not found, {}", chapter_id, e);
@@ -144,7 +146,9 @@ impl DownloadWorker {
                         Some(chapter) => {
                             if let Err(e) = self.insert_to_queue(&chapter).await {
                                 error!("failed to insert queue, reason {}", e);
+                                continue;
                             }
+                            self.tx.send(Command::Download).unwrap();
                         }
                         None => {
                             error!("chapter {} {} not found", source_id, path);
