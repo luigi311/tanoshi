@@ -96,6 +96,7 @@ jobs:
         with:
           command: test
         env:
+          RUSTFLAGS: "-Clink-arg=-Wl,--allow-multiple-definition"
           LLVM_SYS_110_PREFIX: ${{ env.LLVM_PATH }}
       - name: Test
         if: ${{ matrix.os == 'macos-latest' }}

@@ -117,6 +117,7 @@ jobs:
         if: ${{ matrix.os == 'ubuntu-latest' }}
         run: cargo build -p tanoshi --release
         env:
+          RUSTFLAGS: "-Clink-arg=-Wl,--allow-multiple-definition"
           LLVM_SYS_110_PREFIX: ${{ env.LLVM_PATH }}
       - name: Build tanoshi
         if: ${{ matrix.os == 'macos-latest' }}
