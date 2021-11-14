@@ -137,9 +137,24 @@ jobs:
           LIBCLANG_PATH: C:\Program Files\LLVM\bin
       - name: Upload dist
         uses: actions/upload-artifact@v2
+        if: ${{ matrix.os == 'ubuntu-latest' }}
         with:
           name: tanoshi-desktop
-          path: target/release/bundle/*/tanoshi_*
+          path: |
+            target/release/bundle/**/*.deb
+            target/release/bundle/**/*.AppImage
+      - name: Upload dist
+        uses: actions/upload-artifact@v2
+        if: ${{ matrix.os == 'macos-latest' }}
+        with:
+          name: tanoshi-desktop
+          path: target/release/bundle/**/*.dmg
+      - name: Upload dist
+        uses: actions/upload-artifact@v2
+        if: ${{ matrix.os == 'windows-latest' }}
+        with:
+          name: tanoshi-desktop
+          path: target/release/bundle/**/*.msi
   test:
     runs-on: ${{ matrix.os }}
     strategy:
