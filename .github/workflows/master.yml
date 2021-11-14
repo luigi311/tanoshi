@@ -63,6 +63,8 @@ jobs:
           path: crates/tanoshi-web/dist
   build-desktop:
     runs-on: ${{ matrix.os }}
+    needs:
+      - build-web
     strategy:
       matrix:
         os:

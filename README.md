@@ -21,6 +21,7 @@ Selfhosted web manga reader with extensions.
 - Multi-user with admin and non admin role
 - Periodic chapter updates
 - Notification via Telegram and Pushover
+- Desktop version built with tauri
 
 ### In development
 - Filter feature
@@ -51,6 +52,9 @@ docker start tanoshi
 
 Refer to docker-compose.yaml.
 
+## Desktop
+Download `.msi` for windows, `.deb` or `.AppImage` for linux, `.dmg` for mac from latest release to download desktop version.
+
 ### Extensions
 By default tanoshi only support to read locally available manga specified in `local_path` in `config.yml`. To browse and read manga from external source, tanoshi needs extensions. Extensions can be donwnloaded from [here](https://github.com/fadhlika/tanoshi-extensions) in `repo` branch. 
 
@@ -76,20 +80,26 @@ OPTIONS:
 ```
 
 ### Config
-Tanoshi will look `config.yml` in `$TANOSHI_HOME` which defaults to `$HOME/.tanoshi` on macos and linux, `C:\Users\<username>\.tanoshi` on windows. Below is example configuration
+Tanoshi will look `config.yml` in `$TANOSHI_HOME` which defaults to `$HOME/.tanoshi` on macos and linux, `C:\Users\<username>\.tanoshi` on windows. If config file doesn't exists, tanoshi will generate new file. Below is example configuration
 ```
-# Port for tanoshi to server, default to 80
+# Port for tanoshi to server, default to 80, ignored in desktop version
 port: 3030
 # Absolute path to database
 database_path: /absolute/path/to/database
 # JWT secret, any random value, changing this will render any active token invalid
-secret: secret
+secret: <16 alphanumeric characters>
 # Absolute path to where plugin is stored
 plugin_path: /absolute/path/to/plugins
-# Absolute path to manga
+# Absolute path to local manga
 local_path: /absolute/path/to/manga
-# Periodic update interval, must be over 3600
+# Absolute path to downloaded manga
+download_path: /absolute/path/to/manga
+# Periodic update interval in seconds, must be over 3600, set to 0 to disable
 update_interval: 3600
+# Automatically download chapter on update,set to true to enable
+auto_download_chapters: false
+# GraphQL playground, set to true to enable
+enable_playground: false
 # Telegram token
 telegram:
   name: <your bot name>
