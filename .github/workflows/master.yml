@@ -139,7 +139,7 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: tanoshi-desktop
-          path: target/release/bundle/*/*
+          path: target/release/bundle/*/tanoshi_*
   test:
     runs-on: ${{ matrix.os }}
     strategy:
