@@ -10,6 +10,7 @@ pub mod db;
 pub mod downloads;
 pub mod library;
 pub mod local;
+pub mod notification;
 pub mod notifier;
 pub mod proxy;
 pub mod schema;

@@ -10,6 +10,7 @@ mod db;
 mod downloads;
 mod library;
 mod local;
+mod notification;
 mod notifier;
 mod proxy;
 mod schema;
