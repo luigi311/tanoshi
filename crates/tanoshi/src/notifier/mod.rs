@@ -77,6 +77,7 @@ impl Notifier {
             message = format!("{}{}", message, body);
             let _ = self.send_message_to_telegram(chat_id, &message).await;
         }
+
         Ok(())
     }
 
@@ -123,6 +124,22 @@ impl Notifier {
         } else {
             pushover.send_notification(user_key, body).await?;
         }
+
+        Ok(())
+    }
+
+    #[cfg(feature = "desktop")]
+    pub fn send_desktop_notification(
+        &self,
+        title: Option<String>,
+        body: &str,
+    ) -> Result<(), anyhow::Error> {
+        use tauri::api::notification::Notification;
+
+        Notification::new("com.faldez.tanoshi")
+            .title(title.unwrap_or_else(|| "Notification".to_string()))
+            .body(body)
+            .show()?;
 
         Ok(())
     }

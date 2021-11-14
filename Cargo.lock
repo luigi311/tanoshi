@@ -4834,6 +4834,7 @@ dependencies = [
  "sqlx",
  "tanoshi-lib",
  "tanoshi-vm",
+ "tauri",
  "teloxide",
  "tokio",
  "tokio-stream",

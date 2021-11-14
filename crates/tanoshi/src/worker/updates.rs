@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fmt::Display, str::FromStr};
+use std::{collections::HashMap, str::FromStr};
 
 use serde::Deserialize;
 use tanoshi_lib::prelude::Version;
@@ -112,6 +112,14 @@ impl UpdatesWorker {
             info!("Found: {} new chapters", chapters.len());
 
             for chapter in chapters {
+                #[cfg(feature = "desktop")]
+                if let Err(e) = self
+                    .notifier
+                    .send_desktop_notification(Some(item.manga.title.clone()), &chapter.title)
+                {
+                    error!("failed to send notification, reason {}", e);
+                }
+
                 for user_id in item.user_ids.iter() {
                     if let Err(e) = self
                         .notifier
@@ -178,6 +186,14 @@ impl UpdatesWorker {
                 if let Err(e) = self.notifier.send_all_to_admins(None, &message).await {
                     error!("failed to send extension update to admin, {}", e);
                 }
+
+                #[cfg(feature = "desktop")]
+                if let Err(e) = self
+                    .notifier
+                    .send_desktop_notification(Some("Extension Update".to_string()), &message)
+                {
+                    error!("failed to send notification, reason {}", e);
+                }
             }
         }
 
@@ -210,6 +226,14 @@ impl UpdatesWorker {
             let message = format!("Tanoshi {} Released\n{}", release.tag_name, release.body);
             if let Err(e) = self.notifier.send_all_to_admins(None, &message).await {
                 error!("failed to send extension update to admin, {}", e);
+            }
+
+            #[cfg(feature = "desktop")]
+            if let Err(e) = self
+                .notifier
+                .send_desktop_notification(Some("Update Available".to_string()), &message)
+            {
+                error!("failed to send notification, reason {}", e);
             }
         } else {
             info!("no tanoshi update found");
