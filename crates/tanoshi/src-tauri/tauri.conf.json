@@ -1,7 +1,7 @@
 {
   "package": {
     "productName": "Tanoshi",
-    "version": "0.25.20"
+    "version": "0.25.21"
   },
   "build": {
     "distDir": "../../tanoshi-web/dist",
