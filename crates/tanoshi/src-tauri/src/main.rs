@@ -5,22 +5,15 @@
 
 use tanoshi::config::{Config, GLOBAL_CONFIG};
 
-use proxy::Proxy;
+use crate::server::Server;
 
-use crate::graphql::GraphQL;
-
-extern crate tiny_http;
-
-mod graphql;
-mod proxy;
+mod server;
 
 fn main() {
-  let config =
-    GLOBAL_CONFIG.get_or_init(|| Config::open::<String>(None).expect("failed to init config"));
+  GLOBAL_CONFIG.get_or_init(|| Config::open::<String>(None).expect("failed to init config"));
 
   tauri::Builder::default()
-    .plugin(GraphQL::new())
-    .plugin(Proxy::new(&config.secret))
+    .plugin(Server::new())
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
 }

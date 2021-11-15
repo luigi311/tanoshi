@@ -113,10 +113,10 @@ pub fn initialize_urls() {
         _ => {}
     };
 
-    let image_proxy_host = match js_sys::eval("window.__TANOSHI_IMAGE_PROXY_PORT__") {
+    let image_proxy_host = match js_sys::eval("window.__TANOSHI_PORT__") {
         Ok(val) if !val.is_undefined() => {
             format!(
-                "http://localhost:{}",
+                "http://localhost:{}/image",
                 val.as_f64().unwrap_or_default() as i64
             )
         }
@@ -125,28 +125,23 @@ pub fn initialize_urls() {
 
     IMAGE_PROXY_HOST.with(|s| *s.borrow_mut() = image_proxy_host);
 
-    let graphql_host = match js_sys::eval("window.__TANOSHI_GRAPHQL_PORT__") {
+    let graphql_host = match js_sys::eval("window.__TANOSHI_PORT__") {
         Ok(val) if !val.is_undefined() => {
             format!(
                 "http://localhost:{}",
                 val.as_f64().unwrap_or_default() as i64
             )
         }
-        _ => {
-            format!(
-                "{}/graphql",
-                window()
-                    .document()
-                    .unwrap_throw()
-                    .location()
-                    .unwrap_throw()
-                    .origin()
-                    .unwrap()
-            )
-        }
+        _ => window()
+            .document()
+            .unwrap_throw()
+            .location()
+            .unwrap_throw()
+            .origin()
+            .unwrap_throw(),
     };
 
-    GRAPHQL_HOST.with(|s| *s.borrow_mut() = graphql_host);
+    GRAPHQL_HOST.with(|s| *s.borrow_mut() = format!("{}/graphql", graphql_host));
 }
 
 pub fn is_tauri() -> bool {

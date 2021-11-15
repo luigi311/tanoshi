@@ -71,7 +71,7 @@ impl UpdatesWorker {
                 .await
                 .map(|ch| ch.uploaded);
 
-            info!("Checking updates: {}", item.manga.title);
+            debug!("Checking updates: {}", item.manga.title);
 
             let chapters = match self
                 .extensions
@@ -109,7 +109,11 @@ impl UpdatesWorker {
                 chapters
             };
 
-            info!("Found: {} new chapters", chapters.len());
+            info!(
+                "Found: {} has {} new chapters",
+                item.manga.title,
+                chapters.len()
+            );
 
             for chapter in chapters {
                 #[cfg(feature = "desktop")]

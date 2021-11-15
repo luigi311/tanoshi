@@ -15,6 +15,7 @@ use std::{
     str::FromStr,
     sync::Arc,
 };
+use tower_http::cors::{any, CorsLayer};
 
 struct Token(String);
 
@@ -60,24 +61,29 @@ pub fn init_app(config: &Config, schema: TanoshiSchema) -> Router<axum::body::Bo
 
     let mut app = Router::new();
 
-    #[cfg(feature = "embed")]
-    {
-        app = app.nest("/", get(crate::assets::static_handler));
-    }
-
     app = app
-        .route("/image/:url", get(Proxy::proxy))
         .route("/health", get(health_check))
+        .route("/image/:url", get(Proxy::proxy))
         .layer(AddExtensionLayer::new(proxy));
 
     if config.enable_playground {
-        app = app.route("/playground", get(graphql_playground));
+        app = app.route("/graphql", get(graphql_playground).post(graphql_handler));
+    } else {
+        app = app.route("/graphql", post(graphql_handler));
     }
 
-    app = app
-        .nest("/graphql", post(graphql_handler))
-        .route("/graphql", post(graphql_handler))
-        .layer(AddExtensionLayer::new(schema));
+    app = app.layer(AddExtensionLayer::new(schema)).layer(
+        CorsLayer::new()
+            .allow_origin(any())
+            .allow_methods(any())
+            .allow_headers(any())
+            .allow_credentials(true),
+    );
+
+    #[cfg(feature = "embed")]
+    {
+        app = app.fallback(get(crate::assets::static_handler));
+    }
 
     app
 }
