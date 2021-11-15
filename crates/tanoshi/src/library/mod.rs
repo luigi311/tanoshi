@@ -150,10 +150,10 @@ impl LibraryRoot {
             first,
             last,
             |after, before, first, last| async move {
-                let (after_timestamp, after_id) = after
+                let (after_timestamp, _after_id) = after
                     .and_then(|cursor: String| decode_cursor(&cursor).ok())
                     .unwrap_or((Local::now().timestamp(), 1));
-                let (before_timestamp, before_id) = before
+                let (before_timestamp, _before_id) = before
                     .and_then(|cursor: String| decode_cursor(&cursor).ok())
                     .unwrap_or((NaiveDateTime::from_timestamp(0, 0).timestamp(), 0));
 
@@ -161,9 +161,7 @@ impl LibraryRoot {
                     db.get_first_read_chapters(
                         user.sub,
                         after_timestamp,
-                        after_id,
                         before_timestamp,
-                        before_id,
                         first as i32,
                     )
                     .await
@@ -171,14 +169,12 @@ impl LibraryRoot {
                     db.get_last_read_chapters(
                         user.sub,
                         after_timestamp,
-                        after_id,
                         before_timestamp,
-                        before_id,
                         last as i32,
                     )
                     .await
                 } else {
-                    db.get_read_chapters(after_timestamp, after_id, before_timestamp, before_id)
+                    db.get_read_chapters(after_timestamp, before_timestamp)
                         .await
                 };
                 let edges = edges.unwrap_or_default();

@@ -482,9 +482,7 @@ impl Db {
     pub async fn get_read_chapters(
         &self,
         after_timestamp: i64,
-        after_id: i64,
         before_timestamp: i64,
-        before_id: i64,
     ) -> Result<Vec<RecentChapter>> {
         let mut conn = self.pool.acquire().await?;
         let mut stream = sqlx::query(
@@ -498,18 +496,16 @@ impl Db {
             MAX(user_history.read_at) AS read_at,
             user_history.last_page
         FROM user_history
-        JOIN chapter ON chapter.id = user_history.chapter_id
+        JOIN 
+            chapter ON chapter.id = user_history.chapter_id
+            user_history.user_id = ?
         JOIN manga ON manga.id = chapter.manga_id
-        WHERE
-            user_history.user_id = ? AND
-            manga.id NOT IN (?, ?) AND
-            user_history.read_at < datetime(?, 'unixepoch') AND
-            user_history.read_at > datetime(?, 'unixepoch')
         GROUP BY manga.id
+        HAVING
+            read_at < datetime(?, 'unixepoch') AND
+            read_at > datetime(?, 'unixepoch')
         ORDER BY user_history.read_at DESC, manga.id DESC"#,
         )
-        .bind(after_id)
-        .bind(before_id)
         .bind(after_timestamp)
         .bind(before_timestamp)
         .fetch(&mut conn);
@@ -533,19 +529,11 @@ impl Db {
         &self,
         user_id: i64,
         after_timestamp: i64,
-        after_id: i64,
         before_timestamp: i64,
-        before_id: i64,
         first: i32,
     ) -> Result<Vec<RecentChapter>> {
         let mut conn = self.pool.acquire().await?;
-        log::info!(
-            "{} {} {} {}",
-            after_timestamp,
-            after_id,
-            before_timestamp,
-            before_id
-        );
+
         let mut stream = sqlx::query(
             r#"
         SELECT
@@ -557,20 +545,18 @@ impl Db {
             MAX(user_history.read_at) AS read_at,
             user_history.last_page
         FROM user_history
-        JOIN chapter ON chapter.id = user_history.chapter_id
+        JOIN 
+            chapter ON chapter.id = user_history.chapter_id AND
+            user_history.user_id = ?
         JOIN manga ON manga.id = chapter.manga_id
-        WHERE
-            user_history.user_id = ? AND
-            manga.id NOT IN (?, ?) AND
-            user_history.read_at < datetime(?, 'unixepoch') AND
-            user_history.read_at > datetime(?, 'unixepoch')
         GROUP BY manga.id
+        HAVING
+            read_at < datetime(?, 'unixepoch') AND
+            read_at > datetime(?, 'unixepoch')
         ORDER BY user_history.read_at DESC, manga.id DESC
         LIMIT ?"#,
         )
         .bind(user_id)
-        .bind(after_id)
-        .bind(before_id)
         .bind(after_timestamp)
         .bind(before_timestamp)
         .bind(first)
@@ -595,9 +581,7 @@ impl Db {
         &self,
         user_id: i64,
         after_timestamp: i64,
-        after_id: i64,
         before_timestamp: i64,
-        before_id: i64,
         last: i32,
     ) -> Result<Vec<RecentChapter>> {
         let mut conn = self.pool.acquire().await?;
@@ -613,20 +597,18 @@ impl Db {
                 MAX(user_history.read_at) AS read_at,
                 user_history.last_page
             FROM user_history
-            JOIN chapter ON chapter.id = user_history.chapter_id
+            JOIN 
+                chapter ON chapter.id = user_history.chapter_id AND
+                user_history.user_id = ?
             JOIN manga ON manga.id = chapter.manga_id
-            WHERE
-                user_history.user_id = ? AND
-                manga.id NOT IN (?, ?) AND
-                user_history.read_at < datetime(?, 'unixepoch') AND
-                user_history.read_at > datetime(?, 'unixepoch')
             GROUP BY manga.id
+            HAVING
+                read_at < datetime(?, 'unixepoch') AND
+                read_at > datetime(?, 'unixepoch')
             ORDER BY user_history.read_at ASC, manga.id ASC
             LIMIT ?) c ORDER BY c.read_at DESC, c.id DESC"#,
         )
         .bind(user_id)
-        .bind(after_id)
-        .bind(before_id)
         .bind(after_timestamp)
         .bind(before_timestamp)
         .bind(last)
@@ -665,12 +647,12 @@ impl Db {
                 	user_history.last_page,
                 	MAX(user_history.read_at) as read_at
             	FROM user_history
-            	JOIN chapter ON user_history.chapter_id = chapter.id
-            	WHERE
-                user_history.user_id = ? AND
-                	chapter.manga_id <> ? AND
-                	user_history.read_at < datetime(?, 'unixepoch')
-            	GROUP BY chapter.manga_id
+            	JOIN 
+                    chapter ON user_history.chapter_id = chapter.id AND
+                    user_history.user_id = ? AND
+                	chapter.manga_id <> ?
+                GROUP BY chapter.manga_id
+                HAVING read_at < datetime(?, 'unixepoch')
             	ORDER BY user_history.read_at DESC, chapter.manga_id DESC
             )"#,
         )
@@ -707,12 +689,12 @@ impl Db {
                 	user_history.last_page,
                 	MAX(user_history.read_at) as read_at
             	FROM user_history
-            	JOIN chapter ON user_history.chapter_id = chapter.id
-            	WHERE
+            	JOIN 
+                    chapter ON user_history.chapter_id = chapter.id AND
                     user_history.user_id = ? AND
-                	chapter.manga_id <> ? AND
-                	user_history.read_at > datetime(?, 'unixepoch')
-            	GROUP BY chapter.manga_id
+                	chapter.manga_id <> ?
+                GROUP BY chapter.manga_id
+                HAVING	user_history.read_at > datetime(?, 'unixepoch')
             	ORDER BY user_history.read_at DESC, chapter.manga_id DESC
             )"#,
         )
