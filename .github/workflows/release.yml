@@ -159,7 +159,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.create-release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps
-          asset_path: ${{ github.workspace }}/target/release/bundle/appimage/*.AppImage
+          asset_path: ${{ github.workspace }}/target/release/bundle/appimage/tanoshi_*.AppImage
       - name: Upload Release Asset
         uses: shogo82148/actions-upload-release-asset@v1
         if: ${{ matrix.os == 'macos-latest' }}
