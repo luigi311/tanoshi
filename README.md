@@ -4,9 +4,13 @@ Selfhosted web manga reader with extensions.
 [![Discord](https://img.shields.io/discord/872093374281285682?color=7289DA&logo=discord&logoColor=FFFFFF)](https://discord.gg/wPSEftdDqB)
 
 ## Screenshots
-| ![library](.github/screenshots/library.png) | ![manga](.github/screenshots/manga.png)         | ![reader](.github/screenshots/reader.png)     |
-| ------------------------------------------- | ----------------------------------------------- | --------------------------------------------- |
-| ![sources](.github/screenshots/sources.png) | ![catalogue](.github/screenshots/catalogue.png) | ![settings](.github/screenshots/settings.png) |
+### Desktop
+![desktop-library](.github/screenshots/desktop-library.png)
+![desktop-sources](.github/screenshots/desktop-sources.png)
+![desktop-reader](.github/screenshots/desktop-reader.png)
+### Mobile
+| ![library](.github/screenshots/library.png) | ![sources](.github/screenshots/sources.png) | ![reader](.github/screenshots/reader.png) |
+| ------------------------------------------- | ------------------------------------------- | ----------------------------------------- |
 
 ## Features
 ### Currently working
@@ -52,7 +56,7 @@ docker start tanoshi
 
 Refer to docker-compose.yaml.
 
-## Desktop
+### Desktop
 Download `.msi` for windows, `.deb` or `.AppImage` for linux, `.dmg` for mac from latest release to download desktop version.
 
 ### Extensions
