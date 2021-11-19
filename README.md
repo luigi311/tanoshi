@@ -5,9 +5,9 @@ Selfhosted web manga reader with extensions.
 
 ## Screenshots
 ### Desktop
-![desktop-library](.github/screenshots/desktop-library.png)
-![desktop-sources](.github/screenshots/desktop-sources.png)
-![desktop-reader](.github/screenshots/desktop-reader.png)
+![desktop-library](.github/screenshots/mac-library.png)
+![desktop-sources](.github/screenshots/mac-sources.png)
+![desktop-reader](.github/screenshots/mac-reader.png)
 ### Mobile
 | ![library](.github/screenshots/library.png) | ![sources](.github/screenshots/sources.png) | ![reader](.github/screenshots/reader.png) |
 | ------------------------------------------- | ------------------------------------------- | ----------------------------------------- |
