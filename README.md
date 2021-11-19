@@ -1,16 +1,16 @@
-# ![icon](crates/tanoshi-web/static/icons/tanoshi.png) Tanoshi
+# ![icon](https://raw.githubusercontent.com/faldez/tanoshi/master/crates/tanoshi-web/static/icons/tanoshi.png) Tanoshi
 Selfhosted web manga reader with extensions.
 
 [![Discord](https://img.shields.io/discord/872093374281285682?color=7289DA&logo=discord&logoColor=FFFFFF)](https://discord.gg/wPSEftdDqB)
 
 ## Screenshots
 ### Desktop
-![desktop-library](.github/screenshots/mac-library.png)
-![desktop-sources](.github/screenshots/mac-sources.png)
-![desktop-reader](.github/screenshots/mac-reader.png)
+![desktop-library](https://raw.githubusercontent.com/faldez/tanoshi/master/.github/screenshots/mac-library.png)
+![desktop-sources](https://raw.githubusercontent.com/faldez/tanoshi/master/.github/screenshots/mac-sources.png)
+![desktop-reader](https://raw.githubusercontent.com/faldez/tanoshi/master/.github/screenshots/mac-reader.png)
 ### Mobile
-| ![library](.github/screenshots/library.png) | ![sources](.github/screenshots/sources.png) | ![reader](.github/screenshots/reader.png) |
-| ------------------------------------------- | ------------------------------------------- | ----------------------------------------- |
+| ![library](https://raw.githubusercontent.com/faldez/tanoshi/master/.github/screenshots/library.png) | ![sources](https://raw.githubusercontent.com/faldez/tanoshi/master/.github/screenshots/sources.png) | ![reader](https://raw.githubusercontent.com/faldez/tanoshi/master/.github/screenshots/reader.png) |
+| --------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
 
 ## Features
 ### Currently working
