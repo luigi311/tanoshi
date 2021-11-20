@@ -32,6 +32,10 @@ pub async fn main_js() -> Result<(), JsValue> {
 
     initialize_urls();
 
+    if utils::is_tauri() {
+        utils::body().class_list().add_1("tauri").unwrap_throw();
+    }
+
     utils::apply_theme(local_storage().get("theme").unwrap_throw());
 
     let closure = Closure::wrap(Box::new(|e: MediaQueryListEvent| {

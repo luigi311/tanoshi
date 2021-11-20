@@ -53,6 +53,7 @@ $divide-color-dark-1: $color-gray-700;
 
     --topbar-background-color: #{$topbar-background-light};
     --topbar-button-color: white;
+    --topbar-text-color: white;
     --topbar-bottom-border: 1px solid #{$primary-color-600};
     
     --bottombar-background-color: #{$bottombar-background-light};
@@ -91,6 +92,13 @@ body.dark {
     --list-group-border: none;
 }
 
+body.tauri.dark {
+    --topbar-background-color: #{$topbar-background-dark};
+    --topbar-button-color: #{$primary-color};
+    --topbar-text-color: white;
+    --topbar-bottom-border: 1px solid var(--background-color-100);
+}
+
 body {
     font: 100% $font-stack;
     background-color: var(--background-color);
@@ -98,6 +106,13 @@ body {
     padding: 0;
     margin: 0;
     min-height: 100vh;
+}
+
+body.tauri {
+    --topbar-background-color: white;
+    --topbar-button-color: #{$primary-color};
+    --topbar-text-color: black;
+    --topbar-bottom-border: 1px solid #{$color-gray-200};
 }
 
 @media (min-width: 1024px) { 
@@ -188,7 +203,7 @@ input {
     
     span, input {
         background-color: inherit;
-        color: #ffffff;
+        color: var(--topbar-text-color);
     }
 
     button {
@@ -212,7 +227,7 @@ input {
     }
 
     input::placeholder {
-        color: #ffffff;
+        color: var(--topbar-text-color);
         opacity: 0.5;
     }
 
