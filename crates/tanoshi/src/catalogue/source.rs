@@ -92,7 +92,7 @@ impl Source {
 
     async fn filters(&self, ctx: &Context<'_>) -> Result<Option<Filters>> {
         let extensions = ctx.data::<ExtensionBus>()?;
-        if let Some(res) = extensions.filters(self.id).await? {
+        if let Some(res) = extensions.filters_async(self.id).await? {
             Ok(Some(res.into()))
         } else {
             Ok(None)
@@ -110,7 +110,7 @@ impl SourceRoot {
         ctx: &Context<'_>,
         check_update: bool,
     ) -> Result<Vec<Source>> {
-        let installed_sources = ctx.data::<ExtensionBus>()?.list().await?;
+        let installed_sources = ctx.data::<ExtensionBus>()?.list_async().await?;
         let mut sources: Vec<Source> = vec![];
         if check_update {
             let available_sources_map = {
@@ -146,7 +146,7 @@ impl SourceRoot {
 
         let mut sources: Vec<Source> = vec![];
         for index in source_indexes {
-            if !extensions.exist(index.id).await? {
+            if !extensions.exist_async(index.id).await? {
                 sources.push(index.into());
             }
         }
@@ -155,7 +155,7 @@ impl SourceRoot {
 
     async fn source(&self, ctx: &Context<'_>, source_id: i64) -> Result<Source> {
         let exts = ctx.data::<ExtensionBus>()?;
-        Ok(exts.detail(source_id).await?.into())
+        Ok(exts.detail_async(source_id).await?.into())
     }
 }
 
@@ -170,7 +170,7 @@ impl SourceMutationRoot {
         }
 
         let extensions = ctx.data::<ExtensionBus>()?;
-        if extensions.exist(source_id).await? {
+        if extensions.exist_async(source_id).await? {
             return Err("source installed, use updateSource to update".into());
         }
 
@@ -189,7 +189,7 @@ impl SourceMutationRoot {
         );
 
         let raw = reqwest::get(&url).await?.bytes().await?;
-        extensions.install(source.name, &raw).await?;
+        extensions.install_async(source.name, &raw).await?;
 
         Ok(source.id)
     }
@@ -201,7 +201,7 @@ impl SourceMutationRoot {
 
         let extensions = ctx.data::<ExtensionBus>()?;
 
-        extensions.unload(source_id).await?;
+        extensions.unload_async(source_id).await?;
 
         Ok(source_id)
     }
@@ -212,7 +212,7 @@ impl SourceMutationRoot {
         }
 
         let extensions = ctx.data::<ExtensionBus>()?;
-        extensions.exist(source_id).await?;
+        extensions.exist_async(source_id).await?;
 
         let url = "https://faldez.github.io/tanoshi-extensions".to_string();
 
@@ -223,7 +223,8 @@ impl SourceMutationRoot {
             .ok_or("source not found")?
             .clone();
 
-        if extensions.detail(source_id).await?.version == Version::from_str(&source.version)? {
+        if extensions.detail_async(source_id).await?.version == Version::from_str(&source.version)?
+        {
             return Err("No new version".into());
         }
 
@@ -235,8 +236,8 @@ impl SourceMutationRoot {
 
         let raw = reqwest::get(&url).await?.bytes().await?;
 
-        extensions.unload(source_id).await?;
-        extensions.install(source.name, &raw).await?;
+        extensions.unload_async(source_id).await?;
+        extensions.install_async(source.name, &raw).await?;
 
         Ok(source_id)
     }

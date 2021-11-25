@@ -79,7 +79,7 @@ impl DownloadWorker {
             Err(_) => {
                 let pages = self
                     .ext
-                    .get_pages(manga.source_id, chapter.path.clone())
+                    .get_pages_async(manga.source_id, chapter.path.clone())
                     .await
                     .map_err(|e| anyhow::anyhow!("{}", e))?;
                 self.db.insert_pages(chapter.id, &pages).await?;
@@ -89,7 +89,7 @@ impl DownloadWorker {
 
         let source = self
             .ext
-            .detail(manga.source_id)
+            .detail_async(manga.source_id)
             .await
             .map_err(|e| anyhow::anyhow!("{}", e))?;
 

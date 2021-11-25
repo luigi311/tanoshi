@@ -277,7 +277,7 @@ impl Chapter {
         } else {
             let pages = ctx
                 .data::<ExtensionBus>()?
-                .get_pages(self.source_id, self.path.clone())
+                .get_pages_async(self.source_id, self.path.clone())
                 .await?;
 
             mangadb.insert_pages(self.id, &pages).await?;

@@ -60,15 +60,13 @@ async fn main() -> Result<(), anyhow::Error> {
     let mangadb = db::MangaDatabase::new(pool.clone());
     let userdb = db::UserDatabase::new(pool.clone());
 
-    let (vm_handle, extension_tx) = vm::start();
-    vm::load(&config.plugin_path, extension_tx.clone())
-        .await
-        .map_err(|e| anyhow::anyhow!("{}", e))?;
+    let (_, extension_tx) = vm::start();
+    vm::load(&config.plugin_path, extension_tx.clone()).map_err(|e| anyhow::anyhow!("{}", e))?;
 
     let extension_bus = ExtensionBus::new(&config.plugin_path, extension_tx);
 
     extension_bus
-        .insert(
+        .insert_async(
             local::ID,
             Arc::new(local::Local::new(config.local_path.clone())),
         )
@@ -116,9 +114,6 @@ async fn main() -> Result<(), anyhow::Error> {
     tokio::select! {
         _ = server_fut => {
             info!("server shutdown");
-        }
-        _ = vm_handle => {
-            info!("vm quit");
         }
         _ = update_worker_handle => {
             info!("update worker quit");

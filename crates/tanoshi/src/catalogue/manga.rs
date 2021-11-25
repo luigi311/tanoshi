@@ -292,7 +292,7 @@ impl Manga {
 
     async fn source(&self, ctx: &Context<'_>) -> Result<Source> {
         let extensions = ctx.data::<ExtensionBus>()?;
-        let source = extensions.detail(self.source_id).await?;
+        let source = extensions.detail_async(self.source_id).await?;
         Ok(source.into())
     }
 
@@ -311,7 +311,7 @@ impl Manga {
 
         let chapters: Vec<crate::db::model::Chapter> = ctx
             .data::<ExtensionBus>()?
-            .get_chapters(self.source_id, self.path.clone())
+            .get_chapters_async(self.source_id, self.path.clone())
             .await?
             .into_iter()
             .map(|c| {

@@ -53,7 +53,7 @@ impl CatalogueRoot {
         let extensions = ctx.data::<ExtensionBus>()?;
         let fetched_manga = {
             extensions
-                .get_manga_list(
+                .get_manga_list_async(
                     source_id,
                     Param {
                         keyword,
@@ -86,7 +86,10 @@ impl CatalogueRoot {
         } else {
             let mut m: crate::db::model::Manga = {
                 let extensions = ctx.data::<ExtensionBus>()?;
-                extensions.get_manga_info(source_id, path).await?.into()
+                extensions
+                    .get_manga_info_async(source_id, path)
+                    .await?
+                    .into()
             };
 
             db.insert_manga(&mut m).await?;
@@ -108,7 +111,7 @@ impl CatalogueRoot {
             let mut m: crate::db::model::Manga = {
                 let extensions = ctx.data::<ExtensionBus>()?;
                 extensions
-                    .get_manga_info(manga.source_id, manga.path)
+                    .get_manga_info_async(manga.source_id, manga.path)
                     .await?
                     .into()
             };

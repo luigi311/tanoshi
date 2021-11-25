@@ -31,7 +31,7 @@ impl LibraryRoot {
             for favorite_manga in manga.iter() {
                 let mut m: crate::db::model::Manga = {
                     extensions
-                        .get_manga_info(favorite_manga.source_id, favorite_manga.path.clone())
+                        .get_manga_info_async(favorite_manga.source_id, favorite_manga.path.clone())
                         .await?
                         .into()
                 };

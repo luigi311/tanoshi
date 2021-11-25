@@ -75,7 +75,7 @@ impl UpdatesWorker {
 
             let chapters = match self
                 .extensions
-                .get_chapters(item.manga.source_id, item.manga.path.clone())
+                .get_chapters_async(item.manga.source_id, item.manga.path.clone())
                 .await
             {
                 Ok(chapters) => {
@@ -175,7 +175,7 @@ impl UpdatesWorker {
 
         let installed_sources = self
             .extensions
-            .list()
+            .list_async()
             .await
             .map_err(|e| anyhow::anyhow!("{}", e))?;
 
