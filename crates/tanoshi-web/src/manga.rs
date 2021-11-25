@@ -4,7 +4,7 @@ use crate::{
     utils::{proxied_image_url, window, AsyncLoader},
 };
 use chrono::NaiveDateTime;
-use dominator::{clone, events, html, routing, svg, with_node, Dom};
+use dominator::{Dom, EventOptions, clone, events, html, routing, svg, with_node};
 use futures_signals::{signal::{self, Mutable, SignalExt}, signal_vec::{MutableVec, SignalVecExt}};
 use std::rc::Rc;
 use wasm_bindgen::prelude::*;
@@ -746,7 +746,7 @@ impl Manga {
                         })))
                         .children(&mut [
                             html!("div", {
-                                .event_preventable(clone!(is_edit_chapter, chapter => move |e: events::Click| {
+                                .event_with_options(&EventOptions::preventable(), clone!(is_edit_chapter, chapter => move |e: events::Click| {
                                     e.prevent_default();
                                     if is_edit_chapter.get() {
                                         chapter.selected.set(!chapter.selected.get());

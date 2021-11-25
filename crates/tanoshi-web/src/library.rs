@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use chrono::NaiveDateTime;
-use dominator::{clone, html, svg, with_node, Dom};
+use dominator::{clone, html, svg, with_node, Dom, EventOptions};
 use futures_signals::{
     signal::{Mutable, SignalExt},
     signal_vec::{MutableVec, SignalVecExt},
@@ -98,7 +98,7 @@ impl Library {
                             .event(clone!(library => move |_: events::Input| {
                                 library.keyword.set_neq(input.value());
                             }))
-                            .event_preventable(|event: events::KeyDown| {
+                            .event_with_options(&EventOptions::preventable(), |event: events::KeyDown| {
                                 if event.key() == "Enter" {
                                     event.prevent_default();
                                 }

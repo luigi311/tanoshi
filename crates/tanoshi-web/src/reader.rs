@@ -7,7 +7,7 @@ use crate::{
     query,
     utils::history,
 };
-use dominator::{clone, html, routing, svg, with_node, Dom};
+use dominator::{Dom, EventOptions, clone, html, routing, svg, with_node};
 use futures_signals::map_ref;
 use futures_signals::signal::{self, Mutable, Signal, SignalExt};
 use futures_signals::signal_vec::{MutableVec, SignalVec, SignalVecExt};
@@ -737,7 +737,7 @@ impl Reader {
                     }))
                 })
             ])
-            .global_event_preventable(clone!(reader => move |e: events::KeyDown| {
+            .global_event_with_options(&EventOptions::preventable(), clone!(reader => move |e: events::KeyDown| {
                 if e.key() == " " {
                     e.prevent_default(); 
                     reader.is_bar_visible.set_neq(!reader.is_bar_visible.get());

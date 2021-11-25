@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use dominator::{clone, html, Dom};
+use dominator::{clone, html, Dom, EventOptions};
 use dominator::{routing, with_node};
 use futures_signals::signal::Mutable;
 use futures_signals::signal::SignalExt;
@@ -105,7 +105,7 @@ impl Login {
                 html!("form", {
                     .style("display", "flex")
                     .style("flex-direction", "column")
-                    .event_preventable(|e: events::KeyDown| {
+                    .event_with_options(&EventOptions::preventable(), |e: events::KeyDown| {
                         if e.key() == "enter" {
                             e.prevent_default();
                         }
@@ -139,7 +139,7 @@ impl Login {
                                     if x.activated {
                                         Some(html!("button", {
                                             .text("Login")
-                                            .event_preventable(clone!(login => move |e: events::Click| {
+                                            .event_with_options(&EventOptions::preventable(), clone!(login => move |e: events::Click| {
                                                 e.prevent_default();
                                                 Self::login(login.clone());
                                             }))
@@ -147,7 +147,7 @@ impl Login {
                                     } else {
                                         Some(html!("button", {
                                             .text("Create Account")
-                                            .event_preventable(clone!(login, app => move |e: events::Click| {
+                                            .event_with_options(&EventOptions::preventable(), clone!(login, app => move |e: events::Click| {
                                                 e.prevent_default();
                                                 Self::register(login.clone(), app.clone());
                                             }))

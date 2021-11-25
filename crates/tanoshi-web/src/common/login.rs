@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
-use dominator::routing;
 use dominator::{clone, html, with_node, Dom};
+use dominator::{routing, EventOptions};
 use futures_signals::signal::{Mutable, SignalExt};
 use web_sys::HtmlInputElement;
 
@@ -51,34 +51,11 @@ impl Login {
             .style("flex-direction", "column")
             .style("max-width", "1024px")
             .style("margin", "auto")
-            // .class([
-            //     "flex",
-            //     "flex-col",
-            //     "max-w-lg",
-            //     "mx-auto",
-            //     "mt-safe-top",
-            //     "bg-white",
-            //     "dark:bg-gray-800",
-            //     "shadow",
-            //     "dark:shadow-none",
-            //     "rounded",
-            //     "p-2"
-            // ])
             .children(&mut [
                 html!("input" => HtmlInputElement, {
                     .style("margin", "0.5rem")
                     .style("padding", "0.5rem")
                     .style("border-radius", "0.5rem")
-                    // .class([
-                    //     "m-2",
-                    //     "p-1",
-                    //     "focus:outline-none",
-                    //     "rounded",
-                    //     "bg-white",
-                    //     "dark:bg-gray-900",
-                    //     "text-black",
-                    //     "dark:text-white"
-                    // ])
                     .attribute("type", "username")
                     .attribute("placeholder", "Username")
                     .with_node!(input => {
@@ -91,16 +68,6 @@ impl Login {
                     .style("margin", "0.5rem")
                     .style("padding", "0.5rem")
                     .style("border-radius", "0.5rem")
-                    // .class([
-                    //     "m-2",
-                    //     "p-1",
-                    //     "focus:outline-none",
-                    //     "rounded",
-                    //     "bg-white",
-                    //     "dark:bg-gray-900",
-                    //     "text-black",
-                    //     "dark:text-white"
-                    // ])
                     .attribute("type", "password")
                     .attribute("placeholder", "Password")
                     .with_node!(input => {
@@ -133,19 +100,8 @@ impl Login {
                     .children(&mut [
                         html!("input" => HtmlInputElement, {
                             .attribute("type", "submit")
-                            // .class([
-                            //     "bg-accent",
-                            //     "active:bg-accent-lighter",
-                            //     "hover:bg-accent-lighter",
-                            //     "focus:outline-none",
-                            //     "text-white",
-                            //     "px-2",
-                            //     "py-1",
-                            //     "rounded",
-                            //     "focus:outline-none"
-                            // ])
                             .text("Create")
-                            .event_preventable(clone!(login => move |e: events::Click| {
+                            .event_with_options(&EventOptions::preventable(), clone!(login => move |e: events::Click| {
                                 e.prevent_default();
                                 Self::register(login.clone());
                             }))

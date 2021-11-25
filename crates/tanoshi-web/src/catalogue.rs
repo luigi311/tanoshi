@@ -13,7 +13,7 @@ use crate::{
     common::{Cover, Spinner},
     utils::AsyncLoader,
 };
-use dominator::{clone, events, html, routing, svg, with_node, Dom};
+use dominator::{clone, events, html, routing, svg, with_node, Dom, EventOptions};
 use futures_signals::map_ref;
 use futures_signals::signal::{Mutable, SignalExt};
 use futures_signals::signal_vec::{MutableVec, SignalVecExt};
@@ -199,7 +199,7 @@ impl Catalogue {
                         .attribute("type", "text")
                         .attribute("value", &catalogue.keyword.get_cloned().unwrap_or_else(|| "".to_string()))
                         .with_node!(input => {
-                            .event_preventable(clone!(catalogue => move |e: events::KeyDown| {
+                            .event_with_options(&EventOptions::preventable(), clone!(catalogue => move |e: events::KeyDown| {
                                 if e.key() == "Enter" {
                                     e.prevent_default();
                                     catalogue.cover_list.lock_mut().clear();

@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
-use dominator::with_node;
 use dominator::{clone, html, Dom};
+use dominator::{with_node, EventOptions};
 use futures_signals::signal::Mutable;
 use futures_signals::signal::SignalExt;
 use web_sys::HtmlInputElement;
@@ -191,7 +191,7 @@ impl Profile {
                                 }
                             })))
                             .text("Submit")
-                            .event_preventable(clone!(profile => move |e: events::Click| {
+                            .event_with_options(&EventOptions::preventable(), clone!(profile => move |e: events::Click| {
                                 e.prevent_default();
                                 Self::change_password(profile.clone());
                             }))
@@ -228,7 +228,7 @@ impl Profile {
                             .attribute("type", "button")
                             .attribute("value", "Test Desktop Notification")
                             .text("Test Desktop Notification")
-                            .event_preventable(clone!(profile => move |e: events::Click| {
+                            .event_with_options(&EventOptions::preventable(), clone!(profile => move |e: events::Click| {
                                 e.prevent_default();
                                 Self::test_dekstop_notification(profile.clone());
                             }))
@@ -255,7 +255,7 @@ impl Profile {
                             .attribute("type", "button")
                             .attribute("value", "Test")
                             .text("Test Telegram")
-                            .event_preventable(clone!(profile => move |e: events::Click| {
+                            .event_with_options(&EventOptions::preventable(), clone!(profile => move |e: events::Click| {
                                 e.prevent_default();
                                 Self::test_telegram(profile.clone());
                             }))
@@ -282,7 +282,7 @@ impl Profile {
                             .attribute("type", "button")
                             .attribute("value", "Test")
                             .text("Test Pushover")
-                            .event_preventable(clone!(profile => move |e: events::Click| {
+                            .event_with_options(&EventOptions::preventable(), clone!(profile => move |e: events::Click| {
                                 e.prevent_default();
                                 Self::test_pushover(profile.clone());
                             }))
@@ -298,7 +298,7 @@ impl Profile {
                         html!("input", {
                             .attribute("type", "submit")
                             .text("Submit")
-                            .event_preventable(clone!(profile => move |e: events::Click| {
+                            .event_with_options(&EventOptions::preventable(), clone!(profile => move |e: events::Click| {
                                 e.prevent_default();
                                 Self::update_profile(profile.clone());
                             }))

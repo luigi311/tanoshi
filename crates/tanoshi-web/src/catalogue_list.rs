@@ -13,7 +13,7 @@ use crate::{
     common::{Cover, Spinner},
     utils::AsyncLoader,
 };
-use dominator::{clone, events, html, link, routing, svg, with_node, Dom};
+use dominator::{clone, events, html, link, routing, svg, with_node, Dom, EventOptions};
 use futures_signals::signal::{Mutable, SignalExt};
 use futures_signals::signal_map::MutableBTreeMap;
 use futures_signals::signal_vec::{self, MutableVec, SignalVecExt};
@@ -168,7 +168,7 @@ impl CatalogueList {
                             .event(clone!(catalogue => move |_: events::Input| {
                                 catalogue.keyword.set_neq(input.value());
                             }))
-                            .event_preventable(clone!(catalogue => move |event: events::KeyDown| {
+                            .event_with_options(&EventOptions::preventable(), clone!(catalogue => move |event: events::KeyDown| {
                                 if event.key() == "Enter" {
                                     event.prevent_default();
                                     Self::fetch_manga_from_all_sources(catalogue.clone());
