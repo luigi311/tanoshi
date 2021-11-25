@@ -7,7 +7,7 @@ pub async fn generate_json(bus: ExtensionBus) -> Result<(), Box<dyn std::error::
     let _ = std::fs::create_dir_all(path.join("library"));
 
     let sources = bus
-        .list()
+        .list_async()
         .await?
         .iter()
         .map(|source| Index {

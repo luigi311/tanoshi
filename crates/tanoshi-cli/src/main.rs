@@ -48,11 +48,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     #[cfg(not(feature = "disable-compiler"))]
     if !matches!(opts.subcmd, SubCommand::Compile(_)) {
-        vm::load(&opts.path, extension_tx.clone()).await?;
+        vm::load(&opts.path, extension_tx.clone())?;
     }
 
     #[cfg(feature = "disable-compiler")]
-    vm::load(&opts.path, extension_tx.clone()).await?;
+    vm::load(&opts.path, extension_tx.clone())?;
 
     let extension_bus = ExtensionBus::new(opts.path.clone(), extension_tx);
 
@@ -65,8 +65,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             //     "x86_64-unknown-linux-gnu",
             //     "aarch64-unknown-linux-gnu",
             // ];
-            vm::compile_with_target(&opts.path, &compile_opts.target, compile_opts.remove_wasm)
-                .await?;
+            vm::compile_with_target(&opts.path, &compile_opts.target, compile_opts.remove_wasm)?;
         }
         SubCommand::GenerateJson => {
             generate::generate_json(extension_bus).await?;

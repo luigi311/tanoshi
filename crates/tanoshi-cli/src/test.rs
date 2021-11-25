@@ -5,7 +5,7 @@ pub async fn test(
     bus: ExtensionBus,
     selector: Option<String>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    for detail in bus.list().await? {
+    for detail in bus.list_async().await? {
         if let Some(selector) = selector.clone() {
             if detail.name != selector {
                 continue;
@@ -15,25 +15,31 @@ pub async fn test(
         println!("Test {}", detail.name);
 
         print!("Test get supported filters ");
-        let _ = bus.filters(detail.id).await?;
+        let _ = bus.filters_async(detail.id).await?;
         println!("ok");
 
         let param = Param::default();
 
         print!("Test get_manga_list ");
-        let manga = bus.get_manga_list(detail.id, param).await?;
+        let manga = bus.get_manga_list_async(detail.id, param).await?;
         println!("ok");
 
         print!("Test get_manga_info {} ", manga[0].path.clone());
-        let _ = bus.get_manga_info(detail.id, manga[0].path.clone()).await?;
+        let _ = bus
+            .get_manga_info_async(detail.id, manga[0].path.clone())
+            .await?;
         println!("ok");
 
         print!("Test get_chapters {} ", manga[0].path.clone());
-        let chapters = bus.get_chapters(detail.id, manga[0].path.clone()).await?;
+        let chapters = bus
+            .get_chapters_async(detail.id, manga[0].path.clone())
+            .await?;
         println!("ok");
 
         print!("Test get_pages {} ", chapters[0].path.clone());
-        let _ = bus.get_pages(detail.id, chapters[0].path.clone()).await?;
+        let _ = bus
+            .get_pages_async(detail.id, chapters[0].path.clone())
+            .await?;
         println!("ok");
     }
 
