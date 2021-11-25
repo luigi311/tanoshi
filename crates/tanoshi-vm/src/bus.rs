@@ -7,6 +7,9 @@ use std::{
 };
 use tanoshi_lib::prelude::{Chapter, Extension, ExtensionResult, Filters, Manga, Param, Source};
 
+#[cfg(feature = "compiler")]
+use crate::prelude::compile;
+
 // use crate::prelude::ExtensionProxy;
 
 pub type ExtensionResultSender<T> = Sender<ExtensionResult<T>>;
@@ -38,6 +41,35 @@ impl ExtensionBus {
             path: PathBuf::new().join(path),
             tx,
         }
+    }
+
+    pub fn load(&self) -> Result<(), anyhow::Error> {
+        if std::fs::read_dir(&self.path).is_err() {
+            let _ = std::fs::create_dir_all(&self.path);
+        }
+
+        #[cfg(feature = "compiler")]
+        compile(&self.path)?;
+
+        for entry in std::fs::read_dir(&self.path)?.filter_map(|s| s.ok()) {
+            if !entry
+                .path()
+                .extension()
+                .map_or(false, |ext| ext == "tanoshi")
+            {
+                continue;
+            }
+
+            let path = entry.path();
+            info!("found compiled plugin at {:?}", path.clone());
+            self.tx.send(Command::Load(
+                path.to_str()
+                    .ok_or_else(|| anyhow::anyhow!("no path str"))?
+                    .to_string(),
+            ))?;
+        }
+
+        Ok(())
     }
 
     pub fn insert(&self, source_id: i64, proxy: Arc<dyn Extension>) -> Result<(), anyhow::Error> {

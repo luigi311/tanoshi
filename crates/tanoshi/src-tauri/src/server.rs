@@ -6,7 +6,7 @@ use tauri::{
 };
 
 use tanoshi::{config::GLOBAL_CONFIG, db, local, notifier, schema, server, worker};
-use tanoshi_vm::{bus::ExtensionBus, vm};
+use tanoshi_vm::vm;
 
 use std::sync::Arc;
 
@@ -46,19 +46,16 @@ impl<R: Runtime> Plugin<R> for Server {
       let mangadb = db::MangaDatabase::new(pool.clone());
       let userdb = db::UserDatabase::new(pool.clone());
 
-      let (_, extension_tx) = vm::start();
-      vm::load(&config.plugin_path, extension_tx.clone()).unwrap();
+      let (_, extension_bus) = vm::start(&config.plugin_path);
+      extension_bus.load().unwrap();
 
-      let extension_bus = ExtensionBus::new(&config.plugin_path, extension_tx);
-      if let Err(_) = extension_bus
+      extension_bus
         .insert_async(
           local::ID,
           Arc::new(local::Local::new(config.local_path.clone())),
         )
         .await
-      {
-        return;
-      }
+        .unwrap();
 
       let notifier = notifier::Builder::new(userdb.clone()).finish();
 

@@ -26,7 +26,7 @@ use crate::{
 };
 use clap::Parser;
 use futures::future::OptionFuture;
-use tanoshi_vm::{bus::ExtensionBus, vm};
+use tanoshi_vm::vm;
 
 use std::sync::Arc;
 use teloxide::prelude::RequesterExt;
@@ -60,10 +60,8 @@ async fn main() -> Result<(), anyhow::Error> {
     let mangadb = db::MangaDatabase::new(pool.clone());
     let userdb = db::UserDatabase::new(pool.clone());
 
-    let (_, extension_tx) = vm::start();
-    vm::load(&config.plugin_path, extension_tx.clone()).map_err(|e| anyhow::anyhow!("{}", e))?;
-
-    let extension_bus = ExtensionBus::new(&config.plugin_path, extension_tx);
+    let (_, extension_bus) = vm::start(&config.plugin_path);
+    extension_bus.load()?;
 
     extension_bus
         .insert_async(

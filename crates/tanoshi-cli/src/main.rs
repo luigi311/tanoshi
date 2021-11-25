@@ -5,7 +5,7 @@ mod generate;
 mod test;
 
 use clap::Parser;
-use tanoshi_vm::{bus::ExtensionBus, vm};
+use tanoshi_vm::vm;
 
 #[derive(Parser)]
 #[clap(version = "0.1.1", author = "Muhammad Fadhlika <fadhlika@gmail.com>")]
@@ -44,17 +44,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let opts: Opts = Opts::parse();
 
-    let (_, extension_tx) = vm::start();
+    let (_, extension_bus) = vm::start(&opts.path);
 
     #[cfg(not(feature = "disable-compiler"))]
     if !matches!(opts.subcmd, SubCommand::Compile(_)) {
-        vm::load(&opts.path, extension_tx.clone())?;
+        extension_bus.load()?;
     }
 
     #[cfg(feature = "disable-compiler")]
     vm::load(&opts.path, extension_tx.clone())?;
-
-    let extension_bus = ExtensionBus::new(opts.path.clone(), extension_tx);
 
     match opts.subcmd {
         #[cfg(not(feature = "disable-compiler"))]

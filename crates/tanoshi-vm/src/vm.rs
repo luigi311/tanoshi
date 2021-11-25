@@ -1,4 +1,4 @@
-use flume::{Receiver, Sender};
+use flume::Receiver;
 use serde::{de::DeserializeOwned, Serialize};
 use std::{
     collections::BTreeMap,
@@ -17,7 +17,10 @@ use wasmer::{imports, ChainableNamedResolver, Function, Instance, Module, Store,
 
 use wasmer_wasi::{Pipe, WasiEnv, WasiState};
 
-use crate::bus::{Command, ExtensionResultSender};
+use crate::{
+    bus::{Command, ExtensionResultSender},
+    prelude::ExtensionBus,
+};
 
 #[derive(WasmerEnv, Clone)]
 struct ExtensionEnv {
@@ -184,42 +187,14 @@ impl Extension for ExtensionProxy {
     }
 }
 
-pub fn start() -> (JoinHandle<()>, Sender<Command>) {
+pub fn start<P: AsRef<Path>>(path: P) -> (JoinHandle<()>, ExtensionBus) {
     let (tx, rx) = flume::bounded(25);
+    let ext_bus = ExtensionBus::new(path, tx);
     let handle = std::thread::spawn(move || {
         thread_main(rx);
     });
 
-    (handle, tx)
-}
-
-pub fn load<P: AsRef<Path>>(path: P, tx: Sender<Command>) -> Result<(), anyhow::Error> {
-    if std::fs::read_dir(&path).is_err() {
-        let _ = std::fs::create_dir_all(&path);
-    }
-
-    #[cfg(feature = "compiler")]
-    compile(&path)?;
-
-    for entry in std::fs::read_dir(&path)?.filter_map(|s| s.ok()) {
-        if !entry
-            .path()
-            .extension()
-            .map_or(false, |ext| ext == "tanoshi")
-        {
-            continue;
-        }
-
-        let path = entry.path();
-        info!("found compiled plugin at {:?}", path.clone());
-        tx.send(Command::Load(
-            path.to_str()
-                .ok_or_else(|| anyhow::anyhow!("no path str"))?
-                .to_string(),
-        ))?;
-    }
-
-    Ok(())
+    (handle, ext_bus)
 }
 
 #[cfg(feature = "compiler")]
