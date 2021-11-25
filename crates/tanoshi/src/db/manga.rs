@@ -261,7 +261,7 @@ impl Db {
         WHERE
             (uploaded, chapter.id) < (datetime(?, 'unixepoch'), ?) AND
             (uploaded, chapter.id) > (datetime(?, 'unixepoch'), ?)
-        ORDER BY chapter.uploaded DESC, chapter.id DESC"#,
+        ORDER BY chapter.uploaded DESC, chapter.number DESC"#,
         )
         .bind(user_id)
         .bind(after_timestamp)
@@ -311,7 +311,7 @@ impl Db {
         WHERE
             (uploaded, chapter.id) < (datetime(?, 'unixepoch'), ?) AND
             (uploaded, chapter.id) > (datetime(?, 'unixepoch'), ?)
-        ORDER BY chapter.uploaded DESC, chapter.id DESC
+        ORDER BY chapter.uploaded DESC, chapter.number DESC
         LIMIT ?"#,
         )
         .bind(user_id)
@@ -355,7 +355,8 @@ impl Db {
                 manga.title,
                 manga.cover_url,
                 chapter.title,
-                chapter.uploaded
+                chapter.uploaded,
+                chapter.number
             FROM chapter
             JOIN manga ON manga.id = chapter.manga_id
             JOIN user_library ON
@@ -364,9 +365,9 @@ impl Db {
             WHERE
                 (uploaded, chapter.id) < (datetime(?, 'unixepoch'), ?) AND
                 (uploaded, chapter.id) > (datetime(?, 'unixepoch'), ?)
-            ORDER BY chapter.uploaded ASC, chapter.id ASC
+            ORDER BY chapter.uploaded ASC, chapter.number DESC
             LIMIT ?) c
-        ORDER BY c.uploaded DESC, c.id DESC"#,
+        ORDER BY c.uploaded DESC, c.number DESC"#,
         )
         .bind(user_id)
         .bind(after_timestamp)
