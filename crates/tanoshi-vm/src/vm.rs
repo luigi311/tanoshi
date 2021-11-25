@@ -1,17 +1,16 @@
+use flume::{Receiver, Sender};
 use serde::{de::DeserializeOwned, Serialize};
 use std::{
     collections::BTreeMap,
     fmt::Debug,
     path::{Path, PathBuf},
     sync::Arc,
+    thread::JoinHandle,
+    time::Instant,
 };
 use tanoshi_lib::prelude::{Chapter, Extension, ExtensionResult, Filters, Manga, Param, Source};
 use tanoshi_util::http::Request;
-use tokio::{
-    sync::mpsc::{Receiver, Sender},
-    task::JoinHandle,
-    time::Instant,
-};
+
 #[cfg(feature = "compiler")]
 use wasmer::Target;
 use wasmer::{imports, ChainableNamedResolver, Function, Instance, Module, Store, WasmerEnv};
@@ -186,27 +185,23 @@ impl Extension for ExtensionProxy {
 }
 
 pub fn start() -> (JoinHandle<()>, Sender<Command>) {
-    let (tx, rx) = tokio::sync::mpsc::channel(25);
-    let handle = tokio::spawn(async move {
-        thread_main(rx).await;
+    let (tx, rx) = flume::bounded(25);
+    let handle = std::thread::spawn(move || {
+        thread_main(rx);
     });
 
     (handle, tx)
 }
 
-pub async fn load<P: AsRef<Path>>(path: P, tx: Sender<Command>) -> Result<(), anyhow::Error> {
-    match tokio::fs::read_dir(&path).await {
-        Ok(_) => {}
-        Err(_) => {
-            let _ = std::fs::create_dir_all(&path);
-        }
+pub fn load<P: AsRef<Path>>(path: P, tx: Sender<Command>) -> Result<(), anyhow::Error> {
+    if std::fs::read_dir(&path).is_err() {
+        let _ = std::fs::create_dir_all(&path);
     }
 
     #[cfg(feature = "compiler")]
-    compile(&path).await?;
+    compile(&path)?;
 
-    let mut read_dir = tokio::fs::read_dir(&path).await?;
-    while let Some(entry) = read_dir.next_entry().await? {
+    for entry in std::fs::read_dir(&path)?.filter_map(|s| s.ok()) {
         if !entry
             .path()
             .extension()
@@ -221,22 +216,21 @@ pub async fn load<P: AsRef<Path>>(path: P, tx: Sender<Command>) -> Result<(), an
             path.to_str()
                 .ok_or_else(|| anyhow::anyhow!("no path str"))?
                 .to_string(),
-        ))
-        .await?;
+        ))?;
     }
 
     Ok(())
 }
 
 #[cfg(feature = "compiler")]
-pub async fn compile<P: AsRef<Path>>(path: P) -> Result<(), anyhow::Error> {
-    compile_with_target(path, env!("TARGET"), true).await?;
+pub fn compile<P: AsRef<Path>>(path: P) -> Result<(), anyhow::Error> {
+    compile_with_target(path, env!("TARGET"), true)?;
 
     Ok(())
 }
 
 #[cfg(feature = "compiler")]
-pub async fn compile_with_target<P: AsRef<Path>>(
+pub fn compile_with_target<P: AsRef<Path>>(
     path: P,
     triple: &str,
     remove_wasm: bool,
@@ -250,15 +244,11 @@ pub async fn compile_with_target<P: AsRef<Path>>(
     let cpu_feature = CpuFeature::set();
     let target = Target::new(triple, cpu_feature);
 
-    match tokio::fs::read_dir(&path).await {
-        Ok(_) => {}
-        Err(_) => {
-            let _ = std::fs::create_dir_all(&path);
-        }
+    if std::fs::read_dir(&path).is_err() {
+        let _ = std::fs::create_dir_all(&path);
     }
 
-    let mut read_dir = tokio::fs::read_dir(&path).await?;
-    while let Some(entry) = read_dir.next_entry().await? {
+    for entry in std::fs::read_dir(&path)?.filter_map(|s| s.ok()) {
         if !entry.path().extension().map_or(false, |ext| ext == "wasm") {
             continue;
         }
@@ -270,18 +260,17 @@ pub async fn compile_with_target<P: AsRef<Path>>(
 
         if remove_wasm {
             debug!("remove wasm file");
-            tokio::fs::remove_file(path).await?;
+            std::fs::remove_file(path)?;
         }
     }
 
     Ok(())
 }
 
-async fn thread_main(extension_receiver: Receiver<Command>) {
-    let mut recv = extension_receiver;
+fn thread_main(recv: Receiver<Command>) {
     let mut extension_map: BTreeMap<i64, (Source, Arc<dyn Extension>)> = BTreeMap::new();
 
-    while let Some(cmd) = recv.recv().await {
+    while let Ok(cmd) = recv.recv() {
         match cmd {
             Command::Insert(source_id, proxy) => {
                 let source = proxy.detail();
@@ -330,34 +319,31 @@ async fn thread_main(extension_receiver: Receiver<Command>) {
                 }
             },
             Command::Filters(source_id, tx) => {
-                process(&extension_map, source_id, tx, |proxy| proxy.filters()).await;
+                process(&extension_map, source_id, tx, |proxy| proxy.filters());
             }
             Command::GetMangaList(source_id, param, tx) => {
                 process(&extension_map, source_id, tx, |proxy| {
                     proxy.get_manga_list(param)
-                })
-                .await;
+                });
             }
             Command::GetMangaInfo(source_id, path, tx) => {
                 process(&extension_map, source_id, tx, |proxy| {
                     proxy.get_manga_info(path)
-                })
-                .await;
+                });
             }
             Command::GetChapters(source_id, path, tx) => {
                 process(&extension_map, source_id, tx, |proxy| {
                     proxy.get_chapters(path)
-                })
-                .await;
+                });
             }
             Command::GetPages(source_id, path, tx) => {
-                process(&extension_map, source_id, tx, |proxy| proxy.get_pages(path)).await;
+                process(&extension_map, source_id, tx, |proxy| proxy.get_pages(path));
             }
         }
     }
 }
 
-async fn process<F, T>(
+fn process<F, T>(
     extension_map: &BTreeMap<i64, (Source, Arc<dyn Extension>)>,
     source_id: i64,
     tx: ExtensionResultSender<T>,
@@ -369,14 +355,10 @@ async fn process<F, T>(
     match extension_map.get(&source_id) {
         Some(proxy) => {
             let (_, proxy) = proxy.clone();
-            tokio::task::spawn_blocking(move || {
-                let res = f(proxy);
-                if tx.send(res).is_err() {
-                    error!("[process] receiver dropped");
-                }
-            })
-            .await
-            .expect("failed to spawn process");
+            let res = f(proxy);
+            if tx.send(res).is_err() {
+                error!("[process] receiver dropped");
+            }
         }
         None => {
             error!("extension with id {} not found", source_id);
