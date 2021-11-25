@@ -46,14 +46,12 @@ impl<R: Runtime> Plugin<R> for Server {
       let mangadb = db::MangaDatabase::new(pool.clone());
       let userdb = db::UserDatabase::new(pool.clone());
 
-      let (vm_handle, extension_tx) = vm::start();
-      vm::load(&config.plugin_path, extension_tx.clone())
-        .await
-        .unwrap();
+      let (_, extension_tx) = vm::start();
+      vm::load(&config.plugin_path, extension_tx.clone()).unwrap();
 
       let extension_bus = ExtensionBus::new(&config.plugin_path, extension_tx);
       if let Err(_) = extension_bus
-        .insert(
+        .insert_async(
           local::ID,
           Arc::new(local::Local::new(config.local_path.clone())),
         )
@@ -87,9 +85,6 @@ impl<R: Runtime> Plugin<R> for Server {
       tokio::select! {
           _ = server_fut => {
               println!("server shutdown");
-          }
-          _ = vm_handle => {
-              println!("vm quit");
           }
           _ = update_worker_handle => {
               println!("update worker quit");
