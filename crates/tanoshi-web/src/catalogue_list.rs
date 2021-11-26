@@ -272,6 +272,7 @@ impl CatalogueList {
 
     pub fn render_global_search(catalogue: Rc<Self>) -> Dom {
         html!("div", {
+            .style("margin", "0.5rem")
             .children_signal_vec(catalogue.cover_list_map.entries_cloned().map(clone!(catalogue => move |(source_id, source_manga)| html!("div", {
                 .children(&mut [
                     html!("div", {
