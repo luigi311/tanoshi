@@ -227,6 +227,11 @@ input {
         z-index: initial !important;
         border-bottom: 0px !important;
         background-color: var(--background-color) !important;
+
+        input[type="text"] {
+            background-color: var(--background-color-100) !important;
+            padding: 0.25rem !important;
+        }
     }
     
     span, input {
