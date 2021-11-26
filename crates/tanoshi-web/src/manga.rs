@@ -415,6 +415,7 @@ impl Manga {
                                         .style("border-radius", "0.5rem")
                                         .style("width", "8rem")
                                         .style("height", "auto")
+                                        .style("margin-left", "0.5rem")
                                         .attribute("src", &proxied_image_url(&cover_url))
                                     }))
                                 } else {
