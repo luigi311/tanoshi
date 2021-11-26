@@ -8,6 +8,7 @@ query FetchMangaDetail($id: Int, $refresh: Boolean) {
     description
     status
     isFavorite
+    link
     source {
       name
     }

@@ -252,6 +252,14 @@ impl Manga {
         self.description.clone()
     }
 
+    async fn link(&self, ctx: &Context<'_>) -> Result<String> {
+        let detail = ctx
+            .data::<ExtensionBus>()?
+            .detail_async(self.source_id)
+            .await?;
+        Ok(format!("{}{}", detail.url, self.path))
+    }
+
     async fn path(&self) -> String {
         self.path.as_str().to_string()
     }

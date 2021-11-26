@@ -54,6 +54,7 @@ pub struct Manga {
     genre: MutableVec<String>,
     cover_url: Mutable<Option<String>>,
     description: Mutable<Option<String>>,
+    link: Mutable<Option<String>>,
     status: Mutable<Option<String>>,
     is_favorite: Mutable<bool>,
     next_chapter: Mutable<Option<Chapter>>,
@@ -75,6 +76,7 @@ impl Manga {
             genre: MutableVec::new(),
             cover_url: Mutable::new(None),
             description: Mutable::new(None),
+            link: Mutable::new(None),
             status: Mutable::new(None),
             is_favorite: Mutable::new(false),
             next_chapter: Mutable::new(None),
@@ -95,6 +97,7 @@ impl Manga {
                     manga.genre.lock_mut().replace_cloned(result.genre);
                     manga.cover_url.set_neq(Some(result.cover_url));
                     manga.description.set_neq(result.description);
+                    manga.link.set_neq(Some(result.link));
                     manga.status.set_neq(result.status);
                     manga.is_favorite.set_neq(result.is_favorite);
                     manga.next_chapter.set(result.next_chapter.map(|chapter| Chapter {
@@ -575,6 +578,34 @@ impl Manga {
                 .event(clone!(chapter => move |_: events::Click| {
                     routing::go_to_url(Route::Chapter(chapter.id, chapter.read_progress.as_ref().map(|progress| progress.last_page).unwrap_or(0)).url().as_str());
                 }))
+            }))))
+            .child_signal(manga.link.signal_cloned().map(|ext_link| ext_link.map(|ext_link| html!("a", {
+                .class("button")
+                .attribute("href", &ext_link)
+                .attribute("target", "_blank")
+                .style("display", "flex")
+                .style("padding", "0.5rem")
+                .style("align-items", "center")
+                .children(&mut [
+                    svg!("svg", {
+                        .attribute("xmlns", "http://www.w3.org/2000/svg")
+                        .attribute("viewBox", "0 0 24 24")
+                        .attribute("stroke", "currentColor")
+                        .attribute("fill", "none")
+                        .class("icon")
+                        .children(&mut [
+                            svg!("path", {
+                                .attribute("stroke-linecap", "round")
+                                .attribute("stroke-linejoin", "round")
+                                .attribute("stroke-width", "1")
+                                .attribute("d", "M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1")
+                            })
+                        ])
+                    }),
+                    html!("span", {
+                        .text("Link")
+                    })
+                ])
             }))))
         })
     }

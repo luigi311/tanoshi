@@ -69,6 +69,7 @@ type Manga {
   genre: [String!]!
   status: String
   description: String
+  link: String!
   path: String!
   coverUrl: String!
   isFavorite: Boolean!
