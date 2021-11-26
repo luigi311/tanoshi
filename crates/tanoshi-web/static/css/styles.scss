@@ -68,6 +68,9 @@ $divide-color-dark-1: $color-gray-700;
     
     --primary-color: #{$primary-color};
     --primary-color-300: #{$primary-color-300};
+
+    --action-button-color: #{$primary-color};
+    --action-button-background: white;
 }
 
 body.dark {
@@ -90,6 +93,9 @@ body.dark {
     --shadow: none;
     --list-group-background-color: #{$color-gray-800};
     --list-group-border: none;
+
+    --action-button-color: #{$color-gray-200};
+    --action-button-background: #{$color-gray-800};
 }
 
 body.tauri.dark {
@@ -146,6 +152,15 @@ button, .button {
     &:hover, &:active {
         opacity: 0.5;
     }
+}
+
+.action-button {
+    @extend .button;
+    
+    color: var(--action-button-color) !important;
+    background: var(--action-button-background) !important;
+    border-radius: 0.5rem;
+    box-shadow: var(--shadow);
 }
 
 input {

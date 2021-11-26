@@ -523,27 +523,32 @@ impl Manga {
             .style("width", "100%")
             .children(&mut [
                 html!("button", {
+                    .class("action-button")
                     .style("display", "flex")
                     .style("padding", "0.5rem")
+                    .style("margin-left", "0.5rem")
+                    .style("margin-top", "0.5rem")
+                    .style("margin-bottom", "0.5rem")
                     .style("align-items", "center")
+                    .style_important_signal("background-color", manga.is_favorite.signal().map(|x| x.then(|| "var(--primary-color)")))
+                    .style_important_signal("color", manga.is_favorite.signal().map(|x| x.then(|| "white")))
                     .children(&mut [
                         svg!("svg", {
                             .attribute("xmlns", "http://www.w3.org/2000/svg")
-                            .attribute_signal("fill", manga.is_favorite.signal().map(|x| if x { "currentColor" } else { "none" }))
-                            .attribute("viewBox", "0 0 24 24")
-                            .attribute("stroke", "currentColor")
+                            .attribute("fill", "currentColor")
+                            .attribute("viewBox", "0 0 20 20")
                             .class("icon")
                             .children(&mut [
                                 svg!("path", {
-                                    .attribute("stroke-linecap", "round")
-                                    .attribute("stroke-linejoin", "round")
-                                    .attribute("stroke-width", "1")
-                                    .attribute("d", "M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z")
+                                    .attribute("fill-rule", "evenodd")
+                                    .attribute("d", "M3 5a2 2 0 012-2h10a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V5zm11 1H6v8l4-2 4 2V6z")
+                                    .attribute("clip-rule", "evenodd")
                                 })
                             ])
                         }),
                         html!("span", {
-                            .text_signal(manga.is_favorite.signal().map(|x| if x { "Unfavorite" } else { "Favorite" }))
+                            .style("margin-left", "0.5rem")
+                            .text_signal(manga.is_favorite.signal().map(|x| if x { "In Library" } else { "Add to Library" }))
                         })
                     ])
                     .event(clone!(manga => move |_: events::Click| {
@@ -552,26 +557,27 @@ impl Manga {
                 }),
             ])
             .child_signal(manga.next_chapter.signal_cloned().map(|next_chapter| next_chapter.map(|chapter| html!("button", {
+                .class("action-button")
                 .style("display", "flex")
                 .style("padding", "0.5rem")
+                .style("margin-left", "0.5rem")
+                .style("margin-top", "0.5rem")
+                .style("margin-bottom", "0.5rem")
                 .style("align-items", "center")
                 .children(&mut [
                     svg!("svg", {
                         .attribute("xmlns", "http://www.w3.org/2000/svg")
-                        .attribute("viewBox", "0 0 24 24")
-                        .attribute("stroke", "currentColor")
-                        .attribute("fill", "none")
+                        .attribute("fill", "currentColor")
+                        .attribute("viewBox", "0 0 20 20")
                         .class("icon")
                         .children(&mut [
                             svg!("path", {
-                                .attribute("stroke-linecap", "round")
-                                .attribute("stroke-linejoin", "round")
-                                .attribute("stroke-width", "1")
-                                .attribute("d", "M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253")
+                                .attribute("d", "M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z")
                             })
                         ])
                     }),
                     html!("span", {
+                        .style("margin-left", "0.5rem")
                         .text("Read")
                     })
                 ])
@@ -580,29 +586,32 @@ impl Manga {
                 }))
             }))))
             .child_signal(manga.link.signal_cloned().map(|ext_link| ext_link.map(|ext_link| html!("a", {
-                .class("button")
+                .class("action-button")
                 .attribute("href", &ext_link)
                 .attribute("target", "_blank")
                 .style("display", "flex")
                 .style("padding", "0.5rem")
+                .style("margin-left", "0.5rem")
+                .style("margin-top", "0.5rem")
+                .style("margin-bottom", "0.5rem")
                 .style("align-items", "center")
                 .children(&mut [
                     svg!("svg", {
                         .attribute("xmlns", "http://www.w3.org/2000/svg")
-                        .attribute("viewBox", "0 0 24 24")
-                        .attribute("stroke", "currentColor")
-                        .attribute("fill", "none")
+                        .attribute("fill", "currentColor")
+                        .attribute("viewBox", "0 0 20 20")
                         .class("icon")
                         .children(&mut [
                             svg!("path", {
-                                .attribute("stroke-linecap", "round")
-                                .attribute("stroke-linejoin", "round")
-                                .attribute("stroke-width", "1")
-                                .attribute("d", "M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1")
+                                .attribute("d", "M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z")
+                            }),
+                            svg!("path", {
+                                .attribute("d", "M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z")
                             })
                         ])
                     }),
                     html!("span", {
+                        .style("margin-left", "0.5rem")
                         .text("Link")
                     })
                 ])
