@@ -1,4 +1,4 @@
-use crate::{common::{AppearanceSettings, ChapterSettings, Login, Profile, ReaderSettings, Route, SettingCategory, Source, Spinner, User, events, snackbar}, query, settings_download_queue::SettingsDownloads, utils::{AsyncLoader, is_tauri, is_tauri_signal, window}};
+use crate::{common::{AppearanceSettings, ChapterSettings, Login, Profile, ReaderSettings, Route, SettingCategory, Source, Spinner, User, events, snackbar}, query, settings_download_queue::SettingsDownloads, utils::{AsyncLoader, is_tauri, window}};
 use dominator::svg;
 use dominator::{clone, html, link, routing, Dom};
 use futures_signals::{signal::{self, Mutable, SignalExt}, signal_vec::{MutableSignalVec, MutableVec}, signal_vec::SignalVecExt};

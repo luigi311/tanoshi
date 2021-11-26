@@ -915,6 +915,9 @@ impl Manga {
                         Self::render_header(manga_page.clone()),
                         Self::render_action(manga_page.clone()),
                         Self::render_description(manga_page.clone()),
+                        html!("div", {
+                            .style("height", "2.5rem")
+                        })
                     ])
                 }),
                 Self::render_chapters(manga_page.clone()),

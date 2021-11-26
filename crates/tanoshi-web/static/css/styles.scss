@@ -494,6 +494,8 @@ $manga-grid: (
     .manga-detail {
         position: fixed;
         width: 30%;
+        max-height: 100%;
+        overflow-y: auto;
         top: calc(env(safe-area-inset-top) + 2rem);
         padding-top: 0.75rem !important;
         padding-left: 0.5rem;
