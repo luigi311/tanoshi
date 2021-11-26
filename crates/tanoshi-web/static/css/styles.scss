@@ -2,6 +2,8 @@ $color--interval:     12.5%;
 
 $color-gray: #888888;
 $color-gray-100: lighten($color-gray, $color--interval * 4);
+$color-gray-125: lighten($color-gray, $color--interval * 3.75);
+$color-gray-150: lighten($color-gray, $color--interval * 3.5);
 $color-gray-200: lighten($color-gray, $color--interval * 3);
 $color-gray-300: lighten($color-gray, $color--interval * 2);
 $color-gray-400: lighten($color-gray, $color--interval);
@@ -45,7 +47,7 @@ $divide-color-dark: $color-gray-800;
 $divide-color-dark-1: $color-gray-700;
 
 :root {
-    --background-color: white;
+    --background-color: #{$color-gray-150};
     --background-color-100: #{$color-gray-200};
     --background-color-200: #{$color-gray-300};
 
@@ -428,7 +430,6 @@ $manga-grid: (
     position: relative;
     border-radius: 0.375rem;
     padding-bottom: 141.5094339622642%;
-    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
     
     &.favorite {
         filter: brightness(50%);
