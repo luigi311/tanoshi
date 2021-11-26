@@ -14,7 +14,7 @@ use crate::{
         LibrarySortBy, Spinner,
     },
     query,
-    utils::AsyncLoader,
+    utils::{is_tauri_signal, AsyncLoader},
 };
 
 pub struct Library {
@@ -57,6 +57,7 @@ impl Library {
     pub fn render_topbar(library: Rc<Self>) -> Dom {
         html!("div", {
             .class("topbar")
+            .class_signal("tauri", is_tauri_signal())
             .child_signal(library.is_search.signal().map(clone!(library => move |is_search|
                 (!is_search).then(|| html!("div", {
                     .style("min-width", "5rem")

@@ -7,7 +7,7 @@ use crate::{
         self,
         browse_source::{SortByParam, SortOrderParam},
     },
-    utils::local_storage,
+    utils::{is_tauri_signal, local_storage},
 };
 use crate::{
     common::{Cover, Spinner},
@@ -131,6 +131,7 @@ impl CatalogueList {
     pub fn render_topbar(catalogue: Rc<Self>) -> Dom {
         html!("div", {
             .class("topbar")
+            .class_signal("tauri", is_tauri_signal())
             .child_signal(catalogue.is_search.signal().map(|is_search| {
                 if is_search {
                     None

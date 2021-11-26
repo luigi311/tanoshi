@@ -1,6 +1,10 @@
 use std::rc::Rc;
 
-use crate::{catalogue_list, common::events, utils::local_storage};
+use crate::{
+    catalogue_list,
+    common::events,
+    utils::{is_tauri_signal, local_storage},
+};
 
 use super::{Route, SettingCategory};
 use dominator::{html, link, svg, Dom};
@@ -18,6 +22,7 @@ impl Bottombar {
     pub fn render() -> Dom {
         html!("div", {
             .class("bottombar")
+            .style_important_signal("top", is_tauri_signal().map(|is_tauri|  is_tauri.then(|| "0px")))
             .children(&mut [
                 link!(Route::Library.url(), {
                     .class_signal("active", Route::signal().map(|x| matches!(x, Route::Library)))

@@ -217,6 +217,13 @@ input {
     border-bottom: var(--topbar-bottom-border);
     -webkit-padding-after: 0.25rem;
     min-height: 1.5rem;
+
+    &.tauri {
+        left: 5rem !important;
+        z-index: initial !important;
+        border-bottom: 0px !important;
+        background-color: var(--background-color) !important;
+    }
     
     span, input {
         background-color: inherit;

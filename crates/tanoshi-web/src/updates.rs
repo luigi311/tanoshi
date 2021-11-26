@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use crate::common::snackbar;
 use crate::query;
-use crate::utils::{proxied_image_url, AsyncLoader};
+use crate::utils::{is_tauri_signal, proxied_image_url, AsyncLoader};
 use crate::{
     app::App,
     common::{Route, Spinner},
@@ -70,6 +70,7 @@ impl Updates {
     pub fn render_topbar() -> Dom {
         html!("div", {
             .class("topbar")
+            .class_signal("tauri", is_tauri_signal())
             .children(&mut [
                 html!("div", {
                 }),

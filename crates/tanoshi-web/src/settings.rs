@@ -1,4 +1,4 @@
-use crate::{common::{AppearanceSettings, ChapterSettings, Login, Profile, ReaderSettings, Route, SettingCategory, Source, Spinner, User, events, snackbar}, query, settings_download_queue::SettingsDownloads,  utils::{AsyncLoader, window}};
+use crate::{common::{AppearanceSettings, ChapterSettings, Login, Profile, ReaderSettings, Route, SettingCategory, Source, Spinner, User, events, snackbar}, query, settings_download_queue::SettingsDownloads, utils::{AsyncLoader, is_tauri, is_tauri_signal, window}};
 use dominator::svg;
 use dominator::{clone, html, link, routing, Dom};
 use futures_signals::{signal::{self, Mutable, SignalExt}, signal_vec::{MutableSignalVec, MutableVec}, signal_vec::SignalVecExt};
@@ -224,6 +224,9 @@ impl Settings {
     pub fn render_topbar(settings: Rc<Self>) -> Dom {
         html!("div", {
             .class("topbar")
+            .class_signal("tauri", settings.page.signal_cloned().map(|x|
+                matches!(x, SettingCategory::None) && is_tauri()
+            ))
             .children(&mut [
                 html!("button", {
                     .style("justify-self", "start")
