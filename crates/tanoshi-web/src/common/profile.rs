@@ -1,14 +1,15 @@
 use std::rc::Rc;
 
-use dominator::{clone, html, Dom};
+use dominator::{clone, html, routing, Dom};
 use dominator::{with_node, EventOptions};
 use futures_signals::signal::Mutable;
 use futures_signals::signal::SignalExt;
+use wasm_bindgen::UnwrapThrowExt;
 use web_sys::HtmlInputElement;
 
 use crate::common::{events, snackbar};
 use crate::query;
-use crate::utils::{is_tauri_signal, AsyncLoader};
+use crate::utils::{is_tauri_signal, local_storage, AsyncLoader};
 
 pub struct Profile {
     old_password: Mutable<String>,
@@ -304,7 +305,7 @@ impl Profile {
                             }))
                         })
                     ])
-                }),
+                })
             ])
         })
     }
@@ -314,6 +315,25 @@ impl Profile {
             .children(&mut [
                 Self::render_change_password(profile.clone()),
                 Self::render_notification_setting(profile),
+                html!("div", {
+                    .style("max-width", "1024px")
+                    .style("margin-left", "auto")
+                    .style("margin-right", "auto")
+                    .children(&mut [
+                        html!("button", {
+                            .class("uninstall-btn")
+                            .children(&mut [
+                                html!("span", {
+                                    .text("Logout")
+                                    .event(|_: events::Click| {
+                                        local_storage().delete("token").unwrap_throw();
+                                        routing::go_to_url("/login");
+                                    })
+                                })
+                            ])
+                        })
+                    ])
+                })
             ])
         })
     }

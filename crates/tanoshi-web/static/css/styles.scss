@@ -168,12 +168,16 @@ button, .button {
 input {
     border: none;
     color: inherit;
-    padding: 0.5rem;
-    margin: 0.5rem;
+    padding: 0.25rem;
+    margin: 0.25rem;
     background-color: var(--background-color-200);
     font-size: medium;
     -webkit-appearance: none;
     border-radius: 0.25rem;
+
+    &[type="text"], &[type="username"], &[type="password"] {
+        padding: 0.5rem !important;
+    }
 
     &[type="checkbox"] {
         border-radius: 100% !important;
