@@ -67,9 +67,13 @@ pub fn init_app(config: &Config, schema: TanoshiSchema) -> Router<axum::body::Bo
         .layer(AddExtensionLayer::new(proxy));
 
     if config.enable_playground {
-        app = app.route("/graphql", get(graphql_playground).post(graphql_handler));
+        app = app
+            .route("/graphql", get(graphql_playground).post(graphql_handler))
+            .route("/graphql/", post(graphql_handler));
     } else {
-        app = app.route("/graphql", post(graphql_handler));
+        app = app
+            .route("/graphql", post(graphql_handler))
+            .route("/graphql/", post(graphql_handler));
     }
 
     app = app.layer(AddExtensionLayer::new(schema)).layer(
