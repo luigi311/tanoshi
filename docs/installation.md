@@ -1,4 +1,10 @@
 # Installation
+
+There are 3 ways to use Tanoshi:
+- Using prebuild binary
+- Using official Docker image
+- Using desktop version
+
 ## Prebuilt Binary
 Download and run binary from latest release, aside from plugins all dependencies are statically linked. Prebuilt binary available for `amd64` platform.
 
