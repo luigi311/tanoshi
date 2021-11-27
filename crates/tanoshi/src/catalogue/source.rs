@@ -23,6 +23,7 @@ impl From<SourceIndex> for Source {
         Self {
             id: index.id,
             name: index.name,
+            url: "".to_string(),
             version: index.version,
             icon: index.icon,
             need_login: false,
@@ -50,6 +51,7 @@ impl From<tanoshi_lib::data::Filters> for Filters {
 pub struct Source {
     pub id: i64,
     pub name: String,
+    pub url: String,
     pub version: String,
     pub icon: String,
     pub need_login: bool,
@@ -61,6 +63,7 @@ impl From<tanoshi_lib::data::Source> for Source {
         Self {
             id: s.id,
             name: s.name,
+            url: s.url,
             version: s.version.to_string(),
             icon: s.icon,
             need_login: s.need_login,
@@ -74,18 +77,27 @@ impl Source {
     async fn id(&self) -> i64 {
         self.id
     }
+
     async fn name(&self) -> String {
         self.name.clone()
     }
+
+    async fn url(&self) -> String {
+        self.url.clone()
+    }
+
     async fn version(&self) -> String {
         self.version.clone()
     }
+
     async fn icon(&self) -> String {
         self.icon.clone()
     }
+
     async fn need_login(&self) -> bool {
         self.need_login
     }
+
     async fn has_update(&self) -> bool {
         self.has_update
     }

@@ -147,7 +147,10 @@ impl Reader {
                     reader.current_page.set_neq(page);
 
                     reader.pages_loaded.set(ContinousLoaded::Initial);
-                    reader.pages.lock_mut().replace_cloned(result.pages.iter().map(|page| (page.clone(), PageStatus::Initial)).collect());
+
+                    let source_url = result.source.url;
+                    let pages = result.pages.iter().map(|page| (format!("{}?referer={}", page, source_url), PageStatus::Initial)).collect();
+                    reader.pages.lock_mut().replace_cloned(pages);
                     
                     Self::replace_state_with_url(chapter_id, page + 1);
                 },
@@ -591,7 +594,7 @@ impl Reader {
         self.pages
             .signal_vec_cloned()
             .enumerate()
-            .filter_map(|(index, (page, status))| index.get().map(|index| (index, page, status)))
+            .filter_map(move |(index, (page, status))| index.get().map(|index| (index, page, status)))
             .to_signal_cloned()
             .to_signal_vec()
     }

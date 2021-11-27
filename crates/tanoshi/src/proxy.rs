@@ -1,12 +1,19 @@
 #[cfg(feature = "server")]
 use axum::{
     body::Body,
-    extract::{Extension, Path},
-    http::{Response, StatusCode},
+    extract::{Extension, Path, Query},
+    http::{HeaderMap, HeaderValue, Response, StatusCode},
     response::IntoResponse,
 };
+use serde::Deserialize;
 
 use crate::utils;
+
+#[derive(Debug, Deserialize)]
+#[allow(dead_code)]
+pub struct Params {
+    referer: Option<String>,
+}
 
 #[derive(Clone)]
 pub struct Proxy {
@@ -24,7 +31,9 @@ impl Proxy {
 
     #[cfg(feature = "server")]
     pub async fn proxy(
+        headers: HeaderMap,
         Path(url): Path<String>,
+        Query(params): Query<Params>,
         state: Extension<std::sync::Arc<Self>>,
     ) -> impl IntoResponse {
         debug!("encrypted image url: {}", url);
@@ -36,7 +45,7 @@ impl Proxy {
             }
         };
         debug!("get image from {}", url);
-        let res: Response<Body> = match state.as_ref().get_image(&url).await {
+        let res: Response<Body> = match state.as_ref().get_image(headers, &url, params).await {
             Ok(body) => body,
             Err(status) => http::Response::builder()
                 .status(status)
@@ -48,9 +57,16 @@ impl Proxy {
     }
 
     #[cfg(feature = "server")]
-    pub async fn get_image(&self, url: &str) -> Result<http::Response<Body>, StatusCode> {
+    pub async fn get_image(
+        &self,
+        headers: HeaderMap,
+        url: &str,
+        params: Params,
+    ) -> Result<http::Response<Body>, StatusCode> {
         match url {
-            url if url.starts_with("http") => Ok(self.get_image_from_url_stream(url).await?),
+            url if url.starts_with("http") => {
+                Ok(self.get_image_from_url_stream(headers, url, params).await?)
+            }
             url if !url.is_empty() => {
                 let (content_type, data) = self
                     .get_image_from_file(url)
@@ -110,14 +126,23 @@ impl Proxy {
     #[cfg(feature = "server")]
     async fn get_image_from_url_stream(
         &self,
+        mut headers: HeaderMap,
         url: &str,
+        params: Params,
     ) -> Result<http::Response<Body>, StatusCode> {
         debug!("get image from {}", url);
         if url.is_empty() {
             return Err(StatusCode::BAD_REQUEST);
         }
 
-        let source_res = match self.client.get(url).send().await {
+        headers.remove("host");
+        if let Some(referer) = params.referer.and_then(|r| r.parse::<HeaderValue>().ok()) {
+            headers.insert("referer", referer);
+        } else {
+            headers.remove("referer");
+        }
+
+        let source_res = match self.client.get(url).headers(headers).send().await {
             Ok(res) => res,
             Err(e) => {
                 error!("error fetch image, reason: {}", e);

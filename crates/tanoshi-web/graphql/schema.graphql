@@ -17,6 +17,7 @@ type Chapter {
   readProgress: ReadProgress
   uploaded: NaiveDateTime!
   dateAdded: NaiveDateTime!
+  source: Source!
   manga: Manga!
   pages(
     # fetch from source
@@ -330,6 +331,7 @@ enum SortOrderParam {
 type Source {
   id: Int!
   name: String!
+  url: String!
   version: String!
   icon: String!
   needLogin: Boolean!

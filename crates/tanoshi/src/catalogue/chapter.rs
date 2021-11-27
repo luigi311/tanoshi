@@ -1,6 +1,6 @@
 use std::{collections::HashMap, sync::Arc};
 
-use super::Manga;
+use super::{Manga, Source};
 use crate::{config::GLOBAL_CONFIG, db::MangaDatabase, user, utils};
 use async_graphql::{
     dataloader::{DataLoader, Loader},
@@ -254,6 +254,12 @@ impl Chapter {
 
     async fn date_added(&self) -> chrono::NaiveDateTime {
         self.date_added
+    }
+
+    async fn source(&self, ctx: &Context<'_>) -> Result<Source> {
+        let extensions = ctx.data::<ExtensionBus>()?;
+        let source = extensions.detail_async(self.source_id).await?;
+        Ok(source.into())
     }
 
     async fn manga(&self, ctx: &Context<'_>) -> Result<Manga> {
