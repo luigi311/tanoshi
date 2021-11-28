@@ -144,6 +144,7 @@ impl Manga {
                     manga.genre.lock_mut().replace_cloned(result.genre);
                     manga.cover_url.set_neq(Some(result.cover_url));
                     manga.description.set_neq(result.description);
+                    manga.link.set_neq(Some(result.link));
                     manga.status.set_neq(result.status);
                     manga.is_favorite.set_neq(result.is_favorite);
                     manga.next_chapter.set(result.next_chapter.map(|chapter| Chapter {
