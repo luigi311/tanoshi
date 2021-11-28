@@ -11,7 +11,7 @@ use crate::{
 
 use async_graphql::{
     connection::{query, Connection, Edge, EmptyFields},
-    Context, Object, Result, SimpleObject,
+    Context, Error, Object, Result, SimpleObject,
 };
 use chrono::Local;
 
@@ -146,7 +146,8 @@ impl DownloadRoot {
                         .into_iter()
                         .map(|e| Edge::new(encode_cursor(e.uploaded.timestamp(), e.id), e)),
                 );
-                Ok(connection)
+
+                Ok::<_, Error>(connection)
             },
         )
         .await

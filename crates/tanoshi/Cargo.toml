@@ -23,12 +23,12 @@ tokio-stream = "^0.1.5"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 serde_yaml = "0.8"
-async-graphql = { version = "^2.10.0", features = [
+async-graphql = { version = "3.0.7", features = [
     "apollo_tracing",
     "chrono",
     "dataloader",
 ] }
-async-graphql-axum = { version = "^2.10.0", optional = true }
+async-graphql-axum = { version = "3.0.7", optional = true }
 axum = { version = "0.3.2", features = ["headers"], optional = true }
 headers = { version = "0.3", optional = true }
 http = { version = "0.2.5", optional = true }

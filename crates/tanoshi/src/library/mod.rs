@@ -4,7 +4,10 @@ use crate::{
     user,
     utils::{decode_cursor, encode_cursor},
 };
-use async_graphql::connection::{query, Connection, Edge, EmptyFields};
+use async_graphql::{
+    connection::{query, Connection, Edge, EmptyFields},
+    Error,
+};
 use async_graphql::{Context, Object, Result};
 use chrono::{Local, NaiveDateTime};
 
@@ -128,7 +131,8 @@ impl LibraryRoot {
                         .into_iter()
                         .map(|e| Edge::new(encode_cursor(e.uploaded.timestamp(), e.chapter_id), e)),
                 );
-                Ok(connection)
+
+                Ok::<_, Error>(connection)
             },
         )
         .await
@@ -208,7 +212,8 @@ impl LibraryRoot {
                         .into_iter()
                         .map(|e| Edge::new(encode_cursor(e.read_at.timestamp(), e.manga_id), e)),
                 );
-                Ok(connection)
+
+                Ok::<_, Error>(connection)
             },
         )
         .await
