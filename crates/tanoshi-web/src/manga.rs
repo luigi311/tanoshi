@@ -1,8 +1,4 @@
-use crate::{
-    common::{snackbar, ChapterSettings, Sort, Order, ChapterSort, Filter, Route, Spinner},
-    query,
-    utils::{proxied_image_url, window, AsyncLoader},
-};
+use crate::{common::{snackbar, ChapterSettings, Sort, Order, ChapterSort, Filter, Route, Spinner}, query, utils::{AsyncLoader, is_tauri_signal, proxied_image_url, window}};
 use chrono::NaiveDateTime;
 use dominator::{Dom, EventOptions, clone, events, html, routing, svg, with_node};
 use futures_signals::{signal::{self, Mutable, SignalExt}, signal_vec::{MutableVec, SignalVecExt}};

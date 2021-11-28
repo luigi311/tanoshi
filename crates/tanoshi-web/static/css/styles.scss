@@ -73,6 +73,9 @@ $divide-color-dark-1: $color-gray-700;
 
     --action-button-color: #{$primary-color};
     --action-button-background: white;
+
+    --edit-action-background: #{$color-gray-100};
+    --edit-action-shadow: #{$shadow};
 }
 
 body.dark {
@@ -98,6 +101,9 @@ body.dark {
 
     --action-button-color: #{$color-gray-200};
     --action-button-background: #{$color-gray-800};
+
+    --edit-action-background: #{$color-gray-850};
+    --edit-action-shadow: none;
 }
 
 body.tauri.dark {
@@ -359,8 +365,14 @@ input {
 
 @media (min-width: 1024px) {
     .edit-action {
-        left: 30% !important;
-        width: 70% !important;
+        left: 31% !important;
+        width: 68.5% !important;
+        background-color: var(--edit-action-background) !important;
+        box-shadow: var(--edit-action-shadow);
+        border-radius: 1rem !important;
+        bottom: 0.25rem !important;
+        padding-top: 0.25rem !important;
+        padding-bottom: calc(env(safe-area-inset-bottom) + 0.25rem) !important;
     }
 }
 
@@ -518,7 +530,7 @@ $manga-grid: (
     }
 
     .chapter-list {
-        margin-left: 30%;
+        margin-left: 31%;
     }
 }
 
