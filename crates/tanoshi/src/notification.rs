@@ -1,4 +1,4 @@
-use crate::{notifier::Notifier, user};
+use crate::{notifier::Notifier, user::Claims};
 use async_graphql::{Context, Object, Result};
 
 #[derive(Default)]
@@ -11,7 +11,9 @@ impl NotificationRoot {
         ctx: &Context<'_>,
         #[graphql(desc = "telegram chat id")] chat_id: i64,
     ) -> Result<bool> {
-        let _ = user::get_claims(ctx)?;
+        let _ = ctx
+            .data::<Claims>()
+            .map_err(|_| "token not exists, please login")?;
         ctx.data::<Notifier>()?
             .send_message_to_telegram(chat_id, "Test Notification")
             .await?;
@@ -24,7 +26,9 @@ impl NotificationRoot {
         ctx: &Context<'_>,
         #[graphql(desc = "pushover user key")] user_key: String,
     ) -> Result<bool> {
-        let _ = user::get_claims(ctx)?;
+        let _ = ctx
+            .data::<Claims>()
+            .map_err(|_| "token not exists, please login")?;
         ctx.data::<Notifier>()?
             .send_message_to_pushover(&user_key, None, "Test Notification")
             .await?;

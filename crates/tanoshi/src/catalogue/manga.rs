@@ -1,7 +1,7 @@
 use std::{collections::HashMap, sync::Arc};
 
 use super::{Chapter, Source};
-use crate::{config::GLOBAL_CONFIG, db::MangaDatabase, user, utils};
+use crate::{config::GLOBAL_CONFIG, db::MangaDatabase, user::Claims, utils};
 use async_graphql::{
     dataloader::{DataLoader, Loader},
     Context, Object, Result,
@@ -270,7 +270,9 @@ impl Manga {
     }
 
     async fn is_favorite(&self, ctx: &Context<'_>) -> Result<bool> {
-        let user = user::get_claims(ctx)?;
+        let user = ctx
+            .data::<Claims>()
+            .map_err(|_| "token not exists, please login")?;
 
         let loader = ctx.data::<DataLoader<FavoriteLoader>>()?;
         let is_favorite: Option<bool> = if self.id == 0 {
@@ -287,13 +289,17 @@ impl Manga {
     }
 
     async fn unread_chapter_count(&self, ctx: &Context<'_>) -> Result<i64> {
-        let user = user::get_claims(ctx)?;
+        let user = ctx
+            .data::<Claims>()
+            .map_err(|_| "token not exists, please login")?;
         let loader = ctx.data::<DataLoader<UserUnreadChaptersLoader>>()?;
         Ok(loader.load_one((user.sub, self.id)).await?.unwrap_or(0))
     }
 
     async fn last_read_at(&self, ctx: &Context<'_>) -> Result<Option<NaiveDateTime>> {
-        let user = user::get_claims(ctx)?;
+        let user = ctx
+            .data::<Claims>()
+            .map_err(|_| "token not exists, please login")?;
         let loader = ctx.data::<DataLoader<UserLastReadLoader>>()?;
         Ok(loader.load_one((user.sub, self.id)).await?)
     }
@@ -357,7 +363,9 @@ impl Manga {
 
     async fn next_chapter(&self, ctx: &Context<'_>) -> Result<Option<Chapter>> {
         let db = ctx.data::<MangaDatabase>()?.clone();
-        let user = user::get_claims(ctx)?;
+        let user = ctx
+            .data::<Claims>()
+            .map_err(|_| "token not exists, please login")?;
 
         let mut id = self.id;
         if id == 0 {

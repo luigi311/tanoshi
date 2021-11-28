@@ -1,8 +1,8 @@
-use crate::{config::GLOBAL_CONFIG, db::UserDatabase};
-use async_graphql::{Context, InputObject, Object, Result};
+use crate::{config::GLOBAL_CONFIG, db::UserDatabase, guard::AdminGuard};
+use async_graphql::{Context, InputObject, Object, Result, SimpleObject};
 use rand::RngCore;
 
-use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
+use jsonwebtoken::{EncodingKey, Header};
 use serde::{Deserialize, Serialize};
 
 /// Our claims struct, it needs to derive `Serialize` and/or `Deserialize`
@@ -14,7 +14,6 @@ pub struct Claims {
     pub exp: usize,
 }
 
-use async_graphql::SimpleObject;
 #[derive(Debug, SimpleObject)]
 pub struct User {
     pub id: i64,
@@ -92,19 +91,17 @@ impl UserRoot {
         Ok(token)
     }
 
+    #[graphql(guard = "AdminGuard::new()")]
     async fn users(&self, ctx: &Context<'_>) -> Result<Vec<User>> {
-        let is_admin = check_is_admin(ctx)?;
-        if !is_admin {
-            return Err("Forbidden".into());
-        };
-
         let users = ctx.data::<UserDatabase>()?.get_users().await?;
 
         Ok(users.into_iter().map(|user| user.into()).collect())
     }
 
     async fn me(&self, ctx: &Context<'_>) -> Result<User> {
-        let user = get_claims(ctx)?;
+        let user = ctx
+            .data::<Claims>()
+            .map_err(|_| "token not exists, please login")?;
         let user = ctx
             .data::<UserDatabase>()?
             .get_user_by_id(user.sub)
@@ -130,10 +127,11 @@ impl UserMutationRoot {
         let userdb = ctx.data::<UserDatabase>()?;
 
         let user_count = userdb.get_users_count().await?;
-
-        if user_count > 0 && !check_is_admin(ctx)? {
-            return Err("Forbidden".into());
-        };
+        if let Ok(claim) = ctx.data::<Claims>() {
+            if user_count > 0 && !claim.is_admin {
+                return Err("Forbidden".into());
+            }
+        }
 
         if password.len() < 8 {
             return Err("Password less than 8 character".into());
@@ -167,7 +165,9 @@ impl UserMutationRoot {
         #[graphql(desc = "old password")] old_password: String,
         #[graphql(desc = "new password")] new_password: String,
     ) -> Result<u64> {
-        let claims = get_claims(ctx)?;
+        let claims = ctx
+            .data::<Claims>()
+            .map_err(|_| "token not exists, please login")?;
 
         let userdb = ctx.data::<UserDatabase>()?;
 
@@ -194,7 +194,9 @@ impl UserMutationRoot {
 
     async fn update_profile(&self, ctx: &Context<'_>, input: ProfileInput) -> Result<u64> {
         debug!("update_profile");
-        let claims = get_claims(ctx)?;
+        let claims = ctx
+            .data::<Claims>()
+            .map_err(|_| "token not exists, please login")?;
 
         let userdb = ctx.data::<UserDatabase>()?;
         let mut user = userdb.get_user_by_id(claims.sub).await?;
@@ -209,23 +211,4 @@ impl UserMutationRoot {
 
         Ok(row)
     }
-}
-
-pub fn get_claims(ctx: &Context<'_>) -> Result<Claims> {
-    let token = ctx
-        .data::<String>()
-        .map_err(|_| "token not exists, please login")?;
-    let secret = &GLOBAL_CONFIG.get().ok_or("secret not set")?.secret;
-    let claims = jsonwebtoken::decode::<Claims>(
-        token,
-        &DecodingKey::from_secret(secret.as_bytes()),
-        &Validation::default(),
-    )
-    .map_err(|e| format!("failed to decode token, reason: {}", e))?;
-
-    Ok(claims.claims)
-}
-
-pub fn check_is_admin(ctx: &Context<'_>) -> Result<bool> {
-    Ok(get_claims(ctx)?.is_admin)
 }

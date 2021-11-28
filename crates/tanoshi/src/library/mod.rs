@@ -1,7 +1,7 @@
 use crate::{
     catalogue::Manga,
     db::MangaDatabase,
-    user,
+    user::Claims,
     utils::{decode_cursor, encode_cursor},
 };
 use async_graphql::{
@@ -25,7 +25,9 @@ impl LibraryRoot {
         ctx: &Context<'_>,
         #[graphql(desc = "refresh data from source", default = false)] refresh: bool,
     ) -> Result<Vec<Manga>> {
-        let user = user::get_claims(ctx)?;
+        let user = ctx
+            .data::<Claims>()
+            .map_err(|_| "token not exists, please login")?;
         let db = ctx.data::<MangaDatabase>()?;
         let manga = db.get_library(user.sub).await?;
 
@@ -55,7 +57,9 @@ impl LibraryRoot {
         first: Option<i32>,
         last: Option<i32>,
     ) -> Result<Connection<String, RecentUpdate, EmptyFields, EmptyFields>> {
-        let user = user::get_claims(ctx)?;
+        let user = ctx
+            .data::<Claims>()
+            .map_err(|_| "token not exists, please login")?;
         let db = ctx.data::<MangaDatabase>()?;
         query(
             after,
@@ -146,7 +150,9 @@ impl LibraryRoot {
         first: Option<i32>,
         last: Option<i32>,
     ) -> Result<Connection<String, RecentChapter, EmptyFields, EmptyFields>> {
-        let user = user::get_claims(ctx)?;
+        let user = ctx
+            .data::<Claims>()
+            .map_err(|_| "token not exists, please login")?;
         let db = ctx.data::<MangaDatabase>()?;
         query(
             after,
@@ -230,7 +236,9 @@ impl LibraryMutationRoot {
         ctx: &Context<'_>,
         #[graphql(desc = "manga id")] manga_id: i64,
     ) -> Result<u64> {
-        let user = user::get_claims(ctx)?;
+        let user = ctx
+            .data::<Claims>()
+            .map_err(|_| "token not exists, please login")?;
         match ctx
             .data::<MangaDatabase>()?
             .insert_user_library(user.sub, manga_id)
@@ -246,7 +254,9 @@ impl LibraryMutationRoot {
         ctx: &Context<'_>,
         #[graphql(desc = "manga id")] manga_id: i64,
     ) -> Result<u64> {
-        let user = user::get_claims(ctx)?;
+        let user = ctx
+            .data::<Claims>()
+            .map_err(|_| "token not exists, please login")?;
         match ctx
             .data::<MangaDatabase>()?
             .delete_user_library(user.sub, manga_id)
@@ -263,7 +273,9 @@ impl LibraryMutationRoot {
         #[graphql(desc = "chapter id")] chapter_id: i64,
         #[graphql(desc = "page")] page: i64,
     ) -> Result<u64> {
-        let user = user::get_claims(ctx)?;
+        let user = ctx
+            .data::<Claims>()
+            .map_err(|_| "token not exists, please login")?;
         match ctx
             .data::<MangaDatabase>()?
             .update_page_read_at(user.sub, chapter_id, page)
@@ -279,7 +291,9 @@ impl LibraryMutationRoot {
         ctx: &Context<'_>,
         #[graphql(desc = "chapter ids")] chapter_ids: Vec<i64>,
     ) -> Result<u64> {
-        let user = user::get_claims(ctx)?;
+        let user = ctx
+            .data::<Claims>()
+            .map_err(|_| "token not exists, please login")?;
         match ctx
             .data::<MangaDatabase>()?
             .update_chapters_read_at(user.sub, &chapter_ids)
@@ -295,7 +309,9 @@ impl LibraryMutationRoot {
         ctx: &Context<'_>,
         #[graphql(desc = "chapter ids")] chapter_ids: Vec<i64>,
     ) -> Result<u64> {
-        let user = user::get_claims(ctx)?;
+        let user = ctx
+            .data::<Claims>()
+            .map_err(|_| "token not exists, please login")?;
         match ctx
             .data::<MangaDatabase>()?
             .delete_chapters_read_at(user.sub, &chapter_ids)

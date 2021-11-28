@@ -1,7 +1,7 @@
 use std::{collections::HashMap, sync::Arc};
 
 use super::{Manga, Source};
-use crate::{config::GLOBAL_CONFIG, db::MangaDatabase, user, utils};
+use crate::{config::GLOBAL_CONFIG, db::MangaDatabase, user::Claims, utils};
 use async_graphql::{
     dataloader::{DataLoader, Loader},
     Context, Object, Result, SimpleObject,
@@ -242,7 +242,9 @@ impl Chapter {
     }
 
     async fn read_progress(&self, ctx: &Context<'_>) -> Result<Option<ReadProgress>> {
-        let user = user::get_claims(ctx)?;
+        let user = ctx
+            .data::<Claims>()
+            .map_err(|_| "token not exists, please login")?;
 
         let loader = ctx.data::<DataLoader<ReadProgressLoader>>()?;
         Ok(loader.load_one((user.sub, self.id)).await?)

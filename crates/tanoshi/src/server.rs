@@ -1,4 +1,9 @@
-use crate::{config::Config, proxy::Proxy, schema::TanoshiSchema};
+use crate::{
+    config::{Config, GLOBAL_CONFIG},
+    proxy::Proxy,
+    schema::TanoshiSchema,
+    user::Claims,
+};
 
 use async_graphql::http::{playground_source, GraphQLPlaygroundConfig};
 use async_graphql_axum::{GraphQLRequest, GraphQLResponse};
@@ -10,6 +15,7 @@ use axum::{
     AddExtensionLayer, Router, Server,
 };
 use headers::{authorization::Bearer, Authorization};
+use jsonwebtoken::{DecodingKey, Validation};
 use std::{
     net::{IpAddr, SocketAddr},
     str::FromStr,
@@ -42,8 +48,20 @@ async fn graphql_handler(
     schema: Extension<TanoshiSchema>,
     req: GraphQLRequest,
 ) -> GraphQLResponse {
-    let req = req.into_inner();
-    let req = req.data(token.0);
+    let mut req = req.into_inner();
+
+    let secret = GLOBAL_CONFIG
+        .get()
+        .map(|cfg| cfg.secret.to_owned())
+        .unwrap_or_else(|| "".to_string());
+    if let Ok(claims) = jsonwebtoken::decode::<Claims>(
+        &token.0,
+        &DecodingKey::from_secret(secret.as_bytes()),
+        &Validation::default(),
+    ) {
+        req = req.data(claims.claims);
+    }
+
     schema.execute(req).await.into()
 }
 

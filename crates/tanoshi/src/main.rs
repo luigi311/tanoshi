@@ -8,6 +8,7 @@ mod catalogue;
 mod config;
 mod db;
 mod downloads;
+mod guard;
 mod library;
 mod local;
 mod notification;

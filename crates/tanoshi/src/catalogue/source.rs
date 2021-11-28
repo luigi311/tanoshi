@@ -3,7 +3,7 @@ use std::{
     str::FromStr,
 };
 
-use crate::user;
+use crate::{guard::AdminGuard, user::Claims};
 use async_graphql::{Context, Json, Object, Result, SimpleObject};
 use serde::{Deserialize, Serialize};
 use tanoshi_lib::prelude::{FilterField, Version};
@@ -122,6 +122,7 @@ impl SourceRoot {
         ctx: &Context<'_>,
         check_update: bool,
     ) -> Result<Vec<Source>> {
+        let _ = ctx.data::<Claims>()?;
         let installed_sources = ctx.data::<ExtensionBus>()?.list_async().await?;
         let mut sources: Vec<Source> = vec![];
         if check_update {
@@ -152,6 +153,7 @@ impl SourceRoot {
     }
 
     async fn available_sources(&self, ctx: &Context<'_>) -> Result<Vec<Source>> {
+        let _ = ctx.data::<Claims>()?;
         let url = "https://faldez.github.io/tanoshi-extensions".to_string();
         let source_indexes: Vec<SourceIndex> = reqwest::get(&url).await?.json().await?;
         let extensions = ctx.data::<ExtensionBus>()?;
@@ -166,6 +168,7 @@ impl SourceRoot {
     }
 
     async fn source(&self, ctx: &Context<'_>, source_id: i64) -> Result<Source> {
+        let _ = ctx.data::<Claims>()?;
         let exts = ctx.data::<ExtensionBus>()?;
         Ok(exts.detail_async(source_id).await?.into())
     }
@@ -176,11 +179,8 @@ pub struct SourceMutationRoot;
 
 #[Object]
 impl SourceMutationRoot {
+    #[graphql(guard = "AdminGuard::new()")]
     async fn install_source(&self, ctx: &Context<'_>, source_id: i64) -> Result<i64> {
-        if !user::check_is_admin(ctx)? {
-            return Err("Forbidden".into());
-        }
-
         let extensions = ctx.data::<ExtensionBus>()?;
         if extensions.exist_async(source_id).await? {
             return Err("source installed, use updateSource to update".into());
@@ -206,11 +206,8 @@ impl SourceMutationRoot {
         Ok(source.id)
     }
 
+    #[graphql(guard = "AdminGuard::new()")]
     async fn uninstall_source(&self, ctx: &Context<'_>, source_id: i64) -> Result<i64> {
-        if !user::check_is_admin(ctx)? {
-            return Err("Forbidden".into());
-        }
-
         let extensions = ctx.data::<ExtensionBus>()?;
 
         extensions.unload_async(source_id).await?;
@@ -218,11 +215,8 @@ impl SourceMutationRoot {
         Ok(source_id)
     }
 
+    #[graphql(guard = "AdminGuard::new()")]
     async fn update_source(&self, ctx: &Context<'_>, source_id: i64) -> Result<i64> {
-        if !user::check_is_admin(ctx)? {
-            return Err("Forbidden".into());
-        }
-
         let extensions = ctx.data::<ExtensionBus>()?;
         extensions.exist_async(source_id).await?;
 

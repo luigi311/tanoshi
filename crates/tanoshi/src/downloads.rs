@@ -4,7 +4,7 @@ use crate::{
     catalogue::Chapter,
     config::GLOBAL_CONFIG,
     db::{model, MangaDatabase},
-    user,
+    guard::AdminGuard,
     utils::{decode_cursor, encode_cursor},
     worker::downloads::{Command as DownloadCommand, DownloadSender},
 };
@@ -42,11 +42,8 @@ impl DownloadRoot {
         Ok(!pause_path.exists())
     }
 
+    #[graphql(guard = "AdminGuard::new()")]
     async fn download_queue(&self, ctx: &Context<'_>) -> Result<Vec<DownloadQueueEntry>> {
-        if !user::check_is_admin(ctx)? {
-            return Err("Forbidden".into());
-        }
-
         let db = ctx.data::<MangaDatabase>()?;
         let queue: Vec<model::DownloadQueueEntry> = db.get_download_queue().await?;
         let queue = queue
@@ -67,6 +64,7 @@ impl DownloadRoot {
         Ok(queue)
     }
 
+    #[graphql(guard = "AdminGuard::new()")]
     async fn get_downloaded_chapters(
         &self,
         ctx: &Context<'_>,
@@ -75,9 +73,6 @@ impl DownloadRoot {
         first: Option<i32>,
         last: Option<i32>,
     ) -> Result<Connection<String, Chapter, EmptyFields, EmptyFields>> {
-        if !user::check_is_admin(ctx)? {
-            return Err("forbidden".into());
-        }
         let db = ctx.data::<MangaDatabase>()?;
         query(
             after,
@@ -181,11 +176,8 @@ impl DownloadMutationRoot {
         Ok(true)
     }
 
+    #[graphql(guard = "AdminGuard::new()")]
     async fn download_chapters(&self, ctx: &Context<'_>, ids: Vec<i64>) -> Result<i64> {
-        if !user::check_is_admin(ctx)? {
-            return Err("Forbidden".into());
-        }
-
         let mut len = 0_usize;
         for id in ids {
             ctx.data::<DownloadSender>()?
@@ -200,11 +192,8 @@ impl DownloadMutationRoot {
         Ok(len as _)
     }
 
+    #[graphql(guard = "AdminGuard::new()")]
     async fn remove_chapters_from_queue(&self, ctx: &Context<'_>, ids: Vec<i64>) -> Result<i64> {
-        if !user::check_is_admin(ctx)? {
-            return Err("Forbidden".into());
-        }
-
         let db = ctx.data::<MangaDatabase>()?;
 
         let mut len = 0;
@@ -234,11 +223,8 @@ impl DownloadMutationRoot {
         Ok(len)
     }
 
+    #[graphql(guard = "AdminGuard::new()")]
     async fn remove_downloaded_chapters(&self, ctx: &Context<'_>, ids: Vec<i64>) -> Result<i64> {
-        if !user::check_is_admin(ctx)? {
-            return Err("Forbidden".into());
-        }
-
         let db = ctx.data::<MangaDatabase>()?;
 
         let mut len = 0_usize;
@@ -265,16 +251,13 @@ impl DownloadMutationRoot {
         Ok(len as _)
     }
 
+    #[graphql(guard = "AdminGuard::new()")]
     async fn update_chapter_priority(
         &self,
         ctx: &Context<'_>,
         id: i64,
         priority: i64,
     ) -> Result<bool> {
-        if !user::check_is_admin(ctx)? {
-            return Err("Forbidden".into());
-        }
-
         ctx.data::<MangaDatabase>()?
             .update_download_queue_priority(id, priority)
             .await?;
