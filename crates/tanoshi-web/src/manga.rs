@@ -768,8 +768,10 @@ impl Manga {
                         .child_signal(is_edit_chapter.signal().map(clone!(chapter => move |is_edit_chapter| if is_edit_chapter {
                             Some(html!("input" => HtmlInputElement, {
                                 .attribute("type", "checkbox")
-                                .style("height", "0.5rem")
-                                .style("margin", "0.5rem")
+                                .style("height", "0.75rem")
+                                .style("width", "0.75rem")
+                                .style("margin-left", "0.5rem")
+                                .style("margin-right", "0.5rem")
                                 .style("margin-top", "auto")
                                 .style("margin-bottom", "auto")
                                 .with_node!(input => {
