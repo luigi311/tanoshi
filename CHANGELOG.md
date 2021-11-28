@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [tanoshi] link field in manga
 - [tanoshi-web] external link button in manga detail
 - [tanoshi-web] add logout button
+- [tanoshi-web] changelog, github, website and discord link on settings page
 - [tanoshi] image proxy has referer query
 - [tanoshi] image proxy now forward every header to upstream
 
