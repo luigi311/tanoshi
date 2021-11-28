@@ -312,7 +312,7 @@ impl Settings {
         })
     }
 
-    pub fn render_categories(settings: Rc<Self>) -> Dom {
+    pub fn render_categories() -> Dom {
         html!("ul", {
             .class(["list", "group"])
             .style("margin-bottom", "0.5rem")
@@ -328,7 +328,16 @@ impl Settings {
                 link!(Route::Settings(SettingCategory::Reader).url(), {
                     .class("list-item")
                     .text("Reader")
-                }),
+                })
+            ])
+        })
+    }
+
+    pub fn render_misc(settings: Rc<Self>) -> Dom {
+        html!("ul", {
+            .class(["list", "group"])
+            .style("margin-bottom", "0.5rem")
+            .children(&mut [
                 link!(Route::Settings(SettingCategory::Source(0)).url(), {
                     .class("list-item")
                     .text("Source")
@@ -348,12 +357,6 @@ impl Settings {
                     None
                 }
             }))
-        })
-    }
-
-    pub fn render_misc(settings: Rc<Self>) -> Dom {
-        html!("ul", {
-            .class(["list", "group"])
             .child_signal(settings.me.signal_cloned().map(|me| {
                 if let Some(me) = me {
                     if me.is_admin {
@@ -368,6 +371,34 @@ impl Settings {
                     None
                 }
             }))
+        })
+    }
+
+    pub fn render_info() -> Dom {
+        html!("ul", {
+            .class(["list", "group"])
+            .children(&mut [
+                link!("https://github.com/faldez/tanoshi/blob/master/CHANGELOG.md", {
+                    .class("list-item")
+                    .attribute("target", "_blank")
+                    .text("Changelog")
+                }),
+                link!("https://github.com/faldez/tanoshi", {
+                    .class("list-item")
+                    .attribute("target", "_blank")
+                    .text("Github")
+                }),
+                link!("https://faldez.github.io/tanoshi/", {
+                    .class("list-item")
+                    .attribute("target", "_blank")
+                    .text("Website")
+                }),
+                link!("https://discord.gg/wPSEftdDqB", {
+                    .class("list-item")
+                    .attribute("target", "_blank")
+                    .text("Discord")
+                }),
+            ])
         })
     }
 
@@ -626,8 +657,9 @@ impl Settings {
                     SettingCategory::None => Some(html!("div", {
                         .children(&mut [
                             Self::render_user(settings.clone()),
-                            Self::render_categories(settings.clone()),
+                            Self::render_categories(),
                             Self::render_misc(settings.clone()),
+                            Self::render_info(),
                             html!("text", {
                                 .style("font-size", "small")
                                 .text(format!("v{}", settings.server_version).as_str())
