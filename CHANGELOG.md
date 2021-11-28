@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- [tanoshi] link field in manga
+- [tanoshi-web] external link button in manga detail
+- [tanoshi-web] add logout button
+- [tanoshi] image proxy has referer query
+- [tanoshi] image proxy now forward every header to upstream
+
+### Changed
+- [tanoshi-desktop] topbar is now white
+- [tanoshi-desktop] slight layout changes
+- [tanoshi-web] updates chapter number now sorted descending
+- [tanoshi-web] manga detail on dual column layout now scrollable
+- [tanoshi-web] redesign action button in manga detail page
+- [tanoshi-vm] remove async from extension thread
+- [tanoshi-vm] add non async function to extension but
+
+
+### Removed
+- [tanoshi-web] manage downloads page
+
 ## [0.25.21]
 
 ### Added
