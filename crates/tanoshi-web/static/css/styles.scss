@@ -204,6 +204,20 @@ input {
     
 }
 
+@media (min-width: 1024px) { 
+    .topbar.tauri {
+        left: 5rem !important;
+        z-index: initial !important;
+        border-bottom: 0px !important;
+        background-color: var(--background-color) !important;
+    
+        input[type="text"] {
+            background-color: var(--background-color-100) !important;
+            padding: 0.25rem !important;
+        }
+    }
+}
+
 .topbar {
     display: flex;
     justify-content: space-between;
@@ -221,18 +235,6 @@ input {
     border-bottom: var(--topbar-bottom-border);
     -webkit-padding-after: 0.25rem;
     min-height: 1.5rem;
-
-    &.tauri {
-        left: 5rem !important;
-        z-index: initial !important;
-        border-bottom: 0px !important;
-        background-color: var(--background-color) !important;
-
-        input[type="text"] {
-            background-color: var(--background-color-100) !important;
-            padding: 0.25rem !important;
-        }
-    }
     
     span, input {
         background-color: inherit;
@@ -283,6 +285,10 @@ input {
         width: 5rem !important;
         border-top: none !important;
         border-right: 1px solid var(--background-color-100);
+
+        &.tauri {
+            top: 0px !important;
+        }
 
         a, button {
             margin-top: 0.5rem !important;

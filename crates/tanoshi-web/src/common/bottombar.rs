@@ -22,7 +22,7 @@ impl Bottombar {
     pub fn render() -> Dom {
         html!("div", {
             .class("bottombar")
-            .style_important_signal("top", is_tauri_signal().map(|is_tauri|  is_tauri.then(|| "0px")))
+            .class_signal("tauri", is_tauri_signal())
             .children(&mut [
                 link!(Route::Library.url(), {
                     .class_signal("active", Route::signal().map(|x| matches!(x, Route::Library)))
