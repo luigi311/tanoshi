@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- [tanoshi] library categories
 - [tanoshi] link field in manga
 - [tanoshi-web] external link button in manga detail
 - [tanoshi-web] add logout button
