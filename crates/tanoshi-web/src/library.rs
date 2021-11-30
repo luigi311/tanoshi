@@ -3,6 +3,7 @@ use std::rc::Rc;
 use chrono::NaiveDateTime;
 use dominator::{clone, html, link, svg, with_node, Dom, EventOptions};
 use futures_signals::{
+    map_ref,
     signal::{Mutable, SignalExt},
     signal_vec::{MutableVec, SignalVecExt},
 };
@@ -10,8 +11,8 @@ use web_sys::HtmlInputElement;
 
 use crate::{
     common::{
-        events, snackbar, Category, Cover, LibraryFilter, LibraryOrder, LibrarySettings,
-        LibrarySort, LibrarySortBy, Route, Spinner,
+        events, snackbar, Cover, LibraryFilter, LibraryOrder, LibrarySettings, LibrarySort,
+        LibrarySortBy, Route, Spinner,
     },
     query,
     utils::{is_tauri_signal, AsyncLoader},
@@ -19,12 +20,13 @@ use crate::{
 
 pub struct Library {
     category_id: Option<i64>,
-    category: Mutable<Category>,
+    category_name: Mutable<String>,
     keyword: Mutable<String>,
     is_search: Mutable<bool>,
     loader: AsyncLoader,
     spinner: Rc<Spinner>,
     cover_list: MutableVec<Cover>,
+    categories_available: Mutable<bool>,
     library_settings: Rc<LibrarySettings>,
 }
 
@@ -32,26 +34,24 @@ impl Library {
     pub fn new(category_id: Option<i64>) -> Rc<Self> {
         Rc::new(Library {
             category_id,
-            category: Mutable::new(Category {
-                id: 0,
-                name: "Default".to_string(),
-            }),
+            category_name: Mutable::new("Default".to_string()),
             keyword: Mutable::new("".to_string()),
             is_search: Mutable::new(false),
             loader: AsyncLoader::new(),
             spinner: Spinner::new_with_fullscreen(true),
             cover_list: MutableVec::new(),
+            categories_available: Mutable::new(category_id.is_some()),
             library_settings: LibrarySettings::new(false, true),
         })
     }
 
     pub fn fetch_category_detail(library: Rc<Self>) {
+        library.spinner.set_active(true);
         if let Some(category_id) = library.category_id {
-            library.spinner.set_active(true);
             library.loader.load(clone!(library => async move {
                 match query::fetch_category_detail(category_id).await {
                     Ok(res) => {
-                        library.category.set(Category { id: res.id, name: res.name.clone() });
+                        library.category_name.set(res.name.clone());
                         Self::fetch_libraries(library.clone(), false);
                     }
                     Err(e) => {
@@ -61,7 +61,18 @@ impl Library {
                 library.spinner.set_active(false);
             }));
         } else {
-            Self::fetch_libraries(library.clone(), false);
+            library.loader.load(clone!(library => async move {
+                match query::fetch_categories().await {
+                    Ok(res) => {
+                        library.categories_available.set(res.len() > 0);
+                        Self::fetch_libraries(library.clone(), false);
+                    }
+                    Err(e) => {
+                        snackbar::show(format!("failed to fetch categories {}", e));
+                    }
+                }
+                library.spinner.set_active(false);
+            }));
         }
     }
 
@@ -82,11 +93,20 @@ impl Library {
     }
 
     pub fn render_topbar(library: Rc<Self>) -> Dom {
+        let categories_link_signal = map_ref! {
+            let is_search = library.is_search.signal(),
+            let categories_available = library.categories_available.signal() =>
+
+            (*is_search, *categories_available)
+
+        };
+
         html!("div", {
             .class("topbar")
             .class_signal("tauri", is_tauri_signal())
-            .child_signal(library.is_search.signal().map(|is_search|
-                (!is_search).then(|| link!(Route::LibraryList.url(), {
+            .child_signal(categories_link_signal.map(|(is_search, categories_available)|
+            (!is_search).then(|| if categories_available {
+                link!(Route::LibraryList.url(), {
                     .class("button")
                     .style("display", "flex")
                     .style("align-items", "center")
@@ -110,8 +130,13 @@ impl Library {
                             .text("Library")
                         })
                     ])
-                }))
-            ))
+                })
+            } else {
+                html!("div", {
+                    .style("min-width", "5rem")
+                })
+            })
+        ))
             .child_signal(library.is_search.signal().map(clone!(library => move |is_search| {
                 if is_search {
                     Some(html!("input" => HtmlInputElement, {
@@ -131,7 +156,7 @@ impl Library {
                     }))
                 } else {
                     Some(html!("span", {
-                        .text_signal(library.category.signal_cloned().map(|cat| cat.name.clone()))
+                        .text_signal(library.category_name.signal_cloned())
                     }))
                 }
             })))

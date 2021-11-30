@@ -35,11 +35,17 @@ impl SelectCategoryModal {
         })
     }
 
-    pub fn fetch_categories(self: &Rc<Self>) {
+    pub fn fetch_categories<F>(self: &Rc<Self>, f: F) where F: Fn(Vec<i64>) + Clone + 'static {
         let select = self.clone();
         self.loader.load(clone!(select => async move {
             match query::fetch_categories().await {
                 Ok(res) => {
+                    if res.len() == 0 {
+                        f(vec![]);
+                        return;
+                    }
+                    
+                    select.modal.show();
                     select.categories.lock_mut().replace_cloned(res.into_iter().map(|c| Category{
                         id: c.id,
                         name: c.name.clone(),
@@ -116,9 +122,8 @@ impl SelectCategoryModal {
     }
 
     pub fn render<F>(self: &Rc<Self>, f: F) -> Dom where F: Fn(Vec<i64>) + Clone + 'static {
-        self.fetch_categories();
+        self.fetch_categories(f.clone());
         let select = self.clone();
-        select.modal.show();
         Modal::render(self.modal.clone(), html!("div", {
             .children(&mut [
                 select.render_header(f),

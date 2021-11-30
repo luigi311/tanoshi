@@ -6,7 +6,7 @@ use crate::{
     query,
     utils::is_tauri_signal,
 };
-use dominator::{clone, html, link, svg, Dom};
+use dominator::{clone, html, link, routing, svg, Dom};
 use futures_signals::signal_vec::{MutableVec, SignalVecExt};
 
 pub struct LibraryList {
@@ -29,6 +29,11 @@ impl LibraryList {
         library.loader.load(clone!(library => async move {
             match query::fetch_categories().await {
                 Ok(res) => {
+                    if res.len() == 0 {
+                        routing::go_to_url(&Route::Library(None).url());
+                        return
+                    }
+
                     library.categories.lock_mut().replace_cloned(res.into_iter().map(|c| Category{
                         id: c.id,
                         name: c.name.clone(),
