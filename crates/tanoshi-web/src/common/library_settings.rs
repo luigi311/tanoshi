@@ -1,13 +1,21 @@
 use std::rc::Rc;
 
-use dominator::{clone, html, Dom};
+use dominator::{clone, html, with_node, Dom};
 use futures_signals::{
     map_ref,
     signal::{self, Mutable, Signal, SignalExt},
+    signal_vec::{MutableVec, SignalVecExt},
 };
 use serde::{Deserialize, Serialize};
+use web_sys::HtmlSelectElement;
 
-use crate::{common::events, utils::local_storage};
+use crate::{
+    common::{events, snackbar},
+    query,
+    utils::{local_storage, AsyncLoader},
+};
+
+use super::Category;
 
 const KEY: &str = "settings:library";
 
@@ -51,14 +59,15 @@ impl Default for LibraryFilter {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub struct LibrarySettingSignal {
     use_modal: bool,
+    pub default_category: Option<Category>,
     pub sort: LibrarySort,
     pub filter: LibraryFilter,
 }
 
-#[derive(Clone, Default, Deserialize, Serialize)]
+#[derive(Default, Deserialize, Serialize)]
 pub struct LibrarySettings {
     #[serde(skip)]
     use_modal: bool,
@@ -66,22 +75,20 @@ pub struct LibrarySettings {
     first_render: Mutable<bool>,
     #[serde(skip)]
     show: Mutable<bool>,
+    #[serde(skip)]
+    categories: MutableVec<Category>,
+    pub default_category: Mutable<Option<Category>>,
     pub sort: Mutable<LibrarySort>,
     pub filter: Mutable<LibraryFilter>,
 }
 
 impl LibrarySettings {
     pub fn new(show: bool, use_modal: bool) -> Rc<Self> {
-        Self::load(show, use_modal, 0)
+        Self::load(show, use_modal)
     }
 
-    pub fn load(show: bool, use_modal: bool, manga_id: i64) -> Rc<Self> {
-        let mut key = KEY.to_string();
-        if manga_id > 0 {
-            key = [key, manga_id.to_string()].join(":");
-        }
-
-        let settings = if let Ok(Some(settings)) = local_storage().get_item(&key) {
+    pub fn load(show: bool, use_modal: bool) -> Rc<Self> {
+        let settings = if let Ok(Some(settings)) = local_storage().get_item(KEY) {
             serde_json::from_str::<Self>(&settings).unwrap_or_default()
         } else {
             Self::default()
@@ -108,6 +115,33 @@ impl LibrarySettings {
         }
     }
 
+    pub fn fetch_categories(settings: Rc<Self>) {
+        AsyncLoader::new().load(clone!(settings => async move {
+            match query::fetch_categories().await {
+                Ok(res) => {
+                    let mut categories = settings.categories.lock_mut();
+                    categories.push_cloned(Category {
+                        id: -1,
+                        name: "None".to_string(),
+                    });
+                    categories.push_cloned(Category {
+                        id: 0,
+                        name: "Default".to_string(),
+                    });
+                    for c in res {
+                        categories.push_cloned(Category {
+                            id: c.id,
+                            name: c.name.clone()
+                        });
+                    }
+                }
+                Err(e) => {
+                    snackbar::show(format!("failed to fetch categories {}", e));
+                }
+            }
+        }));
+    }
+
     pub fn render_apply_button(settings: Rc<Self>) -> Dom {
         html!("button", {
             .text("Save")
@@ -127,6 +161,46 @@ impl LibrarySettings {
                     .text("Library")
                 }),
                 Self::render_apply_button(settings)
+            ])
+        })
+    }
+
+    fn render_default_setting(settings: Rc<Self>) -> Dom {
+        Self::fetch_categories(settings.clone());
+        html!("div", {
+            .children(&mut [
+                html!("label", {
+                    .style("margin", "0.5rem")
+                    .text("Default Library")
+                }),
+                html!("div", {
+                    .class("reader-settings-row")
+                    .children(&mut [
+                        html!("select" => HtmlSelectElement, {
+                            .children_signal_vec(settings.categories.signal_vec_cloned().map(clone!(settings => move |cat| html!("option", {
+                                .attribute("value", &cat.id.to_string())
+                                .attribute_signal("selected", settings.default_category.signal_cloned().map(clone!(cat => move |dc| {
+                                    if let Some(selected) = dc.map(|dc|dc.id == cat.id) {
+                                        selected.then(|| "")
+                                    } else if cat.id == -1 {
+                                        Some("")
+                                    } else {
+                                        None
+                                    }
+                                })))
+                                .text(&cat.name)
+                            }))))
+                            .with_node!(select => {
+                                .event(clone!(settings, select => move |_: events::Change| {
+                                    let id: i64 = select.value().parse().unwrap_or_default();
+                                    let category = settings.categories.lock_ref().iter().find(|cat| cat.id > -1 && cat.id == id ).map(|cat|cat.clone());
+                                    info!("change {:?}", category);
+                                    settings.default_category.set(category);
+                                }))
+                            })
+                        })
+                    ])
+                })
             ])
         })
     }
@@ -224,11 +298,13 @@ impl LibrarySettings {
     fn signal(&self) -> impl Signal<Item = LibrarySettingSignal> {
         map_ref! {
             let use_modal = signal::always(self.use_modal),
+            let default_category = self.default_category.signal_cloned(),
             let sort = self.sort.signal_cloned(),
             let filter = self.filter.signal_cloned() =>
 
             LibrarySettingSignal {
                 use_modal: *use_modal,
+                default_category: default_category.clone(),
                 sort: *sort,
                 filter: *filter,
             }
@@ -241,7 +317,6 @@ impl LibrarySettings {
             .future(settings.signal().for_each(clone!(settings => move |s| {
                 if !s.use_modal {
                     settings.save();
-                    // info!("settings change");
                 }
 
                 async {}
@@ -266,6 +341,7 @@ impl LibrarySettings {
                         None
                     }))
                     .visible_signal(settings.first_render.signal().map(|x| !x))
+                    .child_signal(signal::always(use_modal).map(clone!(settings => move |use_modal| (!use_modal).then(|| Self::render_default_setting(settings.clone())))))
                     .children(&mut [
                         Self::render_header(settings.clone()),
                         Self::render_sort_setting(settings.clone()),

@@ -7,8 +7,9 @@ use wasm_bindgen::UnwrapThrowExt;
 
 use crate::catalogue::Catalogue;
 use crate::catalogue_list::CatalogueList;
-use crate::common::{snackbar, ServerStatus, SettingCategory};
+use crate::common::{snackbar, LibrarySettings, ServerStatus, SettingCategory};
 use crate::library::Library;
+use crate::library_list::LibraryList;
 use crate::login::Login;
 use crate::manga::Manga;
 use crate::query;
@@ -89,11 +90,24 @@ impl App {
             })))
             .child_signal(Route::signal().map(clone!(app => move |x| {
                 match x {
+                    Route::Root => {
+                        if let Some(default_category) = LibrarySettings::load(false, false).default_category.get_cloned() {
+                            let category_id = (default_category.id > 0).then(|| default_category.id);
+                            routing::go_to_url(&Route::Library(category_id).url());
+                        } else {
+                            routing::go_to_url(&Route::LibraryList.url());
+                        }
+
+                        None
+                    }
                     Route::Login => Some(
                         Login::render(Login::new(), app.clone())
                     ),
-                    Route::Library => Some(
-                        Library::render(Library::new()),
+                    Route::LibraryList => {
+                        Some(LibraryList::render(LibraryList::new()))
+                    }
+                    Route::Library(category_id) => Some(
+                        Library::render(Library::new(category_id)),
                     ),
                     Route::CatalogueList => Some(
                         CatalogueList::render(CatalogueList::new()),
@@ -129,7 +143,7 @@ impl App {
             })))
             .child_signal(Route::signal().map(|x| {
                 match x {
-                    Route::Library | Route::CatalogueList | Route::Updates | Route::Histories | Route::Settings(SettingCategory::None) => Some(html!("div", {
+                    Route::LibraryList | Route::Library(_) | Route::CatalogueList | Route::Updates | Route::Histories | Route::Settings(SettingCategory::None) => Some(html!("div", {
                         .children(&mut [
                             html!("div", {
                                 .class("bottombar-spacing")

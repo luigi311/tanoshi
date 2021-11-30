@@ -1,4 +1,4 @@
-use crate::{common::{snackbar, ChapterSettings, Sort, Order, ChapterSort, Filter, Route, Spinner}, query, utils::{AsyncLoader, is_tauri_signal, proxied_image_url, window}};
+use crate::{common::{ChapterSettings, ChapterSort, Filter, Modal, Order, Route, Sort, Spinner, snackbar}, query, utils::{AsyncLoader, proxied_image_url, window}};
 use chrono::NaiveDateTime;
 use dominator::{Dom, EventOptions, clone, events, html, routing, svg, with_node};
 use futures_signals::{signal::{self, Mutable, SignalExt}, signal_vec::{MutableVec, SignalVecExt}};
@@ -11,6 +11,121 @@ struct ReadProgress {
     pub at: NaiveDateTime,
     pub last_page: i64,
     pub is_complete: bool,
+}
+
+#[derive(Clone)]
+struct Category {
+    id: i64,
+    name: String,
+    selected: Mutable<bool>
+}
+
+struct SelectCategoryModal {
+    categories: MutableVec<Category>,
+    modal: Rc<Modal>,
+    loader: AsyncLoader,
+}
+
+impl SelectCategoryModal {
+    pub fn new() -> Rc<Self> {
+        Rc::new(Self {
+            categories: MutableVec::new(),
+            modal: Modal::new(),
+            loader: AsyncLoader::new(),
+        })
+    }
+
+    pub fn fetch_categories(self: &Rc<Self>) {
+        let select = self.clone();
+        self.loader.load(clone!(select => async move {
+            match query::fetch_categories().await {
+                Ok(res) => {
+                    select.categories.lock_mut().replace_cloned(res.into_iter().map(|c| Category{
+                        id: c.id,
+                        name: c.name.clone(),
+                        selected: Mutable::new(false),
+                    }).collect());
+                }
+                Err(e) => {
+                    snackbar::show(format!("failed to fetch categories {}", e));
+                }
+            }
+        }));
+    }
+
+    pub fn render_header<F>(self: &Rc<Self>, f: F) -> Dom where F: Fn(Vec<i64>) + Clone + 'static {
+        let select = self.clone();
+        html!("div", {
+            .style("display", "flex")
+            .style("justify-content", "space-between")
+            .style("margin-bottom", "0.5rem")
+            .children(&mut [
+                html!("span", {
+                    .style("font-size", "large")
+                    .text("Select Categories")
+                }),
+                html!("button", {
+                    .text("OK")
+                    .event(clone!(select, f => move |_: events::Click| {
+                        let category_ids = select.categories.lock_ref().iter().filter_map(|cat| cat.selected.get().then(|| cat.id)).collect();
+                        f(category_ids);
+                        select.modal.hide();
+                    }))
+                })
+            ])
+        })
+    }
+
+    pub fn render_main(self: &Rc<Self>) -> Dom {
+        let select = self.clone();
+        html!("ul", {
+            .class("list")
+            .children_signal_vec(select.categories.signal_vec_cloned().map(|cat| html!{"li", {
+                .class("list-item")
+                .style("padding", "0.5rem")
+                .children(&mut [
+                    html!("input" => HtmlInputElement, {
+                        .attribute("type", "checkbox")
+                        .style("height", "0.75rem")
+                        .style("width", "0.75rem")
+                        .style("margin-left", "0.5rem")
+                        .style("margin-right", "0.5rem")
+                        .style("margin-top", "auto")
+                        .style("margin-bottom", "auto")
+                        .with_node!(input => {
+                            .future(cat.selected.signal().for_each(clone!(input => move |selected| {
+                                input.set_checked(selected);
+
+                                async{}
+                            })))
+                            .event(clone!(cat => move |_: events::Change| {
+                                cat.selected.set_neq(input.checked());
+                            }))
+                        })
+                    }),
+                    html!("span", {
+                        .style("margin-left", "0.5rem")
+                        .text(&cat.name)
+                    })
+                ])
+                .event(clone!(cat => move |_: events::Click| {
+                    cat.selected.set_neq(!cat.selected.get());
+                }))
+            }}))
+        })
+    }
+
+    pub fn render<F>(self: &Rc<Self>, f: F) -> Dom where F: Fn(Vec<i64>) + Clone + 'static {
+        self.fetch_categories();
+        let select = self.clone();
+        select.modal.show();
+        Modal::render(self.modal.clone(), html!("div", {
+            .children(&mut [
+                select.render_header(f),
+                select.render_main(),
+            ])
+        }))
+    }
 }
 
 #[derive(Clone)]
@@ -57,6 +172,7 @@ pub struct Manga {
     chapters: MutableVec<Rc<Chapter>>,
     is_edit_chapter: Mutable<bool>,
     chapter_settings: Rc<ChapterSettings>,
+    is_select_category: Mutable<bool>,
     loader: AsyncLoader,
 }
 
@@ -79,6 +195,7 @@ impl Manga {
             chapters: MutableVec::new(),
             is_edit_chapter: Mutable::new(false),
             chapter_settings: ChapterSettings::new(false, true),
+            is_select_category: Mutable::new(false),
             loader: AsyncLoader::new(),
         })
     }
@@ -278,28 +395,36 @@ impl Manga {
         }))
     }
 
-    fn add_to_or_remove_from_library(manga: Rc<Self>) {
+    
+
+    pub fn add_to_library(manga: Rc<Self>, category_ids: Vec<i64>)  {
+        if manga.id.get() == 0 {
+            return;
+        }
+
+        manga.loader.load(clone!(manga => async move {
+            match query::add_to_library(manga.id.get(), category_ids).await {
+                Ok(_) => {
+                    manga.is_favorite.set_neq(true);
+                },
+                Err(err) => {
+                    snackbar::show(format!("{}", err));
+                }
+            }
+        }))
+    }
+
+    fn remove_from_library(manga: Rc<Self>) {
         if manga.id.get() == 0 {
             return;
         }
         manga.loader.load(clone!(manga => async move {
-            if manga.is_favorite.get() {
-                match query::delete_from_library(manga.id.get()).await {
-                    Ok(_) => {
-                        manga.is_favorite.set_neq(false);
-                    },
-                    Err(err) => {
-                        snackbar::show(format!("{}", err));
-                    }
-                }
-            } else {
-                match query::add_to_library(manga.id.get()).await {
-                    Ok(_) => {
-                        manga.is_favorite.set_neq(true);
-                    },
-                    Err(err) => {
-                        snackbar::show(format!("{}", err));
-                    }
+            match query::delete_from_library(manga.id.get()).await {
+                Ok(_) => {
+                    manga.is_favorite.set_neq(false);
+                },
+                Err(err) => {
+                    snackbar::show(format!("{}", err));
                 }
             }
         }));
@@ -550,7 +675,11 @@ impl Manga {
                         })
                     ])
                     .event(clone!(manga => move |_: events::Click| {
-                        Self::add_to_or_remove_from_library(manga.clone());
+                        if !manga.is_favorite.get() {
+                            manga.is_select_category.set(true);
+                        } else {
+                            Self::remove_from_library(manga.clone());
+                        }
                     }))
                 }),
             ])
@@ -903,6 +1032,7 @@ impl Manga {
             })))
             .style("display", "flex")
             .style("flex-direction", "column")
+            .child_signal(manga_page.loader.is_loading().map(|is_loading| is_loading.then(|| Spinner::render_spinner(true))))
             .children(&mut [
                 Self::render_topbar(manga_page.clone()),
                 html!("div", {
@@ -926,7 +1056,11 @@ impl Manga {
                 }),
                 ChapterSettings::render(manga_page.chapter_settings.clone()),
             ])
-            .child_signal(manga_page.loader.is_loading().map(|is_loading| is_loading.then(|| Spinner::render_spinner(true))))
+            .child_signal(manga_page.is_select_category.signal().map(clone!(manga_page => move |is_select_category| {
+                is_select_category.then(|| SelectCategoryModal::new().render(clone!(manga_page => move |category_ids: Vec<i64>| {
+                    Self::add_to_library(manga_page.clone(), category_ids);
+                })))
+            })))
             .child_signal(manga_page.is_edit_chapter.signal().map(clone!(manga_page => move |is_edit| if is_edit {
                 Some(html!("div",{
                     .class("edit-action")

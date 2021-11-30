@@ -24,8 +24,8 @@ impl Bottombar {
             .class("bottombar")
             .class_signal("tauri", is_tauri_signal())
             .children(&mut [
-                link!(Route::Library.url(), {
-                    .class_signal("active", Route::signal().map(|x| matches!(x, Route::Library)))
+                link!(Route::Root.url(), {
+                    .class_signal("active", Route::signal().map(|x| matches!(x, Route::LibraryList | Route::Library(_))))
                     .children(&mut [
                         svg!("svg", {
                             .attribute("xmlns", "http://www.w3.org/2000/svg")

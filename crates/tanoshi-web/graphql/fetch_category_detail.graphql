@@ -1,0 +1,6 @@
+query FetchCategoryDetail($id: Int) {
+  getCategory(id: $id) {
+    id
+    name
+  }
+}

@@ -240,14 +240,14 @@ input {
     padding-bottom: 0.25rem;
     border-bottom: var(--topbar-bottom-border);
     -webkit-padding-after: 0.25rem;
-    min-height: 1.5rem;
+    height: 2rem;
     
     span, input {
         background-color: inherit;
         color: var(--topbar-text-color);
     }
 
-    button {
+    button, .button {
         background-color: inherit;
         color: var(--topbar-button-color);
         -webkit-padding-before: 0px;
@@ -586,8 +586,9 @@ $manga-grid: (
     width: 100%;
     display: flex;
     flex-grow: 1;
+    align-items: center;
 
-    img {
+    img, svg {
         margin: 0.5rem;
         height: 1.5rem;
         width: 1.5rem;
@@ -718,9 +719,14 @@ $manga-grid: (
 }
 
 .icon {
-    width: 1.5rem;
-    height: 1.5rem;
+    width: 24px;
+    height: 24px;
     color: inherit;
+
+    &-sm {
+        width: 20px !important;
+        height: 20px !important;
+    }
 }
 
 .uninstall-btn {
@@ -751,6 +757,17 @@ $manga-grid: (
         border-radius: 0.25rem;
         padding: 0.25rem;
         background-color: var(--background-color-100);
+
+        select {
+            border-radius: 0.25rem;
+            padding: 0.25rem;
+            background-color: var(--background-color-100);
+            width: 100%;
+            border: transparent;
+            color: var(--color);
+            font-size: smaller;
+            font: #{$font-stack};
+        }
 
         button {
             color: var(--color);

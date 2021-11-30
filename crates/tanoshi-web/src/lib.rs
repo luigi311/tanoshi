@@ -7,12 +7,14 @@ mod catalogue_list;
 mod common;
 mod histories;
 mod library;
+mod library_list;
 mod login;
 mod manga;
 #[allow(dead_code)]
 mod query;
 mod reader;
 mod settings;
+mod settings_categories;
 mod settings_download_queue;
 mod settings_manage_downloads;
 mod updates;

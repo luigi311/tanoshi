@@ -23,6 +23,7 @@ pub struct Entry {
     selected: Mutable<bool>,
 }
 
+#[allow(dead_code)]
 pub struct SettingsManageDownloads {
     entries: MutableVec<Entry>,
     is_entries_empty: Mutable<bool>,
@@ -30,6 +31,7 @@ pub struct SettingsManageDownloads {
     spinner: Rc<Spinner>,
 }
 
+#[allow(dead_code)]
 impl SettingsManageDownloads {
     pub fn new() -> Rc<Self> {
         Rc::new(Self {

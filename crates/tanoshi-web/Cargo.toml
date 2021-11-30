@@ -38,6 +38,8 @@ features = [
   'HtmlCollection',
   'HtmlElement',
   'HtmlImageElement',
+  'HtmlSelectElement',
+  'HtmlOptionElement',
   'Node',
   'Window',
   'CssStyleDeclaration',

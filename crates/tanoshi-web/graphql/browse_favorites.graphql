@@ -1,5 +1,5 @@
-query BrowseFavorites($refresh: Boolean) {
-  library(refresh: $refresh) {
+query BrowseFavorites($refresh: Boolean, $categoryId: Int) {
+  library(refresh: $refresh, categoryId: $categoryId) {
     id
     title
     path

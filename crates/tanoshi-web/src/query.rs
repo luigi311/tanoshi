@@ -94,9 +94,13 @@ pub async fn fetch_manga_from_source(
 )]
 pub struct BrowseFavorites;
 
-pub async fn fetch_manga_from_favorite(refresh: bool) -> Result<Vec<Cover>, Box<dyn Error>> {
+pub async fn fetch_manga_from_favorite(
+    refresh: bool,
+    category_id: Option<i64>,
+) -> Result<Vec<Cover>, Box<dyn Error>> {
     let var = browse_favorites::Variables {
         refresh: Some(refresh),
+        category_id,
     };
     let data = post_graphql::<BrowseFavorites>(var).await?;
 
@@ -189,9 +193,10 @@ pub async fn fetch_chapter(
 )]
 pub struct AddToLibrary;
 
-pub async fn add_to_library(manga_id: i64) -> Result<(), Box<dyn Error>> {
+pub async fn add_to_library(manga_id: i64, category_ids: Vec<i64>) -> Result<(), Box<dyn Error>> {
     let var = add_to_library::Variables {
         manga_id: Some(manga_id),
+        category_ids: Some(category_ids.iter().map(|id| Some(*id)).collect()),
     };
     let _ = post_graphql::<AddToLibrary>(var).await?;
 
@@ -211,6 +216,88 @@ pub async fn delete_from_library(manga_id: i64) -> Result<(), Box<dyn Error>> {
         manga_id: Some(manga_id),
     };
     let _ = post_graphql::<DeleteFromLibrary>(var).await?;
+
+    Ok(())
+}
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/schema.graphql",
+    query_path = "graphql/fetch_category_detail.graphql",
+    response_derives = "Debug"
+)]
+pub struct FetchCategoryDetail;
+
+pub async fn fetch_category_detail(id: i64) -> Result<fetch_category_detail::FetchCategoryDetailGetCategory, Box<dyn Error>> {
+    let var = fetch_category_detail::Variables {
+        id: Some(id)
+    };
+    let data = post_graphql::<FetchCategoryDetail>(var).await?;
+
+    Ok(data.get_category)
+}
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/schema.graphql",
+    query_path = "graphql/fetch_categories.graphql",
+    response_derives = "Debug"
+)]
+pub struct FetchCategories;
+
+pub async fn fetch_categories() -> Result<Vec<fetch_categories::FetchCategoriesGetCategories>, Box<dyn Error>> {
+    let var = fetch_categories::Variables {};
+    let data = post_graphql::<FetchCategories>(var).await?;
+
+    Ok(data.get_categories)
+}
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/schema.graphql",
+    query_path = "graphql/create_category.graphql",
+    response_derives = "Debug"
+)]
+pub struct CreateCategory;
+
+pub async fn create_category(name: &str) -> Result<(), Box<dyn Error>> {
+    let var = create_category::Variables {
+        name: Some(name.to_string()),
+    };
+    let _ = post_graphql::<CreateCategory>(var).await?;
+
+    Ok(())
+}
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/schema.graphql",
+    query_path = "graphql/update_category.graphql",
+    response_derives = "Debug"
+)]
+pub struct UpdateCategory;
+
+pub async fn update_category(id: i64, name: &str) -> Result<(), Box<dyn Error>> {
+    let var = update_category::Variables {
+        id: Some(id),
+        name: Some(name.to_string()),
+    };
+    let _ = post_graphql::<UpdateCategory>(var).await?;
+
+    Ok(())
+}
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/schema.graphql",
+    query_path = "graphql/delete_category.graphql",
+    response_derives = "Debug"
+)]
+pub struct DeleteCategory;
+
+pub async fn delete_category(id: i64) -> Result<(), Box<dyn Error>> {
+    let var = delete_category::Variables { id: Some(id) };
+    let _ = post_graphql::<DeleteCategory>(var).await?;
 
     Ok(())
 }

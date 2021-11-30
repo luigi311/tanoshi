@@ -22,6 +22,16 @@ impl Modal {
         self.first_render.replace_with(|_| false);
     }
 
+    pub fn show(&self) {
+        self.show.set(true);
+        self.first_render.replace_with(|_| false);
+    }
+
+    pub fn hide(&self) {
+        self.show.set(false);
+        self.first_render.replace_with(|_| false);
+    }
+
     pub fn render(modal: Rc<Self>, children: Dom) -> Dom {
         html!("div", {
             .children(&mut [

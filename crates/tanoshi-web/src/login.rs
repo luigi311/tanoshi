@@ -35,7 +35,7 @@ impl Login {
             match query::user_login(username, password).await {
                 Ok(token) => {
                     local_storage().set("token", &token).unwrap_throw();
-                    routing::go_to_url(&Route::Library.url());
+                    routing::go_to_url(&Route::LibraryList.url());
                 }
                 Err(e) => {
                     snackbar::show(format!("Login failed: {}", e));

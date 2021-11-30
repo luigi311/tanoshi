@@ -1,3 +1,5 @@
+use serde::{Deserialize, Serialize};
+
 #[derive(Debug, Clone)]
 pub struct Source {
     pub id: i64,
@@ -41,4 +43,10 @@ pub struct DownloadQueue {
     pub downloaded: i64,
     pub total: i64,
     pub priority: i64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+pub struct Category {
+    pub id: i64,
+    pub name: String,
 }

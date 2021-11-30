@@ -129,3 +129,9 @@ pub struct DownloadQueueEntry {
     pub total: i64,
     pub priority: i64,
 }
+
+#[derive(Debug, Clone)]
+pub struct Category {
+    pub id: i64,
+    pub name: String,
+}

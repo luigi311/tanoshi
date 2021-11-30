@@ -1,4 +1,24 @@
-use crate::{common::{AppearanceSettings, ChapterSettings, Login, Profile, ReaderSettings, Route, SettingCategory, Source, Spinner, User, events, snackbar}, query, settings_download_queue::SettingsDownloads, utils::{AsyncLoader, is_tauri, window}};
+use crate::{
+    common::{
+        AppearanceSettings, 
+        ChapterSettings, 
+        LibrarySettings,
+        Login, 
+        Profile, 
+        ReaderSettings, 
+        Route, 
+        SettingCategory, 
+        Source, 
+        Spinner, 
+        User, 
+        events, 
+        snackbar
+    }, 
+    query, 
+    settings_categories::SettingsCategories, 
+    settings_download_queue::SettingsDownloads, 
+    utils::{AsyncLoader, is_tauri, window}
+};
 use dominator::svg;
 use dominator::{clone, html, link, routing, Dom};
 use futures_signals::{signal::{self, Mutable, SignalExt}, signal_vec::{MutableSignalVec, MutableVec}, signal_vec::SignalVecExt};
@@ -15,6 +35,8 @@ pub struct Settings {
     appearance_settings: Rc<AppearanceSettings>,
     reader_settings: Rc<ReaderSettings>,
     chapter_settings: Rc<ChapterSettings>,
+    library_settings: Rc<LibrarySettings>,
+    category_settings: Rc<SettingsCategories>,
     loader: AsyncLoader,
 }
 
@@ -31,6 +53,8 @@ impl Settings {
             appearance_settings: AppearanceSettings::new(),
             reader_settings: ReaderSettings::new(true, false),
             chapter_settings: ChapterSettings::new(true, false),
+            library_settings: LibrarySettings::new(true, false),
+            category_settings: SettingsCategories::new(),
             loader: AsyncLoader::new(),
         })
     }
@@ -283,6 +307,8 @@ impl Settings {
                             SettingCategory::None => "More",
                             SettingCategory::Appearance => "Appearance",
                             SettingCategory::Chapters => "Chapters",
+                            SettingCategory::Library => "Library",
+                            SettingCategory::Category => "Category",
                             SettingCategory::Reader => "Reader",
                             SettingCategory::Source(_) => "Sources",
                             SettingCategory::Users => "Users",
@@ -300,6 +326,31 @@ impl Settings {
                             SettingCategory::Users => {
                                 Some(link!(Route::Settings(SettingCategory::CreateUser).url(), {
                                     .text("Create User")
+                                }))
+                            }
+                            SettingCategory::Category => {
+                                Some(html!("div", {
+                                    .style("display", "flex")
+                                    .style("justify-content", "flex-end")
+                                    .child_signal(settings.category_settings.is_edit.signal().map(clone!(settings => move |is_edit| {
+                                        let dom = if is_edit {
+                                            html!("button", {
+                                                .text("Cancel")
+                                                .event(clone!(settings => move |_:events::Click| {
+                                                    settings.category_settings.is_edit.set(false);
+                                                }))
+                                            })
+                                        } else {
+                                            html!("button", {
+                                                .text("Edit")
+                                                .event(clone!(settings => move |_:events::Click| {
+                                                    settings.category_settings.is_edit.set(true);
+                                                }))
+                                            })
+                                        };
+
+                                        Some(dom)
+                                    })))
                                 }))
                             }
                             _ => {
@@ -324,6 +375,14 @@ impl Settings {
                 link!(Route::Settings(SettingCategory::Chapters).url(), {
                     .class("list-item")
                     .text("Chapters")
+                }),
+                link!(Route::Settings(SettingCategory::Library).url(), {
+                    .class("list-item")
+                    .text("Library")
+                }),
+                link!(Route::Settings(SettingCategory::Category).url(), {
+                    .class("list-item")
+                    .text("Categories")
                 }),
                 link!(Route::Settings(SettingCategory::Reader).url(), {
                     .class("list-item")
@@ -668,7 +727,9 @@ impl Settings {
                     })),
                     SettingCategory::Appearance =>  Some(AppearanceSettings::render(settings.appearance_settings.clone())),
                     SettingCategory::Chapters => Some(ChapterSettings::render(settings.chapter_settings.clone())),
-                    SettingCategory::Reader => Some(ReaderSettings::render(settings.reader_settings.clone())),
+                    SettingCategory::Library => Some(LibrarySettings::render(settings.library_settings.clone())),
+                    SettingCategory::Category => Some(SettingsCategories::render(settings.category_settings.clone())),
+                    SettingCategory::Reader => Some(ReaderSettings::render(settings. reader_settings.clone())),
                     SettingCategory::Source(source_id) => Some(Self::render_source_settings(settings.clone(), source_id)),
                     SettingCategory::Users => Some(Self::render_users_management(settings.clone())),
                     SettingCategory::User => Some(Profile::render(Profile::new())),

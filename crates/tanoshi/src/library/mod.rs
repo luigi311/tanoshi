@@ -1,12 +1,12 @@
 use crate::{
     catalogue::Manga,
-    db::MangaDatabase,
+    db::{model, MangaDatabase},
     user::Claims,
     utils::{decode_cursor, encode_cursor},
 };
 use async_graphql::{
     connection::{query, Connection, Edge, EmptyFields},
-    Error,
+    Error, SimpleObject,
 };
 use async_graphql::{Context, Object, Result};
 use chrono::{Local, NaiveDateTime};
@@ -14,6 +14,21 @@ use chrono::{Local, NaiveDateTime};
 mod recent;
 pub use recent::{RecentChapter, RecentUpdate};
 use tanoshi_vm::prelude::ExtensionBus;
+
+#[derive(Debug, SimpleObject)]
+pub struct Category {
+    id: i64,
+    name: String,
+}
+
+impl From<model::Category> for Category {
+    fn from(val: model::Category) -> Self {
+        Self {
+            id: val.id,
+            name: val.name,
+        }
+    }
+}
 
 #[derive(Default)]
 pub struct LibraryRoot;
@@ -24,12 +39,13 @@ impl LibraryRoot {
         &self,
         ctx: &Context<'_>,
         #[graphql(desc = "refresh data from source", default = false)] refresh: bool,
+        #[graphql(desc = "category id")] category_id: Option<i64>,
     ) -> Result<Vec<Manga>> {
         let user = ctx
             .data::<Claims>()
             .map_err(|_| "token not exists, please login")?;
         let db = ctx.data::<MangaDatabase>()?;
-        let manga = db.get_library(user.sub).await?;
+        let manga = db.get_library_by_category_id(user.sub, category_id).await?;
 
         if refresh {
             let extensions = ctx.data::<ExtensionBus>()?;
@@ -224,6 +240,31 @@ impl LibraryRoot {
         )
         .await
     }
+
+    async fn get_categories(&self, ctx: &Context<'_>) -> Result<Vec<Category>> {
+        let user = ctx
+            .data::<Claims>()
+            .map_err(|_| "token not exists, please login")?;
+
+        let res = ctx
+            .data::<MangaDatabase>()?
+            .get_user_categories(user.sub)
+            .await?;
+
+        let categories = res.into_iter().map(|c| c.into()).collect();
+
+        Ok(categories)
+    }
+
+    async fn get_category(&self, ctx: &Context<'_>, id: i64) -> Result<Category> {
+        let _ = ctx
+            .data::<Claims>()
+            .map_err(|_| "token not exists, please login")?;
+
+        let res = ctx.data::<MangaDatabase>()?.get_user_category(id).await?;
+
+        Ok(res.into())
+    }
 }
 
 #[derive(Default)]
@@ -231,17 +272,69 @@ pub struct LibraryMutationRoot;
 
 #[Object]
 impl LibraryMutationRoot {
-    async fn add_to_library(
+    async fn create_category(
         &self,
         ctx: &Context<'_>,
-        #[graphql(desc = "manga id")] manga_id: i64,
+        #[graphql(desc = "category name")] name: String,
     ) -> Result<u64> {
         let user = ctx
             .data::<Claims>()
             .map_err(|_| "token not exists, please login")?;
         match ctx
             .data::<MangaDatabase>()?
-            .insert_user_library(user.sub, manga_id)
+            .insert_user_category(user.sub, &name)
+            .await
+        {
+            Ok(rows) => Ok(rows),
+            Err(err) => Err(format!("error create category: {}", err).into()),
+        }
+    }
+
+    async fn update_category(
+        &self,
+        ctx: &Context<'_>,
+        #[graphql(desc = "category id")] id: i64,
+        #[graphql(desc = "category name")] name: String,
+    ) -> Result<u64> {
+        let _ = ctx
+            .data::<Claims>()
+            .map_err(|_| "token not exists, please login")?;
+        match ctx
+            .data::<MangaDatabase>()?
+            .update_user_category(id, &name)
+            .await
+        {
+            Ok(rows) => Ok(rows),
+            Err(err) => Err(format!("error create category: {}", err).into()),
+        }
+    }
+
+    async fn delete_category(
+        &self,
+        ctx: &Context<'_>,
+        #[graphql(desc = "category id")] id: i64,
+    ) -> Result<u64> {
+        let _ = ctx
+            .data::<Claims>()
+            .map_err(|_| "token not exists, please login")?;
+        match ctx.data::<MangaDatabase>()?.delete_user_category(id).await {
+            Ok(rows) => Ok(rows),
+            Err(err) => Err(format!("error create category: {}", err).into()),
+        }
+    }
+
+    async fn add_to_library(
+        &self,
+        ctx: &Context<'_>,
+        #[graphql(desc = "manga id")] manga_id: i64,
+        #[graphql(desc = "category ids")] category_ids: Vec<i64>,
+    ) -> Result<u64> {
+        let user = ctx
+            .data::<Claims>()
+            .map_err(|_| "token not exists, please login")?;
+        match ctx
+            .data::<MangaDatabase>()?
+            .insert_user_library(user.sub, manga_id, category_ids)
             .await
         {
             Ok(rows) => Ok(rows),

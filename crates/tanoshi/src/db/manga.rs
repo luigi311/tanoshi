@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use super::model::{Chapter, DownloadQueue, DownloadQueueEntry, Manga, ReadProgress, UserMangaLibrary};
+use super::model::{Category, Chapter, DownloadQueue, DownloadQueueEntry, Manga, ReadProgress, UserMangaLibrary};
 use crate::library::{RecentChapter, RecentUpdate};
 use anyhow::{anyhow, Result};
 use chrono::NaiveDateTime;
@@ -92,6 +92,7 @@ impl Db {
         })?)
     }
 
+    #[allow(dead_code)]
     pub async fn get_library(&self, user_id: i64) -> Result<Vec<Manga>> {
         let mut conn = self.pool.acquire().await?;
         let mut stream = sqlx::query(
@@ -100,6 +101,37 @@ impl Db {
                     ORDER BY title"#,
         )
         .bind(user_id)
+        .fetch(&mut conn);
+
+        let mut mangas = vec![];
+        while let Some(row) = stream.try_next().await? {
+            mangas.push(Manga {
+                id: row.get(0),
+                source_id: row.get(1),
+                title: row.get(2),
+                author: serde_json::from_str(row.get::<String, _>(3).as_str()).unwrap_or_default(),
+                genre: serde_json::from_str(row.get::<String, _>(4).as_str()).unwrap_or_default(),
+                status: row.get(5),
+                description: row.get(6),
+                path: row.get(7),
+                cover_url: row.get(8),
+                date_added: row.get(9),
+            });
+        }
+        Ok(mangas)
+    }
+
+    pub async fn get_library_by_category_id(&self, user_id: i64, category_id: Option<i64>) -> Result<Vec<Manga>> {
+        let mut conn = self.pool.acquire().await?;
+        let mut stream = sqlx::query(
+            r#"SELECT manga.*, library_category.category_id FROM manga
+            INNER JOIN user_library ON user_library.user_id = ? AND manga.id = user_library.manga_id
+            LEFT JOIN library_category ON user_library.id = library_category.library_id
+            WHERE category_id IS ?
+            ORDER BY title"#,
+        )
+        .bind(user_id)
+        .bind(category_id)
         .fetch(&mut conn);
 
         let mut mangas = vec![];
@@ -1340,15 +1372,31 @@ impl Db {
         }
     }
 
-    pub async fn insert_user_library(&self, user_id: i64, manga_id: i64) -> Result<u64> {
-        let mut conn = self.pool.acquire().await?;
-        sqlx::query("INSERT INTO user_library (user_id, manga_id) VALUES (?, ?)")
+    pub async fn insert_user_library(&self, user_id: i64, manga_id: i64, category_ids: Vec<i64>) -> Result<u64> {
+        let mut tx = self.pool.begin().await?;
+        let library_id = sqlx::query("INSERT INTO user_library(user_id, manga_id) VALUES (?, ?)")
             .bind(user_id)
             .bind(manga_id)
-            .execute(&mut conn)
+            .execute(&mut tx)
             .await
-            .map(|res| res.rows_affected())
-            .map_err(|e| anyhow::anyhow!(e))
+            .map(|res| res.last_insert_rowid())
+            .map_err(|e| anyhow::anyhow!(e))?;
+
+        if !category_ids.is_empty() {
+            let query_str = format!(
+                "INSERT INTO library_category(library_id, category_id) VALUES {}", 
+                vec!["(?,?)".to_string(); category_ids.len()].join(","));
+
+            let mut query = sqlx::query(&query_str);
+            for category_id in category_ids {
+                query = query.bind(library_id).bind(category_id);
+            }
+            query.execute(&mut tx).await?;
+        }
+
+        tx.commit().await?;
+
+        Ok(library_id as _)
     }
 
     pub async fn delete_user_library(&self, user_id: i64, manga_id: i64) -> Result<u64> {
@@ -1946,5 +1994,76 @@ impl Db {
         .ok();
 
         stream.is_some()
+    }
+
+    pub async fn insert_user_category(&self, user_id: i64, name: &str) -> Result<u64> {
+        let mut conn = self.pool.acquire().await?;
+        sqlx::query("INSERT INTO user_category (user_id, name) VALUES (?, ?)")
+            .bind(user_id)
+            .bind(name)
+            .execute(&mut conn)
+            .await
+            .map(|res| res.rows_affected())
+            .map_err(|e| anyhow::anyhow!(e))
+    }
+
+    pub async fn get_user_categories(&self, user_id: i64) -> Result<Vec<Category>> {
+        let mut conn = self.pool.acquire().await?;
+        let data = sqlx::query(
+        r#"SELECT
+                id,
+                name
+            FROM user_category
+            WHERE user_id = ?"#,
+        )
+        .bind(user_id)
+        .fetch_all(&mut conn)
+        .await?
+        .iter()
+        .map(|row| Category {
+            id: row.get(0), 
+            name: row.get(1),
+        }).collect();
+        Ok(data)
+    }
+
+    pub async fn get_user_category(&self, id: i64) -> Result<Category> {
+        let mut conn = self.pool.acquire().await?;
+        let row = sqlx::query(
+            r#"SELECT
+                    id,
+                    name
+                FROM user_category
+                WHERE id = ?"#,
+            )
+            .bind(id)
+            .fetch_one(&mut conn)
+            .await?;
+
+        Ok(Category {
+            id: row.get(0), 
+            name: row.get(1),
+        })
+    }
+
+    pub async fn update_user_category(&self, id: i64, name: &str) -> Result<u64> {
+        let mut conn = self.pool.acquire().await?;
+        sqlx::query("UPDATE user_category SET name = ? WHERE id = ?")
+            .bind(name)
+            .bind(id)
+            .execute(&mut conn)
+            .await
+            .map(|res| res.rows_affected())
+            .map_err(|e| anyhow::anyhow!(e))
+    }
+
+    pub async fn delete_user_category(&self, id: i64) -> Result<u64> {
+        let mut conn = self.pool.acquire().await?;
+        sqlx::query("DELETE FROM user_category WHERE id = ?")
+            .bind(id)
+            .execute(&mut conn)
+            .await
+            .map(|res| res.rows_affected())
+            .map_err(|e| anyhow::anyhow!(e))
     }
 }

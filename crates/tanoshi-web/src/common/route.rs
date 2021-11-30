@@ -11,6 +11,8 @@ pub enum SettingCategory {
     Appearance,
     Chapters,
     Reader,
+    Library,
+    Category,
     Source(i64),
     Users,
     CreateUser,
@@ -20,8 +22,10 @@ pub enum SettingCategory {
 
 #[derive(Debug)]
 pub enum Route {
+    Root,
     Login,
-    Library,
+    LibraryList,
+    Library(Option<i64>),
     CatalogueList,
     Catalogue {
         id: i64,
@@ -49,7 +53,10 @@ impl Route {
 
                 match paths.as_slice() {
                     ["login"] => Route::Login,
-                    [] => Route::Library,
+                    [] => Route::Root,
+                    ["libraries"] => Route::LibraryList,
+                    ["library"] => Route::Library(None),
+                    ["library", category_id] => Route::Library(category_id.parse().ok()),
                     ["updates"] => Route::Updates,
                     ["histories"] => Route::Histories,
                     ["catalogue"] => Route::CatalogueList,
@@ -114,6 +121,8 @@ impl Route {
                     ["settings", cat] => match *cat {
                         "appearance" => Route::Settings(SettingCategory::Appearance),
                         "chapters" => Route::Settings(SettingCategory::Chapters),
+                        "library" => Route::Settings(SettingCategory::Library),
+                        "category" => Route::Settings(SettingCategory::Category),
                         "reader" => Route::Settings(SettingCategory::Reader),
                         "sources" => Route::Settings(SettingCategory::Source(0)),
                         "users" => Route::Settings(SettingCategory::Users),
@@ -136,8 +145,16 @@ impl Route {
 
     pub fn url(&self) -> String {
         match self {
+            Route::Root => "/".to_string(),
             Route::Login => "/login".to_string(),
-            Route::Library => "/".to_string(),
+            Route::LibraryList => "/libraries".to_string(),
+            Route::Library(category_id) => {
+                if let Some(id) = category_id {
+                    format!("/library/{}", id)
+                } else {
+                    "/library".to_string()
+                }
+            }
             Route::CatalogueList => "/catalogue".to_string(),
             Route::Catalogue {
                 id,
@@ -175,6 +192,8 @@ impl Route {
             Route::Settings(SettingCategory::None) => "/settings".to_string(),
             Route::Settings(SettingCategory::Appearance) => "/settings/appearance".to_string(),
             Route::Settings(SettingCategory::Chapters) => "/settings/chapters".to_string(),
+            Route::Settings(SettingCategory::Library) => "/settings/library".to_string(),
+            Route::Settings(SettingCategory::Category) => "/settings/category".to_string(),
             Route::Settings(SettingCategory::Reader) => "/settings/reader".to_string(),
             Route::Settings(SettingCategory::Source(source_id)) => {
                 if *source_id > 0 {

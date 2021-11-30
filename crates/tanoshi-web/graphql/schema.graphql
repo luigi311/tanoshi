@@ -3,8 +3,10 @@ schema {
   mutation: MutationRoot
 }
 
-# Directs the executor to query only when the field exists.
-directive @ifdef on FIELD
+type Category {
+  id: Int!
+  name: String!
+}
 
 type Chapter {
   id: Int!
@@ -60,7 +62,6 @@ type Filters {
   fields: JSON!
 }
 
-# A scalar that can represent any JSON value.
 scalar JSON
 
 type Manga {
@@ -90,9 +91,27 @@ type Manga {
 }
 
 type MutationRoot {
+  createCategory(
+    # category name
+    name: String!
+  ): Int!
+  updateCategory(
+    # category id
+    id: Int!
+
+    # category name
+    name: String!
+  ): Int!
+  deleteCategory(
+    # category id
+    id: Int!
+  ): Int!
   addToLibrary(
     # manga id
     mangaId: Int!
+
+    # category ids
+    categoryIds: [Int!]!
   ): Int!
   deleteFromLibrary(
     # manga id
@@ -213,6 +232,9 @@ type QueryRoot {
   library(
     # refresh data from source
     refresh: Boolean! = false
+
+    # category id
+    categoryId: Int
   ): [Manga!]!
   recentUpdates(
     after: String
@@ -226,6 +248,8 @@ type QueryRoot {
     first: Int
     last: Int
   ): RecentChapterConnection!
+  getCategories: [Category!]!
+  getCategory(id: Int!): Category!
   login(
     # username
     username: String!
