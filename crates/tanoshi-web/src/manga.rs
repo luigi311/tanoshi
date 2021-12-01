@@ -490,6 +490,7 @@ impl Manga {
                     .text_signal(manga.title.signal_cloned().map(|x| x.unwrap_or_else(|| "".to_string())))
                 }),
                 html!("div", {
+                    .style("min-width", "4.5rem")
                     .children(&mut [
                         html!("button", {
                             .style("padding", "0.25rem")
