@@ -127,7 +127,7 @@ impl Library {
                             ])
                         }),
                         html!("span", {
-                            .text("Library")
+                            .text("Categories")
                         })
                     ])
                 })

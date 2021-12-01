@@ -459,27 +459,14 @@ impl Manga {
                             ])
                         }),
                     ])
-                    .child_signal(manga.source_id.signal().map(|source_id|
-                        match source_id {
-                            0 => Some(html!("span", {
-                                .text("Library")
-                                .event(|_: events::Click| {
-                                    routing::go_to_url("/");
-                                })
-                            })),
-                            _ => Some(html!("span", {
-                                .text("Catalogue")
-                                .event(|_: events::Click| {
-                                    let history = window().history().unwrap();
-                                    if history.length().unwrap() > 1 {
-                                        let _ = history.back();
-                                    } else {
-                                        routing::go_to_url("/");
-                                    }
-                                })
-                            })),
+                    .event(|_: events::Click| {
+                        let history = window().history().unwrap();
+                        if history.length().unwrap() > 1 {
+                            let _ = history.back();
+                        } else {
+                            routing::go_to_url("/");
                         }
-                    ))
+                    })
                 }),
                 html!("span", {
                     .style("overflow", "hidden")
