@@ -6,7 +6,7 @@ use crate::{
     },
     db::{MangaDatabase, UserDatabase},
     downloads::{DownloadMutationRoot, DownloadRoot},
-    library::{LibraryMutationRoot, LibraryRoot},
+    library::{CategoryMutationRoot, CategoryRoot, LibraryMutationRoot, LibraryRoot},
     notification::NotificationRoot,
     notifier::Notifier,
     status::StatusRoot,
@@ -24,6 +24,7 @@ pub struct QueryRoot(
     SourceRoot,
     CatalogueRoot,
     LibraryRoot,
+    CategoryRoot,
     UserRoot,
     StatusRoot,
     NotificationRoot,
@@ -33,6 +34,7 @@ pub struct QueryRoot(
 #[derive(MergedObject, Default)]
 pub struct MutationRoot(
     LibraryMutationRoot,
+    CategoryMutationRoot,
     UserMutationRoot,
     SourceMutationRoot,
     DownloadMutationRoot,

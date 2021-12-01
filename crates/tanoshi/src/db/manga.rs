@@ -152,6 +152,22 @@ impl Db {
         Ok(mangas)
     }
 
+    pub async fn count_library_by_category_id(&self, user_id: i64, category_id: Option<i64>) -> Result<i64> {
+        let mut conn = self.pool.acquire().await?;
+        let row = sqlx::query(
+            r#"SELECT COUNT(1) FROM manga
+            INNER JOIN user_library ON user_library.user_id = ? AND manga.id = user_library.manga_id
+            LEFT JOIN library_category ON user_library.id = library_category.library_id
+            WHERE category_id IS ?"#,
+        )
+        .bind(user_id)
+        .bind(category_id)
+        .fetch_one(&mut conn)
+        .await?;
+
+        Ok(row.get::<i64, _>(0))
+    }
+
     pub async fn get_all_user_library(&self) -> Result<Vec<UserMangaLibrary>> {
         let mut conn = self.pool.acquire().await?;
         let mut stream = sqlx::query(
@@ -2014,7 +2030,8 @@ impl Db {
                 id,
                 name
             FROM user_category
-            WHERE user_id = ?"#,
+            WHERE user_id = ?
+            ORDER BY name"#,
         )
         .bind(user_id)
         .fetch_all(&mut conn)

@@ -2,5 +2,6 @@ query FetchCategories {
   getCategories {
     id
     name
+    count
   }
 }

@@ -87,11 +87,11 @@ impl SettingsCategories {
         self.loader.load(clone!(settings => async move {
             match query::fetch_categories().await {
                 Ok(res) => {
-                    let mut res: Vec<Category> = res.into_iter().map(|c| Category{
+                    let res: Vec<Category> = res.into_iter().filter_map(|c| (c.id > 0).then(|| Category{
                         id: c.id,
                         name: c.name.clone(),
-                    }).collect();
-                    res.sort_by(|a, b| a.id.cmp(&b.id));
+                        count: c.count,
+                    })).collect();
                     settings.categories.lock_mut().replace_cloned(res);
                 }
                 Err(e) => {

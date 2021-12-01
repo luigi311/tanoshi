@@ -123,15 +123,13 @@ impl LibrarySettings {
                     categories.push_cloned(Category {
                         id: -1,
                         name: "None".to_string(),
-                    });
-                    categories.push_cloned(Category {
-                        id: 0,
-                        name: "Default".to_string(),
+                        count: 0,
                     });
                     for c in res {
                         categories.push_cloned(Category {
                             id: c.id,
-                            name: c.name.clone()
+                            name: c.name.clone(),
+                            count: c.count,
                         });
                     }
                 }

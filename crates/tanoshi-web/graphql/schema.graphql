@@ -6,6 +6,7 @@ schema {
 type Category {
   id: Int!
   name: String!
+  count: Int!
 }
 
 type Chapter {
@@ -91,21 +92,6 @@ type Manga {
 }
 
 type MutationRoot {
-  createCategory(
-    # category name
-    name: String!
-  ): Int!
-  updateCategory(
-    # category id
-    id: Int!
-
-    # category name
-    name: String!
-  ): Int!
-  deleteCategory(
-    # category id
-    id: Int!
-  ): Int!
   addToLibrary(
     # manga id
     mangaId: Int!
@@ -131,6 +117,21 @@ type MutationRoot {
   markChapterAsUnread(
     # chapter ids
     chapterIds: [Int!]!
+  ): Int!
+  createCategory(
+    # category name
+    name: String!
+  ): Int!
+  updateCategory(
+    # category id
+    id: Int!
+
+    # category name
+    name: String!
+  ): Int!
+  deleteCategory(
+    # category id
+    id: Int!
   ): Int!
   register(
     # username

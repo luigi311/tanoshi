@@ -7,6 +7,7 @@ use crate::{
     utils::is_tauri_signal,
 };
 use dominator::{clone, html, link, routing, svg, Dom};
+use futures_signals::signal::{self, SignalExt};
 use futures_signals::signal_vec::{MutableVec, SignalVecExt};
 
 pub struct LibraryList {
@@ -29,7 +30,7 @@ impl LibraryList {
         library.loader.load(clone!(library => async move {
             match query::fetch_categories().await {
                 Ok(res) => {
-                    if res.len() == 0 {
+                    if res.len() == 1 {
                         routing::go_to_url(&Route::Library(None).url());
                         return
                     }
@@ -37,6 +38,7 @@ impl LibraryList {
                     library.categories.lock_mut().replace_cloned(res.into_iter().map(|c| Category{
                         id: c.id,
                         name: c.name.clone(),
+                        count: c.count,
                     }).collect());
                 }
                 Err(e) => {
@@ -62,38 +64,20 @@ impl LibraryList {
 
     pub fn render_main(library: Rc<Self>) -> Dom {
         html!("ul", {
-                    .class("list")
-                    .children(&mut [
-                        html!("li", {
-                            .class("list-item")
-                            .children(&mut [
-                                link!(Route::Library(None).url(), {
-                                    .class("source-item")
-                                    .children(&mut [
-                                        html!("div", {
-                                            .style("margin", "0.5rem")
-                                            .style("width", "1.5rem")
-                                            .style("height", "1.5rem")
-                                        }),
-                                        html!("span", {
-                                            .text("Default")
-                                        }),
-                                    ])
-                                }),
-                            ])
-                        })
-                    ])
-                    .children_signal_vec(library.categories.signal_vec_cloned().map(|cat| html!("li", {
-                        .class("list-item")
+            .class("list")
+            .children_signal_vec(library.categories.signal_vec_cloned().map(|cat| html!("li", {
+                .class("list-item")
+                .children(&mut [
+                    link!(Route::Library((cat.id > 0).then(|| cat.id)).url(), {
+                        .class("source-item")
                         .children(&mut [
-                            link!(Route::Library(Some(cat.id)).url(), {
-                                .class("source-item")
+                            html!("div", {
+                                .style_signal("visibility", signal::always(cat.id).map(|id| if id > 0 {
+                                    Some("visible")
+                                } else {
+                                    Some("hidden")
+                                }))
                                 .children(&mut [
-                                    /*
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-        </svg>
-                                    */
                                     svg!("svg", {
                                         .attribute("xmlns", "http://www.w3.org/2000/svg")
                                         .attribute("fill", "none")
@@ -109,14 +93,16 @@ impl LibraryList {
                                             })
                                         ])
                                     }),
-                                    html!("span", {
-                                        .text(&cat.name)
-                                    }),
                                 ])
                             }),
+                            html!("span", {
+                                .text(format!("{} ({})", cat.name, cat.count).as_str())
+                            }),
                         ])
-                    })))
-                })
+                    }),
+                ])
+            })))
+        })
     }
 
     pub fn render(self: Rc<Self>) -> Dom {

@@ -40,17 +40,17 @@ impl SelectCategoryModal {
         self.loader.load(clone!(select => async move {
             match query::fetch_categories().await {
                 Ok(res) => {
-                    if res.len() == 0 {
+                    if res.len() == 1 {
                         f(vec![]);
                         return;
                     }
                     
                     select.modal.show();
-                    select.categories.lock_mut().replace_cloned(res.into_iter().map(|c| Category{
+                    select.categories.lock_mut().replace_cloned(res.into_iter().filter_map(|c| (c.id > 0).then(|| Category{
                         id: c.id,
                         name: c.name.clone(),
                         selected: Mutable::new(false),
-                    }).collect());
+                    })).collect());
                 }
                 Err(e) => {
                     snackbar::show(format!("failed to fetch categories {}", e));
