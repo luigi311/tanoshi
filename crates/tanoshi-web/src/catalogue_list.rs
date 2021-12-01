@@ -133,8 +133,8 @@ impl CatalogueList {
             .class("topbar")
             .class_signal("tauri", is_tauri_signal())
             .child_signal(catalogue.is_search.signal().map(|is_search| {
-                (!is_search).then(|| html!("button", {
-                    .style("min-width", "5rem")
+                (!is_search).then(|| html!("div", {
+                    .style("width", "24px")
                 }))
             }))
             .child_signal(catalogue.is_search.signal().map(clone!(catalogue => move |is_search| {

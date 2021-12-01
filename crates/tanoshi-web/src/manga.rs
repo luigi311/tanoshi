@@ -489,39 +489,67 @@ impl Manga {
                     .style("margin-right", "0.5rem")
                     .text_signal(manga.title.signal_cloned().map(|x| x.unwrap_or_else(|| "".to_string())))
                 }),
-                html!("button", {
+                html!("div", {
                     .children(&mut [
-                        svg!("svg", {
-                            .attribute("xmlns", "http://www.w3.org/2000/svg")
-                            .attribute("fill", "none")
-                            .attribute("viewBox", "0 0 24 24")
-                            .attribute("stroke", "currentColor")
-                            .class("icon")
+                        html!("button", {
+                            .style("padding", "0.25rem")
                             .children(&mut [
-                                svg!("path", {
-                                    .attribute("stroke-linecap", "round")
-                                    .attribute("stroke-linejoin", "round")
-                                    .attribute("stroke-width", "2")
-                                    .attribute("d", "M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15")
+                                svg!("svg", {
+                                    .attribute("xmlns", "http://www.w3.org/2000/svg")
+                                    .attribute("fill", "none")
+                                    .attribute("viewBox", "0 0 24 24")
+                                    .attribute("stroke", "currentColor")
+                                    .class("icon")
+                                    .children(&mut [
+                                        svg!("path", {
+                                            .attribute("stroke-linecap", "round")
+                                            .attribute("stroke-linejoin", "round")
+                                            .attribute("stroke-width", "2")
+                                            .attribute("d", "M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15")
+                                        })
+                                    ])
+                                }),
+                            ])
+                            .event(clone!(manga => move |_: events::Click| {
+                                if manga.id.get() != 0 {
+                                    manga.title.set_neq(None);
+                                    manga.author.lock_mut().clear();
+                                    manga.genre.lock_mut().clear();
+                                    manga.cover_url.set_neq(None);
+                                    manga.description.set_neq(None);
+                                    manga.status.set_neq(None);
+                                    manga.is_favorite.set_neq(false);
+                                    manga.chapters.lock_mut().clear();
+        
+                                    Self::fetch_detail(manga.clone(), true);
+                                }
+                            }))
+                        }),
+                        html!("a", {
+                            .class("button")
+                            .attribute_signal("href", manga.link.signal_cloned().map(|ext_link| ext_link.unwrap_or_else(|| "".to_string())))
+                            .attribute_signal("disabled", manga.link.signal_cloned().map(|ext_link| ext_link.map(|_| "")))
+                            .attribute("target", "_blank")
+                            .style("padding", "0.5rem")
+                            .children(&mut [
+                                svg!("svg", {
+                                    .attribute("xmlns", "http://www.w3.org/2000/svg")
+                                    .attribute("fill", "currentColor")
+                                    .attribute("viewBox", "0 0 20 20")
+                                    .class("icon")
+                                    .children(&mut [
+                                        svg!("path", {
+                                            .attribute("d", "M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z")
+                                        }),
+                                        svg!("path", {
+                                            .attribute("d", "M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z")
+                                        })
+                                    ])
                                 })
                             ])
-                        }),
+                        })
                     ])
-                    .event(clone!(manga => move |_: events::Click| {
-                        if manga.id.get() != 0 {
-                            manga.title.set_neq(None);
-                            manga.author.lock_mut().clear();
-                            manga.genre.lock_mut().clear();
-                            manga.cover_url.set_neq(None);
-                            manga.description.set_neq(None);
-                            manga.status.set_neq(None);
-                            manga.is_favorite.set_neq(false);
-                            manga.chapters.lock_mut().clear();
-
-                            Self::fetch_detail(manga.clone(), true);
-                        }
-                    }))
-                }),
+                })
             ])
         })
     }
@@ -530,6 +558,8 @@ impl Manga {
         html!("div", {
             .class("manga-detail-header")
             .attribute("id", "detail")
+            .style("margin-top", "0.5rem")
+            .style("margin-left", "0.5rem")
             .children(&mut [
                 html!("div", {
                     .style("display", "flex")
@@ -539,10 +569,9 @@ impl Manga {
                             .child_signal(manga.cover_url.signal_cloned().map(|x| {
                                 if let Some(cover_url) = x {
                                     Some(html!("img", {
-                                        .style("border-radius", "0.5rem")
+                                        .style("border-radius", "0.375rem")
                                         .style("width", "8rem")
                                         .style("height", "auto")
-                                        .style("margin-left", "0.5rem")
                                         .attribute("src", &proxied_image_url(&cover_url))
                                     }))
                                 } else {
@@ -716,37 +745,6 @@ impl Manga {
                 .event(clone!(chapter => move |_: events::Click| {
                     routing::go_to_url(Route::Chapter(chapter.id, chapter.read_progress.as_ref().map(|progress| progress.last_page).unwrap_or(0)).url().as_str());
                 }))
-            }))))
-            .child_signal(manga.link.signal_cloned().map(|ext_link| ext_link.map(|ext_link| html!("a", {
-                .class("action-button")
-                .attribute("href", &ext_link)
-                .attribute("target", "_blank")
-                .style("display", "flex")
-                .style("padding", "0.5rem")
-                .style("margin-left", "0.5rem")
-                .style("margin-top", "0.5rem")
-                .style("margin-bottom", "0.5rem")
-                .style("align-items", "center")
-                .children(&mut [
-                    svg!("svg", {
-                        .attribute("xmlns", "http://www.w3.org/2000/svg")
-                        .attribute("fill", "currentColor")
-                        .attribute("viewBox", "0 0 20 20")
-                        .class("icon")
-                        .children(&mut [
-                            svg!("path", {
-                                .attribute("d", "M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z")
-                            }),
-                            svg!("path", {
-                                .attribute("d", "M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z")
-                            })
-                        ])
-                    }),
-                    html!("span", {
-                        .style("margin-left", "0.5rem")
-                        .text("Link")
-                    })
-                ])
             }))))
         })
     }
