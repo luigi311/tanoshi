@@ -209,6 +209,15 @@ impl ReaderSettings {
         }
     }
 
+    pub fn reader_direction_signal(&self) -> impl Signal<Item = (ReaderMode, Direction)> {
+        map_ref! {
+            let r = self.reader_mode.signal(),
+            let d = self.direction.signal() =>
+
+            (*r, *d)
+        }
+    }
+
     pub fn render_apply_button(settings: Rc<Self>) -> Dom {
         html!("div", {
             .children(&mut [

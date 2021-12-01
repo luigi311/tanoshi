@@ -187,6 +187,10 @@ input {
     -webkit-appearance: none;
     border-radius: 0.25rem;
 
+    &[type="range"] {
+        height: 0.1rem;
+    }
+
     &[type="text"], &[type="username"], &[type="password"] {
         padding: 0.5rem !important;
     }
