@@ -316,11 +316,13 @@ impl Reader {
     
     pub fn render_page_slider(reader: Rc<Self>) -> Dom {
         html!("div", {
-            .style("padding", "0.25rem")
+            .style("padding-left", "0.125rem")
+            .style("padding-right", "0.125rem")
+            .style("padding-bottom", "0.5rem")
             .children(&mut [
                 html!("div", {
                     .style("display", "flex")
-                    .style("height", "2.5rem")
+                    .style("height", "2.25rem")
                     .style("padding-top", "0.25rem")
                     .style("padding-bottom", "0.25rem")
                     .style("justify-content", "space-between")
@@ -331,6 +333,15 @@ impl Reader {
                     .style("border-top-width", "1px")
                     .style("border-top-style", "solid")
                     .style("border-top-color", "var(--background-color-100)")
+                    .style("border-bottom-width", "1px")
+                    .style("border-bottom-style", "solid")
+                    .style("border-bottom-color", "var(--background-color-100)")
+                    .style("border-left-width", "1px")
+                    .style("border-left-style", "solid")
+                    .style("border-left-color", "var(--background-color-100)")
+                    .style("border-right-width", "1px")
+                    .style("border-right-style", "solid")
+                    .style("border-right-color", "var(--background-color-100)")
                     .style("background-color", "var(--bottombar-background-color)")
                     .style_signal("direction", reader.reader_settings.direction.signal().map(|direction| matches!(direction, Direction::RightToLeft).then(|| "rtl")))
                     .children(&mut [
@@ -483,8 +494,8 @@ impl Reader {
             .style("border-top-style", "solid")
             .style("border-top-color", "var(--background-color-100)")
             .style("align-content", "flex-end")
-            .style("padding-top", "0.5rem")
-            .style("padding-bottom", "calc(env(safe-area-inset-bottom) + 0.5rem)")
+            .style("padding-top", "0.25rem")
+            .style("padding-bottom", "calc(env(safe-area-inset-bottom) + 0.25rem)")
             .children(&mut [
                 html!("button", {
                     .attribute("id", "zoom-in")
