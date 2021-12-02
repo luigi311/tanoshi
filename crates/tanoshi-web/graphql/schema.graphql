@@ -4,7 +4,7 @@ schema {
 }
 
 type Category {
-  id: Int!
+  id: Int
   name: String!
   count: Int!
 }
@@ -121,14 +121,14 @@ type MutationRoot {
   createCategory(
     # category name
     name: String!
-  ): Int!
+  ): Category!
   updateCategory(
     # category id
     id: Int!
 
     # category name
     name: String!
-  ): Int!
+  ): Category!
   deleteCategory(
     # category id
     id: Int!
@@ -250,7 +250,7 @@ type QueryRoot {
     last: Int
   ): RecentChapterConnection!
   getCategories: [Category!]!
-  getCategory(id: Int!): Category!
+  getCategory(id: Int): Category!
   login(
     # username
     username: String!

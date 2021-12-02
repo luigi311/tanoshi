@@ -68,11 +68,11 @@ impl LibraryList {
             .children_signal_vec(library.categories.signal_vec_cloned().map(|cat| html!("li", {
                 .class("list-item")
                 .children(&mut [
-                    link!(Route::Library((cat.id > 0).then(|| cat.id)).url(), {
+                    link!(Route::Library(cat.id).url(), {
                         .class("source-item")
                         .children(&mut [
                             html!("div", {
-                                .style_signal("visibility", signal::always(cat.id).map(|id| if id > 0 {
+                                .style_signal("visibility", signal::always(cat.id).map(|id| if id.is_some() {
                                     Some("visible")
                                 } else {
                                     Some("hidden")

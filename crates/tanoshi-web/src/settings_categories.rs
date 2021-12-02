@@ -87,7 +87,7 @@ impl SettingsCategories {
         self.loader.load(clone!(settings => async move {
             match query::fetch_categories().await {
                 Ok(res) => {
-                    let res: Vec<Category> = res.into_iter().filter_map(|c| (c.id > 0).then(|| Category{
+                    let res: Vec<Category> = res.into_iter().filter_map(|c| (c.id.is_some()).then(|| Category{
                         id: c.id,
                         name: c.name.clone(),
                         count: c.count,
@@ -140,7 +140,9 @@ impl SettingsCategories {
                                                     .event_with_options(&EventOptions::preventable(), clone!(cat, input, settings => move |event: events::KeyDown| {
                                                         if event.key() == "Enter" {
                                                             event.prevent_default();
-                                                            settings.update_category(cat.id, input.value());
+                                                            if let Some(cat_id) = cat.id {
+                                                                settings.update_category(cat_id, input.value());
+                                                            }
                                                         }
                                                     }))
                                                 })
@@ -166,7 +168,9 @@ impl SettingsCategories {
                                     .style("margin-right","0.5rem")
                                     .style("color","darkred")
                                     .event(clone!(cat, settings => move |_: events::Click| {
-                                        settings.delete_category(cat.id);
+                                        if let Some(cat_id) = cat.id {
+                                            settings.delete_category(cat_id);
+                                        }
                                     }))
                                     .children(&mut [
                                         svg!("svg", {

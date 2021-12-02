@@ -47,7 +47,7 @@ pub struct DownloadQueue {
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct Category {
-    pub id: i64,
+    pub id: Option<i64>,
     pub name: String,
     pub count: i64,
 }

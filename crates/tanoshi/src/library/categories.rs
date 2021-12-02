@@ -6,14 +6,23 @@ use async_graphql::{Context, Object, Result};
 
 #[derive(Debug, Clone)]
 pub struct Category {
-    id: i64,
+    id: Option<i64>,
     name: String,
+}
+
+impl Default for Category {
+    fn default() -> Self {
+        Self {
+            id: None,
+            name: "Default".to_string(),
+        }
+    }
 }
 
 impl From<model::Category> for Category {
     fn from(val: model::Category) -> Self {
         Self {
-            id: val.id,
+            id: Some(val.id),
             name: val.name,
         }
     }
@@ -21,7 +30,7 @@ impl From<model::Category> for Category {
 
 #[Object]
 impl Category {
-    async fn id(&self) -> i64 {
+    async fn id(&self) -> Option<i64> {
         self.id
     }
 
@@ -34,10 +43,9 @@ impl Category {
             .data::<Claims>()
             .map_err(|_| "token not exists, please login")?;
 
-        let id = if self.id > 0 { Some(self.id) } else { None };
         Ok(ctx
             .data::<MangaDatabase>()?
-            .count_library_by_category_id(user.sub, id)
+            .count_library_by_category_id(user.sub, self.id)
             .await?)
     }
 }
@@ -57,10 +65,7 @@ impl CategoryRoot {
             .get_user_categories(user.sub)
             .await?;
 
-        let mut categories = vec![Category {
-            id: 0,
-            name: "Default".to_string(),
-        }];
+        let mut categories = vec![Category::default()];
         for item in res {
             categories.push(item.into());
         }
@@ -68,21 +73,24 @@ impl CategoryRoot {
         Ok(categories)
     }
 
-    async fn get_category(&self, ctx: &Context<'_>, id: i64) -> Result<Category> {
+    async fn get_category(&self, ctx: &Context<'_>, id: Option<i64>) -> Result<Category> {
         let _ = ctx
             .data::<Claims>()
             .map_err(|_| "token not exists, please login")?;
 
-        if id == 0 {
-            Ok(Category {
-                id: 0,
-                name: "Default".to_string(),
-            })
+        let category = if let Some(id) = id {
+            ctx.data::<MangaDatabase>()?
+                .get_user_category(id)
+                .await?
+                .into()
         } else {
-            let res = ctx.data::<MangaDatabase>()?.get_user_category(id).await?;
+            Category {
+                id: None,
+                name: "Default".to_string(),
+            }
+        };
 
-            Ok(res.into())
-        }
+        Ok(category)
     }
 }
 
@@ -95,7 +103,7 @@ impl CategoryMutationRoot {
         &self,
         ctx: &Context<'_>,
         #[graphql(desc = "category name")] name: String,
-    ) -> Result<u64> {
+    ) -> Result<Category> {
         let user = ctx
             .data::<Claims>()
             .map_err(|_| "token not exists, please login")?;
@@ -104,7 +112,7 @@ impl CategoryMutationRoot {
             .insert_user_category(user.sub, &name)
             .await
         {
-            Ok(rows) => Ok(rows),
+            Ok(rows) => Ok(rows.into()),
             Err(err) => Err(format!("error create category: {}", err).into()),
         }
     }
@@ -114,16 +122,17 @@ impl CategoryMutationRoot {
         ctx: &Context<'_>,
         #[graphql(desc = "category id")] id: i64,
         #[graphql(desc = "category name")] name: String,
-    ) -> Result<u64> {
+    ) -> Result<Category> {
         let _ = ctx
             .data::<Claims>()
             .map_err(|_| "token not exists, please login")?;
+
         match ctx
             .data::<MangaDatabase>()?
             .update_user_category(id, &name)
             .await
         {
-            Ok(rows) => Ok(rows),
+            Ok(rows) => Ok(rows.into()),
             Err(err) => Err(format!("error create category: {}", err).into()),
         }
     }

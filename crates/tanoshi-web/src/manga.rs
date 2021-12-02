@@ -15,7 +15,7 @@ struct ReadProgress {
 
 #[derive(Clone)]
 struct Category {
-    id: i64,
+    id: Option<i64>,
     name: String,
     selected: Mutable<bool>
 }
@@ -46,7 +46,7 @@ impl SelectCategoryModal {
                     }
                     
                     select.modal.show();
-                    select.categories.lock_mut().replace_cloned(res.into_iter().filter_map(|c| (c.id > 0).then(|| Category{
+                    select.categories.lock_mut().replace_cloned(res.into_iter().filter_map(|c| (c.id.is_some()).then(|| Category{
                         id: c.id,
                         name: c.name.clone(),
                         selected: Mutable::new(false),
@@ -73,7 +73,7 @@ impl SelectCategoryModal {
                 html!("button", {
                     .text("OK")
                     .event(clone!(select, f => move |_: events::Click| {
-                        let category_ids = select.categories.lock_ref().iter().filter_map(|cat| cat.selected.get().then(|| cat.id)).collect();
+                        let category_ids = select.categories.lock_ref().iter().filter_map(|cat| if cat.selected.get() { cat.id } else { None }).collect();
                         f(category_ids);
                         select.modal.hide();
                     }))

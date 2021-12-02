@@ -1,3 +1,6 @@
 mutation CreateCategory($name: String) {
-  createCategory(name: $name)
+  createCategory(name: $name) {
+    id
+    name
+  }
 }

@@ -120,11 +120,6 @@ impl LibrarySettings {
             match query::fetch_categories().await {
                 Ok(res) => {
                     let mut categories = settings.categories.lock_mut();
-                    categories.push_cloned(Category {
-                        id: -1,
-                        name: "None".to_string(),
-                        count: 0,
-                    });
                     for c in res {
                         categories.push_cloned(Category {
                             id: c.id,
@@ -175,13 +170,18 @@ impl LibrarySettings {
                     .class("reader-settings-row")
                     .children(&mut [
                         html!("select" => HtmlSelectElement, {
+                            .children(&mut [
+                                html!("option", {
+                                    .attribute("value", "")
+                                    .attribute_signal("selected", settings.default_category.signal_cloned().map(|dc| dc.is_none().then(|| "")))
+                                    .text("")
+                                })
+                            ])
                             .children_signal_vec(settings.categories.signal_vec_cloned().map(clone!(settings => move |cat| html!("option", {
-                                .attribute("value", &cat.id.to_string())
+                                .attribute("value", &cat.name)
                                 .attribute_signal("selected", settings.default_category.signal_cloned().map(clone!(cat => move |dc| {
-                                    if let Some(selected) = dc.map(|dc|dc.id == cat.id) {
+                                    if let Some(selected) = dc.map(|dc|dc.name == cat.name) {
                                         selected.then(|| "")
-                                    } else if cat.id == -1 {
-                                        Some("")
                                     } else {
                                         None
                                     }
@@ -190,8 +190,8 @@ impl LibrarySettings {
                             }))))
                             .with_node!(select => {
                                 .event(clone!(settings, select => move |_: events::Change| {
-                                    let id: i64 = select.value().parse().unwrap_or_default();
-                                    let category = settings.categories.lock_ref().iter().find(|cat| cat.id > -1 && cat.id == id ).map(|cat|cat.clone());
+                                    let value = select.value();
+                                    let category = settings.categories.lock_ref().iter().find(|cat| cat.name == value ).map(|cat|cat.clone());
                                     info!("change {:?}", category);
                                     settings.default_category.set(category);
                                 }))

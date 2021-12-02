@@ -92,8 +92,7 @@ impl App {
                 match x {
                     Route::Root => {
                         if let Some(default_category) = LibrarySettings::load(false, false).default_category.get_cloned() {
-                            let category_id = (default_category.id > 0).then(|| default_category.id);
-                            routing::go_to_url(&Route::Library(category_id).url());
+                            routing::go_to_url(&Route::Library(default_category.id).url());
                         } else {
                             routing::go_to_url(&Route::LibraryList.url());
                         }

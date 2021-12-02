@@ -2012,14 +2012,17 @@ impl Db {
         stream.is_some()
     }
 
-    pub async fn insert_user_category(&self, user_id: i64, name: &str) -> Result<u64> {
+    pub async fn insert_user_category(&self, user_id: i64, name: &str) -> Result<Category> {
         let mut conn = self.pool.acquire().await?;
-        sqlx::query("INSERT INTO user_category (user_id, name) VALUES (?, ?)")
+        sqlx::query("INSERT INTO user_category (user_id, name) VALUES (?, ?) RETURNING id, name")
             .bind(user_id)
             .bind(name)
-            .execute(&mut conn)
+            .fetch_one(&mut conn)
             .await
-            .map(|res| res.rows_affected())
+            .map(|row| Category {
+                id: row.get(0), 
+                name: row.get(1),
+            })
             .map_err(|e| anyhow::anyhow!(e))
     }
 
@@ -2041,6 +2044,7 @@ impl Db {
             id: row.get(0), 
             name: row.get(1),
         }).collect();
+        
         Ok(data)
     }
 
@@ -2063,14 +2067,17 @@ impl Db {
         })
     }
 
-    pub async fn update_user_category(&self, id: i64, name: &str) -> Result<u64> {
+    pub async fn update_user_category(&self, id: i64, name: &str) -> Result<Category> {
         let mut conn = self.pool.acquire().await?;
-        sqlx::query("UPDATE user_category SET name = ? WHERE id = ?")
+        sqlx::query("UPDATE user_category SET name = ? WHERE id = ? RETURNING id, name")
             .bind(name)
             .bind(id)
-            .execute(&mut conn)
+            .fetch_one(&mut conn)
             .await
-            .map(|res| res.rows_affected())
+            .map(|row| Category {
+                id: row.get(0),
+                name: row.get(1),
+            })
             .map_err(|e| anyhow::anyhow!(e))
     }
 
