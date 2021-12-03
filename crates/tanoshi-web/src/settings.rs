@@ -451,7 +451,7 @@ impl Settings {
                 }),
                 html!("a", {
                     .class("list-item")
-                    .attribute("href", "https://github.com/faldez/tanoshi")
+                    .attribute("href", "https://faldez.github.io/tanoshi")
                     .attribute("target", "_blank")
                     .text("Website")
                 }),
