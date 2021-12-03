@@ -437,23 +437,27 @@ impl Settings {
         html!("ul", {
             .class(["list", "group"])
             .children(&mut [
-                link!("https://github.com/faldez/tanoshi/blob/master/CHANGELOG.md", {
+                html!("a", {
                     .class("list-item")
+                    .attribute("href", "https://github.com/faldez/tanoshi/blob/master/CHANGELOG.md")
                     .attribute("target", "_blank")
                     .text("Changelog")
                 }),
-                link!("https://github.com/faldez/tanoshi", {
+                html!("a", {
                     .class("list-item")
+                    .attribute("href", "https://github.com/faldez/tanoshi")
                     .attribute("target", "_blank")
                     .text("Github")
                 }),
-                link!("https://faldez.github.io/tanoshi/", {
+                html!("a", {
                     .class("list-item")
+                    .attribute("href", "https://github.com/faldez/tanoshi")
                     .attribute("target", "_blank")
                     .text("Website")
                 }),
-                link!("https://discord.gg/wPSEftdDqB", {
+                html!("a", {
                     .class("list-item")
+                    .attribute("href", "https://discord.gg/wPSEftdDqB")
                     .attribute("target", "_blank")
                     .text("Discord")
                 }),
