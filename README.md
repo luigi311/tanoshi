@@ -32,3 +32,7 @@ If you don't plan to host Tanoshi and use from single device you can download de
 ## Documentation
 
  Go to [website](https://faldez.github.io/tanoshi) for documentation.
+
+ 
+### Screenshot
+Head over to [screenshots](https://faldez.github.io/tanoshi/screenshots/) section on website to see screenshot.
