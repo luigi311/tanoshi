@@ -3,10 +3,7 @@ use std::rc::Rc;
 use crate::{
     catalogue,
     common::{snackbar, Route},
-    query::{
-        self,
-        browse_source::{SortByParam, SortOrderParam},
-    },
+    query,
     utils::{is_tauri_signal, local_storage},
 };
 use crate::{
@@ -29,7 +26,6 @@ struct Source {
     name: String,
     version: String,
     icon: String,
-    need_login: bool,
 }
 
 #[derive(Debug, Clone, Default, Deserialize, Serialize)]
@@ -85,7 +81,7 @@ impl CatalogueList {
         let keyword = catalogue.keyword.get_cloned();
         catalogue.loader.load(clone!(catalogue => async move {
             for source in sources {
-                match query::fetch_manga_from_source(source.id, 1, Some(keyword.clone()), SortByParam::VIEWS, SortOrderParam::DESC).await {
+                match query::fetch_manga_from_source(source.id, 1, Some(keyword.clone()), None).await {
                     Ok(covers) => {
                         let mut cover_list = catalogue.cover_list_map.lock_mut();
                         cover_list.insert_cloned(source.id, SourceManga { name: source.name.clone(), covers } );
@@ -111,7 +107,6 @@ impl CatalogueList {
                         name: s.name.clone(),
                         version: s.version.clone(),
                         icon: s.icon.clone(),
-                        need_login: s.need_login,
                     }).collect();
 
                     let mut cover_list_map = catalogue.cover_list_map.lock_mut();
@@ -228,7 +223,7 @@ impl CatalogueList {
             .children_signal_vec(catalogue.sources.signal_vec_cloned().map(|source| html!("li", {
                 .class("list-item")
                 .children(&mut [
-                    link!(Route::Catalogue{id: source.id, keyword: None, sort_by: SortByParam::VIEWS, sort_order: SortOrderParam::DESC}.url(), {
+                    link!(Route::Catalogue{id: source.id, latest: false, query: None, filters: None}.url(), {
                         .class("source-item")
                         .children(&mut [
                             html!("img", {
@@ -240,7 +235,7 @@ impl CatalogueList {
                             }),
                         ])
                     }),
-                    link!(Route::Catalogue{id: source.id, keyword: None, sort_by: SortByParam::LAST_UPDATED, sort_order: SortOrderParam::DESC}.url(), {
+                    link!(Route::Catalogue{id: source.id, latest: true, query: None, filters: None}.url(), {
                         .class("source-action")
                         .text("latest")
                     }),
@@ -268,7 +263,7 @@ impl CatalogueList {
                                     let state =  catalogue.serialize_into_json();
                                     local_storage().set(STORAGE_KEY, state.as_str()).unwrap_throw();
 
-                                    routing::go_to_url(Route::Catalogue{id: source_id, keyword: Some(catalogue.keyword.get_cloned()), sort_by: SortByParam::VIEWS, sort_order: SortOrderParam::DESC}.url().as_str());
+                                    routing::go_to_url(Route::Catalogue{id: source_id, latest: false, query: Some(catalogue.keyword.get_cloned()), filters: None}.url().as_str());
                                 }))
                             }),
                         ])

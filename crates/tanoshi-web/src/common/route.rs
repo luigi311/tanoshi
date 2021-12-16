@@ -1,9 +1,10 @@
-use crate::query::browse_source::{SortByParam, SortOrderParam};
 use base64::{decode_config, encode_config, URL_SAFE_NO_PAD};
 use dominator::routing;
 use futures_signals::signal::{Signal, SignalExt};
 use wasm_bindgen::prelude::*;
 use web_sys::Url;
+
+use crate::query::InputList;
 
 #[derive(Debug, Clone, Copy)]
 pub enum SettingCategory {
@@ -29,9 +30,9 @@ pub enum Route {
     CatalogueList,
     Catalogue {
         id: i64,
-        keyword: Option<String>,
-        sort_by: SortByParam,
-        sort_order: SortOrderParam,
+        latest: bool,
+        query: Option<String>,
+        filters: Option<InputList>,
     },
     Manga(i64),
     MangaBySourcePath(i64, String),
@@ -63,20 +64,32 @@ impl Route {
                     ["catalogue", id] => {
                         if let Ok(id) = id.parse() {
                             let params = url.search_params();
-                            let keyword = params.get("keyword");
-                            let sort_by = params
-                                .get("sort_by")
-                                .and_then(|by| serde_plain::from_str(&by).ok())
-                                .unwrap_or(SortByParam::VIEWS);
-                            let sort_order = params
-                                .get("sort_order")
-                                .and_then(|order| serde_plain::from_str(&order).ok())
-                                .unwrap_or(SortOrderParam::DESC);
+                            let query = params.get("keyword");
+                            let filters = params
+                                .get("filters")
+                                .and_then(|by| serde_json::from_str(&by).ok());
                             Route::Catalogue {
                                 id,
-                                keyword,
-                                sort_by,
-                                sort_order,
+                                latest: false,
+                                query,
+                                filters,
+                            }
+                        } else {
+                            Route::NotFound
+                        }
+                    }
+                    ["catalogue", id, "latest"] => {
+                        if let Ok(id) = id.parse() {
+                            let params = url.search_params();
+                            let query = params.get("keyword");
+                            let filters = params
+                                .get("filters")
+                                .and_then(|by| serde_json::from_str(&by).ok());
+                            Route::Catalogue {
+                                id,
+                                latest: true,
+                                query,
+                                filters,
                             }
                         } else {
                             Route::NotFound
@@ -158,24 +171,24 @@ impl Route {
             Route::CatalogueList => "/catalogue".to_string(),
             Route::Catalogue {
                 id,
-                keyword,
-                sort_by,
-                sort_order,
+                latest,
+                query,
+                filters,
             } => {
-                let sort_by = serde_plain::to_string(sort_by).unwrap();
-                let sort_order = serde_plain::to_string(sort_order).unwrap();
-
-                if let Some(keyword) = keyword {
-                    format!(
-                        "/catalogue/{}?keyword={}&sort_by={}&sort_order={}",
-                        id, keyword, sort_by, sort_order
-                    )
-                } else {
-                    format!(
-                        "/catalogue/{}?sort_by={}&sort_order={}",
-                        id, sort_by, sort_order
-                    )
+                if *latest {
+                    return format!("/catalogue/{}/latest", id);
                 }
+
+                let mut param = vec![];
+                if let Some(query) = query {
+                    param.push(format!("query={}", query));
+                }
+
+                if let Ok(filters) = serde_json::to_string(&filters) {
+                    param.push(format!("filters={}", filters));
+                }
+
+                format!("/catalogue/{}?{}", id, param.join("&"))
             }
             Route::Manga(manga_id) => ["/manga".to_string(), manga_id.to_string()].join("/"),
             Route::MangaBySourcePath(source_id, path) => [

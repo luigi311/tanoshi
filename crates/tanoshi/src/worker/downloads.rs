@@ -1,6 +1,7 @@
 use std::{
     io::Write,
     path::{Path, PathBuf},
+    sync::Arc,
 };
 
 use crate::{
@@ -12,7 +13,7 @@ use crate::{
     notifier::Notifier,
 };
 use reqwest::Url;
-use tanoshi_vm::prelude::ExtensionBus;
+use tanoshi_vm::extension::SourceManager;
 
 use tokio::{
     sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender},
@@ -33,7 +34,7 @@ pub struct DownloadWorker {
     dir: PathBuf,
     client: reqwest::Client,
     db: MangaDatabase,
-    ext: ExtensionBus,
+    ext: Arc<SourceManager>,
     _notifier: Notifier,
     tx: DownloadSender,
     rx: DownloadReceiver,
@@ -43,7 +44,7 @@ impl DownloadWorker {
     pub fn new<P: AsRef<Path>>(
         dir: P,
         db: MangaDatabase,
-        ext: ExtensionBus,
+        ext: Arc<SourceManager>,
         notifier: Notifier,
     ) -> (Self, DownloadSender) {
         let (tx, rx) = unbounded_channel::<Command>();
@@ -79,19 +80,15 @@ impl DownloadWorker {
             Err(_) => {
                 let pages = self
                     .ext
-                    .get_pages_async(manga.source_id, chapter.path.clone())
-                    .await
-                    .map_err(|e| anyhow::anyhow!("{}", e))?;
+                    .get(manga.source_id)?
+                    .get_pages(chapter.path.clone())
+                    .await?;
                 self.db.insert_pages(chapter.id, &pages).await?;
                 pages
             }
         };
 
-        let source = self
-            .ext
-            .detail_async(manga.source_id)
-            .await
-            .map_err(|e| anyhow::anyhow!("{}", e))?;
+        let source = self.ext.get(manga.source_id)?.get_source_info();
 
         let mut queue = vec![];
         let date_added = chrono::Utc::now().naive_utc();
@@ -297,7 +294,7 @@ impl DownloadWorker {
 pub fn start<P: AsRef<Path>>(
     dir: P,
     mangadb: MangaDatabase,
-    ext: ExtensionBus,
+    ext: Arc<SourceManager>,
     notifier: Notifier,
 ) -> (DownloadSender, JoinHandle<()>) {
     let (mut download_worker, tx) = DownloadWorker::new(dir, mangadb, ext, notifier);

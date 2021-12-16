@@ -1,12 +1,12 @@
 // from https://github.com/tauri-apps/tauri-plugin-localhost
 
+use tanoshi_vm::prelude::SourceManager;
 use tauri::{
   plugin::{Plugin, Result as PluginResult},
   AppHandle, Runtime,
 };
 
 use tanoshi::{config::GLOBAL_CONFIG, db, local, notifier, schema, server, worker};
-use tanoshi_vm::vm;
 
 use std::sync::Arc;
 
@@ -46,35 +46,33 @@ impl<R: Runtime> Plugin<R> for Server {
       let mangadb = db::MangaDatabase::new(pool.clone());
       let userdb = db::UserDatabase::new(pool.clone());
 
-      let (_, extension_bus) = vm::start(&config.plugin_path);
-      extension_bus.load().unwrap();
+      let extension_manager = Arc::new(SourceManager::new(&config.plugin_path));
 
-      extension_bus
-        .insert_async(
-          local::ID,
-          Arc::new(local::Local::new(config.local_path.clone())),
-        )
-        .await
-        .unwrap();
+      if extension_manager
+        .insert(Arc::new(local::Local::new(config.local_path.clone())))
+        .is_err()
+      {
+        return;
+      }
 
       let notifier = notifier::Builder::new(userdb.clone()).finish();
 
       let (download_tx, download_worker_handle) = worker::downloads::start(
         &config.download_path,
         mangadb.clone(),
-        extension_bus.clone(),
+        extension_manager.clone(),
         notifier.clone(),
       );
 
       let update_worker_handle = worker::updates::start(
         config.update_interval,
         mangadb.clone(),
-        extension_bus.clone(),
+        extension_manager.clone(),
         download_tx.clone(),
         notifier.clone(),
       );
 
-      let schema = schema::build(userdb, mangadb, extension_bus, download_tx, notifier);
+      let schema = schema::build(userdb, mangadb, extension_manager, download_tx, notifier);
 
       let app = server::init_app(&config, schema);
       let server_fut = server::serve("127.0.0.1", port, app);

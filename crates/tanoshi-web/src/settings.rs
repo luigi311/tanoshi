@@ -68,7 +68,6 @@ impl Settings {
                         name: s.name.clone(),
                         version: s.version.clone(),
                         icon: s.icon.clone(),
-                        need_login: s.need_login,
                         has_update: false,
                         installed: true,
                     }));             
@@ -89,7 +88,6 @@ impl Settings {
                         name: s.name.clone(),
                         version: s.version.clone(),
                         icon: s.icon.clone(),
-                        need_login: s.need_login,
                         has_update: s.has_update,
                         installed: true,
                     }).collect());
@@ -99,7 +97,6 @@ impl Settings {
                         name: s.name.clone(),
                         version: s.version.clone(),
                         icon: s.icon.clone(),
-                        need_login: s.need_login,
                         has_update: false,
                         installed: false,
                     }).collect());                    
@@ -171,7 +168,6 @@ impl Settings {
                         name: s.name.clone(),
                         version: s.version.clone(),
                         icon: s.icon.clone(),
-                        need_login: s.need_login,
                         has_update: s.has_update,
                         installed: true,
                     }).collect());
@@ -181,7 +177,6 @@ impl Settings {
                         name: s.name.clone(),
                         version: s.version.clone(),
                         icon: s.icon.clone(),
-                        need_login: s.need_login,
                         has_update: false,
                         installed: false,
                     }).collect());
@@ -210,7 +205,6 @@ impl Settings {
                         name: s.name.clone(),
                         version: s.version.clone(),
                         icon: s.icon.clone(),
-                        need_login: s.need_login,
                         has_update: s.has_update,
                         installed: true,
                     }).collect());
@@ -220,7 +214,6 @@ impl Settings {
                         name: s.name.clone(),
                         version: s.version.clone(),
                         icon: s.icon.clone(),
-                        need_login: s.need_login,
                         has_update: false,
                         installed: false,
                     }).collect());

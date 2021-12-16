@@ -5,10 +5,11 @@ use std::{
     time::UNIX_EPOCH,
 };
 
-use chrono::NaiveDateTime;
+use anyhow::{anyhow, Result};
+use async_trait::async_trait;
 use fancy_regex::Regex;
 use serde::{Deserialize, Serialize};
-use tanoshi_lib::prelude::{Chapter, Extension, ExtensionResult, Filters, Manga, Source, Version};
+use tanoshi_lib::prelude::{ChapterInfo, Extension, Input, MangaInfo, SourceInfo};
 
 pub static ID: i64 = 1;
 // list of supported files, other archive may works but no tested
@@ -18,7 +19,7 @@ static SUPPORTED_FILES: phf::Set<&'static str> = phf::phf_set! {
 };
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
-pub struct MangaInfo {
+pub struct LocalMangaInfo {
     pub title: Option<String>,
     pub author: Option<Vec<String>>,
     pub genre: Option<Vec<String>>,
@@ -190,7 +191,7 @@ impl Local {
         Ok(pages)
     }
 
-    fn map_entry_to_chapter(path: &Path) -> Option<Chapter> {
+    fn map_entry_to_chapter(path: &Path) -> Option<ChapterInfo> {
         let modified = match path
             .metadata()
             .ok()
@@ -221,43 +222,60 @@ impl Local {
             None => 10000_f64,
         };
 
-        Some(Chapter {
+        Some(ChapterInfo {
             source_id: ID,
             title: file_name,
             path: format!("{}", path.display()),
             number,
-            scanlator: "".to_string(),
-            uploaded: NaiveDateTime::from_timestamp(modified as i64, 0),
+            scanlator: None,
+            uploaded: modified as i64,
         })
     }
 }
 
+#[async_trait]
 impl Extension for Local {
-    fn detail(&self) -> Source {
-        Source {
+    fn get_source_info(&self) -> SourceInfo {
+        SourceInfo {
             id: ID,
             name: "local".to_string(),
             url: format!("{}", self.path.display()),
-            version: Version::default(),
+            version: "0.0.0".to_string(),
             icon: "/icons/192.png".to_string(),
-            lib_version: tanoshi_lib::VERSION.to_owned(),
-            need_login: false,
-            languages: vec![],
+            languages: "all".to_string(),
+            nsfw: false,
         }
     }
 
-    fn filters(&self) -> ExtensionResult<Option<Filters>> {
-        ExtensionResult::ok(None)
+    fn get_filter_list(&self) -> Result<Vec<Input>> {
+        todo!()
     }
 
-    fn get_manga_list(&self, param: tanoshi_lib::prelude::Param) -> ExtensionResult<Vec<Manga>> {
-        let page = param.page.map(|p| p as usize).unwrap_or(1);
+    fn get_preferences(&self) -> Result<Vec<Input>> {
+        todo!()
+    }
+
+    async fn get_popular_manga(&self, page: i64) -> Result<Vec<MangaInfo>> {
+        self.search_manga(page, None, None).await
+    }
+
+    async fn get_latest_manga(&self, page: i64) -> Result<Vec<MangaInfo>> {
+        todo!()
+    }
+
+    async fn search_manga(
+        &self,
+        page: i64,
+        query: Option<String>,
+        _filters: Option<Vec<Input>>,
+    ) -> Result<Vec<MangaInfo>> {
+        // let page = param.page.map(|p| p as usize).unwrap_or(1);
         let offset = (page - 1) * 20;
 
         let read_dir = match std::fs::read_dir(&self.path) {
             Ok(read_dir) => read_dir,
             Err(e) => {
-                return ExtensionResult::err(format!("{}", e).as_str());
+                return Err(anyhow!("{}", e));
             }
         };
 
@@ -267,7 +285,7 @@ impl Extension for Local {
                 .filter_map(Self::filter_supported_files_and_folders),
         );
 
-        if let Some(keyword) = param.keyword {
+        if let Some(keyword) = query {
             data = Box::new(data.filter(move |entry| {
                 entry
                     .file_name()
@@ -278,9 +296,9 @@ impl Extension for Local {
         }
 
         let manga = data
-            .skip(offset)
+            .skip(offset as _)
             .take(20)
-            .map(|entry| Manga {
+            .map(|entry| MangaInfo {
                 source_id: ID,
                 title: entry
                     .path()
@@ -297,10 +315,10 @@ impl Extension for Local {
             })
             .collect::<Vec<_>>();
 
-        ExtensionResult::ok(manga.to_vec())
+        Ok(manga)
     }
 
-    fn get_manga_info(&self, path: String) -> ExtensionResult<Manga> {
+    async fn get_manga_detail(&self, path: String) -> Result<MangaInfo> {
         let path = PathBuf::from(path);
 
         let title = path
@@ -310,7 +328,7 @@ impl Extension for Local {
             .to_string();
         let cover_url = Self::find_cover_url(&path);
 
-        let mut manga = Manga {
+        let mut manga = MangaInfo {
             source_id: ID,
             title: title.clone(),
             author: vec![],
@@ -322,7 +340,7 @@ impl Extension for Local {
         };
 
         if let Some(info) = Self::find_details(&path)
-            .and_then(|object| serde_json::from_slice::<MangaInfo>(&object).ok())
+            .and_then(|object| serde_json::from_slice::<LocalMangaInfo>(&object).ok())
         {
             if let Some(title) = info.title {
                 manga.title = title;
@@ -341,25 +359,25 @@ impl Extension for Local {
             }
         }
 
-        ExtensionResult::ok(manga)
+        Ok(manga)
     }
 
-    fn get_chapters(&self, path: String) -> ExtensionResult<Vec<Chapter>> {
+    async fn get_chapters(&self, path: String) -> Result<Vec<ChapterInfo>> {
         let path = PathBuf::from(path);
         if path.is_file() {
             if let Some(data) = Self::map_entry_to_chapter(&path) {
-                return ExtensionResult::ok(vec![data]);
+                return Ok(vec![data]);
             }
         }
 
         let read_dir = match std::fs::read_dir(&path) {
             Ok(read_dir) => read_dir,
             Err(e) => {
-                return ExtensionResult::err(format!("{}", e).as_str());
+                return Err(anyhow!("{}", e));
             }
         };
 
-        let mut data: Vec<Chapter> = read_dir
+        let mut data: Vec<ChapterInfo> = read_dir
             .into_iter()
             .filter_map(Result::ok)
             .filter_map(|entry| Self::map_entry_to_chapter(&entry.path()))
@@ -367,28 +385,28 @@ impl Extension for Local {
 
         data.sort_by(|a, b| a.number.partial_cmp(&b.number).unwrap());
         data.reverse();
-        ExtensionResult::ok(data)
+        Ok(data)
     }
 
-    fn get_pages(&self, filename: String) -> ExtensionResult<Vec<String>> {
+    async fn get_pages(&self, filename: String) -> Result<Vec<String>> {
         let path = PathBuf::from(filename.clone());
         let mut pages = if path.is_dir() {
             match Self::get_pages_from_dir(&path) {
                 Ok(pages) => pages,
-                Err(e) => return ExtensionResult::err(format!("{}", e).as_str()),
+                Err(e) => return Err(anyhow!("{}", e)),
             }
         } else if path.is_file() {
             match Self::get_pages_from_archive(&path, filename) {
                 Ok(pages) => pages,
-                Err(e) => return ExtensionResult::err(format!("{}", e).as_str()),
+                Err(e) => return Err(anyhow!("{}", e)),
             }
         } else {
-            return ExtensionResult::err("filename neither file or dir");
+            return Err(anyhow!("filename neither file or dir"));
         };
 
         pages.sort_by(|a, b| human_sort::compare(a, b));
 
-        ExtensionResult::ok(pages)
+        Ok(pages)
     }
 }
 
@@ -396,19 +414,14 @@ impl Extension for Local {
 mod test {
     use std::{collections::HashSet, iter::FromIterator};
 
-    use tanoshi_lib::prelude::Param;
-
     use super::*;
 
-    #[test]
-    fn test_positive_get_manga_list() {
+    #[tokio::test]
+    async fn test_positive_get_popular_manga() {
         let local = Local::new("../../test/data/manga");
-        let manga = local.get_manga_list(Param::default());
+        let manga = local.get_popular_manga(1).await;
 
-        assert!(manga.data.is_some());
-        assert!(manga.error.is_none());
-
-        if let Some(data) = manga.data {
+        if let Ok(data) = manga {
             assert_eq!(data.len(), 3);
 
             let path_set: HashSet<String> = HashSet::from_iter(data.iter().map(|a| a.path.clone()));
@@ -439,44 +452,42 @@ mod test {
         }
     }
 
-    #[test]
-    fn test_negative_get_manga_list() {
+    #[tokio::test]
+    async fn test_negative_get_popular_manga() {
         let local = Local::new("../../test/data/not_manga");
-        let manga = local.get_manga_list(Param::default());
+        let manga = local.get_popular_manga(1).await;
 
-        assert!(manga.data.is_none());
-        assert!(manga.error.is_some());
+        assert!(manga.is_err());
     }
 
-    #[test]
-    fn test_positive_get_manga_list_with_page() {
+    #[tokio::test]
+    async fn test_positive_get_popular_manga_with_page() {
         let local = Local::new("../../test/data/manga");
-        let manga = local.get_manga_list(Param {
-            page: Some(2),
-            ..Default::default()
-        });
+        let manga = local.get_popular_manga(2).await;
 
-        assert!(manga.data.is_some());
-        assert!(manga.error.is_none());
-        assert_eq!(manga.data.unwrap().len(), 0);
+        assert!(manga.is_ok());
+        assert_eq!(manga.unwrap().len(), 0);
     }
 
-    #[test]
-    fn test_get_manga_info_single_archive() {
+    #[tokio::test]
+    async fn test_get_manga_detail_single_archive() {
         let local = Local::new("../../test/data/manga");
         #[cfg(target_family = "windows")]
-        let manga = local.get_manga_info(
-            "../../test/data/manga\\Space_Adventures_004__c2c__diff_ver.cbz".to_string(),
-        );
+        let manga = local
+            .get_manga_detail(
+                "../../test/data/manga\\Space_Adventures_004__c2c__diff_ver.cbz".to_string(),
+            )
+            .await;
         #[cfg(target_family = "unix")]
-        let manga = local.get_manga_info(
-            "../../test/data/manga/Space_Adventures_004__c2c__diff_ver.cbz".to_string(),
-        );
+        let manga = local
+            .get_manga_detail(
+                "../../test/data/manga/Space_Adventures_004__c2c__diff_ver.cbz".to_string(),
+            )
+            .await;
 
-        assert!(manga.data.is_some());
-        assert!(manga.error.is_none());
+        assert!(manga.is_ok());
 
-        if let Some(data) = manga.data {
+        if let Ok(data) = manga {
             assert_eq!(data.source_id, 1);
             assert_eq!(data.title, "Space_Adventures_004__c2c__diff_ver");
             #[cfg(target_family = "windows")]
@@ -492,18 +503,21 @@ mod test {
         }
     }
 
-    #[test]
-    fn test_get_manga_info() {
+    #[tokio::test]
+    async fn test_get_manga_detail() {
         let local = Local::new("../../test/data/manga");
         #[cfg(target_family = "windows")]
-        let manga = local.get_manga_info("../../test/data/manga\\Super Duck".to_string());
+        let manga = local
+            .get_manga_detail("../../test/data/manga\\Super Duck".to_string())
+            .await;
         #[cfg(target_family = "unix")]
-        let manga = local.get_manga_info("../../test/data/manga/Super Duck".to_string());
+        let manga = local
+            .get_manga_detail("../../test/data/manga/Super Duck".to_string())
+            .await;
 
-        assert!(manga.data.is_some());
-        assert!(manga.error.is_none());
+        assert!(manga.is_ok());
 
-        if let Some(data) = manga.data {
+        if let Ok(data) = manga {
             assert_eq!(data.source_id, 1);
             assert_eq!(data.title, "Super Duck");
             assert_eq!(data.description, Some("Super Duck is the greatest hero of Ducktropolis. Brash, arrogant and virtually unbeatable, he’s defeated all threats to the city and routinely foils the schemes of his greatest rival, criminal genius and corporate billionaire Dapper Duck. But now, three years later, Super Duck has fallen on hard times. Down on his luck and with his superheroing days a distant memory, he is reduced to appearing at comic conventions for measly appearance fees. So when he’s approached by a rival of Dapper to be his personal bodyguard/accompany him on his many adventures, Supe has to decide if he’s ready to don his cape once more in this series for mature readers!".to_string()));
@@ -520,22 +534,25 @@ mod test {
         }
     }
 
-    #[test]
-    fn test_single_chapter_manga_get_chapters() {
+    #[tokio::test]
+    async fn test_single_chapter_manga_get_chapters() {
         let local = Local::new("../../test/data/manga");
         #[cfg(target_family = "windows")]
-        let chapter = local.get_chapters(
-            "../../test/data/manga\\Space_Adventures_004__c2c__diff_ver.cbz".to_string(),
-        );
+        let chapter = local
+            .get_chapters(
+                "../../test/data/manga\\Space_Adventures_004__c2c__diff_ver.cbz".to_string(),
+            )
+            .await;
         #[cfg(target_family = "unix")]
-        let chapter = local.get_chapters(
-            "../../test/data/manga/Space_Adventures_004__c2c__diff_ver.cbz".to_string(),
-        );
+        let chapter = local
+            .get_chapters(
+                "../../test/data/manga/Space_Adventures_004__c2c__diff_ver.cbz".to_string(),
+            )
+            .await;
 
-        assert!(chapter.data.is_some());
-        assert!(chapter.error.is_none());
+        assert!(chapter.is_ok());
 
-        if let Some(data) = chapter.data {
+        if let Ok(data) = chapter {
             assert_eq!(data.len(), 1);
 
             assert_eq!(data[0].source_id, 1);
@@ -553,18 +570,21 @@ mod test {
         }
     }
 
-    #[test]
-    fn test_manga_get_chapters() {
+    #[tokio::test]
+    async fn test_manga_get_chapters() {
         let local = Local::new("../../test/data/manga");
         #[cfg(target_family = "windows")]
-        let chapter = local.get_chapters("../../test/data/manga\\Space Adventures".to_string());
+        let chapter = local
+            .get_chapters("../../test/data/manga\\Space Adventures".to_string())
+            .await;
         #[cfg(target_family = "unix")]
-        let chapter = local.get_chapters("../../test/data/manga/Space Adventures".to_string());
+        let chapter = local
+            .get_chapters("../../test/data/manga/Space Adventures".to_string())
+            .await;
 
-        assert!(chapter.data.is_some());
-        assert!(chapter.error.is_none());
+        assert!(chapter.is_ok());
 
-        if let Some(data) = chapter.data {
+        if let Ok(data) = chapter {
             assert_eq!(data.len(), 2);
 
             assert_eq!(data[0].source_id, 1);
@@ -597,24 +617,27 @@ mod test {
         }
     }
 
-    #[test]
-    fn test_archive_get_pages() {
+    #[tokio::test]
+    async fn test_archive_get_pages() {
         let local = Local::new("../../test/data/manga");
         #[cfg(target_family = "windows")]
-        let pages = local.get_pages(
-            "../../test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver"
-                .to_string(),
-        );
+        let pages = local
+            .get_pages(
+                "../../test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver"
+                    .to_string(),
+            )
+            .await;
         #[cfg(target_family = "unix")]
-        let pages = local.get_pages(
-            "../../test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver"
-                .to_string(),
-        );
+        let pages = local
+            .get_pages(
+                "../../test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver"
+                    .to_string(),
+            )
+            .await;
 
-        assert!(pages.data.is_some());
-        assert!(pages.error.is_none());
+        assert!(pages.is_ok());
 
-        if let Some(data) = pages.data {
+        if let Ok(data) = pages {
             assert_eq!(data.len(), 36);
 
             #[cfg(target_family = "windows")]

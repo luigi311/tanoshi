@@ -7,7 +7,7 @@ use async_graphql::{
     Context, Object, Result,
 };
 use chrono::NaiveDateTime;
-use tanoshi_vm::prelude::ExtensionBus;
+use tanoshi_vm::extension::SourceManager;
 
 pub type UserFavoriteId = (i64, i64);
 
@@ -152,14 +152,8 @@ pub struct Manga {
     pub date_added: chrono::NaiveDateTime,
 }
 
-impl From<&tanoshi_lib::data::Manga> for Manga {
-    fn from(m: &tanoshi_lib::data::Manga) -> Self {
-        m.clone().into()
-    }
-}
-
-impl From<tanoshi_lib::data::Manga> for Manga {
-    fn from(m: tanoshi_lib::data::Manga) -> Self {
+impl From<tanoshi_lib::models::MangaInfo> for Manga {
+    fn from(m: tanoshi_lib::models::MangaInfo) -> Self {
         Self {
             id: 0,
             source_id: m.source_id,
@@ -192,8 +186,8 @@ impl From<crate::db::model::Manga> for Manga {
     }
 }
 
-impl From<tanoshi_lib::data::Manga> for crate::db::model::Manga {
-    fn from(m: tanoshi_lib::data::Manga) -> Self {
+impl From<tanoshi_lib::models::MangaInfo> for crate::db::model::Manga {
+    fn from(m: tanoshi_lib::models::MangaInfo) -> Self {
         Self {
             id: 0,
             source_id: m.source_id,
@@ -254,9 +248,9 @@ impl Manga {
 
     async fn link(&self, ctx: &Context<'_>) -> Result<String> {
         let detail = ctx
-            .data::<ExtensionBus>()?
-            .detail_async(self.source_id)
-            .await?;
+            .data::<Arc<SourceManager>>()?
+            .get(self.source_id)?
+            .get_source_info();
         Ok(format!("{}{}", detail.url, self.path))
     }
 
@@ -305,8 +299,10 @@ impl Manga {
     }
 
     async fn source(&self, ctx: &Context<'_>) -> Result<Source> {
-        let extensions = ctx.data::<ExtensionBus>()?;
-        let source = extensions.detail_async(self.source_id).await?;
+        let source = ctx
+            .data::<Arc<SourceManager>>()?
+            .get(self.source_id)?
+            .get_source_info();
         Ok(source.into())
     }
 
@@ -324,8 +320,9 @@ impl Manga {
         }
 
         let chapters: Vec<crate::db::model::Chapter> = ctx
-            .data::<ExtensionBus>()?
-            .get_chapters_async(self.source_id, self.path.clone())
+            .data::<Arc<SourceManager>>()?
+            .get(self.source_id)?
+            .get_chapters(self.path.clone())
             .await?
             .into_iter()
             .map(|c| {

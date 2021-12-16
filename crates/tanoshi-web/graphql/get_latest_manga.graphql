@@ -1,0 +1,9 @@
+query GetLatestManga($sourceId: Int!, $page:Int!) {
+  getLatestManga(sourceId: $sourceId, page:$page) {
+    id
+    path
+    title
+    coverUrl
+    isFavorite
+  }
+}

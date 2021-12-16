@@ -25,6 +25,9 @@ type Chapter {
   pages(
     # fetch from source
     fetch: Boolean! = false
+
+    # encrypt url
+    encrypt: Boolean! = true
   ): [String!]!
   downloaded: Boolean!
 }
@@ -58,12 +61,7 @@ type DownloadQueueEntry {
   priority: Int!
 }
 
-type Filters {
-  default: String!
-  fields: JSON!
-}
-
-scalar JSON
+scalar InputList
 
 type Manga {
   id: Int!
@@ -193,24 +191,32 @@ type QueryRoot {
   installedSources(checkUpdate: Boolean!): [Source!]!
   availableSources: [Source!]!
   source(sourceId: Int!): Source!
+  getPopularManga(
+    # source id
+    sourceId: Int!
+
+    # page
+    page: Int!
+  ): [Manga!]!
+  getLatestManga(
+    # source id
+    sourceId: Int!
+
+    # page
+    page: Int!
+  ): [Manga!]!
   browseSource(
     # source id
     sourceId: Int!
 
-    # keyword of the manga
-    keyword: String
-
-    # genres of the manga
-    genres: [String!]
-
     # page
-    page: Int
+    page: Int!
 
-    # sort by
-    sortBy: SortByParam
+    # query
+    query: String
 
-    # sort order
-    sortOrder: SortOrderParam
+    # filters
+    filters: InputList
   ): [Manga!]!
   mangaBySourcePath(
     # source id
@@ -339,29 +345,14 @@ type RecentUpdateEdge {
   cursor: String!
 }
 
-# A type represent sort parameter for query manga from source, normalized across sources
-enum SortByParam {
-  LAST_UPDATED
-  TITLE
-  COMMENT
-  VIEWS
-}
-
-# A type represent order parameter for query manga from source, normalized across sources
-enum SortOrderParam {
-  ASC
-  DESC
-}
-
 type Source {
   id: Int!
   name: String!
   url: String!
   version: String!
   icon: String!
-  needLogin: Boolean!
   hasUpdate: Boolean!
-  filters: Filters
+  filters: InputList!
 }
 
 type Status {

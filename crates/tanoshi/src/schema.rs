@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use crate::{
     catalogue::{
         chapter::{MangaLoader, NextChapterLoader, PrevChapterLoader, ReadProgressLoader},
@@ -13,7 +15,7 @@ use crate::{
     user::{UserMutationRoot, UserRoot},
     worker::downloads::DownloadSender,
 };
-use tanoshi_vm::bus::ExtensionBus;
+use tanoshi_vm::extension::SourceManager;
 
 use async_graphql::{dataloader::DataLoader, EmptySubscription, MergedObject, Schema};
 
@@ -43,7 +45,7 @@ pub struct MutationRoot(
 pub fn build(
     userdb: UserDatabase,
     mangadb: MangaDatabase,
-    extension_bus: ExtensionBus,
+    ext_manager: Arc<SourceManager>,
     download_tx: DownloadSender,
     notifier: Notifier,
 ) -> TanoshiSchema {
@@ -53,30 +55,51 @@ pub fn build(
         EmptySubscription::default(),
     )
     // .extension(ApolloTracing)
-    .data(DataLoader::new(FavoriteLoader {
-        mangadb: mangadb.clone(),
-    }))
-    .data(DataLoader::new(UserLastReadLoader {
-        mangadb: mangadb.clone(),
-    }))
-    .data(DataLoader::new(UserUnreadChaptersLoader {
-        mangadb: mangadb.clone(),
-    }))
-    .data(DataLoader::new(ReadProgressLoader {
-        mangadb: mangadb.clone(),
-    }))
-    .data(DataLoader::new(PrevChapterLoader {
-        mangadb: mangadb.clone(),
-    }))
-    .data(DataLoader::new(NextChapterLoader {
-        mangadb: mangadb.clone(),
-    }))
-    .data(DataLoader::new(MangaLoader {
-        mangadb: mangadb.clone(),
-    }))
+    .data(DataLoader::new(
+        FavoriteLoader {
+            mangadb: mangadb.clone(),
+        },
+        tokio::spawn,
+    ))
+    .data(DataLoader::new(
+        UserLastReadLoader {
+            mangadb: mangadb.clone(),
+        },
+        tokio::spawn,
+    ))
+    .data(DataLoader::new(
+        UserUnreadChaptersLoader {
+            mangadb: mangadb.clone(),
+        },
+        tokio::spawn,
+    ))
+    .data(DataLoader::new(
+        ReadProgressLoader {
+            mangadb: mangadb.clone(),
+        },
+        tokio::spawn,
+    ))
+    .data(DataLoader::new(
+        PrevChapterLoader {
+            mangadb: mangadb.clone(),
+        },
+        tokio::spawn,
+    ))
+    .data(DataLoader::new(
+        NextChapterLoader {
+            mangadb: mangadb.clone(),
+        },
+        tokio::spawn,
+    ))
+    .data(DataLoader::new(
+        MangaLoader {
+            mangadb: mangadb.clone(),
+        },
+        tokio::spawn,
+    ))
     .data(userdb)
     .data(mangadb)
-    .data(extension_bus)
+    .data(ext_manager)
     .data(notifier)
     .data(download_tx);
 

@@ -7,7 +7,7 @@ use async_graphql::{
     Context, Object, Result, SimpleObject,
 };
 use chrono::NaiveDateTime;
-use tanoshi_vm::prelude::ExtensionBus;
+use tanoshi_vm::extension::SourceManager;
 
 #[derive(Debug, Clone, SimpleObject)]
 pub struct ReadProgress {
@@ -139,8 +139,8 @@ pub struct Chapter {
     pub downloaded: bool,
 }
 
-impl From<tanoshi_lib::data::Chapter> for Chapter {
-    fn from(ch: tanoshi_lib::data::Chapter) -> Self {
+impl From<tanoshi_lib::models::ChapterInfo> for Chapter {
+    fn from(ch: tanoshi_lib::models::ChapterInfo) -> Self {
         Self {
             id: 0,
             source_id: ch.source_id,
@@ -148,8 +148,8 @@ impl From<tanoshi_lib::data::Chapter> for Chapter {
             title: ch.title,
             path: ch.path,
             number: ch.number,
-            scanlator: ch.scanlator,
-            uploaded: ch.uploaded,
+            scanlator: ch.scanlator.unwrap_or_default(),
+            uploaded: chrono::NaiveDateTime::from_timestamp(ch.uploaded, 0),
             date_added: chrono::NaiveDateTime::from_timestamp(chrono::Local::now().timestamp(), 0),
             read_progress: None,
             downloaded: false,
@@ -175,8 +175,8 @@ impl From<crate::db::model::Chapter> for Chapter {
     }
 }
 
-impl From<tanoshi_lib::data::Chapter> for crate::db::model::Chapter {
-    fn from(ch: tanoshi_lib::data::Chapter) -> Self {
+impl From<tanoshi_lib::models::ChapterInfo> for crate::db::model::Chapter {
+    fn from(ch: tanoshi_lib::models::ChapterInfo) -> Self {
         Self {
             id: 0,
             source_id: ch.source_id,
@@ -184,8 +184,8 @@ impl From<tanoshi_lib::data::Chapter> for crate::db::model::Chapter {
             title: ch.title,
             path: ch.path,
             number: ch.number,
-            scanlator: ch.scanlator,
-            uploaded: ch.uploaded,
+            scanlator: ch.scanlator.unwrap_or_default(),
+            uploaded: chrono::NaiveDateTime::from_timestamp(ch.uploaded, 0),
             date_added: chrono::NaiveDateTime::from_timestamp(chrono::Local::now().timestamp(), 0),
             downloaded: false,
         }
@@ -259,8 +259,10 @@ impl Chapter {
     }
 
     async fn source(&self, ctx: &Context<'_>) -> Result<Source> {
-        let extensions = ctx.data::<ExtensionBus>()?;
-        let source = extensions.detail_async(self.source_id).await?;
+        let source = ctx
+            .data::<Arc<SourceManager>>()?
+            .get(self.source_id)?
+            .get_source_info();
         Ok(source.into())
     }
 
@@ -275,17 +277,21 @@ impl Chapter {
     async fn pages(
         &self,
         ctx: &Context<'_>,
-        #[graphql(desc = "fetch from source", default = false)] _fetch: bool,
+        #[graphql(desc = "fetch from source", default = false)] fetch: bool,
+        #[graphql(desc = "encrypt url", default = true)] encrypt: bool,
     ) -> Result<Vec<String>> {
         let mangadb = ctx.data::<MangaDatabase>()?;
+
+        if fetch {}
 
         let pages = if let Ok(pages) = mangadb.get_pages_by_chapter_id(self.id).await {
             info!("return pages from db");
             pages
         } else {
             let pages = ctx
-                .data::<ExtensionBus>()?
-                .get_pages_async(self.source_id, self.path.clone())
+                .data::<Arc<SourceManager>>()?
+                .get(self.source_id)?
+                .get_pages(self.path.clone())
                 .await?;
 
             mangadb.insert_pages(self.id, &pages).await?;
@@ -293,6 +299,10 @@ impl Chapter {
             info!("return pages from source");
             pages
         };
+
+        if !encrypt {
+            return Ok(pages);
+        }
 
         let secret = &GLOBAL_CONFIG.get().ok_or("secret not set")?.secret;
         let pages = pages

@@ -4,6 +4,5 @@ query FetchSources{
     name
     version
     icon
-    needLogin
   }
 }
