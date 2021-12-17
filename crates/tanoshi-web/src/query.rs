@@ -95,10 +95,7 @@ pub async fn fetch_manga_from_source(
 pub struct GetLatestManga;
 
 pub async fn get_latest_manga(source_id: i64, page: i64) -> Result<Vec<Cover>, Box<dyn Error>> {
-    let var = get_latest_manga::Variables {
-        source_id,
-        page,
-    };
+    let var = get_latest_manga::Variables { source_id, page };
     let data: get_latest_manga::ResponseData = post_graphql::<GetLatestManga>(var).await?;
 
     let covers = data
@@ -129,10 +126,7 @@ pub async fn get_latest_manga(source_id: i64, page: i64) -> Result<Vec<Cover>, B
 pub struct GetPopularManga;
 
 pub async fn get_popular_manga(source_id: i64, page: i64) -> Result<Vec<Cover>, Box<dyn Error>> {
-    let var = get_popular_manga::Variables {
-        source_id,
-        page,
-    };
+    let var = get_popular_manga::Variables { source_id, page };
     let data: get_popular_manga::ResponseData = post_graphql::<GetPopularManga>(var).await?;
 
     let covers = data
@@ -379,10 +373,15 @@ pub async fn delete_category(id: i64) -> Result<(), Box<dyn Error>> {
 )]
 pub struct UpdatePageReadAt;
 
-pub async fn update_page_read_at(chapter_id: i64, page: i64) -> Result<(), Box<dyn Error>> {
+pub async fn update_page_read_at(
+    chapter_id: i64,
+    page: i64,
+    is_complete: bool,
+) -> Result<(), Box<dyn Error>> {
     let var = update_page_read_at::Variables {
         chapter_id: Some(chapter_id),
         page: Some(page),
+        is_complete: Some(is_complete),
     };
     let _ = post_graphql::<UpdatePageReadAt>(var).await?;
 

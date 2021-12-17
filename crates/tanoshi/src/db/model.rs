@@ -42,7 +42,7 @@ pub struct Chapter {
     pub scanlator: String,
     pub uploaded: NaiveDateTime,
     pub date_added: NaiveDateTime,
-    pub downloaded: bool,
+    pub downloaded_path: Option<String>,
 }
 
 impl Default for Chapter {
@@ -57,7 +57,7 @@ impl Default for Chapter {
             scanlator: "".to_string(),
             uploaded: NaiveDateTime::from_timestamp(0, 0),
             date_added: NaiveDateTime::from_timestamp(0, 0),
-            downloaded: false,
+            downloaded_path: None,
         }
     }
 }

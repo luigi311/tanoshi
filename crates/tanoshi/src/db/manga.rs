@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 
-use super::model::{Category, Chapter, DownloadQueue, DownloadQueueEntry, Manga, ReadProgress, UserMangaLibrary};
+use super::model::{
+    Category, Chapter, DownloadQueue, DownloadQueueEntry, Manga, ReadProgress, UserMangaLibrary,
+};
 use crate::library::{RecentChapter, RecentUpdate};
 use anyhow::{anyhow, Result};
 use chrono::NaiveDateTime;
@@ -121,7 +123,11 @@ impl Db {
         Ok(mangas)
     }
 
-    pub async fn get_library_by_category_id(&self, user_id: i64, category_id: Option<i64>) -> Result<Vec<Manga>> {
+    pub async fn get_library_by_category_id(
+        &self,
+        user_id: i64,
+        category_id: Option<i64>,
+    ) -> Result<Vec<Manga>> {
         let mut conn = self.pool.acquire().await?;
         let mut stream = sqlx::query(
             r#"SELECT manga.*, library_category.category_id FROM manga
@@ -152,7 +158,11 @@ impl Db {
         Ok(mangas)
     }
 
-    pub async fn count_library_by_category_id(&self, user_id: i64, category_id: Option<i64>) -> Result<i64> {
+    pub async fn count_library_by_category_id(
+        &self,
+        user_id: i64,
+        category_id: Option<i64>,
+    ) -> Result<i64> {
         let mut conn = self.pool.acquire().await?;
         let row = sqlx::query(
             r#"SELECT COUNT(1) FROM manga
@@ -973,9 +983,7 @@ impl Db {
         let mut conn = self.pool.acquire().await?;
         let stream = sqlx::query(
             r#"
-            SELECT *,
-            (SELECT (COUNT(p.remote_url) > 0) & (COUNT(p.remote_url) = COUNT(p.local_url)) FROM page p WHERE p.chapter_id = chapter.id) downloaded
-            FROM chapter WHERE id = ?"#,
+            SELECT * FROM chapter WHERE id = ?"#,
         )
         .bind(id)
         .fetch_one(&mut conn)
@@ -991,7 +999,7 @@ impl Db {
             scanlator: row.get(6),
             uploaded: row.get(7),
             date_added: row.get(8),
-            downloaded: row.get(9),
+            downloaded_path: row.get(9),
         })?)
     }
 
@@ -1062,8 +1070,7 @@ impl Db {
                     LEFT JOIN last_reading_session
             )
             SELECT
-                chapter.*,
-                (SELECT (COUNT(p.remote_url) > 0) & (COUNT(p.remote_url) = COUNT(p.local_url)) FROM page p WHERE p.chapter_id = chapter.id) downloaded
+                chapter.*
             FROM
                 chapter
             WHERE
@@ -1093,20 +1100,15 @@ impl Db {
             scanlator: row.get(6),
             uploaded: row.get(7),
             date_added: row.get(8),
-            downloaded: row.get(9),
+            downloaded_path: row.get(9),
         }))
     }
 
-    #[allow(dead_code)]
     pub async fn get_chapter_by_source_path(&self, source_id: i64, path: &str) -> Option<Chapter> {
         let mut conn = self.pool.acquire().await.ok()?;
         let stream = sqlx::query(
             r#"
-            SELECT *,
-            (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number < chapter.number ORDER BY c.number DESC LIMIT 1) prev,
-            (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number > chapter.number ORDER BY c.number ASC LIMIT 1) next,
-            (SELECT (COUNT(p.remote_url) > 0) & (COUNT(p.remote_url) = COUNT(p.local_url)) FROM page p WHERE p.chapter_id = chapter.id) downloaded
-            FROM chapter WHERE source_id = ? AND path = ?"#,
+            SELECT * FROM chapter WHERE source_id = ? AND path = ?"#,
         )
         .bind(source_id)
         .bind(path)
@@ -1124,17 +1126,14 @@ impl Db {
             scanlator: row.get(6),
             uploaded: row.get(7),
             date_added: row.get(8),
-            downloaded: row.get(9),
+            downloaded_path: row.get(9),
         })
     }
-
     pub async fn get_chapters_by_manga_id(&self, manga_id: i64) -> Result<Vec<Chapter>> {
         let mut conn = self.pool.acquire().await?;
         let mut stream = sqlx::query(
             r#"
-            SELECT *,
-            (SELECT (COUNT(p.remote_url) > 0) & (COUNT(p.remote_url) = COUNT(p.local_url)) FROM page p WHERE p.chapter_id = chapter.id) downloaded
-            FROM chapter WHERE manga_id = ? ORDER BY number DESC"#
+            SELECT * FROM chapter WHERE manga_id = ? ORDER BY number DESC"#,
         )
         .bind(manga_id)
         .fetch(&mut conn);
@@ -1151,7 +1150,7 @@ impl Db {
                 scanlator: row.get(6),
                 uploaded: row.get(7),
                 date_added: row.get(8),
-                downloaded: row.get(9),
+                downloaded_path: row.get(9),
             });
         }
         if chapters.is_empty() {
@@ -1165,11 +1164,7 @@ impl Db {
         let mut conn = self.pool.acquire().await.ok()?;
         let stream = sqlx::query(
             r#"
-            SELECT *,
-            (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number < chapter.number ORDER BY c.number DESC LIMIT 1) prev,
-            (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number > chapter.number ORDER BY c.number ASC LIMIT 1) next,
-            (SELECT (COUNT(p.remote_url) > 0) & (COUNT(p.remote_url) = COUNT(p.local_url)) FROM page p WHERE p.chapter_id = chapter.id) downloaded
-            FROM chapter WHERE manga_id = ? ORDER BY uploaded DESC LIMIT 1"#
+            SELECT * FROM chapter WHERE manga_id = ? ORDER BY uploaded DESC LIMIT 1"#,
         )
         .bind(manga_id)
         .fetch_one(&mut conn)
@@ -1186,7 +1181,7 @@ impl Db {
             scanlator: row.get(6),
             uploaded: row.get(7),
             date_added: row.get(8),
-            downloaded: row.get(9),
+            downloaded_path: row.get(9),
         })
     }
 
@@ -1274,121 +1269,12 @@ impl Db {
         Ok(())
     }
 
-    pub async fn insert_pages(&self, chapter_id: i64, pages: &[String]) -> Result<()> {
-        let mut conn = self.pool.acquire().await?;
-        if pages.is_empty() {
-            return Ok(());
-        }
-
-        let mut values = vec![];
-        values.resize(pages.len(), "(?, ?, ?)");
-
-        let query_str = format!(
-            r#"INSERT INTO page (
-                chapter_id,
-                rank,
-                remote_url
-            ) VALUES {} ON CONFLICT(chapter_id, rank) DO UPDATE SET
-                remote_url=excluded.remote_url
-            "#,
-            values.join(",")
-        );
-
-        let mut query = sqlx::query(&query_str);
-        for (index, page) in pages.iter().enumerate() {
-            query = query.bind(chapter_id).bind(index as i64).bind(page);
-        }
-
-        query.execute(&mut conn).await?;
-
-        Ok(())
-    }
-
-    pub async fn update_page_by_url(&self, remote_url: &str, local_url: &str) -> Result<()> {
-        let mut conn = self.pool.acquire().await?;
-
-        sqlx::query(
-            r#"UPDATE page 
-            SET local_url = ?
-            WHERE remote_url = ?"#,
-        )
-        .bind(local_url)
-        .bind(remote_url)
-        .execute(&mut conn)
-        .await?;
-
-        Ok(())
-    }
-
-    pub async fn delete_page_local_url_by_chapter_id(&self, id: i64) -> Result<()> {
-        let mut conn = self.pool.acquire().await?;
-
-        sqlx::query(
-            r#"UPDATE page SET local_url = NULL WHERE chapter_id = ?"#,
-        )
-        .bind(id)
-        .execute(&mut conn)
-        .await?;
-
-        Ok(())
-    }
-
-    pub async fn get_pages_by_chapter_id(&self, chapter_id: i64) -> Result<Vec<String>> {
-        let mut conn = self.pool.acquire().await?;
-        let mut stream =
-            sqlx::query("SELECT COALESCE(local_url, remote_url) FROM page WHERE chapter_id = ?")
-                .bind(chapter_id)
-                .fetch(&mut conn);
-
-        let mut pages = vec![];
-        while let Some(row) = stream.try_next().await? {
-            pages.push(row.get(0));
-        }
-
-        if pages.is_empty() {
-            Err(anyhow!("no pages"))
-        } else {
-            Ok(pages)
-        }
-    }
-
-    pub async fn get_pages_remote_url_by_chapter_id(&self, chapter_id: i64) -> Result<Vec<String>> {
-        let mut conn = self.pool.acquire().await?;
-        let mut stream = sqlx::query("SELECT remote_url FROM page WHERE chapter_id = ?")
-            .bind(chapter_id)
-            .fetch(&mut conn);
-
-        let mut pages = vec![];
-        while let Some(row) = stream.try_next().await? {
-            pages.push(row.get(0));
-        }
-
-        if pages.is_empty() {
-            Err(anyhow!("no pages"))
-        } else {
-            Ok(pages)
-        }
-    }
-
-    pub async fn get_pages_local_url_by_chapter_id(&self, chapter_id: i64) -> Result<Vec<String>> {
-        let mut conn = self.pool.acquire().await?;
-        let mut stream = sqlx::query("SELECT local_url FROM page WHERE chapter_id = ?")
-            .bind(chapter_id)
-            .fetch(&mut conn);
-
-        let mut pages = vec![];
-        while let Some(row) = stream.try_next().await? {
-            pages.push(row.get(0));
-        }
-
-        if pages.is_empty() {
-            Err(anyhow!("no pages"))
-        } else {
-            Ok(pages)
-        }
-    }
-
-    pub async fn insert_user_library(&self, user_id: i64, manga_id: i64, category_ids: Vec<i64>) -> Result<u64> {
+    pub async fn insert_user_library(
+        &self,
+        user_id: i64,
+        manga_id: i64,
+        category_ids: Vec<i64>,
+    ) -> Result<u64> {
         let mut tx = self.pool.begin().await?;
         let library_id = sqlx::query("INSERT INTO user_library(user_id, manga_id) VALUES (?, ?)")
             .bind(user_id)
@@ -1400,8 +1286,9 @@ impl Db {
 
         if !category_ids.is_empty() {
             let query_str = format!(
-                "INSERT INTO library_category(library_id, category_id) VALUES {}", 
-                vec!["(?,?)".to_string(); category_ids.len()].join(","));
+                "INSERT INTO library_category(library_id, category_id) VALUES {}",
+                vec!["(?,?)".to_string(); category_ids.len()].join(",")
+            );
 
             let mut query = sqlx::query(&query_str);
             for category_id in category_ids {
@@ -1431,25 +1318,25 @@ impl Db {
         user_id: i64,
         chapter_id: i64,
         page: i64,
+        is_complete: bool,
     ) -> Result<u64> {
         let mut conn = self.pool.acquire().await?;
         sqlx::query(
             r#"
             INSERT INTO
             user_history(user_id, chapter_id, last_page, read_at, is_complete)
-            VALUES(?, ?, ?, ?, ? = (SELECT COUNT(*) - 1 FROM page WHERE chapter_id = ?))
+            VALUES(?, ?, ?, ?, ?)
             ON CONFLICT(user_id, chapter_id)
             DO UPDATE SET
             last_page = excluded.last_page,
             read_at = excluded.read_at,
-            is_complete = CASE is_complete WHEN 0 THEN excluded.is_complete ELSE is_complete END"#,
+            is_complete = excluded.is_complete"#,
         )
         .bind(user_id)
         .bind(chapter_id)
         .bind(page)
         .bind(chrono::Local::now())
-        .bind(page)
-        .bind(chapter_id)
+        .bind(is_complete)
         .execute(&mut conn)
         .await
         .map(|res| res.rows_affected())
@@ -1462,34 +1349,24 @@ impl Db {
             return Ok(0);
         }
 
+        let now = chrono::Local::now();
         let query_str = format!(
             r#"
-            WITH mark_as_read_chapter AS (
-                SELECT id, (SELECT COUNT(*) - 1 FROM page WHERE page.chapter_id = chapter.id) as page_count
-                FROM chapter
-                WHERE id IN ({})
-            )
-            INSERT INTO
-            user_history(user_id, chapter_id, last_page, read_at, is_complete)
-            SELECT ?, id, page_count, DATETIME('now'), true
-            FROM mark_as_read_chapter
-            WHERE true
+            INSERT INTO user_history(user_id, chapter_id, last_page, read_at, is_complete)
+            VALUES {}
             ON CONFLICT(user_id, chapter_id)
             DO UPDATE SET
-            last_page = excluded.last_page,
-            read_at = excluded.read_at,
-            is_complete = excluded.is_complete
-            "#,
-            vec!["?"; chapter_ids.len()].join(",")
+                last_page = excluded.last_page,
+                read_at = excluded.read_at,
+                is_complete = excluded.is_complete"#,
+            vec!["(?, ?, 0, ?, true)"; chapter_ids.len()].join(",")
         );
 
         let mut query = sqlx::query(&query_str);
 
         for chapter_id in chapter_ids.iter() {
-            query = query.bind(chapter_id);
+            query = query.bind(user_id).bind(chapter_id).bind(now);
         }
-
-        query = query.bind(user_id);
 
         query
             .execute(&mut conn)
@@ -1524,6 +1401,21 @@ impl Db {
             .await
             .map(|res| res.rows_affected())
             .map_err(|e| anyhow::anyhow!(e))
+    }
+
+    pub async fn update_chapter_downloaded_path(
+        &self,
+        id: i64,
+        path: Option<String>,
+    ) -> Result<()> {
+        let mut conn = self.pool.acquire().await?;
+        sqlx::query(r#"UPDATE chapter SET downloaded_path = ? WHERE id = ?"#)
+            .bind(path)
+            .bind(id)
+            .execute(&mut conn)
+            .await?;
+
+        Ok(())
     }
 
     #[allow(dead_code)]
@@ -1704,6 +1596,7 @@ impl Db {
                     priority,
                     date_added 
                 FROM download_queue
+                WHERE downloaded IS NOT true
                 ORDER BY priority ASC, date_added ASC, chapter_id ASC, rank ASC
                 LIMIT 1"#,
         )
@@ -1725,43 +1618,60 @@ impl Db {
         Ok(data)
     }
 
+    pub async fn get_single_chapter_download_status(&self, chapter_id: i64) -> Result<bool> {
+        let mut conn = self.pool.acquire().await?;
+        let row = sqlx::query(
+            r#"SELECT SUM(downloaded) = COUNT(1)
+                FROM download_queue
+                WHERE chapter_id = ?"#,
+        )
+        .bind(chapter_id)
+        .fetch_one(&mut conn)
+        .await?;
+        Ok(row.get(0))
+    }
+
+    pub async fn mark_single_download_queue_as_completed(&self, id: i64) -> Result<()> {
+        let mut conn = self.pool.acquire().await?;
+        sqlx::query(r#"UPDATE download_queue SET downloaded = true WHERE id = ?"#)
+            .bind(id)
+            .execute(&mut conn)
+            .await?;
+        Ok(())
+    }
+
     pub async fn get_download_queue_last_priority(&self) -> Result<Option<i64>> {
         let mut conn = self.pool.acquire().await?;
-        let data = sqlx::query(
-            r#"SELECT MAX(priority) FROM download_queue"#,
-        )
-        .fetch_optional(&mut conn)
-        .await?
-        .and_then(|row| row.try_get(0).ok());
+        let data = sqlx::query(r#"SELECT MAX(priority) FROM download_queue"#)
+            .fetch_optional(&mut conn)
+            .await?
+            .and_then(|row| row.try_get(0).ok());
         Ok(data)
     }
 
     pub async fn get_download_queue(&self) -> Result<Vec<DownloadQueueEntry>> {
         let mut conn = self.pool.acquire().await?;
         let data = sqlx::query(
-        r#"SELECT
-                download_queue.source_id,
-                download_queue.source_name,
-                download_queue.manga_id,
-                download_queue.manga_title, 
-                download_queue.chapter_id,
-                download_queue.chapter_title, 
-                downloaded,
-                total,
-                download_queue.priority
-            FROM download_queue
-            JOIN (
-                SELECT chapter_id, COUNT(page.local_url) AS downloaded, COUNT(page.remote_url) AS total
-                FROM page GROUP BY chapter_id
-            ) p ON p.chapter_id = download_queue.chapter_id
-            GROUP BY download_queue.chapter_id
-            ORDER BY download_queue.priority ASC, download_queue.date_added ASC, download_queue.chapter_id ASC"#,
+            r#"
+            SELECT
+                dq.source_id,
+                dq.source_name,
+                dq.manga_id,
+                dq.manga_title, 
+                dq.chapter_id,
+                dq.chapter_title, 
+                SUM(dq.downloaded),
+                COUNT(1),
+                dq.priority
+            FROM download_queue dq
+            GROUP BY dq.chapter_id
+            ORDER BY dq.priority ASC, dq.date_added ASC, dq.chapter_id ASC"#,
         )
         .fetch_all(&mut conn)
         .await?
         .iter()
         .map(|row| DownloadQueueEntry {
-            source_id: row.get(0), 
+            source_id: row.get(0),
             source_name: row.get(1),
             manga_id: row.get(2),
             manga_title: row.get(3),
@@ -1770,15 +1680,16 @@ impl Db {
             downloaded: row.get(6),
             total: row.get(7),
             priority: row.get(8),
-        }).collect();
+        })
+        .collect();
         Ok(data)
     }
 
-    pub async fn delete_single_download_queue_by_id(&self, id: i64) -> Result<()> {
+    pub async fn delete_single_chapter_download_queue(&self, chapter_id: i64) -> Result<()> {
         let mut conn = self.pool.acquire().await?;
 
-        sqlx::query(r#"DELETE FROM download_queue WHERE id = ?"#)
-            .bind(id)
+        sqlx::query(r#"DELETE FROM download_queue WHERE chapter_id = ?"#)
+            .bind(chapter_id)
             .execute(&mut conn)
             .await?;
 
@@ -1788,7 +1699,10 @@ impl Db {
     pub async fn delete_download_queue_by_chapter_id(&self, id: i64) -> Result<()> {
         let mut tx = self.pool.begin().await?;
         sqlx::query("UPDATE download_queue SET priority = priority - 1 WHERE priority > (SELECT priority FROM download_queue WHERE chapter_id = ? LIMIT 1)").bind(id).execute(&mut tx).await?;
-        sqlx::query("DELETE FROM download_queue WHERE chapter_id = ?").bind(id).execute(&mut tx).await?;
+        sqlx::query("DELETE FROM download_queue WHERE chapter_id = ?")
+            .bind(id)
+            .execute(&mut tx)
+            .await?;
         tx.commit().await?;
         Ok(())
     }
@@ -1828,15 +1742,12 @@ impl Db {
         let mut conn = self.pool.acquire().await?;
         let mut stream = sqlx::query(
             r#"
-        SELECT 
-            chapter.*, 
-            (COUNT(remote_url) > 0) & (COUNT(remote_url) = COUNT(local_url)) AS downloaded 
-        FROM page JOIN chapter ON chapter.id = page.chapter_id
+        SELECT * FROM chapter
         WHERE
-            (date_added, chapter.id) < (datetime(?, 'unixepoch'), ?) AND
-            (date_added, chapter.id) > (datetime(?, 'unixepoch'), ?)
-        GROUP BY chapter_id HAVING downloaded = true
-        ORDER BY chapter.date_added DESC, chapter.id DESC
+            (date_added, id) < (datetime(?, 'unixepoch'), ?) AND
+            (date_added, id) > (datetime(?, 'unixepoch'), ?)
+        WHERE downloaded_path IS NOT NULL
+        ORDER BY date_added DESC, id DESC
         LIMIT ?"#,
         )
         .bind(after_timestamp)
@@ -1858,7 +1769,7 @@ impl Db {
                 scanlator: row.get(6),
                 uploaded: row.get(7),
                 date_added: row.get(8),
-                downloaded: row.get(9),
+                downloaded_path: row.get(9),
             });
         }
         Ok(chapters)
@@ -1876,15 +1787,12 @@ impl Db {
         let mut stream = sqlx::query(
             r#"
             SELECT * FROM (
-                SELECT 
-                    chapter.*, 
-                    (COUNT(remote_url) > 0) & (COUNT(remote_url) = COUNT(local_url)) AS downloaded 
-                FROM page JOIN chapter ON chapter.id = page.chapter_id
+                SELECT * FROM chapter
                 WHERE
-                    (date_added, chapter.id) < (datetime(?, 'unixepoch'), ?) AND
-                    (date_added, chapter.id) > (datetime(?, 'unixepoch'), ?)
-                GROUP BY chapter_id HAVING downloaded = true
-                ORDER BY chapter.date_added ASC, chapter.id ASC
+                    (date_added, id) < (datetime(?, 'unixepoch'), ?) AND
+                    (date_added, id) > (datetime(?, 'unixepoch'), ?)
+                WHERE downloaded_path IS NOT NULL
+                ORDER BY date_added ASC, id ASC
                 LIMIT ?) c
             ORDER BY c.date_added DESC, c.id DESC"#,
         )
@@ -1907,7 +1815,7 @@ impl Db {
                 scanlator: row.get(6),
                 uploaded: row.get(7),
                 date_added: row.get(8),
-                downloaded: row.get(9),
+                downloaded_path: row.get(9),
             });
         }
         Ok(chapters)
@@ -1923,15 +1831,12 @@ impl Db {
         let mut conn = self.pool.acquire().await?;
         let mut stream = sqlx::query(
             r#"
-            SELECT 
-                chapter.*, 
-                (COUNT(remote_url) > 0) & (COUNT(remote_url) = COUNT(local_url)) AS downloaded 
-            FROM page JOIN chapter ON chapter.id = page.chapter_id
+            SELECT * FROM chapter
             WHERE
-                (date_added, chapter.id) < (datetime(?, 'unixepoch'), ?) AND
-                (date_added, chapter.id) > (datetime(?, 'unixepoch'), ?)
-            GROUP BY chapter_id HAVING downloaded = true
-            ORDER BY chapter.date_added DESC, chapter.id DESC
+                (date_added, id) < (datetime(?, 'unixepoch'), ?) AND
+                (date_added, id) > (datetime(?, 'unixepoch'), ?)
+            WHERE downloaded_path IS NOT NULL
+            ORDER BY date_added DESC, id DESC
             LIMIT ?"#,
         )
         .bind(after_timestamp)
@@ -1952,7 +1857,7 @@ impl Db {
                 scanlator: row.get(6),
                 uploaded: row.get(7),
                 date_added: row.get(8),
-                downloaded: row.get(9),
+                downloaded_path: row.get(9),
             });
         }
         Ok(chapters)
@@ -1966,14 +1871,11 @@ impl Db {
         };
         let stream = sqlx::query(
             r#"
-            SELECT 
-                chapter.*, 
-                (COUNT(remote_url) > 0) & (COUNT(remote_url) = COUNT(local_url)) AS downloaded 
-            FROM page JOIN chapter ON chapter.id = page.chapter_id
+            SELECT * FROM chapter
             WHERE
-                (date_added, chapter.id) < (datetime(?, 'unixepoch'), ?)
-            GROUP BY chapter_id HAVING downloaded = true
-            ORDER BY chapter.date_added DESC, chapter.id DESC
+                (date_added, id) < (datetime(?, 'unixepoch'), ?)
+            GROUP BY id HAVING downloaded_path IS NOT NULL
+            ORDER BY date_added DESC, id DESC
             LIMIT 1"#,
         )
         .bind(timestamp)
@@ -1993,14 +1895,11 @@ impl Db {
         };
         let stream = sqlx::query(
             r#"
-            SELECT 
-                chapter.*, 
-                (COUNT(remote_url) > 0) & (COUNT(remote_url) = COUNT(local_url)) AS downloaded 
-            FROM page JOIN chapter ON chapter.id = page.chapter_id
+            SELECT * FROM chapter
             WHERE
-                (date_added, chapter.id) > (datetime(?, 'unixepoch'), ?)
-            GROUP BY chapter_id HAVING downloaded = true
-            ORDER BY chapter.date_added DESC, chapter.id DESC
+                (date_added, id) < (datetime(?, 'unixepoch'), ?)
+            GROUP BY id HAVING downloaded_path IS NOT NULL
+            ORDER BY date_added DESC, id DESC
             LIMIT 1"#,
         )
         .bind(timestamp)
@@ -2011,7 +1910,6 @@ impl Db {
 
         stream.is_some()
     }
-
     pub async fn insert_user_category(&self, user_id: i64, name: &str) -> Result<Category> {
         let mut conn = self.pool.acquire().await?;
         sqlx::query("INSERT INTO user_category (user_id, name) VALUES (?, ?) RETURNING id, name")
@@ -2020,7 +1918,7 @@ impl Db {
             .fetch_one(&mut conn)
             .await
             .map(|row| Category {
-                id: row.get(0), 
+                id: row.get(0),
                 name: row.get(1),
             })
             .map_err(|e| anyhow::anyhow!(e))
@@ -2029,7 +1927,7 @@ impl Db {
     pub async fn get_user_categories(&self, user_id: i64) -> Result<Vec<Category>> {
         let mut conn = self.pool.acquire().await?;
         let data = sqlx::query(
-        r#"SELECT
+            r#"SELECT
                 id,
                 name
             FROM user_category
@@ -2041,10 +1939,11 @@ impl Db {
         .await?
         .iter()
         .map(|row| Category {
-            id: row.get(0), 
+            id: row.get(0),
             name: row.get(1),
-        }).collect();
-        
+        })
+        .collect();
+
         Ok(data)
     }
 
@@ -2056,13 +1955,13 @@ impl Db {
                     name
                 FROM user_category
                 WHERE id = ?"#,
-            )
-            .bind(id)
-            .fetch_one(&mut conn)
-            .await?;
+        )
+        .bind(id)
+        .fetch_one(&mut conn)
+        .await?;
 
         Ok(Category {
-            id: row.get(0), 
+            id: row.get(0),
             name: row.get(1),
         })
     }

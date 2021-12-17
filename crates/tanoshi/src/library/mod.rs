@@ -281,13 +281,14 @@ impl LibraryMutationRoot {
         ctx: &Context<'_>,
         #[graphql(desc = "chapter id")] chapter_id: i64,
         #[graphql(desc = "page")] page: i64,
+        #[graphql(desc = "is_complete")] is_complete: bool,
     ) -> Result<u64> {
         let user = ctx
             .data::<Claims>()
             .map_err(|_| "token not exists, please login")?;
         match ctx
             .data::<MangaDatabase>()?
-            .update_page_read_at(user.sub, chapter_id, page)
+            .update_page_read_at(user.sub, chapter_id, page, is_complete)
             .await
         {
             Ok(rows) => Ok(rows),
@@ -309,7 +310,7 @@ impl LibraryMutationRoot {
             .await
         {
             Ok(rows) => Ok(rows),
-            Err(err) => Err(format!("error update chapter read_at: {}", err).into()),
+            Err(err) => Err(format!("error mark_chapter_as_read: {}", err).into()),
         }
     }
 

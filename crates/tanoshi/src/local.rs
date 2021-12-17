@@ -167,8 +167,8 @@ impl Local {
         }
     }
 
-    fn get_pages_from_archive(path: &Path, filename: String) -> Result<Vec<String>, anyhow::Error> {
-        let source = std::fs::File::open(&filename)?;
+    pub fn get_pages_from_archive(path: &Path) -> Result<Vec<String>, anyhow::Error> {
+        let source = std::fs::File::open(path)?;
         match compress_tools::list_archive_files(source) {
             Ok(files) => {
                 let pages = files
@@ -259,7 +259,7 @@ impl Extension for Local {
         self.search_manga(page, None, None).await
     }
 
-    async fn get_latest_manga(&self, page: i64) -> Result<Vec<MangaInfo>> {
+    async fn get_latest_manga(&self, _page: i64) -> Result<Vec<MangaInfo>> {
         todo!()
     }
 
@@ -396,7 +396,7 @@ impl Extension for Local {
                 Err(e) => return Err(anyhow!("{}", e)),
             }
         } else if path.is_file() {
-            match Self::get_pages_from_archive(&path, filename) {
+            match Self::get_pages_from_archive(&path) {
                 Ok(pages) => pages,
                 Err(e) => return Err(anyhow!("{}", e)),
             }

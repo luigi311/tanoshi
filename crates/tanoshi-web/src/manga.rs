@@ -142,7 +142,7 @@ struct Chapter {
     pub uploaded: NaiveDateTime,
     pub read_progress: Option<ReadProgress>,
     pub selected: Mutable<bool>,
-    pub downloaded: bool
+    pub downloaded_path: Option<String>
 }
 
 impl Default for Chapter {
@@ -155,7 +155,7 @@ impl Default for Chapter {
             uploaded: NaiveDateTime::from_timestamp(0, 0),
             read_progress: Default::default(),
             selected: Default::default(),
-            downloaded: Default::default(),
+            downloaded_path: Default::default(),
         }
     }
 }
@@ -239,7 +239,7 @@ impl Manga {
                             is_complete: progress.is_complete,
                         }),
                         selected: Mutable::new(false),
-                        downloaded: chapter.downloaded,
+                        downloaded_path: chapter.downloaded_path.clone(),
                     })).collect());
 
                     manga.chapter_settings.load_by_manga_id(manga.id.get());                    
@@ -286,7 +286,7 @@ impl Manga {
                             is_complete: progress.is_complete,
                         }),
                         selected: Mutable::new(false),
-                        downloaded: chapter.downloaded,
+                        downloaded_path: chapter.downloaded_path.clone(),
                     })).collect());
 
                     manga.chapter_settings.load_by_manga_id(manga.id.get());
@@ -965,7 +965,7 @@ impl Manga {
                                 ])
                             }),
                         ])
-                        .child_signal(signal::always(chapter.downloaded).map(|downloaded| downloaded.then(|| html!("div", {
+                        .child_signal(signal::always(chapter.downloaded_path.clone()).map(|downloaded_path| downloaded_path.is_some().then(|| html!("div", {
                             .style("align-self", "center")
                             .style("padding", "0.25rem")
                             .children(&mut [

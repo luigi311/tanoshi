@@ -75,18 +75,11 @@ impl DownloadWorker {
             .unwrap_or(0);
 
         let manga = self.db.get_manga_by_id(chapter.manga_id).await?;
-        let pages = match self.db.get_pages_remote_url_by_chapter_id(chapter.id).await {
-            Ok(pages) => pages,
-            Err(_) => {
-                let pages = self
-                    .ext
-                    .get(manga.source_id)?
-                    .get_pages(chapter.path.clone())
-                    .await?;
-                self.db.insert_pages(chapter.id, &pages).await?;
-                pages
-            }
-        };
+        let pages = self
+            .ext
+            .get(manga.source_id)?
+            .get_pages(chapter.path.clone())
+            .await?;
 
         let source = self.ext.get(manga.source_id)?.get_source_info();
 
@@ -157,10 +150,16 @@ impl DownloadWorker {
                         continue;
                     }
 
-                    let queue = if let Ok(Some(queue)) = self.db.get_single_download_queue().await {
-                        queue
-                    } else {
-                        continue;
+                    let queue = match self.db.get_single_download_queue().await {
+                        Ok(Some(queue)) => queue,
+                        Err(e) => {
+                            error!("error get single download queue: {}", e);
+                            continue;
+                        }
+                        Ok(None) => {
+                            info!("download done");
+                            continue;
+                        }
                     };
 
                     debug!("got {}", queue.url);
@@ -209,6 +208,33 @@ impl DownloadWorker {
 
                     let archive_path = manga_path.join(format!("{}.cbz", chapter_title));
 
+                    if let Ok(file) = std::fs::OpenOptions::new()
+                        .read(true)
+                        .write(true)
+                        .open(&archive_path)
+                    {
+                        if zip::ZipArchive::new(&file)
+                            .map(|mut zip| zip.by_name(&filename).is_ok())
+                            .unwrap_or_default()
+                        {
+                            debug!("file already downloaded, mark as compeleted then skip");
+                            if let Err(e) = self
+                                .db
+                                .mark_single_download_queue_as_completed(queue.id)
+                                .await
+                            {
+                                error!(
+                                    "error mark single download queue as completed, reason {}",
+                                    e
+                                );
+                            }
+                            if !self.paused().await {
+                                self.tx.send(Command::Download).unwrap();
+                            }
+                            continue;
+                        }
+                    }
+
                     let mut zip = if let Ok(file) = std::fs::OpenOptions::new()
                         .read(true)
                         .write(true)
@@ -217,7 +243,7 @@ impl DownloadWorker {
                         match zip::ZipWriter::new_append(file) {
                             Ok(zip) => zip,
                             Err(e) => {
-                                error!("failed to creaopente archive file, reason {}", e);
+                                error!("failed to open archive file, reason {}", e);
                                 continue;
                             }
                         }
@@ -258,24 +284,43 @@ impl DownloadWorker {
                         }
                     }
 
-                    if self
+                    if let Err(e) = self
                         .db
-                        .update_page_by_url(
-                            &queue.url,
-                            archive_path.join(&filename).display().to_string().as_str(),
-                        )
+                        .mark_single_download_queue_as_completed(queue.id)
                         .await
-                        .is_err()
                     {
+                        error!(
+                            "error mark single download queue as completed, reason {}",
+                            e
+                        );
                         continue;
                     }
+
                     if self
                         .db
-                        .delete_single_download_queue_by_id(queue.id)
+                        .get_single_chapter_download_status(queue.chapter_id)
                         .await
-                        .is_err()
+                        .unwrap_or_default()
                     {
-                        continue;
+                        if let Err(e) = self
+                            .db
+                            .update_chapter_downloaded_path(
+                                queue.chapter_id,
+                                Some(archive_path.display().to_string()),
+                            )
+                            .await
+                        {
+                            error!("error update chapter downloaded path, {}", e);
+                            continue;
+                        }
+                        if let Err(e) = self
+                            .db
+                            .delete_single_chapter_download_queue(queue.chapter_id)
+                            .await
+                        {
+                            error!("error delete single chapter download queue, {}", e);
+                            continue;
+                        }
                     }
 
                     if let Err(e) = zip.finish() {

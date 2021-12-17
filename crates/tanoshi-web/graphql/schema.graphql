@@ -29,7 +29,7 @@ type Chapter {
     # encrypt url
     encrypt: Boolean! = true
   ): [String!]!
-  downloaded: Boolean!
+  downloadedPath: String
 }
 
 type ChapterConnection {
@@ -107,6 +107,9 @@ type MutationRoot {
 
     # page
     page: Int!
+
+    # is_complete
+    isComplete: Boolean!
   ): Int!
   markChapterAsRead(
     # chapter ids

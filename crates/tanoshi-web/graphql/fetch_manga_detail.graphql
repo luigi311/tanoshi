@@ -31,7 +31,7 @@ query FetchMangaDetail($id: Int, $refresh: Boolean) {
         lastPage
         isComplete
       }
-      downloaded
+      downloadedPath
     }
   }
 }
