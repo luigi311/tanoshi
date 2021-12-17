@@ -11,7 +11,7 @@ exclude = [".github/*"]
 
 [dependencies]
 thiserror = "1"
-rquickjs = { version = "0.1.3", features = ["bindgen", "macro"] }
+rquickjs = { git = "https://github.com/faldez/rquickjs", rev = "4f0a6eadb21ccc461b2aec83467a73852c480357", features = ["bindgen", "macro"] }
 async-trait = "0.1.52"
 anyhow = "1"
 serde = { version = "1", features = ["derive"] }

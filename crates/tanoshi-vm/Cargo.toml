@@ -17,7 +17,7 @@ env_logger = "0.9.0"
 anyhow = "1"
 flume = "0.10.9"
 tokio = { version = "1", features = ["full"] }
-rquickjs = { version = "0.1.3", features = [
+rquickjs = { git = "https://github.com/faldez/rquickjs", rev = "4f0a6eadb21ccc461b2aec83467a73852c480357", features = [
     "full",
     "bindgen",
     "tokio",
