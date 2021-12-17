@@ -4960,6 +4960,7 @@ dependencies = [
  "chrono",
  "env_logger",
  "flume",
+ "fnv",
  "lazy_static",
  "log",
  "pathdiff",

@@ -1,6 +1,7 @@
 use crate::prelude::Source;
 use anyhow::anyhow;
 use anyhow::Result;
+use fnv::FnvHashMap;
 use pathdiff::diff_paths;
 use rquickjs::{
     BuiltinLoader, BuiltinResolver, FileResolver, ModuleLoader, NativeLoader, Runtime,
@@ -8,7 +9,6 @@ use rquickjs::{
 };
 use std::sync::MutexGuard;
 use std::{
-    collections::BTreeMap,
     env,
     path::{Path, PathBuf},
     sync::{Arc, Mutex},
@@ -18,7 +18,7 @@ use tanoshi_lib::{prelude::SourceInfo, traits::Extension};
 pub struct SourceManager {
     dir: PathBuf,
     rt: Runtime,
-    extensions: Arc<Mutex<BTreeMap<i64, Arc<dyn Extension>>>>,
+    extensions: Arc<Mutex<FnvHashMap<i64, Arc<dyn Extension>>>>,
 }
 
 impl SourceManager {
@@ -53,11 +53,11 @@ impl SourceManager {
         Self {
             dir: extension_dir.to_path_buf(),
             rt,
-            extensions: Arc::new(Mutex::new(BTreeMap::new())),
+            extensions: Arc::new(Mutex::new(FnvHashMap::default())),
         }
     }
 
-    fn lock_extensions(&self) -> Result<MutexGuard<BTreeMap<i64, Arc<dyn Extension>>>> {
+    fn lock_extensions(&self) -> Result<MutexGuard<FnvHashMap<i64, Arc<dyn Extension>>>> {
         self.extensions
             .lock()
             .map_err(|e| anyhow!("failed to lock: {}", e))
