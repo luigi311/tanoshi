@@ -111,8 +111,8 @@ impl App {
                     Route::CatalogueList => Some(
                         CatalogueList::render(CatalogueList::new()),
                     ),
-                    Route::Catalogue{id, keyword, sort_by, sort_order} => Some(
-                        Catalogue::render(Catalogue::new(id), keyword, sort_by, sort_order),
+                    Route::Catalogue{id, latest, query, filters} => Some(
+                        Catalogue::render(Catalogue::new(id), latest, query),
                     ),
                     Route::Manga(manga_id) => Some(
                         Manga::render(Manga::new(manga_id, 0, "".to_string())),

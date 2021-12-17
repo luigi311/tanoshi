@@ -2,40 +2,24 @@ extern crate log;
 
 mod data;
 mod generate;
-mod test;
+mod run;
 
-use clap::Parser;
-use tanoshi_vm::vm;
+use clap::{Parser, Subcommand};
+use tanoshi_vm::extension::SourceManager;
 
 #[derive(Parser)]
 #[clap(version = "0.1.1", author = "Muhammad Fadhlika <fadhlika@gmail.com>")]
 struct Opts {
-    #[clap(short, long, default_value = "target/wasm32-wasi/release")]
+    #[clap(short, long, default_value = "./")]
     path: String,
     #[clap(subcommand)]
-    subcmd: SubCommand,
+    subcmd: Command,
 }
 
-#[derive(Parser)]
-enum SubCommand {
-    #[cfg(not(feature = "disable-compiler"))]
-    Compile(CompileOption),
+#[derive(Subcommand)]
+enum Command {
     GenerateJson,
-    Test(TestOption),
-}
-
-#[derive(Parser)]
-struct TestOption {
-    #[clap(long)]
-    selector: Option<String>,
-}
-
-#[derive(Parser)]
-struct CompileOption {
-    #[clap(long)]
-    target: String,
-    #[clap(long)]
-    remove_wasm: bool,
+    Run { name: String },
 }
 
 #[tokio::main]
@@ -44,33 +28,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let opts: Opts = Opts::parse();
 
-    let (_, extension_bus) = vm::start(&opts.path);
+    let manager = SourceManager::new(&opts.path);
 
-    #[cfg(not(feature = "disable-compiler"))]
-    if !matches!(opts.subcmd, SubCommand::Compile(_)) {
-        extension_bus.load()?;
-    }
-
-    #[cfg(feature = "disable-compiler")]
-    vm::load(&opts.path, extension_tx.clone())?;
+    // let mut read_dir = tokio::fs::read_dir(&opts.path).await?;
+    // while let Some(entry) = read_dir.next_entry().await? {
+    //     let name = format!("{:?}", entry.file_name());
+    //     manager.load(&name[1..name.len() - 5])?;
+    // }
 
     match opts.subcmd {
-        #[cfg(not(feature = "disable-compiler"))]
-        SubCommand::Compile(compile_opts) => {
-            // let triples = [
-            //     "x86_64-apple-darwin",
-            //     "x86_64-pc-windows-msvc",
-            //     "x86_64-unknown-linux-gnu",
-            //     "aarch64-unknown-linux-gnu",
-            // ];
-            vm::compile_with_target(&opts.path, &compile_opts.target, compile_opts.remove_wasm)?;
-        }
-        SubCommand::GenerateJson => {
-            generate::generate_json(extension_bus).await?;
-        }
-        SubCommand::Test(config) => {
-            test::test(extension_bus, config.selector).await?;
-        }
+        Command::GenerateJson => todo!(),
+        Command::Run { name } => run::run(manager, &name).await?,
     }
 
     Ok(())

@@ -1,6 +1,6 @@
 #[macro_use]
 extern crate log;
 
-pub mod bus;
-pub mod vm;
+mod api;
+pub mod extension;
 pub mod prelude;

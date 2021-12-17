@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use crate::{
     catalogue::Manga,
     db::{model, MangaDatabase},
@@ -17,7 +19,7 @@ pub use categories::{Category, CategoryMutationRoot, CategoryRoot};
 mod recent;
 pub use recent::{RecentChapter, RecentUpdate};
 
-use tanoshi_vm::prelude::ExtensionBus;
+use tanoshi_vm::extension::SourceManager;
 
 #[derive(Default)]
 pub struct LibraryRoot;
@@ -37,11 +39,12 @@ impl LibraryRoot {
         let manga = db.get_library_by_category_id(user.sub, category_id).await?;
 
         if refresh {
-            let extensions = ctx.data::<ExtensionBus>()?;
+            let extensions = ctx.data::<Arc<SourceManager>>()?;
             for favorite_manga in manga.iter() {
                 let mut m: model::Manga = {
                     extensions
-                        .get_manga_info_async(favorite_manga.source_id, favorite_manga.path.clone())
+                        .get(favorite_manga.source_id)?
+                        .get_manga_detail(favorite_manga.path.clone())
                         .await?
                         .into()
                 };

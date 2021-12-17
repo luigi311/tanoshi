@@ -27,7 +27,7 @@ use crate::{
 };
 use clap::Parser;
 use futures::future::OptionFuture;
-use tanoshi_vm::vm;
+use tanoshi_vm::extension::SourceManager;
 
 use std::sync::Arc;
 use teloxide::prelude::RequesterExt;
@@ -61,16 +61,15 @@ async fn main() -> Result<(), anyhow::Error> {
     let mangadb = db::MangaDatabase::new(pool.clone());
     let userdb = db::UserDatabase::new(pool.clone());
 
-    let (_, extension_bus) = vm::start(&config.plugin_path);
-    extension_bus.load()?;
+    let extension_manager = Arc::new(SourceManager::new(&config.plugin_path));
 
-    extension_bus
-        .insert_async(
-            local::ID,
-            Arc::new(local::Local::new(config.local_path.clone())),
-        )
-        .await
-        .map_err(|e| anyhow::anyhow!("{}", e))?;
+    let mut read_dir = tokio::fs::read_dir(&config.plugin_path).await?;
+    while let Some(entry) = read_dir.next_entry().await? {
+        let name = format!("{:?}", entry.file_name());
+        extension_manager.load(&name[1..name.len() - 5])?;
+    }
+
+    extension_manager.insert(Arc::new(local::Local::new(config.local_path.clone())))?;
 
     let mut notifier_builder = notifier::Builder::new(userdb.clone());
 
@@ -93,19 +92,19 @@ async fn main() -> Result<(), anyhow::Error> {
     let (download_tx, download_worker_handle) = worker::downloads::start(
         &config.download_path,
         mangadb.clone(),
-        extension_bus.clone(),
+        extension_manager.clone(),
         notifier.clone(),
     );
 
     let update_worker_handle = worker::updates::start(
         config.update_interval,
         mangadb.clone(),
-        extension_bus.clone(),
+        extension_manager.clone(),
         download_tx.clone(),
         notifier.clone(),
     );
 
-    let schema = schema::build(userdb, mangadb, extension_bus, download_tx, notifier);
+    let schema = schema::build(userdb, mangadb, extension_manager, download_tx, notifier);
 
     let app = server::init_app(&config, schema);
     let server_fut = server::serve("0.0.0.0", config.port, app);

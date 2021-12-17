@@ -4,7 +4,6 @@ query FetchAllSources{
     name
     version
     icon
-    needLogin
     hasUpdate
   }
 
@@ -13,6 +12,5 @@ query FetchAllSources{
     name
     version
     icon
-    needLogin
   }
 }

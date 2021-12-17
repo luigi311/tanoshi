@@ -1,16 +1,10 @@
 use std::rc::Rc;
 
 use crate::utils::{history, window};
-use crate::{
-    common::snackbar,
-    query::{
-        self,
-        browse_source::{SortByParam, SortOrderParam},
-    },
-    utils::local_storage,
-};
+use crate::{common::snackbar, utils::local_storage};
 use crate::{
     common::{Cover, Spinner},
+    query,
     utils::AsyncLoader,
 };
 use dominator::{clone, events, html, routing, svg, with_node, Dom, EventOptions};
@@ -44,9 +38,8 @@ pub struct Catalogue {
     source_id: i64,
     source_name: Mutable<String>,
     keyword: Mutable<Option<String>>,
+    latest: Mutable<bool>,
     page: Mutable<i64>,
-    sort_by: Mutable<SortByParam>,
-    sort_order: Mutable<SortOrderParam>,
     is_search: Mutable<bool>,
     cover_list: MutableVec<Cover>,
     #[serde(skip)]
@@ -61,9 +54,8 @@ impl Default for Catalogue {
             source_id: 0,
             source_name: Mutable::new("Catalogue".to_string()),
             keyword: Mutable::new(None),
+            latest: Mutable::new(false),
             page: Mutable::new(1),
-            sort_by: Mutable::new(SortByParam::VIEWS),
-            sort_order: Mutable::new(SortOrderParam::DESC),
             is_search: Mutable::new(false),
             cover_list: MutableVec::new(),
             spinner: Spinner::new(),
@@ -107,18 +99,50 @@ impl Catalogue {
         catalogue.replace_state_with_url();
         catalogue.spinner.set_active(true);
         catalogue.loader.load(clone!(catalogue => async move {
-            match query::fetch_manga_from_source(catalogue.source_id, catalogue.page.get(), catalogue.keyword.get_cloned(), catalogue.sort_by.get_cloned(), catalogue.sort_order.get_cloned()).await {
-                Ok(covers) => {
-                    let mut cover_list = catalogue.cover_list.lock_mut();
-                    if catalogue.page.get() == 1 {
-                        cover_list.replace_cloned(covers);
-                    } else if catalogue.page.get() > 0 {
-                        cover_list.extend(covers);
+            if let Some(keyword) = catalogue.keyword.get_cloned() {
+                match query::fetch_manga_from_source(catalogue.source_id, catalogue.page.get(), Some(keyword), None).await {
+                    Ok(covers) => {
+                        let mut cover_list = catalogue.cover_list.lock_mut();
+                        if catalogue.page.get() == 1 {
+                            cover_list.replace_cloned(covers);
+                        } else if catalogue.page.get() > 0 {
+                            cover_list.extend(covers);
+                        }
+    
                     }
-
+                    Err(e) => {
+                        snackbar::show(format!("Fetch manga from source failed: {}", e))
+                    }
                 }
-                Err(e) => {
-                    snackbar::show(format!("Fetch manga from source failed: {}", e))
+            } else if  catalogue.latest.get() {
+                match query::get_latest_manga(catalogue.source_id, catalogue.page.get()).await {
+                    Ok(covers) => {
+                        let mut cover_list = catalogue.cover_list.lock_mut();
+                        if catalogue.page.get() == 1 {
+                            cover_list.replace_cloned(covers);
+                        } else if catalogue.page.get() > 0 {
+                            cover_list.extend(covers);
+                        }
+    
+                    }
+                    Err(e) => {
+                        snackbar::show(format!("Fetch manga from source failed: {}", e))
+                    }
+                }
+            } else {
+                match query::get_popular_manga(catalogue.source_id, catalogue.page.get()).await {
+                    Ok(covers) => {
+                        let mut cover_list = catalogue.cover_list.lock_mut();
+                        if catalogue.page.get() == 1 {
+                            cover_list.replace_cloned(covers);
+                        } else if catalogue.page.get() > 0 {
+                            cover_list.extend(covers);
+                        }
+    
+                    }
+                    Err(e) => {
+                        snackbar::show(format!("Fetch manga from source failed: {}", e))
+                    }
                 }
             }
 
@@ -129,19 +153,38 @@ impl Catalogue {
     }
 
     fn replace_state_with_url(&self) {
-        let sort_by = serde_plain::to_string(&self.sort_by.lock_ref().clone()).unwrap();
-        let sort_order = serde_plain::to_string(&self.sort_order.lock_ref().clone()).unwrap();
-        let url = if let Some(keyword) = self.keyword.lock_ref().clone() {
+        let url = if  self.latest.get() {
             format!(
-                "/catalogue/{}?keyword={}&sort_by={}&sort_order={}",
-                self.source_id, keyword, sort_by, sort_order
+                "/catalogue/{}/latest",
+                self.source_id,
             )
         } else {
-            format!(
-                "/catalogue/{}?sort_by={}&sort_order={}",
-                self.source_id, sort_by, sort_order
-            )
+            let mut param = vec![];
+            
+            if let Some(query) =  self.keyword.get_cloned() {
+                param.push(format!("query={}", query));
+            };
+
+            // let filters = if let Ok(filters) = serde_json::to_string(&filters) {
+            //     format!("filters={}", filters)
+            // } else {
+            //     "".to_string()
+            // };
+    
+            if param.is_empty() {
+                format!(
+                    "/catalogue/{}",
+                    self.source_id,
+                )
+            } else {
+                format!(
+                    "/catalogue/{}?{}",
+                    self.source_id,
+                    param.join("&")
+                )
+            }
         };
+        
 
         if let Err(e) = history().replace_state_with_url(&JsValue::null(), "", Some(&url)) {
             let message = if let Some(msg) = e.as_string() {
@@ -311,32 +354,24 @@ impl Catalogue {
         })
     }
 
-    pub fn render(
-        self: Rc<Self>,
-        keyword: Option<String>,
-        sort_by: SortByParam,
-        sort_order: SortOrderParam,
-    ) -> Dom {
+    pub fn render(self: Rc<Self>, latest: bool, query: Option<String>) -> Dom {
         Self::fetch_source_detail(self.clone());
         if self.cover_list.lock_ref().is_empty() {
             Self::fetch_mangas(self.clone());
         }
 
-        let s = map_ref! {
-            let keyword = self.keyword.signal_cloned(),
-            let sort_by = self.sort_by.signal_cloned(),
-            let sort_order = self.sort_order.signal_cloned() =>
+        // let s = map_ref! {
+        //     let keyword = self.keyword.signal_cloned(),
 
-            (keyword.clone(), sort_by.clone(), sort_order.clone())
-        };
+        //     (keyword.clone())
+        // };
 
-        self.is_search.set_neq(keyword.is_some());
-        self.keyword.set_neq(keyword);
-        self.sort_by.set_neq(sort_by);
-        self.sort_order.set_neq(sort_order);
+        self.is_search.set_neq(query.is_some());
+        self.keyword.set_neq(query);
+        self.latest.set_neq(latest);
 
         html!("div", {
-            .future(s.for_each({
+            .future(self.keyword.signal_cloned().for_each({
                 let catalogue = self.clone();
                 move |_| {
                     catalogue.replace_state_with_url();

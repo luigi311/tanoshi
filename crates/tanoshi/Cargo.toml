@@ -15,9 +15,7 @@ desktop = ["tauri"]
 
 [dependencies]
 tanoshi-lib = { path = "../tanoshi-lib" }
-tanoshi-vm = { path = "../tanoshi-vm", default-features = false, features = [
-    "async",
-] }
+tanoshi-vm = { path = "../tanoshi-vm" }
 tokio = { version = "1", features = ["full"] }
 tokio-stream = "^0.1.5"
 serde = { version = "1.0", features = ["derive"] }
@@ -43,7 +41,7 @@ rust-embed = { version = "6.0", features = [
     "interpolate-folder-path",
 ], optional = true }
 mime_guess = "2"
-clap = "=3.0.0-beta.5"
+clap = { version = "3.0.0-rc.5", features = ["derive"] }
 bytes = "1"
 dirs = "4"
 base64 = "0.13"

@@ -5,7 +5,7 @@ use wasm_bindgen::prelude::*;
 type NaiveDateTime = String;
 
 use crate::{
-    common::Cover,
+    common::{Cover, Input},
     utils::{graphql_host, local_storage},
 };
 
@@ -43,6 +43,8 @@ where
     }
 }
 
+pub type InputList = Vec<Input>;
+
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "graphql/schema.graphql",
@@ -54,21 +56,87 @@ pub struct BrowseSource;
 pub async fn fetch_manga_from_source(
     source_id: i64,
     page: i64,
-    keyword: Option<String>,
-    sort_by: browse_source::SortByParam,
-    sort_order: browse_source::SortOrderParam,
+    query: Option<String>,
+    filters: Option<InputList>,
 ) -> Result<Vec<Cover>, Box<dyn Error>> {
     let var = browse_source::Variables {
         source_id: Some(source_id),
-        keyword,
         page: Some(page),
-        sort_by: Some(sort_by),
-        sort_order: Some(sort_order),
+        query: query,
+        filters: filters,
     };
     let data: browse_source::ResponseData = post_graphql::<BrowseSource>(var).await?;
 
     let covers = data
         .browse_source
+        .iter()
+        .map(|item| {
+            Cover::new(
+                item.id,
+                source_id,
+                item.path.clone(),
+                item.title.clone(),
+                item.cover_url.clone(),
+                item.is_favorite,
+                None,
+                0,
+            )
+        })
+        .collect();
+    Ok(covers)
+}
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/schema.graphql",
+    query_path = "graphql/get_latest_manga.graphql",
+    response_derives = "Debug, Clone, PartialEq, Eq"
+)]
+pub struct GetLatestManga;
+
+pub async fn get_latest_manga(source_id: i64, page: i64) -> Result<Vec<Cover>, Box<dyn Error>> {
+    let var = get_latest_manga::Variables {
+        source_id,
+        page,
+    };
+    let data: get_latest_manga::ResponseData = post_graphql::<GetLatestManga>(var).await?;
+
+    let covers = data
+        .get_latest_manga
+        .iter()
+        .map(|item| {
+            Cover::new(
+                item.id,
+                source_id,
+                item.path.clone(),
+                item.title.clone(),
+                item.cover_url.clone(),
+                item.is_favorite,
+                None,
+                0,
+            )
+        })
+        .collect();
+    Ok(covers)
+}
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/schema.graphql",
+    query_path = "graphql/get_popular_manga.graphql",
+    response_derives = "Debug, Clone, PartialEq, Eq"
+)]
+pub struct GetPopularManga;
+
+pub async fn get_popular_manga(source_id: i64, page: i64) -> Result<Vec<Cover>, Box<dyn Error>> {
+    let var = get_popular_manga::Variables {
+        source_id,
+        page,
+    };
+    let data: get_popular_manga::ResponseData = post_graphql::<GetPopularManga>(var).await?;
+
+    let covers = data
+        .get_popular_manga
         .iter()
         .map(|item| {
             Cover::new(
@@ -228,10 +296,10 @@ pub async fn delete_from_library(manga_id: i64) -> Result<(), Box<dyn Error>> {
 )]
 pub struct FetchCategoryDetail;
 
-pub async fn fetch_category_detail(id: i64) -> Result<fetch_category_detail::FetchCategoryDetailGetCategory, Box<dyn Error>> {
-    let var = fetch_category_detail::Variables {
-        id: Some(id)
-    };
+pub async fn fetch_category_detail(
+    id: i64,
+) -> Result<fetch_category_detail::FetchCategoryDetailGetCategory, Box<dyn Error>> {
+    let var = fetch_category_detail::Variables { id: Some(id) };
     let data = post_graphql::<FetchCategoryDetail>(var).await?;
 
     Ok(data.get_category)
@@ -245,7 +313,8 @@ pub async fn fetch_category_detail(id: i64) -> Result<fetch_category_detail::Fet
 )]
 pub struct FetchCategories;
 
-pub async fn fetch_categories() -> Result<Vec<fetch_categories::FetchCategoriesGetCategories>, Box<dyn Error>> {
+pub async fn fetch_categories(
+) -> Result<Vec<fetch_categories::FetchCategoriesGetCategories>, Box<dyn Error>> {
     let var = fetch_categories::Variables {};
     let data = post_graphql::<FetchCategories>(var).await?;
 

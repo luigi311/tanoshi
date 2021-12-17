@@ -1,9 +1,9 @@
-use std::{collections::HashMap, str::FromStr};
+use std::{collections::HashMap, str::FromStr, sync::Arc};
 
 use serde::Deserialize;
-use tanoshi_lib::prelude::Version;
 
-use tanoshi_vm::prelude::ExtensionBus;
+use tanoshi_lib::prelude::Version;
+use tanoshi_vm::extension::SourceManager;
 
 use tokio::{
     task::JoinHandle,
@@ -23,7 +23,7 @@ struct UpdatesWorker {
     period: u64,
     client: reqwest::Client,
     mangadb: MangaDatabase,
-    extensions: ExtensionBus,
+    extensions: Arc<SourceManager>,
     auto_download_chapters: bool,
     download_tx: DownloadSender,
     notifier: Notifier,
@@ -33,7 +33,7 @@ impl UpdatesWorker {
     fn new(
         period: u64,
         mangadb: MangaDatabase,
-        extensions: ExtensionBus,
+        extensions: Arc<SourceManager>,
         download_tx: DownloadSender,
         notifier: Notifier,
     ) -> Self {
@@ -72,12 +72,13 @@ impl UpdatesWorker {
                 .map(|ch| ch.uploaded);
 
             debug!("Checking updates: {}", item.manga.title);
+            let ext = if let Ok(ext) = self.extensions.get(item.manga.source_id) {
+                ext
+            } else {
+                continue;
+            };
 
-            let chapters = match self
-                .extensions
-                .get_chapters_async(item.manga.source_id, item.manga.path.clone())
-                .await
-            {
+            let chapters = match ext.get_chapters(item.manga.path.clone()).await {
                 Ok(chapters) => {
                     let chapters: Vec<Chapter> = chapters
                         .into_iter()
@@ -173,17 +174,13 @@ impl UpdatesWorker {
             .map(|source| (source.id, source))
             .collect::<HashMap<i64, SourceIndex>>();
 
-        let installed_sources = self
-            .extensions
-            .list_async()
-            .await
-            .map_err(|e| anyhow::anyhow!("{}", e))?;
+        let installed_sources = self.extensions.list()?;
 
         for source in installed_sources {
             if available_sources_map
                 .get(&source.id)
                 .and_then(|index| Version::from_str(&index.version).ok())
-                .map(|v| v > source.version)
+                .map(|v| v > Version::from_str(&source.version).unwrap_or_default())
                 .unwrap_or(false)
             {
                 let message = format!("{} extension update available", source.name);
@@ -287,7 +284,7 @@ impl UpdatesWorker {
 pub fn start(
     period: u64,
     mangadb: MangaDatabase,
-    extensions: ExtensionBus,
+    extensions: Arc<SourceManager>,
     download_tx: DownloadSender,
     notifier: Notifier,
 ) -> JoinHandle<()> {

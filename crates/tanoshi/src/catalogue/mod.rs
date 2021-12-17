@@ -1,4 +1,6 @@
 mod source;
+use std::sync::Arc;
+
 pub use source::{Source, SourceMutationRoot, SourceRoot};
 
 pub mod manga;
@@ -6,69 +8,76 @@ pub use manga::Manga;
 
 pub mod chapter;
 pub use chapter::Chapter;
-use tanoshi_vm::prelude::ExtensionBus;
+use tanoshi_vm::extension::SourceManager;
 
 use crate::db::MangaDatabase;
 
-use async_graphql::{Context, Enum, Object, Result};
-use tanoshi_lib::prelude::Param;
+use async_graphql::{scalar, Context, Object, Result};
+use tanoshi_lib::models::Input;
 
-/// A type represent sort parameter for query manga from source, normalized across sources
-#[derive(Enum, Copy, Clone, Eq, PartialEq)]
-#[graphql(remote = "tanoshi_lib::data::SortByParam")]
-pub enum SortByParam {
-    LastUpdated,
-    Title,
-    Comment,
-    Views,
-}
+use serde::{Deserialize, Serialize};
 
-/// A type represent order parameter for query manga from source, normalized across sources
-#[derive(Enum, Copy, Clone, Eq, PartialEq)]
-#[graphql(remote = "tanoshi_lib::data::SortOrderParam")]
-pub enum SortOrderParam {
-    Asc,
-    Desc,
-}
+#[derive(Deserialize, Serialize)]
+pub struct InputList(Vec<Input>);
+
+scalar!(InputList);
 
 #[derive(Default)]
 pub struct CatalogueRoot;
 
 #[Object]
 impl CatalogueRoot {
-    #[allow(clippy::too_many_arguments)]
+    async fn get_popular_manga(
+        &self,
+        ctx: &Context<'_>,
+        #[graphql(desc = "source id")] source_id: i64,
+        #[graphql(desc = "page")] page: i64,
+    ) -> Result<Vec<Manga>> {
+        let fetched_manga = ctx
+            .data::<Arc<SourceManager>>()?
+            .get(source_id)?
+            .get_popular_manga(page)
+            .await?
+            .into_iter()
+            .map(Manga::from)
+            .collect();
+
+        Ok(fetched_manga)
+    }
+    async fn get_latest_manga(
+        &self,
+        ctx: &Context<'_>,
+        #[graphql(desc = "source id")] source_id: i64,
+        #[graphql(desc = "page")] page: i64,
+    ) -> Result<Vec<Manga>> {
+        let fetched_manga = ctx
+            .data::<Arc<SourceManager>>()?
+            .get(source_id)?
+            .get_latest_manga(page)
+            .await?
+            .into_iter()
+            .map(Manga::from)
+            .collect();
+
+        Ok(fetched_manga)
+    }
+
     async fn browse_source(
         &self,
         ctx: &Context<'_>,
         #[graphql(desc = "source id")] source_id: i64,
-        #[graphql(desc = "keyword of the manga")] keyword: Option<String>,
-        #[graphql(desc = "genres of the manga")] genres: Option<Vec<String>>,
-        #[graphql(desc = "page")] page: Option<i32>,
-        #[graphql(desc = "sort by")] sort_by: Option<SortByParam>,
-        #[graphql(desc = "sort order")] sort_order: Option<SortOrderParam>,
+        #[graphql(desc = "page")] page: i64,
+        #[graphql(desc = "query")] query: Option<String>,
+        #[graphql(desc = "filters")] filters: Option<InputList>,
     ) -> Result<Vec<Manga>> {
-        let sort_by = sort_by.map(|s| s.into());
-        let sort_order = sort_order.map(|s| s.into());
-
-        let extensions = ctx.data::<ExtensionBus>()?;
-        let fetched_manga = {
-            extensions
-                .get_manga_list_async(
-                    source_id,
-                    Param {
-                        keyword,
-                        genres,
-                        page,
-                        sort_by,
-                        sort_order,
-                        ..Default::default()
-                    },
-                )
-                .await?
-                .iter()
-                .map(Manga::from)
-                .collect()
-        };
+        let fetched_manga = ctx
+            .data::<Arc<SourceManager>>()?
+            .get(source_id)?
+            .search_manga(page, query, filters.map(|filters| filters.0))
+            .await?
+            .into_iter()
+            .map(Manga::from)
+            .collect();
 
         Ok(fetched_manga)
     }
@@ -84,13 +93,12 @@ impl CatalogueRoot {
         let manga = if let Ok(manga) = db.get_manga_by_source_path(source_id, &path).await {
             manga
         } else {
-            let mut m: crate::db::model::Manga = {
-                let extensions = ctx.data::<ExtensionBus>()?;
-                extensions
-                    .get_manga_info_async(source_id, path)
-                    .await?
-                    .into()
-            };
+            let mut m: crate::db::model::Manga = ctx
+                .data::<Arc<SourceManager>>()?
+                .get(source_id)?
+                .get_manga_detail(path)
+                .await?
+                .into();
 
             db.insert_manga(&mut m).await?;
             m
@@ -108,13 +116,13 @@ impl CatalogueRoot {
         let db = ctx.data::<MangaDatabase>()?;
         let manga = db.get_manga_by_id(id).await?;
         if refresh {
-            let mut m: crate::db::model::Manga = {
-                let extensions = ctx.data::<ExtensionBus>()?;
-                extensions
-                    .get_manga_info_async(manga.source_id, manga.path)
-                    .await?
-                    .into()
-            };
+            let mut m: crate::db::model::Manga = ctx
+                .data::<Arc<SourceManager>>()?
+                .get(manga.source_id)?
+                .get_manga_detail(manga.path.clone())
+                .await?
+                .into();
+
             m.id = manga.id;
 
             db.insert_manga(&mut m).await?;

@@ -1,5 +1,5 @@
-query BrowseSource($sourceId: Int, $keyword: String, $page:Int, $sortBy: SortByParam, $sortOrder: SortOrderParam) {
-  browseSource(sourceId:$sourceId, keyword: $keyword, page:$page, sortBy: $sortBy, sortOrder: $sortOrder) {
+query BrowseSource($sourceId: Int, $page:Int, $query: String, $filters: InputList) {
+  browseSource(sourceId:$sourceId, page:$page, query: $query, filters: $filters) {
     id
     path
     title

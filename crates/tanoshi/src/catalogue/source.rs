@@ -1,14 +1,12 @@
-use std::{
-    collections::{BTreeMap, HashMap},
-    str::FromStr,
-};
+use std::{collections::HashMap, str::FromStr, sync::Arc};
 
 use crate::{guard::AdminGuard, user::Claims};
-use async_graphql::{Context, Json, Object, Result, SimpleObject};
-use serde::{Deserialize, Serialize};
-use tanoshi_lib::prelude::{FilterField, Version};
-use tanoshi_vm::prelude::ExtensionBus;
+use async_graphql::{Context, Object, Result};
+use serde::Deserialize;
+use tanoshi_lib::prelude::Version;
+use tanoshi_vm::extension::SourceManager;
 
+use super::InputList;
 #[derive(Debug, Clone, Deserialize)]
 pub struct SourceIndex {
     pub id: i64,
@@ -26,23 +24,7 @@ impl From<SourceIndex> for Source {
             url: "".to_string(),
             version: index.version,
             icon: index.icon,
-            need_login: false,
             has_update: false,
-        }
-    }
-}
-
-#[derive(Debug, Serialize, Deserialize, SimpleObject)]
-pub struct Filters {
-    default: String,
-    fields: Json<BTreeMap<String, FilterField>>,
-}
-
-impl From<tanoshi_lib::data::Filters> for Filters {
-    fn from(v: tanoshi_lib::data::Filters) -> Self {
-        Self {
-            default: v.default,
-            fields: Json(v.fields),
         }
     }
 }
@@ -54,19 +36,17 @@ pub struct Source {
     pub url: String,
     pub version: String,
     pub icon: String,
-    pub need_login: bool,
     pub has_update: bool,
 }
 
-impl From<tanoshi_lib::data::Source> for Source {
-    fn from(s: tanoshi_lib::data::Source) -> Self {
+impl From<tanoshi_lib::models::SourceInfo> for Source {
+    fn from(s: tanoshi_lib::models::SourceInfo) -> Self {
         Self {
             id: s.id,
             name: s.name,
             url: s.url,
             version: s.version.to_string(),
             icon: s.icon,
-            need_login: s.need_login,
             has_update: false,
         }
     }
@@ -94,21 +74,17 @@ impl Source {
         self.icon.clone()
     }
 
-    async fn need_login(&self) -> bool {
-        self.need_login
-    }
-
     async fn has_update(&self) -> bool {
         self.has_update
     }
 
-    async fn filters(&self, ctx: &Context<'_>) -> Result<Option<Filters>> {
-        let extensions = ctx.data::<ExtensionBus>()?;
-        if let Some(res) = extensions.filters_async(self.id).await? {
-            Ok(Some(res.into()))
-        } else {
-            Ok(None)
-        }
+    async fn filters(&self, ctx: &Context<'_>) -> Result<InputList> {
+        let filters = ctx
+            .data::<Arc<SourceManager>>()?
+            .get(self.id)?
+            .get_filter_list()?;
+
+        Ok(InputList(filters))
     }
 }
 
@@ -123,7 +99,7 @@ impl SourceRoot {
         check_update: bool,
     ) -> Result<Vec<Source>> {
         let _ = ctx.data::<Claims>()?;
-        let installed_sources = ctx.data::<ExtensionBus>()?.list_async().await?;
+        let installed_sources = ctx.data::<Arc<SourceManager>>()?.list()?;
         let mut sources: Vec<Source> = vec![];
         if check_update {
             let available_sources_map = {
@@ -156,11 +132,11 @@ impl SourceRoot {
         let _ = ctx.data::<Claims>()?;
         let url = "https://faldez.github.io/tanoshi-extensions".to_string();
         let source_indexes: Vec<SourceIndex> = reqwest::get(&url).await?.json().await?;
-        let extensions = ctx.data::<ExtensionBus>()?;
+        let extensions = ctx.data::<Arc<SourceManager>>()?;
 
         let mut sources: Vec<Source> = vec![];
         for index in source_indexes {
-            if !extensions.exist_async(index.id).await? {
+            if !extensions.get(index.id).is_ok() {
                 sources.push(index.into());
             }
         }
@@ -169,8 +145,11 @@ impl SourceRoot {
 
     async fn source(&self, ctx: &Context<'_>, source_id: i64) -> Result<Source> {
         let _ = ctx.data::<Claims>()?;
-        let exts = ctx.data::<ExtensionBus>()?;
-        Ok(exts.detail_async(source_id).await?.into())
+        let source = ctx
+            .data::<Arc<SourceManager>>()?
+            .get(source_id)?
+            .get_source_info();
+        Ok(source.into())
     }
 }
 
@@ -181,8 +160,7 @@ pub struct SourceMutationRoot;
 impl SourceMutationRoot {
     #[graphql(guard = "AdminGuard::new()")]
     async fn install_source(&self, ctx: &Context<'_>, source_id: i64) -> Result<i64> {
-        let extensions = ctx.data::<ExtensionBus>()?;
-        if extensions.exist_async(source_id).await? {
+        if ctx.data::<Arc<SourceManager>>()?.get(source_id).is_ok() {
             return Err("source installed, use updateSource to update".into());
         }
 
@@ -201,24 +179,24 @@ impl SourceMutationRoot {
         );
 
         let raw = reqwest::get(&url).await?.bytes().await?;
-        extensions.install_async(source.name, &raw).await?;
+        ctx.data::<Arc<SourceManager>>()?
+            .install(&source.name, &raw)
+            .await?;
 
         Ok(source.id)
     }
 
     #[graphql(guard = "AdminGuard::new()")]
     async fn uninstall_source(&self, ctx: &Context<'_>, source_id: i64) -> Result<i64> {
-        let extensions = ctx.data::<ExtensionBus>()?;
-
-        extensions.unload_async(source_id).await?;
+        ctx.data::<Arc<SourceManager>>()?.remove(source_id).await?;
 
         Ok(source_id)
     }
 
     #[graphql(guard = "AdminGuard::new()")]
     async fn update_source(&self, ctx: &Context<'_>, source_id: i64) -> Result<i64> {
-        let extensions = ctx.data::<ExtensionBus>()?;
-        extensions.exist_async(source_id).await?;
+        let extensions = ctx.data::<Arc<SourceManager>>()?;
+        let installed_source = extensions.get(source_id)?;
 
         let url = "https://faldez.github.io/tanoshi-extensions".to_string();
 
@@ -229,7 +207,8 @@ impl SourceMutationRoot {
             .ok_or("source not found")?
             .clone();
 
-        if extensions.detail_async(source_id).await?.version == Version::from_str(&source.version)?
+        if Version::from_str(&installed_source.get_source_info().version)?
+            == Version::from_str(&source.version)?
         {
             return Err("No new version".into());
         }
@@ -242,8 +221,8 @@ impl SourceMutationRoot {
 
         let raw = reqwest::get(&url).await?.bytes().await?;
 
-        extensions.unload_async(source_id).await?;
-        extensions.install_async(source.name, &raw).await?;
+        extensions.remove(source_id).await?;
+        extensions.install(&source.name, &raw).await?;
 
         Ok(source_id)
     }

@@ -1,0 +1,57 @@
+use tanoshi_lib::models::Input;
+use tanoshi_vm::extension::manager::SourceManager;
+
+#[tokio::main]
+async fn main() {
+    env_logger::init();
+
+    let source_name = "MangaLife";
+
+    let manager = SourceManager::new("C:\\Users\\fadhlika\\Repos\\tanoshi-extensions\\dist");
+    manager.load(source_name).unwrap();
+
+    let extension = manager.get(4).unwrap();
+    let prefs = extension.get_preferences().unwrap();
+    println!("{:?}", prefs);
+
+    let mut filters = extension.get_filter_list().unwrap();
+    println!("{:?}", filters);
+
+    for filter in filters.iter_mut() {
+        match filter {
+            Input::Text { state, .. } => *state = Some("One Piece".to_string()),
+            Input::Group { state, .. } => *state = Some(vec!["Romance".into()]),
+            _ => todo!(),
+        }
+    }
+
+    let manga = extension
+        .search_manga(1, None, Some(filters))
+        .await
+        .unwrap();
+
+    println!("{:?}", manga);
+
+    let manga = extension.get_latest_manga(1).await.unwrap();
+
+    println!("{:?}", manga);
+
+    let manga = extension.get_popular_manga(1).await.unwrap();
+
+    println!("{:?}", manga);
+
+    let manga = extension
+        .get_manga_detail(manga[2].path.clone())
+        .await
+        .unwrap();
+
+    println!("{:?}", manga);
+
+    let chapters = extension.get_chapters(manga.path.clone()).await.unwrap();
+
+    println!("{:?}", chapters);
+
+    let pages = extension.get_pages(chapters[0].path.clone()).await.unwrap();
+
+    println!("{:?}", pages);
+}
