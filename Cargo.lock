@@ -4919,7 +4919,7 @@ dependencies = [
  "clap 3.0.0-rc.5",
  "env_logger",
  "log",
- "ron",
+ "rquickjs",
  "serde",
  "serde_json",
  "serde_yaml",

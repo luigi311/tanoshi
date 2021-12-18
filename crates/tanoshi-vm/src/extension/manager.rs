@@ -1,15 +1,11 @@
 use crate::prelude::Source;
+use crate::vm::create_runtime;
 use anyhow::anyhow;
 use anyhow::Result;
 use fnv::FnvHashMap;
-use pathdiff::diff_paths;
-use rquickjs::{
-    BuiltinLoader, BuiltinResolver, FileResolver, ModuleLoader, NativeLoader, Runtime,
-    ScriptLoader, Tokio,
-};
+use rquickjs::Runtime;
 use std::sync::MutexGuard;
 use std::{
-    env,
     path::{Path, PathBuf},
     sync::{Arc, Mutex},
 };
@@ -23,35 +19,10 @@ pub struct SourceManager {
 
 impl SourceManager {
     pub fn new<P: AsRef<Path>>(extension_dir: P) -> Self {
-        let extension_dir =
-            if let Some(relative_path) = diff_paths(&extension_dir, env::current_dir().unwrap()) {
-                relative_path
-            } else {
-                PathBuf::new().join(extension_dir)
-            };
-
-        let rt = Runtime::new().unwrap();
-
-        let resolver = (
-            BuiltinResolver::default(),
-            FileResolver::default()
-                .with_path(extension_dir.to_str().unwrap())
-                .with_pattern("{}.mjs")
-                .with_native(),
-        );
-
-        let loader = (
-            BuiltinLoader::default(),
-            ModuleLoader::default(),
-            ScriptLoader::default().with_extension("mjs"),
-            NativeLoader::default(),
-        );
-
-        rt.set_loader(resolver, loader);
-        rt.spawn_executor(Tokio);
+        let rt = create_runtime(&extension_dir).unwrap();
 
         Self {
-            dir: extension_dir.to_path_buf(),
+            dir: PathBuf::new().join(extension_dir),
             rt,
             extensions: Arc::new(Mutex::new(FnvHashMap::default())),
         }

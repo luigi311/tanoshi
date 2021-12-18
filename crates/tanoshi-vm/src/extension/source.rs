@@ -105,7 +105,7 @@ impl tanoshi_lib::traits::Extension for Source {
 
     async fn get_manga_detail(&self, path: String) -> Result<MangaInfo> {
         let promise: Promise<MangaInfo> = self.0.with(|ctx| {
-            let object = ctx.globals().get::<_, Object>("s").unwrap();
+            let object = ctx.globals().get::<_, Object>("s")?;
             object
                 .get::<_, Function>("getMangaDetail")?
                 .call((This(object.clone()), path))
@@ -116,7 +116,7 @@ impl tanoshi_lib::traits::Extension for Source {
 
     async fn get_chapters(&self, path: String) -> Result<Vec<ChapterInfo>> {
         let promise: Promise<Vec<ChapterInfo>> = self.0.with(|ctx| {
-            let object = ctx.globals().get::<_, Object>("s").unwrap();
+            let object = ctx.globals().get::<_, Object>("s")?;
             object
                 .get::<_, Function>("getChapters")?
                 .call((This(object.clone()), path))
@@ -127,7 +127,7 @@ impl tanoshi_lib::traits::Extension for Source {
 
     async fn get_pages(&self, path: String) -> Result<Vec<String>> {
         let promise: Promise<Vec<String>> = self.0.with(|ctx| {
-            let object = ctx.globals().get::<_, Object>("s").unwrap();
+            let object = ctx.globals().get::<_, Object>("s")?;
             object
                 .get::<_, Function>("getPages")?
                 .call((This(object.clone()), path))
