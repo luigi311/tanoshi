@@ -11,3 +11,6 @@ config.yml
 node_modules
 extensions/
 downloads/
+node_modules/
+dist/
+.parcel-cache/
