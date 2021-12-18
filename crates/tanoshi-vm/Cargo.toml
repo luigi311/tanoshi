@@ -16,7 +16,7 @@ log = "0.4.14"
 anyhow = "1"
 flume = "0.10.9"
 tokio = { version = "1", features = ["full"] }
-rquickjs = { git = "https://github.com/faldez/rquickjs", rev = "4f0a6eadb21ccc461b2aec83467a73852c480357", features = [
+rquickjs = { version = "0.1.4", features = [
     "full",
     "bindgen",
     "tokio",
