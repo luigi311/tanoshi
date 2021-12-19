@@ -3,7 +3,7 @@ use rquickjs::bind;
 #[bind(object, public)]
 #[quickjs(rename = "__native_print__")]
 pub fn print(msg: String) {
-    println!("{}", msg);
+    print!("{}", msg);
 }
 
 #[bind(object, public)]

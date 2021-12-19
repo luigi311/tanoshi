@@ -44,10 +44,38 @@ pub async fn test(filename: Option<String>) -> Result<()> {
         Ok(())
     })?;
 
-    for (_, test) in tests {
+    let test_len = tests.len();
+    eprintln!("running {} test", test_len);
+
+    let mut failures = HashMap::new();
+    for (name, test) in tests {
+        eprint!("test {} ... ", name);
         let func: Promise<()> = ctx.with(|ctx| test.restore(ctx)?.call(()))?;
-        func.await?;
+        if let Err(e) = func.await {
+            eprint!("FAILED");
+            failures.insert(name.clone(), e.to_string());
+        } else {
+            eprint!("ok");
+        }
+        eprintln!("");
     }
+
+    let failures_len = failures.len();
+
+    if failures_len > 0 {
+        eprintln!("---failures---");
+    }
+    for (name, failure) in failures {
+        eprintln!("{}", name);
+        eprintln!("\t{}", failure);
+    }
+
+    eprintln!(
+        "test result: {}. {} passed; {} failed",
+        if failures_len == 0 { "ok" } else { "FAILED" },
+        test_len - failures_len,
+        failures_len
+    );
 
     Ok(())
 }

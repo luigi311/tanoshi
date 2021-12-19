@@ -29,6 +29,5 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Command::Test { file } => test::test(file).await?,
     }
 
-    println!("done");
     Ok(())
 }
