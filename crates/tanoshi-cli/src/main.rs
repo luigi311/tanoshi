@@ -16,7 +16,7 @@ struct Opts {
 
 #[derive(Subcommand)]
 enum Command {
-    Test { file: String },
+    Test { file: Option<String> },
 }
 
 #[tokio::main]
@@ -26,8 +26,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let opts: Opts = Opts::parse();
 
     match opts.subcmd {
-        Command::Test { file } => test::test(&file).await?,
+        Command::Test { file } => test::test(file).await?,
     }
 
+    println!("done");
     Ok(())
 }
