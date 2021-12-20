@@ -1330,7 +1330,7 @@ impl Db {
             DO UPDATE SET
             last_page = excluded.last_page,
             read_at = excluded.read_at,
-            is_complete = excluded.is_complete"#,
+            is_complete = CASE is_complete WHEN 0 THEN excluded.is_complete ELSE is_complete END"#,
         )
         .bind(user_id)
         .bind(chapter_id)
