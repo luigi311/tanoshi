@@ -42,7 +42,7 @@ pub struct RequestOptions {
 
 #[bind(object, public)]
 #[quickjs(rename = "__native_fetch__")]
-pub async fn fetch(url: String, opts: Option<RequestOptions>) -> Response {
+pub async fn fetch(url: String, opts: Option<RequestOptions>) -> rquickjs::Result<Response> {
     let opts = opts.unwrap_or_default();
 
     let method = opts
@@ -62,21 +62,35 @@ pub async fn fetch(url: String, opts: Option<RequestOptions>) -> Response {
         }
     }
 
-    let res = req.send().await.unwrap();
+    let res = req
+        .send()
+        .await
+        .map_err(|err| std::io::Error::new(std::io::ErrorKind::Other, err))?;
 
     let status = res.status().as_u16();
 
     let mut headers = HashMap::new();
     for (name, value) in res.headers() {
-        headers.insert(name.to_string(), value.to_str().unwrap().to_string());
+        headers.insert(
+            name.to_string(),
+            value
+                .to_str()
+                .map_err(|err| std::io::Error::new(std::io::ErrorKind::Other, err))?
+                .to_string(),
+        );
     }
 
-    let body = res.bytes().await.unwrap().to_vec();
-    Response {
+    let body = res
+        .bytes()
+        .await
+        .map_err(|err| std::io::Error::new(std::io::ErrorKind::Other, err))?
+        .to_vec();
+
+    Ok(Response {
         status,
         headers,
         body,
-    }
+    })
 }
 
 #[bind(object, public)]
