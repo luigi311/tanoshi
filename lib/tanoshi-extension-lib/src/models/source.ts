@@ -23,7 +23,7 @@ export interface Source {
     /**
      * Languages supported by the source
      */
-    languages: string;
+    languages: 'all' | string | string[];
     /**
      * Indicate nsfw content provided by the source
      */
