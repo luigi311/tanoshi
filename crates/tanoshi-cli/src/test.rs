@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use rquickjs::{Context, Function, Persistent, Promise};
 use tanoshi_vm::{
     api::{BytesToString, Console, Fetch, Print},
@@ -76,6 +76,10 @@ pub async fn test(filename: Option<String>) -> Result<()> {
         test_len - failures_len,
         failures_len
     );
+
+    if failures_len > 0 {
+        return Err(anyhow!("{}", failures_len));
+    }
 
     Ok(())
 }
