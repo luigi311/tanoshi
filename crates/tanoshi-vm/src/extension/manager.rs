@@ -4,17 +4,14 @@ use anyhow::anyhow;
 use anyhow::Result;
 use fnv::FnvHashMap;
 use rquickjs::Runtime;
-use std::sync::MutexGuard;
-use std::{
-    path::{Path, PathBuf},
-    sync::{Arc, Mutex},
-};
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use tanoshi_lib::{prelude::SourceInfo, traits::Extension};
 
 pub struct SourceManager {
     dir: PathBuf,
     rt: Runtime,
-    extensions: Arc<Mutex<FnvHashMap<i64, Arc<dyn Extension>>>>,
+    extensions: FnvHashMap<i64, Arc<dyn Extension>>,
 }
 
 impl SourceManager {
@@ -24,45 +21,38 @@ impl SourceManager {
         Self {
             dir: PathBuf::new().join(extension_dir),
             rt,
-            extensions: Arc::new(Mutex::new(FnvHashMap::default())),
+            extensions: FnvHashMap::default(),
         }
     }
 
-    fn lock_extensions(&self) -> Result<MutexGuard<FnvHashMap<i64, Arc<dyn Extension>>>> {
-        self.extensions
-            .lock()
-            .map_err(|e| anyhow!("failed to lock: {}", e))
-    }
-
-    pub async fn install(&self, name: &str, contents: &[u8]) -> Result<SourceInfo> {
+    pub async fn install(&mut self, name: &str, contents: &[u8]) -> Result<SourceInfo> {
         tokio::fs::write(self.dir.join(name).with_extension("mjs"), contents).await?;
 
         Ok(self.load(name)?)
     }
 
-    pub fn load(&self, name: &str) -> Result<SourceInfo> {
+    pub fn load(&mut self, name: &str) -> Result<SourceInfo> {
         let ext = Arc::new(Source::new(&self.rt, name)?);
         let source_info = ext.get_source_info();
-        self.lock_extensions()?.insert(source_info.id, ext);
+        self.extensions.insert(source_info.id, ext);
 
         Ok(source_info)
     }
 
-    pub fn insert(&self, source: Arc<dyn Extension>) -> Result<()> {
-        self.lock_extensions()?
-            .insert(source.get_source_info().id, source);
+    pub fn insert(&mut self, source: Arc<dyn Extension>) -> Result<()> {
+        self.extensions.insert(source.get_source_info().id, source);
 
         Ok(())
     }
 
-    pub fn unload(&self, id: i64) -> Result<Arc<dyn Extension>> {
+    pub fn unload(&mut self, id: i64) -> Result<Arc<dyn Extension>> {
         Ok(self
-            .lock_extensions()?
+            .extensions
             .remove(&id)
             .ok_or(anyhow!("no such source"))?)
     }
 
-    pub async fn remove(&self, id: i64) -> Result<()> {
+    pub async fn remove(&mut self, id: i64) -> Result<()> {
         let source = self.unload(id)?;
         let name = source.get_source_info().name;
         tokio::fs::remove_file(self.dir.join(&name).with_extension("mjs")).await?;
@@ -71,7 +61,7 @@ impl SourceManager {
     }
 
     pub fn get(&self, id: i64) -> Result<Arc<dyn Extension>> {
-        self.lock_extensions()?
+        self.extensions
             .get(&id)
             .cloned()
             .ok_or(anyhow!("source not exists"))
@@ -79,7 +69,7 @@ impl SourceManager {
 
     pub fn list(&self) -> Result<Vec<SourceInfo>> {
         Ok(self
-            .lock_extensions()?
+            .extensions
             .iter()
             .map(|(_, ext)| ext.get_source_info())
             .collect())

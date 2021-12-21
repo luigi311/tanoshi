@@ -5,13 +5,24 @@ use tanoshi_lib::models::*;
 use anyhow::Result;
 use async_trait::async_trait;
 
+macro_rules! call_js {
+    ($self:ident, $name:literal $(,$arg:ident)*) => {
+        $self.0.with(|ctx| {
+            let object = ctx.globals().get::<_, Object>("s")?;
+            object
+                .get::<_, Function>($name)?
+                .call((This(object), ($($arg,)*)))
+        })?
+    };
+}
+
 pub struct Source(Context, SourceInfo);
 
 impl Source {
     pub fn new(rt: &Runtime, name: &str) -> Result<Self> {
         let ctx = Context::full(rt)?;
 
-        let source = ctx.with(|ctx| -> Result<SourceInfo> {
+        let mut source = ctx.with(|ctx| -> Result<SourceInfo> {
             let global = ctx.globals();
             global.init_def::<Print>()?;
             global.init_def::<Console>()?;
@@ -31,7 +42,11 @@ impl Source {
 
             Ok(module.get::<_, SourceInfo>("s")?)
         })?;
-
+        if let Lang::Single(lang) = &source.languages {
+            if lang == "all" {
+                source.languages = Lang::All;
+            }
+        }
         info!("{:?}", source);
 
         Ok(Source(ctx, source))
@@ -45,31 +60,17 @@ impl tanoshi_lib::traits::Extension for Source {
     }
 
     fn get_filter_list(&self) -> Result<Vec<Input>> {
-        Ok(self.0.with(|ctx| {
-            let object = ctx.globals().get::<_, Object>("s")?;
-            object
-                .get::<_, Function>("getFilterList")?
-                .call((This(object.clone()),))
-        })?)
+        let filter = call_js!(self, "getFilterList");
+        Ok(filter)
     }
 
     fn get_preferences(&self) -> Result<Vec<Input>> {
-        Ok(self.0.with(|ctx| {
-            let object = ctx.globals().get::<_, Object>("s")?;
-            object
-                .get::<_, Function>("getPreferences")?
-                .call((This(object.clone()),))
-        })?)
+        let prefs = call_js!(self, "getPreferences");
+        Ok(prefs)
     }
 
     async fn get_popular_manga(&self, page: i64) -> Result<Vec<MangaInfo>> {
-        let promise: Promise<Vec<MangaInfo>> = self.0.with(|ctx| {
-            let object = ctx.globals().get::<_, Object>("s")?;
-            object
-                .get::<_, Function>("getPopularManga")?
-                .call((This(object.clone()), page))
-        })?;
-
+        let promise: Promise<Vec<MangaInfo>> = call_js!(self, "getPopularManga", page);
         Ok(promise.await?)
     }
 
@@ -78,7 +79,7 @@ impl tanoshi_lib::traits::Extension for Source {
             let object = ctx.globals().get::<_, Object>("s")?;
             object
                 .get::<_, Function>("getLatestManga")?
-                .call((This(object.clone()), page))
+                .call((This(object), page))
         })?;
 
         Ok(promise.await?)
@@ -92,46 +93,28 @@ impl tanoshi_lib::traits::Extension for Source {
     ) -> Result<Vec<MangaInfo>> {
         let promise: Promise<Vec<MangaInfo>> = self.0.with(|ctx| {
             let object = ctx.globals().get::<_, Object>("s")?;
-            object.get::<_, Function>("searchManga")?.call((
-                This(object.clone()),
-                page,
-                query,
-                filters,
-            ))
+            object
+                .get::<_, Function>("searchManga")?
+                .call((This(object), page, query, filters))
         })?;
 
         Ok(promise.await?)
     }
 
     async fn get_manga_detail(&self, path: String) -> Result<MangaInfo> {
-        let promise: Promise<MangaInfo> = self.0.with(|ctx| {
-            let object = ctx.globals().get::<_, Object>("s")?;
-            object
-                .get::<_, Function>("getMangaDetail")?
-                .call((This(object.clone()), path))
-        })?;
+        let promise: Promise<MangaInfo> = call_js!(self, "getMangaDetail", path);
 
         Ok(promise.await?)
     }
 
     async fn get_chapters(&self, path: String) -> Result<Vec<ChapterInfo>> {
-        let promise: Promise<Vec<ChapterInfo>> = self.0.with(|ctx| {
-            let object = ctx.globals().get::<_, Object>("s")?;
-            object
-                .get::<_, Function>("getChapters")?
-                .call((This(object.clone()), path))
-        })?;
+        let promise: Promise<Vec<ChapterInfo>> = call_js!(self, "getChapters", path);
 
         Ok(promise.await?)
     }
 
     async fn get_pages(&self, path: String) -> Result<Vec<String>> {
-        let promise: Promise<Vec<String>> = self.0.with(|ctx| {
-            let object = ctx.globals().get::<_, Object>("s")?;
-            object
-                .get::<_, Function>("getPages")?
-                .call((This(object.clone()), path))
-        })?;
+        let promise: Promise<Vec<String>> = call_js!(self, "getPages", path);
 
         Ok(promise.await?)
     }
