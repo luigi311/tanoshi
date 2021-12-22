@@ -27,10 +27,10 @@ async-graphql = { version = "3.0.7", features = [
     "dataloader",
 ] }
 async-graphql-axum = { version = "3.0.7", optional = true }
-axum = { version = "0.3.2", features = ["headers"], optional = true }
+axum = { version = "0.4.3", features = ["headers"], optional = true }
 headers = { version = "0.3", optional = true }
 http = { version = "0.2.5", optional = true }
-tower-http = { version = "0.1", features = ["cors"], optional = true }
+tower-http = { version = "0.2", features = ["cors"], optional = true }
 rand = { version = "^0.8" }
 log = { version = "*" }
 env_logger = "0.9.0"
