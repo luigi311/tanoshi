@@ -1,6 +1,6 @@
 use std::{collections::HashMap, str::FromStr};
 
-use crate::{guard::AdminGuard, user::Claims};
+use crate::{config::GLOBAL_CONFIG, guard::AdminGuard, user::Claims};
 use async_graphql::{Context, Object, Result};
 use serde::Deserialize;
 use tanoshi_lib::prelude::Version;
@@ -86,6 +86,15 @@ impl Source {
 
         Ok(InputList(filters))
     }
+
+    async fn preferences(&self, ctx: &Context<'_>) -> Result<InputList> {
+        let preferences = ctx
+            .data::<SourceManager>()?
+            .get(self.id)?
+            .get_preferences()?;
+
+        Ok(InputList(preferences))
+    }
 }
 
 #[derive(Default)]
@@ -103,7 +112,10 @@ impl SourceRoot {
         let mut sources: Vec<Source> = vec![];
         if check_update {
             let available_sources_map = {
-                let url = "https://faldez.github.io/tanoshi-extensions".to_string();
+                let url = GLOBAL_CONFIG
+                    .get()
+                    .map(|cfg| cfg.extension_repository.clone())
+                    .ok_or("no config set")?;
                 let available_sources: Vec<SourceIndex> = reqwest::get(&url).await?.json().await?;
                 let mut available_sources_map = HashMap::new();
                 for source in available_sources {
@@ -130,7 +142,10 @@ impl SourceRoot {
 
     async fn available_sources(&self, ctx: &Context<'_>) -> Result<Vec<Source>> {
         let _ = ctx.data::<Claims>()?;
-        let url = "https://faldez.github.io/tanoshi-extensions".to_string();
+        let url = GLOBAL_CONFIG
+            .get()
+            .map(|cfg| cfg.extension_repository.clone())
+            .ok_or("no config set")?;
         let source_indexes: Vec<SourceIndex> = reqwest::get(&url).await?.json().await?;
         let extensions = ctx.data::<SourceManager>()?;
 
@@ -164,7 +179,10 @@ impl SourceMutationRoot {
             return Err("source installed, use updateSource to update".into());
         }
 
-        let url = "https://faldez.github.io/tanoshi-extensions".to_string();
+        let url = GLOBAL_CONFIG
+            .get()
+            .map(|cfg| cfg.extension_repository.clone())
+            .ok_or("no config set")?;
         let source_indexes: Vec<SourceIndex> = reqwest::get(&url).await?.json().await?;
         let source: SourceIndex = source_indexes
             .iter()
@@ -172,11 +190,7 @@ impl SourceMutationRoot {
             .ok_or("source not found")?
             .clone();
 
-        let url = format!(
-            "https://faldez.github.io/tanoshi-extensions/library/{}.{}.tanoshi",
-            source.name,
-            env!("TARGET")
-        );
+        let url = format!("{}/library/{}.{}.tanoshi", url, source.name, env!("TARGET"));
 
         let raw = reqwest::get(&url).await?.bytes().await?;
         ctx.data::<SourceManager>()?
@@ -198,7 +212,10 @@ impl SourceMutationRoot {
         let extensions = ctx.data::<SourceManager>()?;
         let installed_source = extensions.get(source_id)?;
 
-        let url = "https://faldez.github.io/tanoshi-extensions".to_string();
+        let url = GLOBAL_CONFIG
+            .get()
+            .map(|cfg| cfg.extension_repository.clone())
+            .ok_or("no config set")?;
 
         let source_indexes: Vec<SourceIndex> = reqwest::get(&url).await?.json().await?;
         let source: SourceIndex = source_indexes
@@ -213,11 +230,7 @@ impl SourceMutationRoot {
             return Err("No new version".into());
         }
 
-        let url = format!(
-            "https://faldez.github.io/tanoshi-extensions/library/{}.{}.tanoshi",
-            source.name,
-            env!("TARGET")
-        );
+        let url = format!("{}/library/{}.{}.tanoshi", url, source.name, env!("TARGET"));
 
         let raw = reqwest::get(&url).await?.bytes().await?;
 

@@ -22,6 +22,8 @@ pub struct PushoverConfig {
 pub struct Config {
     #[serde(skip)]
     path: PathBuf,
+    #[serde(skip, default = "default_extension_repository")]
+    pub extension_repository: String,
     #[serde(default = "default_port")]
     pub port: u16,
     #[serde(default = "default_database_path")]
@@ -48,6 +50,7 @@ impl Default for Config {
     fn default() -> Self {
         Self {
             path: tanoshi_home().join("config.yml"),
+            extension_repository: default_extension_repository(),
             port: default_port(),
             database_path: default_database_path(),
             secret: default_secret(),
@@ -72,6 +75,10 @@ fn tanoshi_home() -> PathBuf {
 
 fn default_port() -> u16 {
     80
+}
+
+fn default_extension_repository() -> String {
+    "https://faldez.github.io/tanoshi-extensions".to_string()
 }
 
 fn default_update_interval() -> u64 {

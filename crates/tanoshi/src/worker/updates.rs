@@ -5,16 +5,16 @@ use serde::Deserialize;
 use tanoshi_lib::prelude::Version;
 use tanoshi_vm::extension::SourceManager;
 
-use tokio::{
-    task::JoinHandle,
-    time::{self, Instant},
-};
-
 use crate::{
     config::GLOBAL_CONFIG,
     db::{model::Chapter, MangaDatabase},
     notifier::Notifier,
     worker::downloads::Command as DownloadCommand,
+};
+use anyhow::anyhow;
+use tokio::{
+    task::JoinHandle,
+    time::{self, Instant},
 };
 
 use super::downloads::DownloadSender;
@@ -162,7 +162,10 @@ impl UpdatesWorker {
             pub icon: String,
         }
 
-        let url = "https://faldez.github.io/tanoshi-extensions".to_string();
+        let url = GLOBAL_CONFIG
+            .get()
+            .map(|cfg| cfg.extension_repository.clone())
+            .ok_or(anyhow!("no config set"))?;
         let available_sources_map = self
             .client
             .get(&url)
