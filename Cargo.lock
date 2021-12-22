@@ -4917,7 +4917,7 @@ dependencies = [
 
 [[package]]
 name = "tanoshi-cli"
-version = "0.4.9"
+version = "0.5.0-beta.1"
 dependencies = [
  "anyhow",
  "clap 3.0.0-rc.5",
@@ -4935,7 +4935,7 @@ dependencies = [
 
 [[package]]
 name = "tanoshi-lib"
-version = "0.25.3"
+version = "0.26.0-beta.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -4956,7 +4956,7 @@ dependencies = [
 
 [[package]]
 name = "tanoshi-vm"
-version = "0.5.6"
+version = "0.6.0-beta.1"
 dependencies = [
  "anyhow",
  "async-trait",
