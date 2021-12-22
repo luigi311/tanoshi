@@ -88,6 +88,8 @@ jobs:
       - name: Install LLVM and Clang
         if: ${{ matrix.os != 'macos-latest' }}
         uses: KyleMayes/install-llvm-action@v1
+        with:
+          version: 13.0
       - id: cache-vcpkg
         name: Cache vcpkg
         uses: actions/cache@v2
@@ -160,6 +162,8 @@ jobs:
       - name: Install LLVM and Clang
         if: ${{ matrix.os != 'macos-latest' }}
         uses: KyleMayes/install-llvm-action@v1
+        with:
+          version: 13.0
       - id: cache-vcpkg
         name: Cache vcpkg
         uses: actions/cache@v2
