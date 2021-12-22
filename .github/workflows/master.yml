@@ -109,6 +109,8 @@ jobs:
         if: ${{ matrix.os == 'ubuntu-latest' }}
         run: cargo tauri build
         working-directory: crates/tanoshi
+        env:
+          RUSTFLAGS: "-Clink-arg=-Wl,--allow-multiple-definition"
       - name: Build tanoshi
         if: ${{ matrix.os == 'macos-latest' }}
         run: cargo tauri build
@@ -184,6 +186,8 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
+        env:
+          RUSTFLAGS: "-Clink-arg=-Wl,--allow-multiple-definition"
       - name: Test
         if: ${{ matrix.os == 'macos-latest' }}
         uses: actions-rs/cargo@v1
