@@ -1,4 +1,4 @@
-name: Update Docker Hub Description
+name: description
 on:
   push:
     branches:
