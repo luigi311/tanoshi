@@ -1,13 +1,13 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
 
+use anyhow::anyhow;
 use futures::{
     future::{abortable, AbortHandle},
     Future,
 };
 use futures_signals::signal::{self, Mutable, Signal};
-use wasm_bindgen_futures::spawn_local;
-
 use wasm_bindgen::prelude::*;
+use wasm_bindgen_futures::spawn_local;
 use web_sys::{Document, History, HtmlElement, Storage, Window};
 
 thread_local! {
@@ -161,9 +161,11 @@ pub fn graphql_host() -> String {
 }
 
 pub fn apply_theme(theme: Option<String>) {
+    let mut status_bar_color = "#5b749b";
     match theme {
         Some(theme) if theme == "dark" => {
             body().class_list().add_1("dark").unwrap_throw();
+            status_bar_color = "#090909";
         }
         Some(theme) if theme == "light" => {
             body().class_list().remove_1("dark").unwrap_throw();
@@ -176,11 +178,32 @@ pub fn apply_theme(theme: Option<String>) {
                 .unwrap_or(false)
             {
                 body().class_list().add_1("dark").unwrap_throw();
+                status_bar_color = "#090909";
             } else {
                 body().class_list().remove_1("dark").unwrap_throw();
             }
         }
     }
+
+    apply_theme_color(status_bar_color).unwrap_throw();
+}
+
+pub fn apply_theme_color(status_bar_color: &str) -> Result<(), anyhow::Error> {
+    if window()
+        .match_media("(display-mode: standalone)")
+        .map_err(|e| anyhow!("error mactch media: {:?}", e))?
+        .ok_or(anyhow!("no display-mode query"))?
+        .matches()
+    {
+        document()
+            .query_selector("meta[name=\"theme-color\"]")
+            .map_err(|e| anyhow!("error query meta: {:?}", e))?
+            .ok_or(anyhow!("no theme-color meta"))?
+            .set_attribute("content", status_bar_color)
+            .map_err(|e| anyhow!("error set content: {:?}", e))?;
+    }
+
+    Ok(())
 }
 
 pub fn window() -> Window {
