@@ -65,8 +65,12 @@ async fn main() -> Result<(), anyhow::Error> {
 
     let mut read_dir = tokio::fs::read_dir(&config.plugin_path).await?;
     while let Some(entry) = read_dir.next_entry().await? {
-        let name = format!("{:?}", entry.file_name());
-        extension_manager.load(&name[1..name.len() - 5])?;
+        let mut name = format!("{:?}", entry.file_name());
+        name.remove(0);
+        name.remove(name.len() - 1);
+        if name.ends_with(".mjs") {
+            extension_manager.load(&name[0..name.len() - 4])?;
+        }
     }
 
     extension_manager.insert(Arc::new(local::Local::new(config.local_path.clone())))?;
