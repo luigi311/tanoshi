@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use crate::{
     catalogue::Manga,
     db::{model, MangaDatabase},
@@ -39,7 +37,7 @@ impl LibraryRoot {
         let manga = db.get_library_by_category_id(user.sub, category_id).await?;
 
         if refresh {
-            let extensions = ctx.data::<Arc<SourceManager>>()?;
+            let extensions = ctx.data::<SourceManager>()?;
             for favorite_manga in manga.iter() {
                 let mut m: model::Manga = {
                     extensions

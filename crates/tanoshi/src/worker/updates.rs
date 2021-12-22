@@ -1,4 +1,4 @@
-use std::{collections::HashMap, str::FromStr, sync::Arc};
+use std::{collections::HashMap, str::FromStr};
 
 use serde::Deserialize;
 
@@ -23,7 +23,7 @@ struct UpdatesWorker {
     period: u64,
     client: reqwest::Client,
     mangadb: MangaDatabase,
-    extensions: Arc<SourceManager>,
+    extensions: SourceManager,
     auto_download_chapters: bool,
     download_tx: DownloadSender,
     notifier: Notifier,
@@ -33,7 +33,7 @@ impl UpdatesWorker {
     fn new(
         period: u64,
         mangadb: MangaDatabase,
-        extensions: Arc<SourceManager>,
+        extensions: SourceManager,
         download_tx: DownloadSender,
         notifier: Notifier,
     ) -> Self {
@@ -284,7 +284,7 @@ impl UpdatesWorker {
 pub fn start(
     period: u64,
     mangadb: MangaDatabase,
-    extensions: Arc<SourceManager>,
+    extensions: SourceManager,
     download_tx: DownloadSender,
     notifier: Notifier,
 ) -> JoinHandle<()> {

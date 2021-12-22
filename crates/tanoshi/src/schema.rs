@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use crate::{
     catalogue::{
         chapter::{MangaLoader, NextChapterLoader, PrevChapterLoader, ReadProgressLoader},
@@ -45,7 +43,7 @@ pub struct MutationRoot(
 pub fn build(
     userdb: UserDatabase,
     mangadb: MangaDatabase,
-    ext_manager: Arc<SourceManager>,
+    ext_manager: SourceManager,
     download_tx: DownloadSender,
     notifier: Notifier,
 ) -> TanoshiSchema {

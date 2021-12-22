@@ -61,7 +61,7 @@ async fn main() -> Result<(), anyhow::Error> {
     let mangadb = db::MangaDatabase::new(pool.clone());
     let userdb = db::UserDatabase::new(pool.clone());
 
-    let extension_manager = Arc::new(SourceManager::new(&config.plugin_path));
+    let extension_manager = SourceManager::new(&config.plugin_path);
 
     let mut read_dir = tokio::fs::read_dir(&config.plugin_path).await?;
     while let Some(entry) = read_dir.next_entry().await? {

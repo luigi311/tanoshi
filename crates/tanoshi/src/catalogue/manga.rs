@@ -248,7 +248,7 @@ impl Manga {
 
     async fn link(&self, ctx: &Context<'_>) -> Result<String> {
         let detail = ctx
-            .data::<Arc<SourceManager>>()?
+            .data::<SourceManager>()?
             .get(self.source_id)?
             .get_source_info();
         Ok(format!("{}{}", detail.url, self.path))
@@ -300,7 +300,7 @@ impl Manga {
 
     async fn source(&self, ctx: &Context<'_>) -> Result<Source> {
         let source = ctx
-            .data::<Arc<SourceManager>>()?
+            .data::<SourceManager>()?
             .get(self.source_id)?
             .get_source_info();
         Ok(source.into())
@@ -320,7 +320,7 @@ impl Manga {
         }
 
         let chapters: Vec<crate::db::model::Chapter> = ctx
-            .data::<Arc<SourceManager>>()?
+            .data::<SourceManager>()?
             .get(self.source_id)?
             .get_chapters(self.path.clone())
             .await?

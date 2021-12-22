@@ -1,5 +1,4 @@
 mod source;
-use std::sync::Arc;
 
 pub use source::{Source, SourceMutationRoot, SourceRoot};
 
@@ -34,7 +33,7 @@ impl CatalogueRoot {
         #[graphql(desc = "page")] page: i64,
     ) -> Result<Vec<Manga>> {
         let fetched_manga = ctx
-            .data::<Arc<SourceManager>>()?
+            .data::<SourceManager>()?
             .get(source_id)?
             .get_popular_manga(page)
             .await?
@@ -51,7 +50,7 @@ impl CatalogueRoot {
         #[graphql(desc = "page")] page: i64,
     ) -> Result<Vec<Manga>> {
         let fetched_manga = ctx
-            .data::<Arc<SourceManager>>()?
+            .data::<SourceManager>()?
             .get(source_id)?
             .get_latest_manga(page)
             .await?
@@ -71,7 +70,7 @@ impl CatalogueRoot {
         #[graphql(desc = "filters")] filters: Option<InputList>,
     ) -> Result<Vec<Manga>> {
         let fetched_manga = ctx
-            .data::<Arc<SourceManager>>()?
+            .data::<SourceManager>()?
             .get(source_id)?
             .search_manga(page, query, filters.map(|filters| filters.0))
             .await?
@@ -94,7 +93,7 @@ impl CatalogueRoot {
             manga
         } else {
             let mut m: crate::db::model::Manga = ctx
-                .data::<Arc<SourceManager>>()?
+                .data::<SourceManager>()?
                 .get(source_id)?
                 .get_manga_detail(path)
                 .await?
@@ -117,7 +116,7 @@ impl CatalogueRoot {
         let manga = db.get_manga_by_id(id).await?;
         if refresh {
             let mut m: crate::db::model::Manga = ctx
-                .data::<Arc<SourceManager>>()?
+                .data::<SourceManager>()?
                 .get(manga.source_id)?
                 .get_manga_detail(manga.path.clone())
                 .await?

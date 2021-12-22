@@ -1,4 +1,4 @@
-use std::{collections::HashMap, str::FromStr, sync::Arc};
+use std::{collections::HashMap, str::FromStr};
 
 use crate::{guard::AdminGuard, user::Claims};
 use async_graphql::{Context, Object, Result};
@@ -80,7 +80,7 @@ impl Source {
 
     async fn filters(&self, ctx: &Context<'_>) -> Result<InputList> {
         let filters = ctx
-            .data::<Arc<SourceManager>>()?
+            .data::<SourceManager>()?
             .get(self.id)?
             .get_filter_list()?;
 
@@ -99,7 +99,7 @@ impl SourceRoot {
         check_update: bool,
     ) -> Result<Vec<Source>> {
         let _ = ctx.data::<Claims>()?;
-        let installed_sources = ctx.data::<Arc<SourceManager>>()?.list()?;
+        let installed_sources = ctx.data::<SourceManager>()?.list()?;
         let mut sources: Vec<Source> = vec![];
         if check_update {
             let available_sources_map = {
@@ -132,7 +132,7 @@ impl SourceRoot {
         let _ = ctx.data::<Claims>()?;
         let url = "https://faldez.github.io/tanoshi-extensions".to_string();
         let source_indexes: Vec<SourceIndex> = reqwest::get(&url).await?.json().await?;
-        let extensions = ctx.data::<Arc<SourceManager>>()?;
+        let extensions = ctx.data::<SourceManager>()?;
 
         let mut sources: Vec<Source> = vec![];
         for index in source_indexes {
@@ -146,7 +146,7 @@ impl SourceRoot {
     async fn source(&self, ctx: &Context<'_>, source_id: i64) -> Result<Source> {
         let _ = ctx.data::<Claims>()?;
         let source = ctx
-            .data::<Arc<SourceManager>>()?
+            .data::<SourceManager>()?
             .get(source_id)?
             .get_source_info();
         Ok(source.into())
@@ -160,7 +160,7 @@ pub struct SourceMutationRoot;
 impl SourceMutationRoot {
     #[graphql(guard = "AdminGuard::new()")]
     async fn install_source(&self, ctx: &Context<'_>, source_id: i64) -> Result<i64> {
-        if ctx.data::<Arc<SourceManager>>()?.get(source_id).is_ok() {
+        if ctx.data::<SourceManager>()?.get(source_id).is_ok() {
             return Err("source installed, use updateSource to update".into());
         }
 
@@ -179,7 +179,7 @@ impl SourceMutationRoot {
         );
 
         let raw = reqwest::get(&url).await?.bytes().await?;
-        ctx.data::<Arc<SourceManager>>()?
+        ctx.data::<SourceManager>()?
             .install(&source.name, &raw)
             .await?;
 
@@ -188,14 +188,14 @@ impl SourceMutationRoot {
 
     #[graphql(guard = "AdminGuard::new()")]
     async fn uninstall_source(&self, ctx: &Context<'_>, source_id: i64) -> Result<i64> {
-        ctx.data::<Arc<SourceManager>>()?.remove(source_id).await?;
+        ctx.data::<SourceManager>()?.remove(source_id).await?;
 
         Ok(source_id)
     }
 
     #[graphql(guard = "AdminGuard::new()")]
     async fn update_source(&self, ctx: &Context<'_>, source_id: i64) -> Result<i64> {
-        let extensions = ctx.data::<Arc<SourceManager>>()?;
+        let extensions = ctx.data::<SourceManager>()?;
         let installed_source = extensions.get(source_id)?;
 
         let url = "https://faldez.github.io/tanoshi-extensions".to_string();

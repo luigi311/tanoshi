@@ -1,7 +1,6 @@
 use std::{
     io::Write,
     path::{Path, PathBuf},
-    sync::Arc,
 };
 
 use crate::{
@@ -34,7 +33,7 @@ pub struct DownloadWorker {
     dir: PathBuf,
     client: reqwest::Client,
     db: MangaDatabase,
-    ext: Arc<SourceManager>,
+    ext: SourceManager,
     _notifier: Notifier,
     tx: DownloadSender,
     rx: DownloadReceiver,
@@ -44,7 +43,7 @@ impl DownloadWorker {
     pub fn new<P: AsRef<Path>>(
         dir: P,
         db: MangaDatabase,
-        ext: Arc<SourceManager>,
+        ext: SourceManager,
         notifier: Notifier,
     ) -> (Self, DownloadSender) {
         let (tx, rx) = unbounded_channel::<Command>();
@@ -339,7 +338,7 @@ impl DownloadWorker {
 pub fn start<P: AsRef<Path>>(
     dir: P,
     mangadb: MangaDatabase,
-    ext: Arc<SourceManager>,
+    ext: SourceManager,
     notifier: Notifier,
 ) -> (DownloadSender, JoinHandle<()>) {
     let (mut download_worker, tx) = DownloadWorker::new(dir, mangadb, ext, notifier);

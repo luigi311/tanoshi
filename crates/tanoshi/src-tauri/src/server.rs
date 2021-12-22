@@ -46,7 +46,7 @@ impl<R: Runtime> Plugin<R> for Server {
       let mangadb = db::MangaDatabase::new(pool.clone());
       let userdb = db::UserDatabase::new(pool.clone());
 
-      let extension_manager = Arc::new(SourceManager::new(&config.plugin_path));
+      let extension_manager = SourceManager::new(&config.plugin_path);
 
       if extension_manager
         .insert(Arc::new(local::Local::new(config.local_path.clone())))

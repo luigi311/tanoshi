@@ -260,7 +260,7 @@ impl Chapter {
 
     async fn source(&self, ctx: &Context<'_>) -> Result<Source> {
         let source = ctx
-            .data::<Arc<SourceManager>>()?
+            .data::<SourceManager>()?
             .get(self.source_id)?
             .get_source_info();
         Ok(source.into())
@@ -286,7 +286,7 @@ impl Chapter {
             tokio::task::spawn_blocking(move || Local::get_pages_from_archive(&downloaded_path))
                 .await??
         } else {
-            ctx.data::<Arc<SourceManager>>()?
+            ctx.data::<SourceManager>()?
                 .get(self.source_id)?
                 .get_pages(self.path.clone())
                 .await?

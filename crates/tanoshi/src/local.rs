@@ -9,7 +9,7 @@ use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use fancy_regex::Regex;
 use serde::{Deserialize, Serialize};
-use tanoshi_lib::prelude::{ChapterInfo, Extension, Input, MangaInfo, SourceInfo};
+use tanoshi_lib::prelude::{ChapterInfo, Extension, Input, Lang, MangaInfo, SourceInfo};
 
 pub static ID: i64 = 1;
 // list of supported files, other archive may works but no tested
@@ -242,7 +242,7 @@ impl Extension for Local {
             url: format!("{}", self.path.display()),
             version: "0.0.0".to_string(),
             icon: "/icons/192.png".to_string(),
-            languages: "all".to_string(),
+            languages: Lang::All,
             nsfw: false,
         }
     }
