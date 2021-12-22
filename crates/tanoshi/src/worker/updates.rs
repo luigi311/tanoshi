@@ -6,6 +6,7 @@ use tanoshi_lib::prelude::Version;
 use tanoshi_vm::extension::SourceManager;
 
 use crate::{
+    catalogue::Source,
     config::GLOBAL_CONFIG,
     db::{model::Chapter, MangaDatabase},
     notifier::Notifier,
@@ -153,29 +154,20 @@ impl UpdatesWorker {
     }
 
     async fn check_extension_update(&self) -> Result<(), anyhow::Error> {
-        #[derive(Debug, Clone, Deserialize)]
-        pub struct SourceIndex {
-            pub id: i64,
-            pub name: String,
-            pub path: String,
-            pub version: String,
-            pub icon: String,
-        }
-
         let url = GLOBAL_CONFIG
             .get()
-            .map(|cfg| cfg.extension_repository.clone())
+            .map(|cfg| format!("{}/index.json", cfg.extension_repository))
             .ok_or(anyhow!("no config set"))?;
         let available_sources_map = self
             .client
             .get(&url)
             .send()
             .await?
-            .json::<Vec<SourceIndex>>()
+            .json::<Vec<Source>>()
             .await?
             .into_iter()
             .map(|source| (source.id, source))
-            .collect::<HashMap<i64, SourceIndex>>();
+            .collect::<HashMap<i64, Source>>();
 
         let installed_sources = self.extensions.list()?;
 

@@ -7,35 +7,15 @@ use tanoshi_lib::prelude::Version;
 use tanoshi_vm::extension::SourceManager;
 
 use super::InputList;
-#[derive(Debug, Clone, Deserialize)]
-pub struct SourceIndex {
-    pub id: i64,
-    pub name: String,
-    pub path: String,
-    pub version: String,
-    pub icon: String,
-}
 
-impl From<SourceIndex> for Source {
-    fn from(index: SourceIndex) -> Self {
-        Self {
-            id: index.id,
-            name: index.name,
-            url: "".to_string(),
-            version: index.version,
-            icon: index.icon,
-            has_update: false,
-        }
-    }
-}
-
-#[derive(Clone)]
+#[derive(Clone, Deserialize)]
 pub struct Source {
     pub id: i64,
     pub name: String,
     pub url: String,
     pub version: String,
     pub icon: String,
+    #[serde(default)]
     pub has_update: bool,
 }
 
@@ -114,9 +94,9 @@ impl SourceRoot {
             let available_sources_map = {
                 let url = GLOBAL_CONFIG
                     .get()
-                    .map(|cfg| cfg.extension_repository.clone())
+                    .map(|cfg| format!("{}/index.json", cfg.extension_repository))
                     .ok_or("no config set")?;
-                let available_sources: Vec<SourceIndex> = reqwest::get(&url).await?.json().await?;
+                let available_sources: Vec<Source> = reqwest::get(&url).await?.json().await?;
                 let mut available_sources_map = HashMap::new();
                 for source in available_sources {
                     available_sources_map.insert(source.id, source);
@@ -144,9 +124,9 @@ impl SourceRoot {
         let _ = ctx.data::<Claims>()?;
         let url = GLOBAL_CONFIG
             .get()
-            .map(|cfg| cfg.extension_repository.clone())
+            .map(|cfg| format!("{}/index.json", cfg.extension_repository))
             .ok_or("no config set")?;
-        let source_indexes: Vec<SourceIndex> = reqwest::get(&url).await?.json().await?;
+        let source_indexes: Vec<Source> = reqwest::get(&url).await?.json().await?;
         let extensions = ctx.data::<SourceManager>()?;
 
         let mut sources: Vec<Source> = vec![];
@@ -183,16 +163,20 @@ impl SourceMutationRoot {
             .get()
             .map(|cfg| cfg.extension_repository.clone())
             .ok_or("no config set")?;
-        let source_indexes: Vec<SourceIndex> = reqwest::get(&url).await?.json().await?;
-        let source: SourceIndex = source_indexes
+        let source_indexes: Vec<Source> = reqwest::get(format!("{}/index.json", url))
+            .await?
+            .json()
+            .await?;
+        let source: Source = source_indexes
             .iter()
             .find(|index| index.id == source_id)
             .ok_or("source not found")?
             .clone();
 
-        let url = format!("{}/library/{}.{}.tanoshi", url, source.name, env!("TARGET"));
-
-        let raw = reqwest::get(&url).await?.bytes().await?;
+        let raw = reqwest::get(format!("{}/{}.mjs", url, source.name))
+            .await?
+            .bytes()
+            .await?;
         ctx.data::<SourceManager>()?
             .install(&source.name, &raw)
             .await?;
@@ -217,8 +201,11 @@ impl SourceMutationRoot {
             .map(|cfg| cfg.extension_repository.clone())
             .ok_or("no config set")?;
 
-        let source_indexes: Vec<SourceIndex> = reqwest::get(&url).await?.json().await?;
-        let source: SourceIndex = source_indexes
+        let source_indexes: Vec<Source> = reqwest::get(format!("{}/index.json", url))
+            .await?
+            .json()
+            .await?;
+        let source: Source = source_indexes
             .iter()
             .find(|index| index.id == source_id)
             .ok_or("source not found")?
@@ -230,9 +217,10 @@ impl SourceMutationRoot {
             return Err("No new version".into());
         }
 
-        let url = format!("{}/library/{}.{}.tanoshi", url, source.name, env!("TARGET"));
-
-        let raw = reqwest::get(&url).await?.bytes().await?;
+        let raw = reqwest::get(format!("{}/{}.mjs", url, source.name))
+            .await?
+            .bytes()
+            .await?;
 
         extensions.remove(source_id).await?;
         extensions.install(&source.name, &raw).await?;
