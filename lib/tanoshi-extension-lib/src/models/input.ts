@@ -35,3 +35,7 @@ export class Sort<T> extends Input {
     type: Type = 'Sort';
     constructor(public name: string, public values: T[], public state?: { index: number, ascending: boolean }) { super(); }
 }
+
+export abstract class State {
+    constructor(public name: string, public selected?: boolean) { }
+}

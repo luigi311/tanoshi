@@ -9,12 +9,17 @@ license = "MIT"
 readme = "README.md"
 exclude = [".github/*"]
 
+[features]
+default = ["js", "extension"]
+js = ["rquickjs"]
+extension = ["async-trait"]
+
 [dependencies]
 thiserror = "1"
 rquickjs = { git = "https://github.com/faldez/rquickjs", features = [
     "bindgen",
     "macro",
-] }
-async-trait = "0.1.52"
+], optional = true }
+async-trait = { version = "0.1.52", optional = true }
 anyhow = "1"
 serde = { version = "1", features = ["derive"] }

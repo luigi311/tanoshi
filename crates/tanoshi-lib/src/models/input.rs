@@ -1,12 +1,17 @@
 use rquickjs::{FromJs, IntoJs};
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, FromJs, IntoJs, Deserialize, Serialize)]
-#[quickjs(untagged)]
+#[derive(Debug, Deserialize, Serialize)]
+#[cfg_attr(feature = "js", derive(FromJs, IntoJs))]
+#[cfg_attr(feature = "js", quickjs(untagged))]
 pub enum InputType {
     String(String),
     Number(f64),
     Boolean(bool),
+    State {
+        name: String,
+        selected: Option<bool>,
+    },
 }
 
 impl From<String> for InputType {
@@ -33,8 +38,9 @@ impl From<bool> for InputType {
     }
 }
 
-#[derive(Debug, FromJs, IntoJs, Deserialize, Serialize)]
-#[quickjs(tag = "type")]
+#[derive(Debug, Deserialize, Serialize)]
+#[cfg_attr(feature = "js", derive(FromJs, IntoJs))]
+#[cfg_attr(feature = "js", quickjs(tag = "type"))]
 pub enum Input {
     Text {
         name: String,
