@@ -38,4 +38,8 @@ export class Sort<T> extends Input {
 
 export abstract class State {
     constructor(public name: string, public selected?: boolean) { }
+
+    public equals(others: Input): boolean {
+        return (this.name === others.name);
+    }
 }
