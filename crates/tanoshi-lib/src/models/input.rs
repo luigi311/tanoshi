@@ -1,7 +1,8 @@
+#[cfg(feature = "js")]
 use rquickjs::{FromJs, IntoJs};
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 #[cfg_attr(feature = "js", derive(FromJs, IntoJs))]
 #[cfg_attr(feature = "js", quickjs(untagged))]
 pub enum InputType {
@@ -38,7 +39,7 @@ impl From<bool> for InputType {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 #[cfg_attr(feature = "js", derive(FromJs, IntoJs))]
 #[cfg_attr(feature = "js", quickjs(tag = "type"))]
 pub enum Input {
@@ -57,7 +58,7 @@ pub enum Input {
     },
     Group {
         name: String,
-        state: Option<Vec<InputType>>,
+        state: Vec<InputType>,
     },
     Sort {
         name: String,

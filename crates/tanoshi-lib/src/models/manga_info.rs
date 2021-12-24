@@ -1,3 +1,4 @@
+#[cfg(feature = "js")]
 use rquickjs::{FromJs, IntoJs};
 use serde::{Deserialize, Serialize};
 
