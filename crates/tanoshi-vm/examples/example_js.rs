@@ -24,7 +24,7 @@ async fn main() {
     for filter in filters.iter_mut() {
         match filter {
             Input::Text { state, .. } => *state = Some("One Piece".to_string()),
-            Input::Group { state, .. } => *state = Some(vec!["Romance".into()]),
+            Input::Group { state, .. } => *state = vec!["Romance".into()],
             _ => todo!(),
         }
     }
