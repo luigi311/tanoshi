@@ -86,10 +86,15 @@ jobs:
         if: ${{ matrix.os == 'macos-latest' }}
         run: brew install icu4c libarchive bzip2 lz4 zlib expat llvm@11
       - name: Install LLVM and Clang
-        if: ${{ matrix.os != 'macos-latest' }}
+        if: ${{ matrix.os == 'ubuntu-latest' }}
         uses: KyleMayes/install-llvm-action@v1
         with:
           version: 13.0
+      - name: Install LLVM and Clang
+        if: ${{ matrix.os == 'windows-latest' }}
+        run: |
+          Invoke-WebRequest -Uri https://github.com/llvm/llvm-project/releases/download/llvmorg-11.0.1/LLVM-11.0.1-win64.exe -OutFile LLVM-11.0.1-win64.exe
+          7z x .\LLVM-11.0.1-win64.exe -aoa -o'C:\Program Files\LLVM'
       - id: cache-vcpkg
         name: Cache vcpkg
         uses: actions/cache@v2
@@ -162,10 +167,15 @@ jobs:
         if: ${{ matrix.os == 'macos-latest' }}
         run: brew install icu4c libarchive bzip2 lz4 zlib expat llvm@11
       - name: Install LLVM and Clang
-        if: ${{ matrix.os != 'macos-latest' }}
+        if: ${{ matrix.os == 'ubuntu-latest' }}
         uses: KyleMayes/install-llvm-action@v1
         with:
           version: 13.0
+      - name: Install LLVM and Clang
+        if: ${{ matrix.os == 'windows-latest' }}
+        run: |
+          Invoke-WebRequest -Uri https://github.com/llvm/llvm-project/releases/download/llvmorg-13.0.0/LLVM-13.0.0-win64.exe -OutFile LLVM-13.0.0-win64.exe
+          7z x .\LLVM-13.0.0-win64.exe -aoa -o'C:\Program Files\LLVM'
       - id: cache-vcpkg
         name: Cache vcpkg
         uses: actions/cache@v2
