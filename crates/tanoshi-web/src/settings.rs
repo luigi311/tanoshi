@@ -17,17 +17,16 @@ use crate::{
     query, 
     settings_categories::SettingsCategories, 
     settings_download_queue::SettingsDownloads, 
-    utils::{AsyncLoader, is_tauri, window}
+    utils::{AsyncLoader, is_tauri, window}, settings_source::SettingsSource
 };
 use dominator::svg;
 use dominator::{clone, html, link, routing, Dom};
-use futures_signals::{signal::{self, Mutable, SignalExt}, signal_vec::{MutableSignalVec, MutableVec}, signal_vec::SignalVecExt};
+use futures_signals::{signal::{Mutable, SignalExt}, signal_vec::{MutableSignalVec, MutableVec}, signal_vec::SignalVecExt};
 use std::rc::Rc;
 
 pub struct Settings {
     server_version: String,
     page: Mutable<SettingCategory>,
-    source: Mutable<Option<Source>>,
     installed_sources: MutableVec<Source>,
     available_sources: MutableVec<Source>,
     me: Mutable<Option<User>>,
@@ -45,7 +44,6 @@ impl Settings {
         Rc::new(Settings {
             server_version,
             page: Mutable::new(category),
-            source: Mutable::new(None),
             installed_sources: MutableVec::new(),
             available_sources: MutableVec::new(),
             me: Mutable::new(None),
@@ -59,25 +57,6 @@ impl Settings {
         })
     }
 
-    fn fetch_source(settings: Rc<Self>, source_id: i64) {
-        settings.loader.load(clone!(settings => async move {
-            match query::fetch_source(source_id).await {
-                Ok(s) => {
-                    settings.source.set(Some(Source {
-                        id: s.id,
-                        name: s.name.clone(),
-                        version: s.version.clone(),
-                        icon: s.icon.clone(),
-                        has_update: false,
-                        installed: true,
-                    }));             
-                },
-                Err(err) => {
-                    snackbar::show(format!("{}", err));
-                }
-            }
-        }));
-    }
 
     fn fetch_sources(settings: Rc<Self>) {
         settings.loader.load(clone!(settings => async move {
@@ -225,19 +204,6 @@ impl Settings {
         }));
     }
 
-    fn uninstall_source(settings: Rc<Self>, id: i64) {
-        settings.loader.load(async move {
-            match query::uninstall_source(id).await {
-                Ok(_) => {
-                    routing::go_to_url(&Route::Settings(SettingCategory::Source(0)).url());
-                },
-                Err(err) => {
-                    snackbar::show(format!("{}", err));
-                }
-            }
-        });
-    }
-
     pub fn render_topbar(settings: Rc<Self>) -> Dom {
         html!("div", {
             .class("topbar")
@@ -303,6 +269,7 @@ impl Settings {
                             SettingCategory::Library => "Library",
                             SettingCategory::Category => "Category",
                             SettingCategory::Reader => "Reader",
+                            SettingCategory::SourceList => "Sources",
                             SettingCategory::Source(_) => "Sources",
                             SettingCategory::Users => "Users",
                             SettingCategory::CreateUser => "Create User",
@@ -390,9 +357,9 @@ impl Settings {
             .class(["list", "group"])
             .style("margin-bottom", "0.5rem")
             .children(&mut [
-                link!(Route::Settings(SettingCategory::Source(0)).url(), {
+                link!(Route::Settings(SettingCategory::SourceList).url(), {
                     .class("list-item")
-                    .text("Source")
+                    .text("Sources")
                 })
             ])
             .child_signal(settings.me.signal_cloned().map(|me| {
@@ -456,52 +423,6 @@ impl Settings {
                 }),
             ])
         })
-    }
-
-    pub fn render_source_settings(settings: Rc<Self>, source_id: i64) -> Dom {
-        if source_id == 0 {
-            html!("div", {
-                .children(&mut [
-                    Self::render_source_list("Installed", settings.clone(), settings.installed_sources.signal_vec_cloned()),
-                    Self::render_source_list("Available", settings.clone(), settings.available_sources.signal_vec_cloned()),
-                ])
-            })
-        } else {
-            html!("div", {
-                .style("display", "flex")
-                .style("flex-direction", "column")
-                .style("align-items", "center")
-                .child_signal(settings.source.signal_cloned().map(|s| s.map(|source| html!("div", {
-                    .style("display", "flex")
-                    .style("flex-direction", "column")
-                    .style("align-items", "center")
-                    .children(&mut [
-                        html!("img", {
-                            .style("width", "3rem")
-                            .style("height", "3rem")
-                            .attribute("src", &source.icon)
-                        }),
-                        html!("span", {
-                            .text(&source.name)
-                        }),
-                        html!("span", {
-                            .text(&source.version)
-                        })
-                    ])
-                }))))
-                .child_signal(signal::always(source_id).map(clone!(settings => move |source_id| (source_id > 1).then(|| html!("button", {
-                    .class("uninstall-btn")
-                    .children(&mut [
-                        html!("span", {
-                            .text("Uninstall")
-                            .event(clone!(settings => move |_: events::Click| {
-                                Self::uninstall_source(settings.clone(), source_id);
-                            }))
-                        })
-                    ])
-                })))))
-            })
-        }
     }
 
     pub fn render_users_management(settings: Rc<Self>) -> Dom {
@@ -683,11 +604,9 @@ impl Settings {
             SettingCategory::None => {
                 Self::fetch_me(self.clone());
             },
-            SettingCategory::Source(id) => if id == 0 {
-                Self::fetch_sources(self.clone())
-            } else {
-                Self::fetch_source(self.clone(), id)
-            },
+            SettingCategory::SourceList => {
+                Self::fetch_sources(self.clone());
+            }
             SettingCategory::Users => Self::fetch_user_list(self.clone()),
             _ => {}
         }
@@ -726,8 +645,14 @@ impl Settings {
                     SettingCategory::Chapters => Some(ChapterSettings::render(settings.chapter_settings.clone())),
                     SettingCategory::Library => Some(LibrarySettings::render(settings.library_settings.clone())),
                     SettingCategory::Category => Some(SettingsCategories::render(settings.category_settings.clone())),
-                    SettingCategory::Reader => Some(ReaderSettings::render(settings. reader_settings.clone())),
-                    SettingCategory::Source(source_id) => Some(Self::render_source_settings(settings.clone(), source_id)),
+                    SettingCategory::Reader => Some(ReaderSettings::render(settings.reader_settings.clone())),
+                    SettingCategory::SourceList => Some(html!("div", {
+                        .children(&mut [
+                            Self::render_source_list("Installed", settings.clone(), settings.installed_sources.signal_vec_cloned()),
+                            Self::render_source_list("Available", settings.clone(), settings.available_sources.signal_vec_cloned()),
+                        ])
+                    })),
+                    SettingCategory::Source(source_id) => Some(SettingsSource::render(Rc::new(SettingsSource::new(source_id)))),
                     SettingCategory::Users => Some(Self::render_users_management(settings.clone())),
                     SettingCategory::User => Some(Profile::render(Profile::new())),
                     SettingCategory::CreateUser => Some(Login::render(Login::new())),

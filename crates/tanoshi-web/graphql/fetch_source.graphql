@@ -4,5 +4,6 @@ query FetchSourceDetail($sourceId: Int) {
     name
     version
     icon
+    preferences
   }
 }

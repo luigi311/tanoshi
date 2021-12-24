@@ -2,6 +2,20 @@
 use rquickjs::{FromJs, IntoJs};
 use serde::{Deserialize, Serialize};
 
+#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
+#[cfg_attr(feature = "js", derive(FromJs, IntoJs))]
+pub enum TriState {
+    Ignored = 0,
+    Included = 1,
+    Excluded = 2,
+}
+
+impl Default for TriState {
+    fn default() -> Self {
+        Self::Ignored
+    }
+}
+
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[cfg_attr(feature = "js", derive(FromJs, IntoJs))]
 #[cfg_attr(feature = "js", quickjs(untagged))]
@@ -9,10 +23,6 @@ pub enum InputType {
     String(String),
     Number(f64),
     Boolean(bool),
-    State {
-        name: String,
-        selected: Option<bool>,
-    },
 }
 
 impl From<String> for InputType {
@@ -58,11 +68,15 @@ pub enum Input {
     },
     Group {
         name: String,
-        state: Vec<InputType>,
+        state: Vec<Input>,
     },
     Sort {
         name: String,
         values: Vec<InputType>,
         selection: Option<(i64, bool)>,
+    },
+    State {
+        name: String,
+        selected: Option<TriState>,
     },
 }

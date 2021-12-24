@@ -1,4 +1,4 @@
-use tanoshi_lib::models::Input;
+use tanoshi_lib::{models::Input, prelude::TriState};
 use tanoshi_vm::extension::manager::SourceManager;
 
 #[tokio::main]
@@ -7,7 +7,7 @@ async fn main() {
 
     let source_name = "MangaLife";
 
-    let mut manager = SourceManager::new("C:\\Users\\fadhlika\\Repos\\tanoshi-extensions\\dist");
+    let manager = SourceManager::new("C:\\Users\\fadhlika\\Repos\\tanoshi-extensions\\dist");
     manager.load(source_name).unwrap();
 
     let extension = manager.get(4).unwrap();
@@ -24,7 +24,12 @@ async fn main() {
     for filter in filters.iter_mut() {
         match filter {
             Input::Text { state, .. } => *state = Some("One Piece".to_string()),
-            Input::Group { state, .. } => *state = vec!["Romance".into()],
+            Input::Group { state, .. } => {
+                *state = vec![Input::State {
+                    name: "Romance".to_string(),
+                    selected: Some(TriState::Included),
+                }]
+            }
             _ => todo!(),
         }
     }

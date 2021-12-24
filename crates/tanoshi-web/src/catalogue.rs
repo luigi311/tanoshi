@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use crate::{
-    common::{snackbar, Cover, FilterListModal, Spinner},
+    common::{snackbar, Cover, InputList, Spinner},
     query,
     utils::{history, local_storage, window, AsyncLoader},
 };
@@ -52,7 +52,7 @@ pub struct Catalogue {
     is_search: Mutable<bool>,
     is_filter: Mutable<bool>,
     cover_list: MutableVec<Cover>,
-    filter_list_modal: Rc<FilterListModal>,
+    input_list_modal: Rc<InputList>,
     #[serde(skip)]
     loader: AsyncLoader,
     #[serde(skip)]
@@ -70,7 +70,7 @@ impl Default for Catalogue {
             is_search: Mutable::new(false),
             is_filter: Mutable::new(false),
             cover_list: MutableVec::new(),
-            filter_list_modal: Rc::new(FilterListModal::new()),
+            input_list_modal: Rc::new(InputList::new(true)),
             spinner: Spinner::new(),
             loader: AsyncLoader::new(),
         }
@@ -109,7 +109,7 @@ impl Catalogue {
                     }
                 }
             } else if catalogue.is_filter.get() {
-                match query::fetch_manga_from_source(catalogue.source_id, catalogue.page.get(), None, Some(catalogue.filter_list_modal.filter_list.lock_ref().to_vec())).await {
+                match query::fetch_manga_from_source(catalogue.source_id, catalogue.page.get(), None, Some(catalogue.input_list_modal.input_list.lock_ref().to_vec())).await {
                     Ok(data) => {
                         catalogue.source_name.set(data.source.name.clone());
                         map_data_to_cover!(data, catalogue, browse_source);
@@ -131,7 +131,7 @@ impl Catalogue {
             } else {
                 match query::get_popular_manga(catalogue.source_id, catalogue.page.get()).await {
                     Ok(data) => {
-                        catalogue.filter_list_modal.set(data.source.filters.clone());
+                        catalogue.input_list_modal.set(data.source.filters.clone());
                         catalogue.source_name.set(data.source.name.clone());
                         map_data_to_cover!(data, catalogue, get_popular_manga);
                     }
@@ -157,7 +157,7 @@ impl Catalogue {
                 param.push(format!("query={}", query));
             };
 
-            // if let Ok(filters) = serde_json::to_string(&self.filter_list_modal.filter_list) {
+            // if let Ok(filters) = serde_json::to_string(&self.input_list_modal.input_list) {
             //     param.push(format!("filters={}", filters));
             // };
 
@@ -307,7 +307,7 @@ impl Catalogue {
                                 .attribute("id", "filter")
                                 .style("margin-left", "0.5rem")
                                 .event(clone!(catalogue => move |_: events::Click| {
-                                    catalogue.filter_list_modal.show();
+                                    catalogue.input_list_modal.show();
                                 }))
                                 .children(&mut [
                                     svg!("svg", {
@@ -392,7 +392,7 @@ impl Catalogue {
             ])
             .children(&mut [
                 Self::render_main(self.clone()),
-                FilterListModal::render(self.filter_list_modal.clone(), {
+                InputList::render(self.input_list_modal.clone(), {
                     let catalogue = self.clone();
                     move || {
                         catalogue.cover_list.lock_mut().clear();

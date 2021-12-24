@@ -1,4 +1,4 @@
-type Type = 'Text' | 'Checkbox' | 'Select' | 'Group' | 'Sort';
+type Type = 'Text' | 'Checkbox' | 'Select' | 'Group' | 'Sort' | 'State';
 
 export abstract class Input {
     abstract type: Type;
@@ -36,10 +36,13 @@ export class Sort<T> extends Input {
     constructor(public name: string, public values: T[], public state?: { index: number, ascending: boolean }) { super(); }
 }
 
-export abstract class State {
-    constructor(public name: string, public selected?: boolean) { }
+export enum TriState {
+    Ignored = 0,
+    Included = 1,
+    Excluded = 2,
+}
 
-    public equals(others: Input): boolean {
-        return (this.name === others.name);
-    }
+export class State extends Input {
+    type: Type = 'State';
+    constructor(public name: string, public selected?: TriState) { super() }
 }

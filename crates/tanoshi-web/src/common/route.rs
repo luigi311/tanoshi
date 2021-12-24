@@ -12,6 +12,7 @@ pub enum SettingCategory {
     Reader,
     Library,
     Category,
+    SourceList,
     Source(i64),
     Users,
     CreateUser,
@@ -126,7 +127,7 @@ impl Route {
                         "library" => Route::Settings(SettingCategory::Library),
                         "category" => Route::Settings(SettingCategory::Category),
                         "reader" => Route::Settings(SettingCategory::Reader),
-                        "sources" => Route::Settings(SettingCategory::Source(0)),
+                        "sources" => Route::Settings(SettingCategory::SourceList),
                         "users" => Route::Settings(SettingCategory::Users),
                         "user" => Route::Settings(SettingCategory::User),
                         "downloads-queue" => Route::Settings(SettingCategory::DownloadQueue),
@@ -188,12 +189,9 @@ impl Route {
             Route::Settings(SettingCategory::Library) => "/settings/library".to_string(),
             Route::Settings(SettingCategory::Category) => "/settings/category".to_string(),
             Route::Settings(SettingCategory::Reader) => "/settings/reader".to_string(),
+            Route::Settings(SettingCategory::SourceList) => format!("/settings/sources"),
             Route::Settings(SettingCategory::Source(source_id)) => {
-                if *source_id > 0 {
-                    format!("/settings/sources/{}", source_id)
-                } else {
-                    "/settings/sources".to_string()
-                }
+                format!("/settings/sources/{}", source_id)
             }
             Route::Settings(SettingCategory::Users) => "/settings/users".to_string(),
             Route::Settings(SettingCategory::CreateUser) => "/settings/users/create".to_string(),

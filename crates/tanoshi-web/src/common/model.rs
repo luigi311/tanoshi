@@ -54,15 +54,24 @@ pub struct Category {
     pub count: i64,
 }
 
+#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
+pub enum TriState {
+    Ignored = 0,
+    Included = 1,
+    Excluded = 2,
+}
+
+impl Default for TriState {
+    fn default() -> Self {
+        Self::Ignored
+    }
+}
+
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub enum InputType {
     String(String),
     Number(f64),
     Boolean(bool),
-    State {
-        name: String,
-        selected: Mutable<Option<bool>>,
-    },
 }
 
 impl From<String> for InputType {
@@ -95,7 +104,6 @@ impl ToString for InputType {
             InputType::String(val) => format!("{}", val),
             InputType::Number(val) => format!("{}", val),
             InputType::Boolean(val) => format!("{}", val),
-            InputType::State { name, .. } => format!("{}", name),
         }
     }
 }
@@ -117,11 +125,15 @@ pub enum Input {
     },
     Group {
         name: String,
-        state: Arc<MutableVec<InputType>>,
+        state: Arc<MutableVec<Input>>,
     },
     Sort {
         name: String,
         values: Vec<InputType>,
         selection: Mutable<Option<(i64, bool)>>,
+    },
+    State {
+        name: String,
+        selected: Mutable<Option<TriState>>,
     },
 }

@@ -17,6 +17,7 @@ mod settings;
 mod settings_categories;
 mod settings_download_queue;
 mod settings_manage_downloads;
+mod settings_source;
 mod updates;
 mod utils;
 
