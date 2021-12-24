@@ -20,7 +20,7 @@ mod settings_manage_downloads;
 mod updates;
 mod utils;
 
-use utils::{initialize_urls, local_storage, window};
+use utils::{apply_theme_color, initialize_urls, local_storage, window};
 use wasm_bindgen::{prelude::*, JsCast};
 
 use app::App;
@@ -41,11 +41,15 @@ pub async fn main_js() -> Result<(), JsValue> {
     utils::apply_theme(local_storage().get("theme").unwrap_throw());
 
     let closure = Closure::wrap(Box::new(|e: MediaQueryListEvent| {
+        let mut status_bar_color = "#5b749b";
         if e.matches() {
             utils::body().class_list().add_1("dark").unwrap_throw();
+            status_bar_color = "#090909";
         } else {
             utils::body().class_list().remove_1("dark").unwrap_throw();
         }
+
+        apply_theme_color(status_bar_color).unwrap_throw();
     }) as Box<dyn FnMut(_)>);
 
     if let Ok(Some(media_query_list)) = window().match_media("(prefers-color-scheme: dark)") {

@@ -1,3 +1,6 @@
+use std::sync::Arc;
+
+use futures_signals::{signal::Mutable, signal_vec::MutableVec};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone)]
@@ -51,12 +54,15 @@ pub struct Category {
     pub count: i64,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
-#[serde(untagged)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub enum InputType {
     String(String),
     Number(f64),
     Boolean(bool),
+    State {
+        name: String,
+        selected: Mutable<Option<bool>>,
+    },
 }
 
 impl From<String> for InputType {
@@ -83,28 +89,39 @@ impl From<bool> for InputType {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+impl ToString for InputType {
+    fn to_string(&self) -> String {
+        match self {
+            InputType::String(val) => format!("{}", val),
+            InputType::Number(val) => format!("{}", val),
+            InputType::Boolean(val) => format!("{}", val),
+            InputType::State { name, .. } => format!("{}", name),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub enum Input {
     Text {
         name: String,
-        state: Option<String>,
+        state: Mutable<Option<String>>,
     },
     Checkbox {
         name: String,
-        state: Option<bool>,
+        state: Mutable<Option<bool>>,
     },
     Select {
         name: String,
         values: Vec<InputType>,
-        state: Option<i64>,
+        state: Mutable<Option<i64>>,
     },
     Group {
         name: String,
-        state: Option<Vec<InputType>>,
+        state: Arc<MutableVec<InputType>>,
     },
     Sort {
         name: String,
         values: Vec<InputType>,
-        selection: Option<(i64, bool)>,
+        selection: Mutable<Option<(i64, bool)>>,
     },
 }

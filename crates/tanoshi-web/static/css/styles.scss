@@ -195,12 +195,36 @@ input {
         padding: 0.5rem !important;
     }
 
-    &[type="checkbox"] {
+    &[type="checkbox"], &[type="radio"] {
         border-radius: 100% !important;
     }
 
-    &[type="checkbox"]:checked {
-        background-color: #{$primary-color};
+    &[type="checkbox"]:checked, &[type="radio"]:checked {
+        background-color: #{$primary-color} !important;
+    }
+
+    &.tri-state[type="checkbox"]:indeterminate {
+        background-color: var(--background-color-200);
+    }
+
+    &.tri-state[type="radio"] {
+        position: absolute;
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+
+    &.tri-state[type="radio"]:checked + svg {
+        color: #{$primary-color} !important;
+        visibility: visible;
+    }
+
+    &.tri-state[type="radio"] + svg {
+        visibility: hidden;
+    }
+
+    &.tri-state[type="checkbox"] {
+        background-color: black;
     }
     
     &.error {
@@ -770,8 +794,16 @@ $manga-grid: (
     background-color: var(--background-color);
     &-row {
         border-radius: 0.25rem;
-        padding: 0.25rem;
+        margin-top: 0.25rem;
+        margin-bottom: 0.25rem;
         background-color: var(--background-color-100);
+        
+        input[type="text"] {
+            width: 100%;
+            margin: 0;
+            padding: 0;
+            background-color: var(--background-color-100);
+        }
 
         select {
             border-radius: 0.25rem;

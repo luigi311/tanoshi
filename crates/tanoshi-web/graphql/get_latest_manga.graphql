@@ -1,4 +1,8 @@
 query GetLatestManga($sourceId: Int!, $page:Int!) {
+  source(sourceId: $sourceId) {
+    name
+  }
+
   getLatestManga(sourceId: $sourceId, page:$page) {
     id
     path

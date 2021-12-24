@@ -37,3 +37,6 @@ pub use chapter_settings::*;
 
 mod library_settings;
 pub use library_settings::*;
+
+mod filter_list_modal;
+pub use filter_list_modal::*;

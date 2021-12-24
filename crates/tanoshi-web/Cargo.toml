@@ -19,7 +19,7 @@ thiserror = "1"
 chrono = { version = "0.4", features = ["serde"] }
 graphql_client = { version = "^0.10", features = ["reqwest"] }
 wasm-bindgen = "^0.2"
-serde = { version = "^1.0", features = ["derive"] }
+serde = { version = "^1.0", features = ["derive", "rc"] }
 serde_json = "1.0"
 serde_plain = "^1.0.0"
 futures-signals = "^0.3"
@@ -29,6 +29,7 @@ wasm-bindgen-futures = "^0.4"
 reqwest = { version = "^0.11", features = ["json"] }
 base64 = "0.13"
 gloo-timers = "^0.2.1"
+anyhow = "1"
 
 [dependencies.web-sys]
 version = "^0.3"
@@ -57,6 +58,7 @@ features = [
   'MediaQueryList',
   'MediaQueryListEvent',
   'Navigator',
+  'ServiceWorkerContainer',
 ]
 
 [dev-dependencies]

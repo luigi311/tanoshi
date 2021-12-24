@@ -4,8 +4,6 @@ use futures_signals::signal::{Signal, SignalExt};
 use wasm_bindgen::prelude::*;
 use web_sys::Url;
 
-use crate::query::InputList;
-
 #[derive(Debug, Clone, Copy)]
 pub enum SettingCategory {
     None,
@@ -32,7 +30,6 @@ pub enum Route {
         id: i64,
         latest: bool,
         query: Option<String>,
-        filters: Option<InputList>,
     },
     Manga(i64),
     MangaBySourcePath(i64, String),
@@ -65,14 +62,10 @@ impl Route {
                         if let Ok(id) = id.parse() {
                             let params = url.search_params();
                             let query = params.get("keyword");
-                            let filters = params
-                                .get("filters")
-                                .and_then(|by| serde_json::from_str(&by).ok());
                             Route::Catalogue {
                                 id,
                                 latest: false,
                                 query,
-                                filters,
                             }
                         } else {
                             Route::NotFound
@@ -82,14 +75,10 @@ impl Route {
                         if let Ok(id) = id.parse() {
                             let params = url.search_params();
                             let query = params.get("keyword");
-                            let filters = params
-                                .get("filters")
-                                .and_then(|by| serde_json::from_str(&by).ok());
                             Route::Catalogue {
                                 id,
                                 latest: true,
                                 query,
-                                filters,
                             }
                         } else {
                             Route::NotFound
@@ -169,12 +158,7 @@ impl Route {
                 }
             }
             Route::CatalogueList => "/catalogue".to_string(),
-            Route::Catalogue {
-                id,
-                latest,
-                query,
-                filters,
-            } => {
+            Route::Catalogue { id, latest, query } => {
                 if *latest {
                     return format!("/catalogue/{}/latest", id);
                 }
@@ -182,10 +166,6 @@ impl Route {
                 let mut param = vec![];
                 if let Some(query) = query {
                     param.push(format!("query={}", query));
-                }
-
-                if let Ok(filters) = serde_json::to_string(&filters) {
-                    param.push(format!("filters={}", filters));
                 }
 
                 format!("/catalogue/{}?{}", id, param.join("&"))

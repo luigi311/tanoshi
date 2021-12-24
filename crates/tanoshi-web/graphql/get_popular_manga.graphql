@@ -1,4 +1,9 @@
 query GetPopularManga($sourceId: Int!, $page:Int!) {
+  source(sourceId: $sourceId) {
+    name
+    filters
+  }
+  
   getPopularManga(sourceId: $sourceId, page:$page) {
     id
     path

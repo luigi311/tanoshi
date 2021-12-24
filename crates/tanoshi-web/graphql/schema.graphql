@@ -356,6 +356,7 @@ type Source {
   icon: String!
   hasUpdate: Boolean!
   filters: InputList!
+  preferences: InputList!
 }
 
 type Status {

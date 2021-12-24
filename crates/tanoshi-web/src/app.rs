@@ -111,7 +111,7 @@ impl App {
                     Route::CatalogueList => Some(
                         CatalogueList::render(CatalogueList::new()),
                     ),
-                    Route::Catalogue{id, latest, query, filters} => Some(
+                    Route::Catalogue{id, latest, query} => Some(
                         Catalogue::render(Catalogue::new(id), latest, query),
                     ),
                     Route::Manga(manga_id) => Some(
