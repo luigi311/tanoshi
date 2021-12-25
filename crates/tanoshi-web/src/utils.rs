@@ -145,7 +145,7 @@ pub fn initialize_urls() {
 }
 
 pub fn is_tauri() -> bool {
-    IS_TAURI.with(|v| v.borrow().clone())
+    IS_TAURI.with(|v| *v.borrow())
 }
 
 pub fn is_tauri_signal() -> impl Signal<Item = bool> {

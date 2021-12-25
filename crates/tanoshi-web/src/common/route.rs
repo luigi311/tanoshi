@@ -189,7 +189,7 @@ impl Route {
             Route::Settings(SettingCategory::Library) => "/settings/library".to_string(),
             Route::Settings(SettingCategory::Category) => "/settings/category".to_string(),
             Route::Settings(SettingCategory::Reader) => "/settings/reader".to_string(),
-            Route::Settings(SettingCategory::SourceList) => format!("/settings/sources"),
+            Route::Settings(SettingCategory::SourceList) => "/settings/sources".to_string(),
             Route::Settings(SettingCategory::Source(source_id)) => {
                 format!("/settings/sources/{}", source_id)
             }

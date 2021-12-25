@@ -311,7 +311,7 @@ impl Reader {
             .class_signal("animate__slideOutDown", reader.is_bar_visible.signal().map(|x| !x))
             .children(&mut [
                 Self::render_page_slider(reader.clone()),
-                Self::render_action_bar(reader.clone())
+                Self::render_action_bar(reader)
             ])
         })
     }

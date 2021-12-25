@@ -2,6 +2,7 @@ use async_graphql::{Context, Guard, Result};
 
 use crate::user::Claims;
 
+#[derive(Debug, Default)]
 pub struct AdminGuard;
 
 impl AdminGuard {

@@ -194,7 +194,7 @@ impl InputList {
                 .style("margin-top", "0.25rem")
                 .style("margin-bottom", "0.25rem")
                 .children(&mut [
-                    Self::render_collapsible_header(input_list.clone(), index.clone(), name.clone()),
+                    Self::render_collapsible_header(input_list.clone(), index.clone(), name),
                     html!("div" => HtmlElement, {
                         .class("reader-settings-row")
                         .style("padding", "0.5rem")

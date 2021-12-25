@@ -218,7 +218,7 @@ impl SettingsCategories {
                                     .style("margin-right","0.5rem")
                                     .event(clone!(settings => move |_: events::Click| {
                                         if let Some(new_category_name) = settings.new_category.get_cloned() {
-                                            settings.create_category(new_category_name.clone());
+                                            settings.create_category(new_category_name);
                                         }
                                     }))
                                     .children(&mut [

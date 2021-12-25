@@ -62,8 +62,8 @@ pub async fn fetch_manga_from_source(
     let var = browse_source::Variables {
         source_id: Some(source_id),
         page: Some(page),
-        query: query,
-        filters: filters,
+        query,
+        filters,
     };
     let data: browse_source::ResponseData = post_graphql::<BrowseSource>(var).await?;
     Ok(data)
@@ -437,10 +437,7 @@ pub async fn fetch_source(
 )]
 pub struct SetPreferences;
 
-pub async fn set_preferences(
-    source_id: i64,
-    preferences: InputList,
-) -> Result<(), Box<dyn Error>> {
+pub async fn set_preferences(source_id: i64, preferences: InputList) -> Result<(), Box<dyn Error>> {
     let var = set_preferences::Variables {
         source_id,
         preferences,

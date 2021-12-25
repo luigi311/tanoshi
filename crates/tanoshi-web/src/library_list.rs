@@ -116,7 +116,7 @@ impl LibraryList {
                 })
             ])
             .children(&mut [
-                Self::render_main(self.clone()),
+                Self::render_main(self),
                 html!("div", {
                     .class("bottombar-spacing")
                 })

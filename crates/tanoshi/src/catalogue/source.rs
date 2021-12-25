@@ -131,8 +131,8 @@ impl SourceRoot {
 
         let mut sources: Vec<Source> = vec![];
         for index in source_indexes {
-            if !extensions.get(index.id).is_ok() {
-                sources.push(index.into());
+            if extensions.get(index.id).is_err() {
+                sources.push(index);
             }
         }
         Ok(sources)

@@ -101,9 +101,9 @@ impl From<bool> for InputType {
 impl ToString for InputType {
     fn to_string(&self) -> String {
         match self {
-            InputType::String(val) => format!("{}", val),
-            InputType::Number(val) => format!("{}", val),
-            InputType::Boolean(val) => format!("{}", val),
+            InputType::String(val) => val.to_string(),
+            InputType::Number(val) => val.to_string(),
+            InputType::Boolean(val) => val.to_string(),
         }
     }
 }

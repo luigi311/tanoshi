@@ -35,10 +35,8 @@ pub async fn test(filename: Option<String>) -> Result<()> {
 
         let module = ctx.compile("run", source)?;
 
-        for entry in module.entries::<String, Function>() {
-            if let Ok((name, test)) = entry {
-                tests.insert(name, Persistent::save(ctx, test));
-            }
+        for (name, test) in module.entries::<String, Function>().flatten() {
+            tests.insert(name, Persistent::save(ctx, test));
         }
 
         Ok(())
@@ -57,7 +55,7 @@ pub async fn test(filename: Option<String>) -> Result<()> {
         } else {
             eprint!("ok");
         }
-        eprintln!("");
+        eprintln!();
     }
 
     let failures_len = failures.len();

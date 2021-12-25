@@ -393,7 +393,7 @@ impl Extension for Local {
     }
 
     async fn get_pages(&self, filename: String) -> Result<Vec<String>> {
-        let path = PathBuf::from(filename.clone());
+        let path = PathBuf::from(filename);
         let mut pages = if path.is_dir() {
             match Self::get_pages_from_dir(&path) {
                 Ok(pages) => pages,

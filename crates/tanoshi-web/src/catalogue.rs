@@ -102,7 +102,7 @@ impl Catalogue {
             if let Some(keyword) = catalogue.keyword.get_cloned() {
                 match query::fetch_manga_from_source(catalogue.source_id, catalogue.page.get(), Some(keyword), None).await {
                     Ok(data) => {
-                        catalogue.source_name.set(data.source.name.clone());
+                        catalogue.source_name.set(data.source.name);
                     }
                     Err(e) => {
                         snackbar::show(format!("Fetch manga from source failed: {}", e))

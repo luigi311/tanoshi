@@ -110,7 +110,7 @@ async fn main() -> Result<(), anyhow::Error> {
 
     let schema = schema::build(userdb, mangadb, extension_manager, download_tx, notifier);
 
-    let app = server::init_app(&config, schema);
+    let app = server::init_app(config, schema);
     let server_fut = server::serve("0.0.0.0", config.port, app);
 
     tokio::select! {

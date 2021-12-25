@@ -80,10 +80,9 @@ impl SourceManager {
     }
 
     pub fn unload(&self, id: i64) -> Result<Arc<dyn Extension>> {
-        Ok(self
-            .lock_extensions()?
+        self.lock_extensions()?
             .remove(&id)
-            .ok_or(anyhow!("no such source"))?)
+            .ok_or(anyhow!("no such source"))
     }
 
     pub async fn remove(&self, id: i64) -> Result<()> {

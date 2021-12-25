@@ -51,7 +51,7 @@ impl Library {
             library.loader.load(clone!(library => async move {
                 match query::fetch_category_detail(category_id).await {
                     Ok(res) => {
-                        library.category_name.set(res.name.clone());
+                        library.category_name.set(res.name);
                         Self::fetch_libraries(library.clone(), false);
                     }
                     Err(e) => {

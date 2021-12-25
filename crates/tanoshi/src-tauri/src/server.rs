@@ -74,7 +74,7 @@ impl<R: Runtime> Plugin<R> for Server {
 
       let schema = schema::build(userdb, mangadb, extension_manager, download_tx, notifier);
 
-      let app = server::init_app(&config, schema);
+      let app = server::init_app(config, schema);
       let server_fut = server::serve("127.0.0.1", port, app);
 
       tokio::select! {

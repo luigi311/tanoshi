@@ -191,7 +191,7 @@ impl LibrarySettings {
                             .with_node!(select => {
                                 .event(clone!(settings, select => move |_: events::Change| {
                                     let value = select.value();
-                                    let category = settings.categories.lock_ref().iter().find(|cat| cat.name == value ).map(|cat|cat.clone());
+                                    let category = settings.categories.lock_ref().iter().find(|cat| cat.name == value ).cloned();
                                     info!("change {:?}", category);
                                     settings.default_category.set(category);
                                 }))
