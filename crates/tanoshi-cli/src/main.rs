@@ -26,7 +26,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let opts: Opts = Opts::parse();
 
     match opts.subcmd {
-        Command::Test { file } => test::test(file).await?,
+        Command::Test { file } => {
+            if test::test(file).await.is_err() {
+                std::process::exit(1);
+            }
+        }
     }
 
     Ok(())
