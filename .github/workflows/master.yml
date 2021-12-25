@@ -95,8 +95,7 @@ jobs:
         run: |
           Invoke-WebRequest -Uri https://github.com/llvm/llvm-project/releases/download/llvmorg-11.0.1/LLVM-11.0.1-win64.exe -OutFile LLVM-11.0.1-win64.exe
           7z x .\LLVM-11.0.1-win64.exe -aoa -o'C:\Program Files\LLVM'
-      - id: cache-vcpkg
-        name: Cache vcpkg
+      - name: Cache vcpkg
         uses: actions/cache@v2
         if: ${{ matrix.os == 'windows-latest' }}
         with:
@@ -105,7 +104,7 @@ jobs:
           restore-keys: |
             vcpkg-${{ matrix.os }}-
       - name: Install deps
-        if: ${{ matrix.os == 'windows-latest' && steps.cache-vcpkg.outputs.cache-hit != 'true' }}
+        if: ${{ matrix.os == 'windows-latest' }}
         run: |
           vcpkg integrate install
           vcpkg install --only-downloads libarchive:x64-windows-static-md
