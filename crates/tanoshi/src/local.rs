@@ -248,11 +248,15 @@ impl Extension for Local {
     }
 
     fn get_filter_list(&self) -> Result<Vec<Input>> {
-        todo!()
+        Ok(vec![])
     }
 
     fn get_preferences(&self) -> Result<Vec<Input>> {
-        todo!()
+        Ok(vec![])
+    }
+
+    fn set_preferences(&self, _: Vec<Input>) -> Result<()> {
+        Ok(())
     }
 
     async fn get_popular_manga(&self, page: i64) -> Result<Vec<MangaInfo>> {
@@ -260,7 +264,7 @@ impl Extension for Local {
     }
 
     async fn get_latest_manga(&self, _page: i64) -> Result<Vec<MangaInfo>> {
-        todo!()
+        Ok(vec![])
     }
 
     async fn search_manga(

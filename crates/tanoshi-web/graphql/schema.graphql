@@ -155,6 +155,7 @@ type MutationRoot {
   installSource(sourceId: Int!): Int!
   uninstallSource(sourceId: Int!): Int!
   updateSource(sourceId: Int!): Int!
+  setPreferences(sourceId: Int!, preferences: InputList!): Int!
   pauseDownload: Boolean!
   resumeDownload: Boolean!
   downloadChapters(ids: [Int!]!): Int!

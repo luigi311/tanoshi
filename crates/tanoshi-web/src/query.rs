@@ -432,6 +432,26 @@ pub async fn fetch_source(
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "graphql/schema.graphql",
+    query_path = "graphql/set_preferences.graphql",
+    response_derives = "Debug"
+)]
+pub struct SetPreferences;
+
+pub async fn set_preferences(
+    source_id: i64,
+    preferences: InputList,
+) -> Result<(), Box<dyn Error>> {
+    let var = set_preferences::Variables {
+        source_id,
+        preferences,
+    };
+    let _ = post_graphql::<SetPreferences>(var).await?;
+    Ok(())
+}
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/schema.graphql",
     query_path = "graphql/install_source.graphql",
     response_derives = "Debug"
 )]

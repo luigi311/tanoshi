@@ -11,7 +11,7 @@ macro_rules! call_js {
             let object = ctx.globals().get::<_, Object>("s")?;
             object
                 .get::<_, Function>($name)?
-                .call((This(object), ($($arg,)*)))
+                .call((This(object), $($arg,)*))
         })?
     };
 }
@@ -69,18 +69,18 @@ impl tanoshi_lib::traits::Extension for Source {
         Ok(prefs)
     }
 
+    fn set_preferences(&self, preferences: Vec<Input>) -> Result<()> {
+        call_js!(self, "setPreferences", preferences);
+        Ok(())
+    }
+
     async fn get_popular_manga(&self, page: i64) -> Result<Vec<MangaInfo>> {
         let promise: Promise<Vec<MangaInfo>> = call_js!(self, "getPopularManga", page);
         Ok(promise.await?)
     }
 
     async fn get_latest_manga(&self, page: i64) -> Result<Vec<MangaInfo>> {
-        let promise: Promise<Vec<MangaInfo>> = self.0.with(|ctx| {
-            let object = ctx.globals().get::<_, Object>("s")?;
-            object
-                .get::<_, Function>("getLatestManga")?
-                .call((This(object), page))
-        })?;
+        let promise: Promise<Vec<MangaInfo>> = call_js!(self, "getLatestManga", page);
 
         Ok(promise.await?)
     }
@@ -91,12 +91,7 @@ impl tanoshi_lib::traits::Extension for Source {
         query: Option<String>,
         filters: Option<Vec<Input>>,
     ) -> Result<Vec<MangaInfo>> {
-        let promise: Promise<Vec<MangaInfo>> = self.0.with(|ctx| {
-            let object = ctx.globals().get::<_, Object>("s")?;
-            object
-                .get::<_, Function>("searchManga")?
-                .call((This(object), page, query, filters))
-        })?;
+        let promise: Promise<Vec<MangaInfo>> = call_js!(self, "searchManga", page, query, filters);
 
         Ok(promise.await?)
     }

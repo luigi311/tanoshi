@@ -8,6 +8,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::sync::MutexGuard;
+use tanoshi_lib::prelude::Input;
 use tanoshi_lib::{prelude::SourceInfo, traits::Extension};
 
 #[derive(Clone)]
@@ -34,6 +35,27 @@ impl SourceManager {
             .map_err(|e| anyhow!("failed to lock: {}", e))
     }
 
+    fn read_preferences(&self, source_name: &str) -> Result<Vec<Input>> {
+        let path = self.dir.join(source_name).with_extension(".json");
+        let contents = std::fs::read_to_string(path)?;
+        Ok(serde_json::from_str(&contents)?)
+    }
+
+    pub fn set_preferences(&self, source_id: i64, preferences: Vec<Input>) -> Result<()> {
+        let source_info = self.get(source_id)?.get_source_info();
+        let path = self.dir.join(&source_info.name).with_extension(".json");
+
+        let contents = serde_json::to_string(&preferences)?;
+        std::fs::write(path, contents)?;
+
+        self.lock_extensions()?
+            .get(&source_id)
+            .ok_or(anyhow!("no such source"))?
+            .set_preferences(preferences)?;
+
+        Ok(())
+    }
+
     pub async fn install(&self, name: &str, contents: &[u8]) -> Result<SourceInfo> {
         tokio::fs::write(self.dir.join(name).with_extension("mjs"), contents).await?;
 
@@ -43,8 +65,10 @@ impl SourceManager {
     pub fn load(&self, name: &str) -> Result<SourceInfo> {
         let ext = Arc::new(Source::new(&self.rt, name)?);
         let source_info = ext.get_source_info();
+        if let Ok(preferences) = self.read_preferences(&source_info.name) {
+            ext.set_preferences(preferences)?;
+        }
         self.lock_extensions()?.insert(source_info.id, ext);
-
         Ok(source_info)
     }
 

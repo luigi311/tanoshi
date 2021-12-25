@@ -80,3 +80,38 @@ pub enum Input {
         selected: Option<TriState>,
     },
 }
+
+impl Input {
+    pub fn name(&self) -> String {
+        match self {
+            Input::Text { name, .. } => name.clone(),
+            Input::Checkbox { name, .. } => name.clone(),
+            Input::Select { name, .. } => name.clone(),
+            Input::Group { name, .. } => name.clone(),
+            Input::Sort { name, .. } => name.clone(),
+            Input::State { name, .. } => name.clone(),
+        }
+    }
+}
+
+impl PartialEq for Input {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Text { name: l_name, .. }, Self::Text { name: r_name, .. }) => l_name == r_name,
+            (Self::Checkbox { name: l_name, .. }, Self::Checkbox { name: r_name, .. }) => {
+                l_name == r_name
+            }
+            (Self::Select { name: l_name, .. }, Self::Select { name: r_name, .. }) => {
+                l_name == r_name
+            }
+            (Self::Group { name: l_name, .. }, Self::Group { name: r_name, .. }) => {
+                l_name == r_name
+            }
+            (Self::Sort { name: l_name, .. }, Self::Sort { name: r_name, .. }) => l_name == r_name,
+            (Self::State { name: l_name, .. }, Self::State { name: r_name, .. }) => {
+                l_name == r_name
+            }
+            _ => false,
+        }
+    }
+}

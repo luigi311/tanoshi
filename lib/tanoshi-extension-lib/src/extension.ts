@@ -15,17 +15,40 @@ export abstract class Extension implements Source {
     readonly abstract languages: string;
     readonly abstract nsfw: boolean;
 
+    preferences: Input[] = [];
+
     constructor() { }
 
     /**
      * @returns list of input or undefined if no filters
      */
-    abstract getFilterList(): Input[];
+    getFilterList(): Input[] {
+        return [];
+    }
 
     /**
      * @returns preferences class or undefined if no preferences
      */
-    abstract getPreferences(): Input[];
+    getPreferences(): Input[] {
+        return this.preferences;
+    }
+
+    /**
+     * @returns 
+     */
+    setPreferences(inputs: Input[]) {
+        let saved = new Map<String, Input>();
+        for (var pref of inputs) {
+            saved.set(`${pref.type}(${pref.name})`, pref);
+        }
+        this.preferences = this.preferences.map((field) => {
+            let f = saved.get(`${field.type}(${field.name})`)
+            if (f) {
+                field = f;
+            }
+            return field;
+        });
+    }
 
     /**
      * 

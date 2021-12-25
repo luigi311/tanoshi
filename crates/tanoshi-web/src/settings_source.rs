@@ -45,6 +45,17 @@ impl SettingsSource {
         }));
     }
 
+    fn set_source_preferences(settings: Rc<Self>) {
+        settings.loader.load(clone!(settings => async move {
+            match query::set_preferences(settings.source_id, settings.input_list.input_list.lock_ref().to_vec().clone()).await {
+                Ok(()) => {},
+                Err(err) => {
+                    snackbar::show(format!("{}", err));
+                }
+            }
+        }));
+    }
+
     fn uninstall_source(settings: Rc<Self>, id: i64) {
         settings.loader.load(async move {
             match query::uninstall_source(id).await {
@@ -84,7 +95,9 @@ impl SettingsSource {
                 ])
             }))))
             .children(&mut [
-                InputList::render(settings.input_list.clone(), || {})
+                InputList::render(settings.input_list.clone(), clone!(settings => move || {
+                    Self::set_source_preferences(settings.clone());
+                }))
             ])
             .child_signal(signal::always(settings.source_id).map(clone!(settings => move |source_id| (source_id > 1).then(|| html!("button", {
                 .class("uninstall-btn")

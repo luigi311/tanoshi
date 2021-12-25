@@ -7,7 +7,7 @@ use futures_signals::signal_vec::{MutableVec, SignalVecExt};
 use futures_signals::{signal::Signal, signal_map::MutableBTreeMap, signal_vec};
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::{prelude::*, JsCast};
-use web_sys::{HtmlElement, HtmlInputElement, HtmlSelectElement};
+use web_sys::{HtmlElement, HtmlInputElement, HtmlOptionElement, HtmlSelectElement};
 
 #[derive(Deserialize, Serialize)]
 pub struct InputList {
@@ -111,7 +111,8 @@ impl InputList {
     ) -> Dom {
         match input {
             Input::Text { name, state } => html!("div", {
-                .style("margin-bottom", "0.5rem")
+                .style("margin-top", "0.25rem")
+                .style("margin-bottom", "0.25rem")
                 .children(&mut [
                     html!("label", {
                         .text(&name)
@@ -122,6 +123,7 @@ impl InputList {
                         .children(&mut [
                             html!("input" => HtmlInputElement, {
                                 .attr("type", "text")
+                                .attr_signal("value", state.signal_cloned())
                                 .with_node!(input => {
                                     .event(clone!(state => move |_: events::Input| {
                                         state.set(Some(input.value()));
@@ -133,6 +135,8 @@ impl InputList {
                 ])
             }),
             Input::Checkbox { name, state } => html!("div", {
+                .style("margin-top", "0.25rem")
+                .style("margin-bottom", "0.25rem")
                 .style("display", "flex")
                 .style("justify-content", "space-between")
                 .children(&mut [
@@ -157,7 +161,8 @@ impl InputList {
                 values,
                 state,
             } => html!("div", {
-                .style("margin-bottom", "0.5rem")
+                .style("margin-top", "0.25rem")
+                .style("margin-bottom", "0.25rem")
                 .style("display", "flex")
                 .style("justify-content", "space-between")
                 .children(&mut [
@@ -168,13 +173,16 @@ impl InputList {
                         .class("reader-settings-row")
                         .children(&mut [
                             html!("select" => HtmlSelectElement, {
-                                .children_signal_vec(signal_vec::always(values).map(|value| html!("option", {
+                                .children_signal_vec(signal_vec::always(values).map(clone!(state => move |value| html!("option" => HtmlOptionElement, {
                                     .text(&value.to_string())
-                                })))
+                                    .with_node!(option => {
+                                        .attr_signal("selected", state.signal_cloned().map(clone!(option => move |state| if state.unwrap_or_default() == option.index() as i64 { Some("true") } else { None })))
+                                    })
+                                }))))
                                 .with_node!(select => {
                                     .event(clone!(select, state => move |_: events::Change| {
                                         let selected_index = select.selected_index() as i64;
-                                        state.set((selected_index > 0).then(|| selected_index - 1));
+                                        state.set(Some(selected_index));
                                     }))
                                 })
                             }),
@@ -183,7 +191,8 @@ impl InputList {
                 ])
             }),
             Input::Group { name, state } => html!("div", {
-                .style("margin-bottom", "0.5rem")
+                .style("margin-top", "0.25rem")
+                .style("margin-bottom", "0.25rem")
                 .children(&mut [
                     Self::render_collapsible_header(input_list.clone(), index.clone(), name.clone()),
                     html!("div" => HtmlElement, {
@@ -199,7 +208,8 @@ impl InputList {
                 values,
                 selection,
             } => html!("div", {
-                .style("margin-bottom", "0.5rem")
+                .style("margin-top", "0.25rem")
+                .style("margin-bottom", "0.25rem")
                 .children(&mut [
                     Self::render_collapsible_header(input_list.clone(), index.clone(), name.clone()),
                     html!("div" => HtmlElement, {
@@ -220,6 +230,17 @@ impl InputList {
                                             .attr("name", &name)
                                             .attr("id", &value.to_string())
                                             .with_node!(input => {
+                                                .attribute_signal("checked", selection.signal_cloned().map(clone!(index => move |selection| {
+                                                    if let Some((i, _)) = selection {
+                                                        if index.get().unwrap_throw() == (i as usize) {
+                                                            Some("true")
+                                                        } else {
+                                                            None
+                                                        }
+                                                    } else {
+                                                        None
+                                                    }
+                                                })))
                                                 .event(clone!(input, index, selection => move |_: events::Change| {
                                                     if input.checked() {
                                                         selection.set(Some((index.get().unwrap_throw() as i64, true)));
@@ -275,7 +296,8 @@ impl InputList {
                 ])
             }),
             Input::State { name, selected } => html!("div" => HtmlElement, {
-                .style("margin", "0.5rem")
+                .style("margin-top", "0.25rem")
+                .style("margin-bottom", "0.25rem")
                 .style("display", "flex")
                 .style("align-items", "center")
                 .with_node!(row => {
@@ -308,7 +330,8 @@ impl InputList {
                 .children(&mut [
                     html!("input" => HtmlInputElement, {
                         .class("tri-state")
-                        .style("margin-right", "0.5rem")
+                        .style("margin-top", "0.25rem")
+                        .style("margin-bottom", "0.25rem")
                         .attribute("type", "checkbox")
                         .after_inserted(clone!(selected => move |input| {
                             if selected.get().is_none() {
@@ -333,7 +356,6 @@ impl InputList {
         let use_modal = input_list.use_modal;
         html!("div", {
             .style_signal("width", signal::always(use_modal).map(|use_modal| (!use_modal).then(|| "100%")))
-            .style_signal("margin-bottom", signal::always(use_modal).map(|use_modal| (!use_modal).then(|| "0.5rem")))
             .children(&mut [
                 html!("div", {
                     .visible_signal(input_list.show.signal().map(move |show| show && use_modal))
@@ -344,7 +366,7 @@ impl InputList {
                 }),
                 html!("div", {
                     .class("reader-settings")
-                    .style_important("padding-top", "0")
+                    .style_important_signal("padding-top", signal::always(use_modal).map(|x| if x { Some("0")} else { Some("0.5rem") }))
                     .class_signal(["modal", "animate__animated", "animate__faster"], signal::always(use_modal))
                     .class_signal("non-modal", signal::always(use_modal).map(|x| !x))
                     .class_signal("animate__slideInUp", input_list.show.signal())
@@ -362,7 +384,7 @@ impl InputList {
                             .style("display", "flex")
                             .style("position", "sticky")
                             .style("top", "0")
-                            .style("padding", "0.5rem")
+                            .style("padding-top", "0.5rem")
                             .style("justify-content", "space-between")
                             .style("margin-bottom", "0.5rem")
                             .style_important("background-color", "var(--modal-background-color)")
@@ -376,7 +398,7 @@ impl InputList {
                                     .children(&mut [
                                         html!("button", {
                                             .text("Apply")
-                                            .event(clone!(input_list => move |_: events::Click| {
+                                            .event(clone!(input_list, f => move |_: events::Click| {
                                                 f();
                                                 input_list.show.set(false);
                                             }))
@@ -389,15 +411,20 @@ impl InputList {
                     .children_signal_vec(input_list.input_list.signal_vec_cloned().enumerate().map(clone!(input_list => move |(index, input)| Self::render_input(input_list.clone(), index, input))))
                 }),
             ])
-            .child_signal(signal::always(use_modal).map(|use_modal| (!use_modal).then(|| html!("button", {
+            .child_signal(signal::always(use_modal).map(clone!(f => move |use_modal| (!use_modal).then(|| html!("button", {
                 .class("uninstall-btn")
+                .style("margin-top", "0.5rem")
+                .style("margin-bottom", "0.5rem")
                 .children(&mut [
                     html!("span", {
                         .style_important("color", "var(--primary-color)")
                         .text("Apply")
+                        .event(clone!(f => move |_:events::Click| {
+                            f();
+                        }))
                     })
                 ])
-            }))))
+            })))))
         })
     }
 }

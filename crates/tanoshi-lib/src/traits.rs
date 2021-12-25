@@ -11,6 +11,8 @@ pub trait Extension: Send + Sync {
 
     fn get_preferences(&self) -> Result<Vec<Input>>;
 
+    fn set_preferences(&self, preferences: Vec<Input>) -> Result<()>;
+
     async fn get_popular_manga(&self, page: i64) -> Result<Vec<MangaInfo>>;
 
     async fn get_latest_manga(&self, page: i64) -> Result<Vec<MangaInfo>>;

@@ -227,4 +227,17 @@ impl SourceMutationRoot {
 
         Ok(source_id)
     }
+
+    #[graphql(guard = "AdminGuard::new()")]
+    async fn set_preferences(
+        &self,
+        ctx: &Context<'_>,
+        source_id: i64,
+        preferences: InputList,
+    ) -> Result<i64> {
+        ctx.data::<SourceManager>()?
+            .set_preferences(source_id, preferences.0)?;
+
+        Ok(source_id)
+    }
 }
