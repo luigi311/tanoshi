@@ -185,7 +185,7 @@ jobs:
           restore-keys: |
             vcpkg-${{ matrix.os }}-
       - name: Install deps
-        if: ${{ matrix.os == 'windows-latest' && steps.cache-vcpkg.outputs.cache-hit != 'true' }}
+        if: ${{ matrix.os == 'windows-latest' }}
         run: |
           vcpkg integrate install
           vcpkg install --only-downloads libarchive:x64-windows-static-md
