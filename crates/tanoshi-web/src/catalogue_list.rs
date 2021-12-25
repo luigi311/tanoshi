@@ -233,30 +233,47 @@ impl CatalogueList {
         })
     }
 
+    fn render_source_list(source: &Source) -> Dom {
+        html!("li", {
+            .class("list-item")
+            .children(&mut [
+                link!(Route::Catalogue{id: source.id, latest: false, query: None}.url(), {
+                    .class("source-item")
+                    .children(&mut [
+                        html!("img", {
+                            .class_signal("invisible", Mutable::new(source.icon.clone()).signal_cloned().map(|icon| icon.is_empty()))
+                            .attribute("src", &source.icon)
+                        }),
+                        html!("span", {
+                            .text(&source.name)
+                        }),
+                    ])
+                }),
+                link!(Route::Catalogue{id: source.id, latest: true, query: None}.url(), {
+                    .class("source-action")
+                    .text("latest")
+                }),
+            ])
+        })
+    }
+
     pub fn render_main(catalogue: Rc<Self>) -> Dom {
         html!("ul", {
             .class("list")
-            .children_signal_vec(catalogue.sources.signal_vec_cloned().map(|source| html!("li", {
-                .class("list-item")
-                .children(&mut [
-                    link!(Route::Catalogue{id: source.id, latest: false, query: None}.url(), {
-                        .class("source-item")
-                        .children(&mut [
-                            html!("img", {
-                                .class_signal("invisible", Mutable::new(source.icon.clone()).signal_cloned().map(|icon| icon.is_empty()))
-                                .attribute("src", &source.icon)
-                            }),
-                            html!("span", {
-                                .text(&source.name)
-                            }),
-                        ])
-                    }),
-                    link!(Route::Catalogue{id: source.id, latest: true, query: None}.url(), {
-                        .class("source-action")
-                        .text("latest")
-                    }),
-                ])
-            })))
+            .children(&mut [
+                html!("span", {
+                    .style("margin", "0.5rem")
+                    .text("Local Sources")
+                })
+            ])
+            .children_signal_vec(catalogue.sources.signal_vec_cloned().filter(|s| s.id  >= 10000).map(|source| Self::render_source_list(&source)))
+            .children(&mut [
+                html!("span", {
+                    .style("margin", "0.5rem")
+                    .text("External Sources")
+                })
+            ])
+            .children_signal_vec(catalogue.sources.signal_vec_cloned().filter(|s| s.id  < 10000).map(|source| Self::render_source_list(&source)))
         })
     }
 
