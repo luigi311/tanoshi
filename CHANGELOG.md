@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 - [tanoshi] source filter and settings
+- [tanoshi] multiple folder for local sources
 
 ### Changed
 - [tanoshi] extension now using and ported to javascript
