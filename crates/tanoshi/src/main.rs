@@ -57,6 +57,8 @@ async fn main() -> Result<(), anyhow::Error> {
     let config =
         GLOBAL_CONFIG.get_or_init(|| Config::open(opts.config).expect("failed to init config"));
 
+    debug!("config: {:?}", config);
+
     let pool = db::establish_connection(&config.database_path).await?;
     let mangadb = db::MangaDatabase::new(pool.clone());
     let userdb = db::UserDatabase::new(pool.clone());
@@ -73,7 +75,26 @@ async fn main() -> Result<(), anyhow::Error> {
         }
     }
 
-    extension_manager.insert(Arc::new(local::Local::new(config.local_path.clone())))?;
+    match &config.local_path {
+        config::LocalFolders::Single(local_path) => {
+            extension_manager.insert(Arc::new(local::Local::new(
+                10000,
+                "Local".to_string(),
+                local_path,
+            )))?;
+        }
+        config::LocalFolders::Multiple(local_paths) => {
+            for (index, local_path) in local_paths.iter().enumerate() {
+                // source id starts from 10000
+                let index = index + 10000;
+                extension_manager.insert(Arc::new(local::Local::new(
+                    index as i64,
+                    local_path.name.clone(),
+                    &local_path.path,
+                )))?;
+            }
+        }
+    }
 
     let mut notifier_builder = notifier::Builder::new(userdb.clone());
 

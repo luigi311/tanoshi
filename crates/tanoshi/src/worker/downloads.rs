@@ -8,7 +8,6 @@ use crate::{
         model::{Chapter, DownloadQueue},
         MangaDatabase,
     },
-    local,
     notifier::Notifier,
 };
 use reqwest::Url;
@@ -62,7 +61,8 @@ impl DownloadWorker {
     }
 
     async fn insert_to_queue(&mut self, chapter: &Chapter) -> Result<(), anyhow::Error> {
-        if chapter.source_id == local::ID {
+        // numbe 1 and greater than 10000 reserved for local source
+        if chapter.source_id >= 10000 {
             anyhow::bail!("local source can't be downloaded");
         }
 

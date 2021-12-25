@@ -11,7 +11,6 @@ use fancy_regex::Regex;
 use serde::{Deserialize, Serialize};
 use tanoshi_lib::prelude::{ChapterInfo, Extension, Input, Lang, MangaInfo, SourceInfo};
 
-pub static ID: i64 = 1;
 // list of supported files, other archive may works but no tested
 static SUPPORTED_FILES: phf::Set<&'static str> = phf::phf_set! {
     "cbz",
@@ -29,13 +28,15 @@ pub struct LocalMangaInfo {
 }
 
 pub struct Local {
+    id: i64,
+    name: String,
     path: PathBuf,
 }
 
 impl Local {
-    pub fn new<P: AsRef<Path>>(path: P) -> Self {
+    pub fn new<P: AsRef<Path>>(id: i64, name: String, path: P) -> Self {
         let path = PathBuf::new().join(path);
-        Self { path }
+        Self { id, name, path }
     }
 }
 fn default_cover_url() -> String {
@@ -183,7 +184,7 @@ fn get_pages_from_dir(path: &Path) -> Result<Vec<String>, anyhow::Error> {
     Ok(pages)
 }
 
-fn map_entry_to_chapter(path: &Path) -> Option<ChapterInfo> {
+fn map_entry_to_chapter(source_id: i64, path: &Path) -> Option<ChapterInfo> {
     let modified = match path
         .metadata()
         .ok()
@@ -215,7 +216,7 @@ fn map_entry_to_chapter(path: &Path) -> Option<ChapterInfo> {
     };
 
     Some(ChapterInfo {
-        source_id: ID,
+        source_id,
         title: file_name,
         path: format!("{}", path.display()),
         number,
@@ -228,8 +229,8 @@ fn map_entry_to_chapter(path: &Path) -> Option<ChapterInfo> {
 impl Extension for Local {
     fn get_source_info(&self) -> SourceInfo {
         SourceInfo {
-            id: ID,
-            name: "local".to_string(),
+            id: self.id,
+            name: self.name.clone(),
             url: format!("{}", self.path.display()),
             version: "0.0.0".to_string(),
             icon: "/icons/192.png".to_string(),
@@ -264,6 +265,7 @@ impl Extension for Local {
         query: Option<String>,
         _filters: Option<Vec<Input>>,
     ) -> Result<Vec<MangaInfo>> {
+        let id = self.id;
         let path = self.path.clone();
         tokio::task::spawn_blocking(move || -> Result<Vec<MangaInfo>> {
             let offset = (page - 1) * 20;
@@ -295,7 +297,7 @@ impl Extension for Local {
                 .skip(offset as _)
                 .take(20)
                 .map(|entry| MangaInfo {
-                    source_id: ID,
+                    source_id: id,
                     title: entry
                         .path()
                         .file_stem()
@@ -317,6 +319,7 @@ impl Extension for Local {
     }
 
     async fn get_manga_detail(&self, path: String) -> Result<MangaInfo> {
+        let id = self.id;
         tokio::task::spawn_blocking(move || -> Result<MangaInfo> {
             let path = PathBuf::from(path);
 
@@ -328,7 +331,7 @@ impl Extension for Local {
             let cover_url = find_cover_url(&path);
 
             let mut manga = MangaInfo {
-                source_id: ID,
+                source_id: id,
                 title: title.clone(),
                 author: vec![],
                 genre: vec![],
@@ -364,10 +367,11 @@ impl Extension for Local {
     }
 
     async fn get_chapters(&self, path: String) -> Result<Vec<ChapterInfo>> {
+        let source_id = self.id;
         tokio::task::spawn_blocking(move || -> Result<Vec<ChapterInfo>> {
             let path = PathBuf::from(path);
             if path.is_file() {
-                if let Some(data) = map_entry_to_chapter(&path) {
+                if let Some(data) = map_entry_to_chapter(source_id, &path) {
                     return Ok(vec![data]);
                 }
             }
@@ -382,7 +386,7 @@ impl Extension for Local {
             let mut data: Vec<ChapterInfo> = read_dir
                 .into_iter()
                 .filter_map(filter_supported_files_and_folders)
-                .filter_map(|entry| map_entry_to_chapter(&entry.path()))
+                .filter_map(|entry| map_entry_to_chapter(source_id, &entry.path()))
                 .collect();
 
             data.sort_by(|a, b| a.number.partial_cmp(&b.number).unwrap());
@@ -426,7 +430,7 @@ mod test {
 
     #[tokio::test]
     async fn test_positive_get_popular_manga() {
-        let local = Local::new("../../test/data/manga");
+        let local = Local::new(1, "Local".to_string(), "../../test/data/manga");
         let manga = local.get_popular_manga(1).await;
 
         if let Ok(data) = manga {
@@ -462,7 +466,7 @@ mod test {
 
     #[tokio::test]
     async fn test_negative_get_popular_manga() {
-        let local = Local::new("../../test/data/not_manga");
+        let local = Local::new(1, "Local".to_string(), "../../test/data/not_manga");
         let manga = local.get_popular_manga(1).await;
 
         assert!(manga.is_err());
@@ -470,7 +474,7 @@ mod test {
 
     #[tokio::test]
     async fn test_positive_get_popular_manga_with_page() {
-        let local = Local::new("../../test/data/manga");
+        let local = Local::new(1, "Local".to_string(), "../../test/data/manga");
         let manga = local.get_popular_manga(2).await;
 
         assert!(manga.is_ok());
@@ -479,7 +483,7 @@ mod test {
 
     #[tokio::test]
     async fn test_get_manga_detail_single_archive() {
-        let local = Local::new("../../test/data/manga");
+        let local = Local::new(1, "Local".to_string(), "../../test/data/manga");
         #[cfg(target_family = "windows")]
         let manga = local
             .get_manga_detail(
@@ -513,7 +517,7 @@ mod test {
 
     #[tokio::test]
     async fn test_get_manga_detail() {
-        let local = Local::new("../../test/data/manga");
+        let local = Local::new(1, "Local".to_string(), "../../test/data/manga");
         #[cfg(target_family = "windows")]
         let manga = local
             .get_manga_detail("../../test/data/manga\\Super Duck".to_string())
@@ -544,7 +548,7 @@ mod test {
 
     #[tokio::test]
     async fn test_single_chapter_manga_get_chapters() {
-        let local = Local::new("../../test/data/manga");
+        let local = Local::new(1, "Local".to_string(), "../../test/data/manga");
         #[cfg(target_family = "windows")]
         let chapter = local
             .get_chapters(
@@ -580,7 +584,7 @@ mod test {
 
     #[tokio::test]
     async fn test_manga_get_chapters() {
-        let local = Local::new("../../test/data/manga");
+        let local = Local::new(1, "Local".to_string(), "../../test/data/manga");
         #[cfg(target_family = "windows")]
         let chapter = local
             .get_chapters("../../test/data/manga\\Space Adventures".to_string())
@@ -627,7 +631,7 @@ mod test {
 
     #[tokio::test]
     async fn test_archive_get_pages() {
-        let local = Local::new("../../test/data/manga");
+        let local = Local::new(1, "Local".to_string(), "../../test/data/manga");
         #[cfg(target_family = "windows")]
         let pages = local
             .get_pages(

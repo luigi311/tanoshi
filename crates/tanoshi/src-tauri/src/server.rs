@@ -6,7 +6,10 @@ use tauri::{
   AppHandle, Runtime,
 };
 
-use tanoshi::{config::GLOBAL_CONFIG, db, local, notifier, schema, server, worker};
+use tanoshi::{
+  config::{self, GLOBAL_CONFIG},
+  db, local, notifier, schema, server, worker,
+};
 
 use std::sync::Arc;
 
@@ -48,11 +51,29 @@ impl<R: Runtime> Plugin<R> for Server {
 
       let extension_manager = SourceManager::new(&config.plugin_path);
 
-      if extension_manager
-        .insert(Arc::new(local::Local::new(config.local_path.clone())))
-        .is_err()
-      {
-        return;
+      match &config.local_path {
+        config::LocalFolders::Single(local_path) => {
+          extension_manager
+            .insert(Arc::new(local::Local::new(
+              10000,
+              "Local".to_string(),
+              local_path,
+            )))
+            .unwrap();
+        }
+        config::LocalFolders::Multiple(local_paths) => {
+          for (index, local_path) in local_paths.iter().enumerate() {
+            // source id starts from 10000
+            let index = index + 10000;
+            extension_manager
+              .insert(Arc::new(local::Local::new(
+                index as i64,
+                local_path.name.clone(),
+                &local_path.path,
+              )))
+              .unwrap();
+          }
+        }
       }
 
       let notifier = notifier::Builder::new(userdb.clone()).finish();

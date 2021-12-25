@@ -18,6 +18,19 @@ pub struct PushoverConfig {
     pub application_key: String,
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct LocalFolder {
+    pub name: String,
+    pub path: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(untagged)]
+pub enum LocalFolders {
+    Single(String),
+    Multiple(Vec<LocalFolder>),
+}
+
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct Config {
     #[serde(skip)]
@@ -36,8 +49,8 @@ pub struct Config {
     pub auto_download_chapters: bool,
     #[serde(default = "default_plugin_path")]
     pub plugin_path: String,
-    #[serde(default = "default_local_path")]
-    pub local_path: String,
+    #[serde(default = "default_local_folders")]
+    pub local_path: LocalFolders,
     #[serde(default = "default_download_path")]
     pub download_path: String,
     #[serde(default)]
@@ -57,7 +70,7 @@ impl Default for Config {
             update_interval: default_update_interval(),
             auto_download_chapters: false,
             plugin_path: default_plugin_path(),
-            local_path: default_local_path(),
+            local_path: default_local_folders(),
             download_path: default_download_path(),
             enable_playground: false,
             telegram: None,
@@ -108,6 +121,10 @@ fn default_plugin_path() -> String {
         let _ = std::fs::create_dir_all(&path);
     }
     path.display().to_string()
+}
+
+fn default_local_folders() -> LocalFolders {
+    LocalFolders::Single(default_local_path())
 }
 
 fn default_local_path() -> String {
