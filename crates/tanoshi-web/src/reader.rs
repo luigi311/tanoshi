@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use crate::common::{Fit, ReaderSettings, Spinner, events, snackbar};
-use crate::utils::{document, proxied_image_url, window, AsyncLoader};
+use crate::utils::{document, proxied_image_url, window, AsyncLoader, body};
 use crate::{
     common::{Background, Direction, DisplayMode, ReaderMode},
     query,
@@ -845,17 +845,23 @@ impl Reader {
             }))
             .global_event(clone!(reader => move |_: events::Scroll| {
                 let mut page_no = 0;
-                let body_top = window().scroll_y().unwrap_throw();
+                let window_height = body().offset_height();
+                let client_height = document().document_element().unwrap_throw().client_height();
+                let body_top = window().scroll_y().unwrap_throw().round() as i32;
                 for i in 0..reader.pages_len.get() {
                     let page_top = document()
                         .get_element_by_id(format!("{}", i).as_str())
                         .and_then(|el| el.dyn_into::<web_sys::HtmlElement>().ok())
-                        .map(|el| el.offset_top() as f64)
+                        .map(|el| el.offset_top())
                         .unwrap_or_default();
                     if page_top > body_top {
                         page_no = i;
                         break;
                     }
+                }
+                if  body_top + client_height > window_height - 10 {
+                    info!("window_height: {} body_top: {}", window_height, body_top + client_height);
+                    page_no = reader.pages_len.get() - 1;
                 }
                 let is_last_page = reader.pages_len.get() == reader.current_page.get() + 1;
                 if !(is_last_page && page_no == 0) {
