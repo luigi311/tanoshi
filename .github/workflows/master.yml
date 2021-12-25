@@ -126,7 +126,7 @@ jobs:
         run: cargo tauri build
         working-directory: crates/tanoshi
         env:
-          LIBCLANG_PATH: ${{ env.LLVM_PATH }}/bin
+          LIBCLANG_PATH: C:\Program Files\LLVM\bin
       - name: Upload dist
         uses: actions/upload-artifact@v2
         if: ${{ matrix.os == 'ubuntu-latest' }}
@@ -210,4 +210,4 @@ jobs:
         with:
           command: test
         env:
-          LIBCLANG_PATH: ${{ env.LLVM_PATH }}/bin
+          LIBCLANG_PATH: C:\Program Files\LLVM\bin
