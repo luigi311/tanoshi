@@ -1,7 +1,7 @@
 use std::{collections::HashMap, path::PathBuf, sync::Arc};
 
 use super::{Manga, Source};
-use crate::{config::GLOBAL_CONFIG, db::MangaDatabase, local::Local, user::Claims, utils};
+use crate::{config::GLOBAL_CONFIG, db::MangaDatabase, local, user::Claims, utils};
 use async_graphql::{
     dataloader::{DataLoader, Loader},
     Context, Object, Result, SimpleObject,
@@ -283,7 +283,7 @@ impl Chapter {
         let pages = if let Some(downloaded_path) =
             self.downloaded_path.clone().map(|p| PathBuf::new().join(p))
         {
-            tokio::task::spawn_blocking(move || Local::get_pages_from_archive(&downloaded_path))
+            tokio::task::spawn_blocking(move || local::get_pages_from_archive(&downloaded_path))
                 .await??
         } else {
             ctx.data::<SourceManager>()?
