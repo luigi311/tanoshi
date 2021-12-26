@@ -256,7 +256,19 @@ impl DownloadWorker {
 
                     tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
 
-                    let res = if let Ok(res) = self.client.get(url.clone()).send().await {
+                    let referrer = self
+                        .ext
+                        .get(queue.source_id)
+                        .map(|ext| ext.get_source_info().url)
+                        .unwrap_or_default();
+
+                    let res = if let Ok(res) = self
+                        .client
+                        .request(reqwest::Method::GET, url.clone())
+                        .header("referer", referrer)
+                        .send()
+                        .await
+                    {
                         res
                     } else {
                         continue;
