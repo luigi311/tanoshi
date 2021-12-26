@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize)]
 #[cfg_attr(feature = "js", derive(FromJs, IntoJs))]
+#[cfg_attr(feature = "js", quickjs(untagged))]
 pub enum TriState {
     Ignored = 0,
     Included = 1,
