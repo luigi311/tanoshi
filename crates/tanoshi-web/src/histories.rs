@@ -87,6 +87,7 @@ impl Histories {
 
     pub fn render_main(histories: Rc<Self>) -> Dom {
         html!("ul", {
+            .class("content")
             .class("list")
             .children_signal_vec(histories.entries.signal_vec_cloned().map(|entry| html!("li", {
                 .class("list-item")

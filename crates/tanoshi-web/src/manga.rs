@@ -993,42 +993,10 @@ impl Manga {
         })
     }
 
-    pub fn render(manga_page: Rc<Self>) -> Dom {
-        if manga_page.id.get() != 0 {
-            Self::fetch_detail(manga_page.clone(), false);
-        } else if manga_page.source_id.get() != 0 && manga_page.path.get_cloned() != "" {
-            Self::fetch_detail_by_source_path(manga_page.clone());
-        }
-
+    pub fn render_main(manga_page: Rc<Self>) -> Dom {
         html!("div", {
-            .future(manga_page.chapter_settings.sort.signal_cloned().for_each(clone!(manga_page => move |sort| {
-                let mut chapters = manga_page.chapters.lock_ref().to_vec();
-                chapters.sort_by(|a, b| match sort {
-                    ChapterSort { by: Sort::Number, order: Order::Asc} => a.number.partial_cmp(&b.number).unwrap_or(std::cmp::Ordering::Equal),
-                    ChapterSort { by: Sort::Number, order: Order::Desc} => b.number.partial_cmp(&a.number).unwrap_or(std::cmp::Ordering::Equal),
-                    ChapterSort { by: Sort::ReadAt, order: Order::Asc} => {
-                        let a = a.read_progress.as_ref().map(|progress| progress.at).unwrap_or_else(|| NaiveDateTime::from_timestamp(0, 0));
-                        let b = b.read_progress.as_ref().map(|progress| progress.at).unwrap_or_else(|| NaiveDateTime::from_timestamp(0, 0));
-                        a.cmp(&b)
-                    },
-                    ChapterSort { by: Sort::ReadAt, order: Order::Desc} => {
-                        let a = a.read_progress.as_ref().map(|progress| progress.at).unwrap_or_else(|| NaiveDateTime::from_timestamp(0, 0));
-                        let b = b.read_progress.as_ref().map(|progress| progress.at).unwrap_or_else(|| NaiveDateTime::from_timestamp(0, 0));
-                        b.cmp(&a)
-                    }
-                });
-                manga_page.chapters.lock_mut().replace_cloned(chapters);
-
-                async {}
-            })))
-            .style("display", "flex")
-            .style("flex-direction", "column")
-            .child_signal(manga_page.loader.is_loading().map(|is_loading| is_loading.then(|| Spinner::render_spinner(true))))
+            .class("content")
             .children(&mut [
-                Self::render_topbar(manga_page.clone()),
-                html!("div", {
-                   .class("topbar-spacing")
-                }),
                 html!("div", {
                     .class("manga-detail")
                     .children(&mut [
@@ -1211,6 +1179,47 @@ impl Manga {
             } else {
                 None
             })))
+        })
+    }
+
+    pub fn render(manga_page: Rc<Self>) -> Dom {
+        if manga_page.id.get() != 0 {
+            Self::fetch_detail(manga_page.clone(), false);
+        } else if manga_page.source_id.get() != 0 && manga_page.path.get_cloned() != "" {
+            Self::fetch_detail_by_source_path(manga_page.clone());
+        }
+
+        html!("div", {
+            .future(manga_page.chapter_settings.sort.signal_cloned().for_each(clone!(manga_page => move |sort| {
+                let mut chapters = manga_page.chapters.lock_ref().to_vec();
+                chapters.sort_by(|a, b| match sort {
+                    ChapterSort { by: Sort::Number, order: Order::Asc} => a.number.partial_cmp(&b.number).unwrap_or(std::cmp::Ordering::Equal),
+                    ChapterSort { by: Sort::Number, order: Order::Desc} => b.number.partial_cmp(&a.number).unwrap_or(std::cmp::Ordering::Equal),
+                    ChapterSort { by: Sort::ReadAt, order: Order::Asc} => {
+                        let a = a.read_progress.as_ref().map(|progress| progress.at).unwrap_or_else(|| NaiveDateTime::from_timestamp(0, 0));
+                        let b = b.read_progress.as_ref().map(|progress| progress.at).unwrap_or_else(|| NaiveDateTime::from_timestamp(0, 0));
+                        a.cmp(&b)
+                    },
+                    ChapterSort { by: Sort::ReadAt, order: Order::Desc} => {
+                        let a = a.read_progress.as_ref().map(|progress| progress.at).unwrap_or_else(|| NaiveDateTime::from_timestamp(0, 0));
+                        let b = b.read_progress.as_ref().map(|progress| progress.at).unwrap_or_else(|| NaiveDateTime::from_timestamp(0, 0));
+                        b.cmp(&a)
+                    }
+                });
+                manga_page.chapters.lock_mut().replace_cloned(chapters);
+
+                async {}
+            })))
+            .style("display", "flex")
+            .style("flex-direction", "column")
+            .child_signal(manga_page.loader.is_loading().map(|is_loading| is_loading.then(|| Spinner::render_spinner(true))))
+            .children(&mut [
+                Self::render_topbar(manga_page.clone()),
+                html!("div", {
+                   .class("topbar-spacing")
+                }),
+                Self::render_main(manga_page),
+            ])
         })
     }
 }

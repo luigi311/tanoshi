@@ -98,6 +98,7 @@ impl SettingsManageDownloads {
     pub fn render(settings: Rc<Self>) -> Dom {
         settings.fetch_downloaded_chapter();
         html!("div", {
+            .class("content")
             .children(&mut [
                 html!("div",{
                     .style("font-size", "smaller")

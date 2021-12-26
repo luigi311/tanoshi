@@ -9,7 +9,6 @@ use crate::{
         Route, 
         SettingCategory, 
         Source, 
-        Spinner, 
         User, 
         events, 
         snackbar
@@ -129,7 +128,6 @@ impl Settings {
             }
         }));
     }
-
     fn install_source(settings: Rc<Self>, id: i64) {
         settings.loader.load(clone!(settings => async move {
             match query::install_source(id).await {
@@ -620,16 +618,12 @@ impl Settings {
                     .class("topbar-spacing")
                 }),
             ])
-            .child_signal(self.loader.is_loading().map(|x| if x {
-                Some(Spinner::render_spinner(true))
-            } else {
-                None
-            }))
             .child_signal(self.page.signal().map({
                 let settings = self.clone();
                 move |x|
                 match x {
                     SettingCategory::None => Some(html!("div", {
+                        .class("content")
                         .children(&mut [
                             Self::render_user(settings.clone()),
                             Self::render_categories(),
@@ -647,6 +641,7 @@ impl Settings {
                     SettingCategory::Category => Some(SettingsCategories::render(settings.category_settings.clone())),
                     SettingCategory::Reader => Some(ReaderSettings::render(settings.reader_settings.clone())),
                     SettingCategory::SourceList => Some(html!("div", {
+                        .class("content")
                         .children(&mut [
                             Self::render_source_list("Installed", settings.clone(), settings.installed_sources.signal_vec_cloned()),
                             Self::render_source_list("Available", settings.clone(), settings.available_sources.signal_vec_cloned()),

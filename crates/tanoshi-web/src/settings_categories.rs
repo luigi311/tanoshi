@@ -104,6 +104,7 @@ impl SettingsCategories {
     pub fn render(settings: Rc<Self>) -> Dom {
         settings.clone().fetch_categories();
         html!("div", {
+            .class("content")
             .children(&mut [
                 html!("div",{
                     .style("font-size", "smaller")

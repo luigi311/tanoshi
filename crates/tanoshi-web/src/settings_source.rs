@@ -73,6 +73,7 @@ impl SettingsSource {
         Self::fetch_source(settings.clone());
 
         html!("div", {
+            .class("content")
             .style("display", "flex")
             .style("flex-direction", "column")
             .style("align-items", "center")

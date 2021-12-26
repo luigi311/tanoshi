@@ -85,6 +85,7 @@ impl Updates {
 
     pub fn render_main(updates: Rc<Self>) -> Dom {
         html!("ul", {
+            .class("content")
             .class("list")
             .children_signal_vec(updates.entries.signal_vec_cloned().map(|entry| html!("li", {
                 .class("list-item")

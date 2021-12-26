@@ -137,8 +137,17 @@ body.tauri {
 
 @media (min-width: 1024px) { 
     .main {
-        margin-left: 5rem;
+        margin-left: 5rem !important;
     }
+}
+
+.main {
+    margin-left: initial;
+}
+
+.content {
+    animation: fadeIn;
+    animation-duration: 0.5s;
 }
 
 a {
@@ -850,6 +859,8 @@ $manga-grid: (
     padding: 0.5rem;
     border-radius: 0.5rem;
     border: var(--list-group-border);
+    animation: fadeIn;
+    animation-duration: 0.5s;
 }
 
 

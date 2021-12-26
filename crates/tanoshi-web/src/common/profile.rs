@@ -207,6 +207,7 @@ impl Profile {
         Self::fetch_me(profile.clone());
 
         html!("form", {
+            .class("content")
             .style("display", "flex")
             .style("flex-direction", "column")
             .style("max-width", "1024px")

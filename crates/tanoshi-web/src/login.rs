@@ -69,6 +69,7 @@ impl Login {
 
     pub fn render_main(login: Rc<Self>, app: Rc<App>) -> Dom {
         html!("div", {
+            .class("content")
             .style("display", "flex")
             .style("flex-direction", "column")
             .style("max-width", "1024px")
@@ -166,9 +167,7 @@ impl Login {
 
     pub fn render(login: Rc<Self>, app: Rc<App>) -> Dom {
         html!("div", {
-            .class([
-                "main",
-            ])
+            .class("main")
             .children(&mut [
                 Self::render_topbar(login.clone()),
                 html!("div", {

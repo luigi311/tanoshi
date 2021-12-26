@@ -160,6 +160,7 @@ impl SettingsDownloads {
         settings.fetch_download_status();
         settings.fetch_download_queue();
         html!("div", {
+            .class("content")
             .after_inserted(clone!(settings => move |_| {
                 settings.interval.set(Some(Interval::new(1_000, clone!(settings => move || {
                     settings.fetch_download_queue();

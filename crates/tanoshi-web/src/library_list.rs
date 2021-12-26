@@ -64,6 +64,7 @@ impl LibraryList {
 
     pub fn render_main(library: Rc<Self>) -> Dom {
         html!("ul", {
+            .class("content")
             .class("list")
             .children_signal_vec(library.categories.signal_vec_cloned().map(|cat| html!("li", {
                 .class("list-item")
