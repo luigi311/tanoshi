@@ -33,7 +33,7 @@ export class Group<T> extends Input {
 
 export class Sort<T> extends Input {
     type: Type = 'Sort';
-    constructor(public name: string, public values: T[], public selection?: { index: number, ascending: boolean }) { super(); }
+    constructor(public name: string, public values: T[], public selection?: [number, boolean]) { super(); }
 }
 
 export enum TriState {
