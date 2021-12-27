@@ -216,7 +216,7 @@ impl InputList {
                         .class("reader-settings-row")
                         .style("padding", "0.5rem")
                         .visible_signal(input_list.collapse_signal(index.get().unwrap_throw()))
-                        .children_signal_vec(signal_vec::always(values).map(clone!(index, name, selection => move |value| html!("div", {
+                        .children_signal_vec(signal_vec::always(values).enumerate().map(clone!(name, selection => move |(index, value)| html!("div", {
                             .style("margin", "0.5rem")
                             .style("display", "flex")
                             .style("align-items", "center")
