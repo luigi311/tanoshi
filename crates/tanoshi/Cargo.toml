@@ -73,3 +73,4 @@ portpicker = "0.1"
 tauri = { version = "1.0.0-beta.8", default-features = false, features = [
     "notification-all",
 ], optional = true }
+mimalloc = { version = "*", default-features = false }
