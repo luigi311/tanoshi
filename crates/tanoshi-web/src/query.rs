@@ -107,6 +107,22 @@ pub async fn get_popular_manga(
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "graphql/schema.graphql",
+    query_path = "graphql/fetch_source_filters.graphql",
+    response_derives = "Debug, Clone"
+)]
+pub struct FetchSourceFilters;
+
+pub async fn fetch_source_filters(
+    source_id: i64,
+) -> Result<fetch_source_filters::ResponseData, Box<dyn Error>> {
+    let var = fetch_source_filters::Variables { source_id };
+    let data: fetch_source_filters::ResponseData = post_graphql::<FetchSourceFilters>(var).await?;
+    Ok(data)
+}
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/schema.graphql",
     query_path = "graphql/browse_favorites.graphql",
     response_derives = "Debug"
 )]

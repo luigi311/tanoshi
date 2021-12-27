@@ -95,6 +95,22 @@ impl Catalogue {
         serde_json::to_string(self).unwrap_throw()
     }
 
+    pub fn fetch_source_filters(catalogue: Rc<Self>) {
+        catalogue.spinner.set_active(true);
+        catalogue.loader.load(clone!(catalogue => async move {
+            match query::fetch_source_filters(catalogue.source_id).await {
+                Ok(data) => {
+                    catalogue.input_list_modal.set(data.source.filters.clone());
+                }
+                Err(e) => {
+                    snackbar::show(format!("Fetch manga from source failed: {}", e))
+                }
+            }
+            let state =  catalogue.serialize_into_json();
+            catalogue.spinner.set_active(false);
+        }))
+    }
+
     pub fn fetch_mangas(catalogue: Rc<Self>) {
         catalogue.replace_state_with_url();
         catalogue.spinner.set_active(true);
@@ -131,7 +147,6 @@ impl Catalogue {
             } else {
                 match query::get_popular_manga(catalogue.source_id, catalogue.page.get()).await {
                     Ok(data) => {
-                        catalogue.input_list_modal.set(data.source.filters.clone());
                         catalogue.source_name.set(data.source.name.clone());
                         map_data_to_cover!(data, catalogue, get_popular_manga);
                     }
@@ -307,6 +322,9 @@ impl Catalogue {
                                 .attribute("id", "filter")
                                 .style("margin-left", "0.5rem")
                                 .event(clone!(catalogue => move |_: events::Click| {
+                                    if catalogue.input_list_modal.input_list.lock_ref().is_empty() {
+                                        Self::fetch_source_filters(catalogue.clone());
+                                    }
                                     catalogue.input_list_modal.show();
                                 }))
                                 .children(&mut [
