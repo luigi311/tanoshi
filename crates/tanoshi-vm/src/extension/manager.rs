@@ -1,21 +1,21 @@
-use crate::prelude::Source;
-use crate::vm::create_runtime;
-use anyhow::anyhow;
-use anyhow::Result;
+use crate::{prelude::Source, vm::create_runtime};
+use anyhow::{anyhow, Result};
 use fnv::FnvHashMap;
 use rquickjs::Runtime;
-use std::path::{Path, PathBuf};
-use std::sync::Arc;
-use std::sync::Mutex;
-use std::sync::MutexGuard;
-use tanoshi_lib::prelude::Input;
-use tanoshi_lib::{prelude::SourceInfo, traits::Extension};
+use std::{
+    path::{Path, PathBuf},
+    sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard},
+};
+use tanoshi_lib::{
+    prelude::{Input, SourceInfo},
+    traits::Extension,
+};
 
 #[derive(Clone)]
 pub struct SourceManager {
     dir: PathBuf,
     rt: Runtime,
-    extensions: Arc<Mutex<FnvHashMap<i64, Arc<dyn Extension>>>>,
+    extensions: Arc<RwLock<FnvHashMap<i64, Arc<dyn Extension>>>>,
 }
 
 impl SourceManager {
@@ -25,13 +25,19 @@ impl SourceManager {
         Self {
             dir: PathBuf::new().join(extension_dir),
             rt,
-            extensions: Arc::new(Mutex::new(FnvHashMap::default())),
+            extensions: Arc::new(RwLock::new(FnvHashMap::default())),
         }
     }
 
-    fn lock_extensions(&self) -> Result<MutexGuard<FnvHashMap<i64, Arc<dyn Extension>>>> {
+    fn read(&self) -> Result<RwLockReadGuard<FnvHashMap<i64, Arc<dyn Extension>>>> {
         self.extensions
-            .lock()
+            .read()
+            .map_err(|e| anyhow!("failed to lock: {}", e))
+    }
+
+    fn write(&self) -> Result<RwLockWriteGuard<FnvHashMap<i64, Arc<dyn Extension>>>> {
+        self.extensions
+            .write()
             .map_err(|e| anyhow!("failed to lock: {}", e))
     }
 
@@ -48,7 +54,7 @@ impl SourceManager {
         let contents = serde_json::to_string(&preferences)?;
         std::fs::write(path, contents)?;
 
-        self.lock_extensions()?
+        self.read()?
             .get(&source_id)
             .ok_or(anyhow!("no such source"))?
             .set_preferences(preferences)?;
@@ -68,21 +74,18 @@ impl SourceManager {
         if let Ok(preferences) = self.read_preferences(&source_info.name) {
             ext.set_preferences(preferences)?;
         }
-        self.lock_extensions()?.insert(source_info.id, ext);
+        self.insert(ext)?;
         Ok(source_info)
     }
 
     pub fn insert(&self, source: Arc<dyn Extension>) -> Result<()> {
-        self.lock_extensions()?
-            .insert(source.get_source_info().id, source);
+        self.write()?.insert(source.get_source_info().id, source);
 
         Ok(())
     }
 
     pub fn unload(&self, id: i64) -> Result<Arc<dyn Extension>> {
-        self.lock_extensions()?
-            .remove(&id)
-            .ok_or(anyhow!("no such source"))
+        self.write()?.remove(&id).ok_or(anyhow!("no such source"))
     }
 
     pub async fn remove(&self, id: i64) -> Result<()> {
@@ -94,7 +97,7 @@ impl SourceManager {
     }
 
     pub fn get(&self, id: i64) -> Result<Arc<dyn Extension>> {
-        self.lock_extensions()?
+        self.read()?
             .get(&id)
             .cloned()
             .ok_or(anyhow!("source not exists"))
@@ -102,7 +105,7 @@ impl SourceManager {
 
     pub fn list(&self) -> Result<Vec<SourceInfo>> {
         Ok(self
-            .lock_extensions()?
+            .read()?
             .iter()
             .map(|(_, ext)| ext.get_source_info())
             .collect())
