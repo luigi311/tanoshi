@@ -3,7 +3,6 @@ use crate::vm::create_runtime;
 use anyhow::anyhow;
 use anyhow::Result;
 use fnv::FnvHashMap;
-use rquickjs::Runtime;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -14,17 +13,14 @@ use tanoshi_lib::{prelude::SourceInfo, traits::Extension};
 #[derive(Clone)]
 pub struct SourceManager {
     dir: PathBuf,
-    rt: Runtime,
     extensions: Arc<Mutex<FnvHashMap<i64, Arc<dyn Extension>>>>,
 }
 
 impl SourceManager {
     pub fn new<P: AsRef<Path>>(extension_dir: P) -> Self {
-        let rt = create_runtime(&extension_dir).unwrap();
-
         Self {
             dir: PathBuf::new().join(extension_dir),
-            rt,
+
             extensions: Arc::new(Mutex::new(FnvHashMap::default())),
         }
     }
@@ -63,7 +59,8 @@ impl SourceManager {
     }
 
     pub fn load(&self, name: &str) -> Result<SourceInfo> {
-        let ext = Arc::new(Source::new(&self.rt, name)?);
+        let rt = create_runtime(&self.dir)?;
+        let ext = Arc::new(Source::new(rt, name)?);
         let source_info = ext.get_source_info();
         if let Ok(preferences) = self.read_preferences(&source_info.name) {
             ext.set_preferences(preferences)?;

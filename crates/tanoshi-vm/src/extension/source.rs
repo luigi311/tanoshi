@@ -7,7 +7,7 @@ use async_trait::async_trait;
 
 macro_rules! call_js {
     ($self:ident, $name:literal $(,$arg:ident)*) => {
-        $self.0.with(|ctx| {
+        $self.ctx.with(|ctx| {
             let object = ctx.globals().get::<_, Object>("s")?;
             object
                 .get::<_, Function>($name)?
@@ -16,13 +16,17 @@ macro_rules! call_js {
     };
 }
 
-pub struct Source(Context, SourceInfo);
+pub struct Source {
+    _rt: Runtime,
+    ctx: Context,
+    info: SourceInfo,
+}
 
 impl Source {
-    pub fn new(rt: &Runtime, name: &str) -> Result<Self> {
-        let ctx = Context::full(rt)?;
+    pub fn new(rt: Runtime, name: &str) -> Result<Self> {
+        let ctx = Context::full(&rt)?;
 
-        let mut source = ctx.with(|ctx| -> Result<SourceInfo> {
+        let mut info = ctx.with(|ctx| -> Result<SourceInfo> {
             let global = ctx.globals();
             global.init_def::<Print>()?;
             global.init_def::<Console>()?;
@@ -42,21 +46,21 @@ impl Source {
 
             Ok(module.get::<_, SourceInfo>("s")?)
         })?;
-        if let Lang::Single(lang) = &source.languages {
+        if let Lang::Single(lang) = &info.languages {
             if lang == "all" {
-                source.languages = Lang::All;
+                info.languages = Lang::All;
             }
         }
-        info!("{:?}", source);
+        info!("{:?}", info);
 
-        Ok(Source(ctx, source))
+        Ok(Source { _rt: rt, ctx, info })
     }
 }
 
 #[async_trait]
 impl tanoshi_lib::traits::Extension for Source {
     fn get_source_info(&self) -> SourceInfo {
-        self.1.clone()
+        self.info.clone()
     }
 
     fn get_filter_list(&self) -> Result<Vec<Input>> {
