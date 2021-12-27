@@ -32,6 +32,11 @@ use tanoshi_vm::extension::SourceManager;
 use std::sync::Arc;
 use teloxide::prelude::RequesterExt;
 
+use mimalloc::MiMalloc;
+
+#[global_allocator]
+static GLOBAL: MiMalloc = MiMalloc;
+
 #[derive(Parser)]
 struct Opts {
     /// Path to config file

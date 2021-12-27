@@ -18,10 +18,10 @@ flume = "0.10.9"
 tokio = { version = "1", features = ["full"] }
 rquickjs = { git = "https://github.com/faldez/rquickjs", features = [
     "full",
-    "bindgen",
     "tokio",
     "futures",
     "parallel",
+    "rust-alloc",
 ] }
 chrono = { version = "0.4", features = ["serde"] }
 reqwest = { version = "0.11", features = [
