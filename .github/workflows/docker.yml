@@ -26,8 +26,8 @@ jobs:
       - name: Create ARM64 Context
         run: |
           mkdir -p ~/.ssh
-          echo ${{ secrets.ARM_NODE_SSH_KEY }} > ~/.ssh/id_rsa
-          docker context create rpi64 --docker "host=${{ secrets.ARM_NODE_URL }}"
+          echo ${{ secrets.ARM64_NODE_SSH_KEY }} > ~/.ssh/id_rsa
+          docker context create rpi64 --docker "host=${{ secrets.ARM64_NODE_URL }}"
           docker buildx create --append --name ${{ steps.buildx.outputs.name }} --platform linux/arm64 rpi64
       - name: Build and push
         uses: docker/build-push-action@v2
