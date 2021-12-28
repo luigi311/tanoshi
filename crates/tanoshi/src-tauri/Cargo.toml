@@ -25,7 +25,7 @@ tanoshi = { path = "..", default-features = false, features = [
 tanoshi-vm = { path = "../../tanoshi-vm", default-features = false }
 tokio = { version = "1", features = ["full"] }
 portpicker = "0.1"
-mimalloc = { version = "*", default-features = false }
+
 
 [features]
 default = ["custom-protocol"]

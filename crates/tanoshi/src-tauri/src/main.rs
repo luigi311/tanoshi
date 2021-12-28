@@ -7,11 +7,6 @@ use tanoshi::config::{Config, GLOBAL_CONFIG};
 
 use crate::server::Server;
 
-use mimalloc::MiMalloc;
-
-#[global_allocator]
-static GLOBAL: MiMalloc = MiMalloc;
-
 mod server;
 
 fn main() {
