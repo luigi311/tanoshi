@@ -27,6 +27,7 @@ jobs:
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.ARM64_NODE_KEY }}" > ~/.ssh/id_rsa
+          ssh-keyscan -t rsa ${{ secrets.ARM64_NODE_HOST }} >> ~/.ssh/known_hosts
           docker context create rpi64 --docker "host=${{ secrets.ARM64_NODE_URL }}"
           docker buildx create --append --name ${{ steps.buildx.outputs.name }} --platform linux/arm64 rpi64
       - name: Build and push
