@@ -1,4 +1,7 @@
-use crate::{prelude::Source, vm::create_runtime};
+use crate::{
+    prelude::Source,
+    vm::{create_runtime, SourceBus},
+};
 use anyhow::{anyhow, Result};
 use fnv::FnvHashMap;
 use rquickjs::Runtime;
@@ -15,7 +18,7 @@ use tanoshi_lib::{
 pub struct SourceManager {
     dir: PathBuf,
     rt: Runtime,
-    extensions: Arc<RwLock<FnvHashMap<i64, Arc<dyn Extension>>>>,
+    extensions: Arc<RwLock<FnvHashMap<i64, SourceBus>>>,
 }
 
 impl SourceManager {
@@ -29,13 +32,13 @@ impl SourceManager {
         }
     }
 
-    fn read(&self) -> Result<RwLockReadGuard<FnvHashMap<i64, Arc<dyn Extension>>>> {
+    fn read(&self) -> Result<RwLockReadGuard<FnvHashMap<i64, SourceBus>>> {
         self.extensions
             .read()
             .map_err(|e| anyhow!("failed to lock: {}", e))
     }
 
-    fn write(&self) -> Result<RwLockWriteGuard<FnvHashMap<i64, Arc<dyn Extension>>>> {
+    fn write(&self) -> Result<RwLockWriteGuard<FnvHashMap<i64, SourceBus>>> {
         self.extensions
             .write()
             .map_err(|e| anyhow!("failed to lock: {}", e))
@@ -47,17 +50,14 @@ impl SourceManager {
         Ok(serde_json::from_str(&contents)?)
     }
 
-    pub fn set_preferences(&self, source_id: i64, preferences: Vec<Input>) -> Result<()> {
+    pub async fn set_preferences(&self, source_id: i64, preferences: Vec<Input>) -> Result<()> {
         let source_info = self.get(source_id)?.get_source_info();
         let path = self.dir.join(&source_info.name).with_extension(".json");
 
         let contents = serde_json::to_string(&preferences)?;
         std::fs::write(path, contents)?;
 
-        self.read()?
-            .get(&source_id)
-            .ok_or(anyhow!("no such source"))?
-            .set_preferences(preferences)?;
+        self.get(source_id)?.set_preferences(preferences).await?;
 
         Ok(())
     }
@@ -65,26 +65,27 @@ impl SourceManager {
     pub async fn install(&self, name: &str, contents: &[u8]) -> Result<SourceInfo> {
         tokio::fs::write(self.dir.join(name).with_extension("mjs"), contents).await?;
 
-        Ok(self.load(name)?)
+        Ok(self.load(name).await?)
     }
 
-    pub fn load(&self, name: &str) -> Result<SourceInfo> {
-        let ext = Arc::new(Source::new(&self.rt, name)?);
+    pub async fn load(&self, name: &str) -> Result<SourceInfo> {
+        let ext = Source::new(&self.rt, name)?;
         let source_info = ext.get_source_info();
         if let Ok(preferences) = self.read_preferences(&source_info.name) {
             ext.set_preferences(preferences)?;
         }
-        self.insert(ext)?;
+        let bus = SourceBus::new(ext);
+        self.insert(bus).await?;
         Ok(source_info)
     }
 
-    pub fn insert(&self, source: Arc<dyn Extension>) -> Result<()> {
+    pub async fn insert(&self, source: SourceBus) -> Result<()> {
         self.write()?.insert(source.get_source_info().id, source);
 
         Ok(())
     }
 
-    pub fn unload(&self, id: i64) -> Result<Arc<dyn Extension>> {
+    pub fn unload(&self, id: i64) -> Result<SourceBus> {
         self.write()?.remove(&id).ok_or(anyhow!("no such source"))
     }
 
@@ -96,7 +97,7 @@ impl SourceManager {
         Ok(())
     }
 
-    pub fn get(&self, id: i64) -> Result<Arc<dyn Extension>> {
+    pub fn get(&self, id: i64) -> Result<SourceBus> {
         self.read()?
             .get(&id)
             .cloned()

@@ -27,9 +27,8 @@ use crate::{
 };
 use clap::Parser;
 use futures::future::OptionFuture;
-use tanoshi_vm::extension::SourceManager;
+use tanoshi_vm::{extension::SourceManager, vm::SourceBus};
 
-use std::sync::Arc;
 use teloxide::prelude::RequesterExt;
 
 use mimalloc::MiMalloc;
@@ -76,27 +75,24 @@ async fn main() -> Result<(), anyhow::Error> {
         name.remove(0);
         name.remove(name.len() - 1);
         if name.ends_with(".mjs") {
-            extension_manager.load(&name[0..name.len() - 4])?;
+            extension_manager.load(&name[0..name.len() - 4]).await?;
         }
     }
 
     match &config.local_path {
         config::LocalFolders::Single(local_path) => {
-            extension_manager.insert(Arc::new(local::Local::new(
-                10000,
-                "Local".to_string(),
-                local_path,
-            )))?;
+            let source = local::Local::new(10000, "Local".to_string(), local_path);
+            let bus = SourceBus::new(source);
+            extension_manager.insert(bus).await?;
         }
         config::LocalFolders::Multiple(local_paths) => {
             for (index, local_path) in local_paths.iter().enumerate() {
                 // source id starts from 10000
                 let index = index + 10000;
-                extension_manager.insert(Arc::new(local::Local::new(
-                    index as i64,
-                    local_path.name.clone(),
-                    &local_path.path,
-                )))?;
+                let source =
+                    local::Local::new(index as i64, local_path.name.clone(), &local_path.path);
+                let bus = SourceBus::new(source);
+                extension_manager.insert(bus).await?;
             }
         }
     }

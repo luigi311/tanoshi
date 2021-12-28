@@ -4,7 +4,7 @@ use crate::models::{ChapterInfo, Input, MangaInfo, SourceInfo};
 use anyhow::Result;
 
 #[async_trait]
-pub trait Extension: Send + Sync {
+pub trait Extension: Send + Sync + 'static {
     fn get_source_info(&self) -> SourceInfo;
 
     fn get_filter_list(&self) -> Result<Vec<Input>>;
