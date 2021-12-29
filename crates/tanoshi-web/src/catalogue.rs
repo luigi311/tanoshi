@@ -106,7 +106,6 @@ impl Catalogue {
                     snackbar::show(format!("Fetch manga from source failed: {}", e))
                 }
             }
-            let state =  catalogue.serialize_into_json();
             catalogue.spinner.set_active(false);
         }))
     }
@@ -119,6 +118,7 @@ impl Catalogue {
                 match query::fetch_manga_from_source(catalogue.source_id, catalogue.page.get(), Some(keyword), None).await {
                     Ok(data) => {
                         catalogue.source_name.set(data.source.name);
+                        map_data_to_cover!(data, catalogue, browse_source);
                     }
                     Err(e) => {
                         snackbar::show(format!("Fetch manga from source failed: {}", e))
