@@ -8,17 +8,17 @@ async fn main() {
     let source_name = "MangaLife";
 
     let manager = SourceManager::new("C:\\Users\\fadhlika\\Repos\\tanoshi-extensions\\dist");
-    manager.load(source_name).await.unwrap();
+    manager.load(source_name).unwrap();
 
     let extension = manager.get(4).unwrap();
 
     let source_info = extension.get_source_info();
     println!("{:?}", source_info);
 
-    let prefs = extension.get_preferences().await.unwrap();
+    let prefs = extension.get_preferences().unwrap();
     println!("{:?}", prefs);
 
-    let mut filters = extension.get_filter_list().await.unwrap();
+    let mut filters = extension.get_filter_list().unwrap();
     println!("{:?}", filters);
 
     for filter in filters.iter_mut() {
