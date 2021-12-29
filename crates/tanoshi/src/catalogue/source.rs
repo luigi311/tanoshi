@@ -62,8 +62,7 @@ impl Source {
         let filters = ctx
             .data::<SourceManager>()?
             .get(self.id)?
-            .get_filter_list()
-            .await?;
+            .get_filter_list()?;
 
         Ok(InputList(filters))
     }
@@ -72,8 +71,7 @@ impl Source {
         let preferences = ctx
             .data::<SourceManager>()?
             .get(self.id)?
-            .get_preferences()
-            .await?;
+            .get_preferences()?;
 
         Ok(InputList(preferences))
     }
@@ -195,6 +193,9 @@ impl SourceMutationRoot {
 
     #[graphql(guard = "AdminGuard::new()")]
     async fn update_source(&self, ctx: &Context<'_>, source_id: i64) -> Result<i64> {
+        let extensions = ctx.data::<SourceManager>()?;
+        let installed_source = extensions.get(source_id)?;
+
         let url = GLOBAL_CONFIG
             .get()
             .map(|cfg| cfg.extension_repository.clone())
@@ -210,13 +211,10 @@ impl SourceMutationRoot {
             .ok_or("source not found")?
             .clone();
 
+        if Version::from_str(&installed_source.get_source_info().version)?
+            == Version::from_str(&source.version)?
         {
-            let installed_source = ctx.data::<SourceManager>()?.get(source_id)?;
-            if Version::from_str(&installed_source.get_source_info().version)?
-                == Version::from_str(&source.version)?
-            {
-                return Err("No new version".into());
-            }
+            return Err("No new version".into());
         }
 
         let raw = reqwest::get(format!("{}/{}.mjs", url, source.name))
@@ -224,11 +222,8 @@ impl SourceMutationRoot {
             .bytes()
             .await?;
 
-        {
-            let exts = ctx.data::<SourceManager>()?;
-            exts.remove(source_id).await?;
-            exts.install(&source.name, &raw).await?;
-        }
+        extensions.remove(source_id).await?;
+        extensions.install(&source.name, &raw).await?;
 
         Ok(source_id)
     }
@@ -241,8 +236,7 @@ impl SourceMutationRoot {
         preferences: InputList,
     ) -> Result<i64> {
         ctx.data::<SourceManager>()?
-            .set_preferences(source_id, preferences.0)
-            .await?;
+            .set_preferences(source_id, preferences.0)?;
 
         Ok(source_id)
     }
