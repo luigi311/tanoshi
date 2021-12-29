@@ -40,9 +40,6 @@ pub fn create_runtime<P: AsRef<Path>>(extension_dir: P) -> Result<Runtime> {
 
     let rt = Runtime::new()?;
 
-    rt.set_gc_threshold(10_000_000);
-    rt.set_memory_limit(50_000_000);
-
     let resolver = (
         BuiltinResolver::default(),
         FileResolver::default()
