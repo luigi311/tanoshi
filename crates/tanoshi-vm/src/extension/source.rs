@@ -7,7 +7,7 @@ use async_trait::async_trait;
 
 macro_rules! call_js {
     ($self:ident, $name:literal $(,$arg:ident)*) => {
-        $self.0.with(|ctx| {
+        $self.1.with(|ctx| {
             let object = ctx.globals().get::<_, Object>("s")?;
             object
                 .get::<_, Function>($name)?
@@ -16,11 +16,11 @@ macro_rules! call_js {
     };
 }
 
-pub struct Source(Context, SourceInfo);
+pub struct Source(Runtime, Context, SourceInfo);
 
 impl Source {
-    pub fn new(rt: &Runtime, name: &str) -> Result<Self> {
-        let ctx = Context::full(rt)?;
+    pub fn new(rt: Runtime, name: &str) -> Result<Self> {
+        let ctx = Context::full(&rt)?;
 
         let mut source = ctx.with(|ctx| -> Result<SourceInfo> {
             let global = ctx.globals();
@@ -49,14 +49,14 @@ impl Source {
         }
         info!("{:?}", source);
 
-        Ok(Source(ctx, source))
+        Ok(Source(rt, ctx, source))
     }
 }
 
 #[async_trait]
 impl tanoshi_lib::traits::Extension for Source {
     fn get_source_info(&self) -> SourceInfo {
-        self.1.clone()
+        self.2.clone()
     }
 
     fn get_filter_list(&self) -> Result<Vec<Input>> {
