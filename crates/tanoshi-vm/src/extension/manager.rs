@@ -4,6 +4,7 @@ use crate::{
 };
 use anyhow::{anyhow, Result};
 use fnv::FnvHashMap;
+use rquickjs::Runtime;
 use std::{
     path::{Path, PathBuf},
     sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard},
@@ -16,13 +17,17 @@ use tanoshi_lib::{
 #[derive(Clone)]
 pub struct SourceManager {
     dir: PathBuf,
+    rt: Runtime,
     extensions: Arc<RwLock<FnvHashMap<i64, SourceBus>>>,
 }
 
 impl SourceManager {
     pub fn new<P: AsRef<Path>>(extension_dir: P) -> Self {
+        let rt = create_runtime(&extension_dir).unwrap();
+
         Self {
             dir: PathBuf::new().join(extension_dir),
+            rt,
             extensions: Arc::new(RwLock::new(FnvHashMap::default())),
         }
     }
@@ -64,8 +69,7 @@ impl SourceManager {
     }
 
     pub async fn load(&self, name: &str) -> Result<SourceInfo> {
-        let rt = create_runtime(&self.dir).unwrap();
-        let ext = Source::new(rt, name)?;
+        let ext = Source::new(&self.rt, name)?;
         let source_info = ext.get_source_info();
         if let Ok(preferences) = self.read_preferences(&source_info.name) {
             ext.set_preferences(preferences)?;
