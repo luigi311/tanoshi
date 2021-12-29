@@ -160,7 +160,7 @@ where
                     let _ = tx.send(source.get_source_info());
                 }
                 Command::GetFilterList(tx) => {
-                    let _ = tx.send(source.get_filter_list());
+                    let _ = tx.send(source.get_preferences());
                 }
                 Command::GetPreferences(tx) => {
                     let _ = tx.send(source.get_preferences());
