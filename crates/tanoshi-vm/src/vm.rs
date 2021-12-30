@@ -10,6 +10,11 @@ use rquickjs::{
     ScriptLoader, Tokio,
 };
 
+#[cfg(target_os = "linux")]
+extern "C" {
+    fn malloc_trim(pad: usize) -> std::os::raw::c_int;
+}
+
 pub fn create_runtime<P: AsRef<Path>>(extension_dir: P) -> Result<Runtime> {
     let extension_dir =
         if let Some(relative_path) = diff_paths(&extension_dir, env::current_dir().unwrap()) {
@@ -41,6 +46,14 @@ pub fn create_runtime<P: AsRef<Path>>(extension_dir: P) -> Result<Runtime> {
 
     rt.set_loader(resolver, loader);
     rt.spawn_executor(Tokio);
+
+    #[cfg(target_os = "linux")]
+    tokio::spawn(async move {
+        loop {
+            tokio::time::sleep(tokio::time::Duration::from_secs(6 * 60 * 60)).await;
+            unsafe { malloc_trim(0) };
+        }
+    });
 
     Ok(rt)
 }
