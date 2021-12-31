@@ -7,7 +7,9 @@ async fn main() {
 
     let source_name = "MangaLife";
 
-    let manager = SourceManager::new("C:\\Users\\fadhlika\\Repos\\tanoshi-extensions\\dist");
+    let path = "";
+
+    let manager = SourceManager::new(path);
     manager.load(source_name).unwrap();
 
     let extension = manager.get(4).unwrap();
@@ -18,7 +20,7 @@ async fn main() {
     let prefs = extension.get_preferences().unwrap();
     println!("{:?}", prefs);
 
-    let mut filters = extension.get_filter_list().unwrap();
+    let mut filters = extension.filter_list();
     println!("{:?}", filters);
 
     for filter in filters.iter_mut() {
