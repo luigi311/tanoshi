@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::api::{BytesToString, Console, Fetch, Print};
 use rquickjs::{Context, Function, Object, Promise, Runtime, This};
 use tanoshi_lib::models::*;
@@ -7,7 +9,7 @@ use async_trait::async_trait;
 
 macro_rules! call_js {
     ($self:ident, $name:literal $(,$arg:ident)*) => {
-        $self.0.with(|ctx| {
+        $self.ctx.with(|ctx| {
             let object = ctx.globals().get::<_, Object>("s")?;
             object
                 .get::<_, Function>($name)?
@@ -16,62 +18,92 @@ macro_rules! call_js {
     };
 }
 
-pub struct Source(Context, SourceInfo);
+pub struct Source {
+    ctx: Context,
+    info: SourceInfo,
+    headers: HashMap<String, String>,
+    filter_list: Vec<Input>,
+}
 
 impl Source {
     pub fn new(rt: &Runtime, name: &str) -> Result<Self> {
         let ctx = Context::full(rt)?;
 
-        let mut source = ctx.with(|ctx| -> Result<SourceInfo> {
-            let global = ctx.globals();
-            global.init_def::<Print>()?;
-            global.init_def::<Console>()?;
-            global.init_def::<Fetch>()?;
-            global.init_def::<BytesToString>()?;
+        let (mut info, headers, filter_list) = ctx.with(
+            |ctx| -> Result<(SourceInfo, HashMap<String, String>, Vec<Input>)> {
+                let global = ctx.globals();
+                global.init_def::<Print>()?;
+                global.init_def::<Console>()?;
+                global.init_def::<Fetch>()?;
+                global.init_def::<BytesToString>()?;
 
-            let module = ctx.compile(
-                name,
-                format!(
-                    "import Source from '{}'; export const s = new Source();",
-                    name
-                ),
-            )?;
+                let module = ctx.compile(
+                    name,
+                    format!(
+                        "import Source from '{}'; export const s = new Source();",
+                        name
+                    ),
+                )?;
 
-            let object = module.get::<_, Object>("s")?;
-            global.set("s", object)?;
+                let object = module.get::<_, Object>("s")?;
 
-            Ok(module.get::<_, SourceInfo>("s")?)
-        })?;
-        if let Lang::Single(lang) = &source.languages {
+                let info = module.get::<_, SourceInfo>("s")?;
+                let headers = object
+                    .get::<_, Function>("headers")?
+                    .call((This(object.clone()),))?;
+                let filter_list = object
+                    .get::<_, Function>("filterList")?
+                    .call((This(object.clone()),))?;
+
+                global.set("s", object)?;
+
+                Ok((info, headers, filter_list))
+            },
+        )?;
+
+        if let Lang::Single(lang) = &info.languages {
             if lang == "all" {
-                source.languages = Lang::All;
+                info.languages = Lang::All;
             }
         }
-        info!("{:?}", source);
 
-        Ok(Source(ctx, source))
+        info!("{:?} {:?}", info, headers);
+
+        Ok(Source {
+            ctx,
+            info,
+            headers,
+            filter_list,
+        })
     }
 }
 
 #[async_trait]
 impl tanoshi_lib::traits::Extension for Source {
     fn get_source_info(&self) -> SourceInfo {
-        self.1.clone()
+        self.info.clone()
     }
 
-    fn get_filter_list(&self) -> Result<Vec<Input>> {
-        let filter = call_js!(self, "getFilterList");
-        Ok(filter)
+    fn headers(&self) -> HashMap<String, String> {
+        self.headers.clone()
+    }
+
+    fn filter_list(&self) -> Vec<Input> {
+        self.filter_list.clone()
     }
 
     fn get_preferences(&self) -> Result<Vec<Input>> {
-        let prefs = call_js!(self, "getPreferences");
-        Ok(prefs)
+        self.ctx.with(|ctx| {
+            let object = ctx.globals().get::<_, Object>("s")?;
+            Ok(object.get::<_, Vec<Input>>("preferences")?)
+        })
     }
 
     fn set_preferences(&self, preferences: Vec<Input>) -> Result<()> {
-        call_js!(self, "setPreferences", preferences);
-        Ok(())
+        self.ctx.with(|ctx| {
+            let object = ctx.globals().get::<_, Object>("s")?;
+            Ok(object.set("preferences", preferences)?)
+        })
     }
 
     async fn get_popular_manga(&self, page: i64) -> Result<Vec<MangaInfo>> {

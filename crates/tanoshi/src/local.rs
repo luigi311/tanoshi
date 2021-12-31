@@ -1,4 +1,5 @@
 use std::{
+    collections::HashMap,
     ffi::OsStr,
     fs::{DirEntry, ReadDir},
     path::{Path, PathBuf},
@@ -239,8 +240,12 @@ impl Extension for Local {
         }
     }
 
-    fn get_filter_list(&self) -> Result<Vec<Input>> {
-        Ok(vec![])
+    fn filter_list(&self) -> Vec<Input> {
+        vec![]
+    }
+
+    fn headers(&self) -> HashMap<String, String> {
+        HashMap::new()
     }
 
     fn get_preferences(&self) -> Result<Vec<Input>> {

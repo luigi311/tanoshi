@@ -2,6 +2,7 @@ import { Source } from './models/source';
 import { Manga } from './models/manga'
 import { Chapter } from './models/chapter';
 import { Input } from './models/input';
+import { HeaderMap } from './models/headers';
 
 /**
  * Extension interface to build extension
@@ -15,33 +16,18 @@ export abstract class Extension implements Source {
     readonly abstract languages: string;
     readonly abstract nsfw: boolean;
 
-    preferences: Input[] = [];
+    _preferences: Input[] = [];
 
-    constructor() { }
-
-    /**
-     * @returns list of input or undefined if no filters
-     */
-    getFilterList(): Input[] {
-        return [];
+    public get preferences(): Input[] {
+        return this._preferences;
     }
 
-    /**
-     * @returns preferences class or undefined if no preferences
-     */
-    getPreferences(): Input[] {
-        return this.preferences;
-    }
-
-    /**
-     * @returns 
-     */
-    setPreferences(inputs: Input[]) {
+    public set preferences(inputs: Input[]) {
         let saved = new Map<String, Input>();
         for (var pref of inputs) {
             saved.set(`${pref.type}(${pref.name})`, pref);
         }
-        this.preferences = this.preferences.map((field) => {
+        this._preferences = this.preferences.map((field) => {
             let f = saved.get(`${field.type}(${field.name})`)
             if (f) {
                 field = f;
@@ -49,6 +35,16 @@ export abstract class Extension implements Source {
             return field;
         });
     }
+
+    public headers(): HeaderMap {
+        return <HeaderMap>{};
+    }
+
+    public filterList(): Input[] {
+        return []
+    }
+
+    constructor() { }
 
     /**
      * 

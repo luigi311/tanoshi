@@ -59,10 +59,7 @@ impl Source {
     }
 
     async fn filters(&self, ctx: &Context<'_>) -> Result<InputList> {
-        let filters = ctx
-            .data::<SourceManager>()?
-            .get(self.id)?
-            .get_filter_list()?;
+        let filters = ctx.data::<SourceManager>()?.get(self.id)?.filter_list();
 
         Ok(InputList(filters))
     }

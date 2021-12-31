@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use async_trait::async_trait;
 
 use crate::models::{ChapterInfo, Input, MangaInfo, SourceInfo};
@@ -7,7 +9,9 @@ use anyhow::Result;
 pub trait Extension: Send + Sync {
     fn get_source_info(&self) -> SourceInfo;
 
-    fn get_filter_list(&self) -> Result<Vec<Input>>;
+    fn headers(&self) -> HashMap<String, String>;
+
+    fn filter_list(&self) -> Vec<Input>;
 
     fn get_preferences(&self) -> Result<Vec<Input>>;
 
