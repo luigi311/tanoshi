@@ -5,10 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.26.0]
 ### Added
 - [tanoshi] source filter and settings
 - [tanoshi] multiple folder for local sources
+  ```yaml
+  # single local source
+  local_path: .\manga
+  # multiple local sources
+  local_path:
+    - name: Local
+      path: .\manga
+    - name: Public
+      path: .\test\data\manga
+  ```
 
 ### Changed
 - [tanoshi] extension now using and ported to javascript
@@ -368,7 +378,7 @@ Nothing changes, this release to build for multiarch docker image
 
 - fix panic when using local source
 
-[Unreleased]: https://github.com/faldez/tanoshi/compare/v0.25.22...HEAD
+[0.26.0]: https://github.com/faldez/tanoshi/compare/v0.25.22...v0.26.0
 [0.25.22]: https://github.com/faldez/tanoshi/compare/v0.25.21...v0.25.22
 [0.25.21]: https://github.com/faldez/tanoshi/compare/v0.25.20...v0.25.21
 [0.25.20]: https://github.com/faldez/tanoshi/compare/v0.25.19...v0.25.20
