@@ -108,13 +108,14 @@ impl tanoshi_lib::traits::Extension for Source {
 
     async fn get_popular_manga(&self, page: i64) -> Result<Vec<MangaInfo>> {
         let promise: Promise<Vec<MangaInfo>> = call_js!(self, "getPopularManga", page);
-        Ok(promise.await?)
+
+        Ok(tokio::time::timeout(tokio::time::Duration::from_secs(30), promise).await??)
     }
 
     async fn get_latest_manga(&self, page: i64) -> Result<Vec<MangaInfo>> {
         let promise: Promise<Vec<MangaInfo>> = call_js!(self, "getLatestManga", page);
 
-        Ok(promise.await?)
+        Ok(tokio::time::timeout(tokio::time::Duration::from_secs(30), promise).await??)
     }
 
     async fn search_manga(
@@ -125,24 +126,24 @@ impl tanoshi_lib::traits::Extension for Source {
     ) -> Result<Vec<MangaInfo>> {
         let promise: Promise<Vec<MangaInfo>> = call_js!(self, "searchManga", page, query, filters);
 
-        Ok(promise.await?)
+        Ok(tokio::time::timeout(tokio::time::Duration::from_secs(30), promise).await??)
     }
 
     async fn get_manga_detail(&self, path: String) -> Result<MangaInfo> {
         let promise: Promise<MangaInfo> = call_js!(self, "getMangaDetail", path);
 
-        Ok(promise.await?)
+        Ok(tokio::time::timeout(tokio::time::Duration::from_secs(30), promise).await??)
     }
 
     async fn get_chapters(&self, path: String) -> Result<Vec<ChapterInfo>> {
         let promise: Promise<Vec<ChapterInfo>> = call_js!(self, "getChapters", path);
 
-        Ok(promise.await?)
+        Ok(tokio::time::timeout(tokio::time::Duration::from_secs(30), promise).await??)
     }
 
     async fn get_pages(&self, path: String) -> Result<Vec<String>> {
         let promise: Promise<Vec<String>> = call_js!(self, "getPages", path);
 
-        Ok(promise.await?)
+        Ok(tokio::time::timeout(tokio::time::Duration::from_secs(30), promise).await??)
     }
 }
