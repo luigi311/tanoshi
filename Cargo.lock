@@ -4892,7 +4892,7 @@ dependencies = [
 
 [[package]]
 name = "tanoshi"
-version = "0.26.0"
+version = "0.26.1"
 dependencies = [
  "aes",
  "anyhow",
@@ -4980,7 +4980,7 @@ dependencies = [
 
 [[package]]
 name = "tanoshi-vm"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "anyhow",
  "async-trait",
