@@ -20,6 +20,11 @@ use tokio::{
 
 use super::downloads::DownloadSender;
 
+#[cfg(target_os = "linux")]
+extern "C" {
+    fn malloc_trim(pad: usize) -> std::os::raw::c_int;
+}
+
 struct UpdatesWorker {
     period: u64,
     client: reqwest::Client,
@@ -257,6 +262,12 @@ impl UpdatesWorker {
                     }
 
                     info!("periodic updates done in {:?}", Instant::now() - start);
+
+                    #[cfg(target_os = "linux")]
+                    unsafe {
+                        malloc_trim(0);
+                        debug!("ran malloc trim")
+                    }
                 }
                 _ = server_update_interval.tick() => {
                     info!("check server update");

@@ -26,8 +26,8 @@ pub struct Source {
 }
 
 impl Source {
-    pub fn new(rt: &Runtime, name: &str) -> Result<Self> {
-        let ctx = Context::full(rt)?;
+    pub fn new(rt: Runtime, name: &str) -> Result<Self> {
+        let ctx = Context::full(&rt)?;
 
         let (mut info, headers, filter_list) = ctx.with(
             |ctx| -> Result<(SourceInfo, HashMap<String, String>, Vec<Input>)> {
