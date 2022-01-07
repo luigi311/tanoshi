@@ -39,7 +39,11 @@ pub fn create_runtime<P: AsRef<Path>>(extension_dir: P) -> Result<Runtime> {
         NativeLoader::default(),
     );
 
-    rt.set_gc_threshold(1);
+    let gc_threshold = env::var("TANOSHI_VM_GC_THRESHOLD")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(1_000_000);
+    rt.set_gc_threshold(gc_threshold);
     rt.set_loader(resolver, loader);
     rt.spawn_executor(Tokio);
 
