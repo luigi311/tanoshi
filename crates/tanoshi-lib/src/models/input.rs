@@ -1,10 +1,6 @@
-#[cfg(feature = "js")]
-use rquickjs::{FromJs, IntoJs};
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
-#[cfg_attr(feature = "js", derive(FromJs, IntoJs))]
-#[cfg_attr(feature = "js", quickjs(untagged))]
+#[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
 pub enum TriState {
     Ignored = 0,
     Included = 1,
@@ -18,8 +14,6 @@ impl Default for TriState {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
-#[cfg_attr(feature = "js", derive(FromJs, IntoJs))]
-#[cfg_attr(feature = "js", quickjs(untagged))]
 pub enum InputType {
     String(String),
     Number(f64),
@@ -51,8 +45,6 @@ impl From<bool> for InputType {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
-#[cfg_attr(feature = "js", derive(FromJs, IntoJs))]
-#[cfg_attr(feature = "js", quickjs(tag = "type"))]
 pub enum Input {
     Text {
         name: String,

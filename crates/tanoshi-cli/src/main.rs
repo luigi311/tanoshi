@@ -1,12 +1,21 @@
 extern crate log;
 
-mod data;
-mod test;
+use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
+use tanoshi_vm::prelude::SourceBus;
+
+const TARGET: &str = env!("TARGET");
+
+#[cfg(target_os = "windows")]
+pub(crate) const PLUGIN_EXTENSION: &str = "dll";
+#[cfg(target_os = "macos")]
+pub(crate) const PLUGIN_EXTENSION: &str = "dylib";
+#[cfg(target_os = "linux")]
+pub(crate) const PLUGIN_EXTENSION: &str = "so";
 
 #[derive(Parser)]
-#[clap(version = "0.1.1", author = "Muhammad Fadhlika <fadhlika@gmail.com>")]
+#[clap(version = "0.1.1")]
 struct Opts {
     #[clap(short, long, default_value = "./")]
     path: String,
@@ -16,7 +25,7 @@ struct Opts {
 
 #[derive(Subcommand)]
 enum Command {
-    Test { file: Option<String> },
+    GenerateJson,
 }
 
 #[tokio::main]
@@ -26,10 +35,30 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let opts: Opts = Opts::parse();
 
     match opts.subcmd {
-        Command::Test { file } => {
-            if test::test(file).await.is_err() {
-                std::process::exit(1);
+        Command::GenerateJson => {
+            let target_dir_path = PathBuf::new().join("output").join(TARGET);
+            tokio::fs::create_dir_all(&target_dir_path).await?;
+
+            let mut read_dir = tokio::fs::read_dir(&opts.path).await?;
+            while let Some(entry) = read_dir.next_entry().await? {
+                let mut name = format!("{:?}", entry.file_name());
+                name.remove(0);
+                name.remove(name.len() - 1);
+
+                if name.ends_with(PLUGIN_EXTENSION) {
+                    #[cfg(target_os = "linux")]
+                    let name = name.replace("lib", "");
+
+                    tokio::fs::copy(entry.path(), &target_dir_path.join(name).as_path()).await?;
+                }
             }
+
+            let extension_manager = SourceBus::new(&target_dir_path);
+            extension_manager.load_all().await?;
+            let source_list = extension_manager.list().await?;
+
+            let json = serde_json::to_string(&source_list)?;
+            tokio::fs::write(target_dir_path.join("index").with_extension("json"), json).await?;
         }
     }
 

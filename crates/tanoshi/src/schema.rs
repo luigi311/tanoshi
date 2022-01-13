@@ -13,7 +13,7 @@ use crate::{
     user::{UserMutationRoot, UserRoot},
     worker::downloads::DownloadSender,
 };
-use tanoshi_vm::extension::SourceManager;
+use tanoshi_vm::extension::SourceBus;
 
 use async_graphql::{dataloader::DataLoader, EmptySubscription, MergedObject, Schema};
 
@@ -43,7 +43,7 @@ pub struct MutationRoot(
 pub fn build(
     userdb: UserDatabase,
     mangadb: MangaDatabase,
-    ext_manager: SourceManager,
+    ext_manager: SourceBus,
     download_tx: DownloadSender,
     notifier: Notifier,
 ) -> TanoshiSchema {

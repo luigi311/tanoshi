@@ -17,7 +17,7 @@ pub use categories::{Category, CategoryMutationRoot, CategoryRoot};
 mod recent;
 pub use recent::{RecentChapter, RecentUpdate};
 
-use tanoshi_vm::extension::SourceManager;
+use tanoshi_vm::extension::SourceBus;
 
 #[derive(Default)]
 pub struct LibraryRoot;
@@ -37,12 +37,11 @@ impl LibraryRoot {
         let manga = db.get_library_by_category_id(user.sub, category_id).await?;
 
         if refresh {
-            let extensions = ctx.data::<SourceManager>()?;
+            let extensions = ctx.data::<SourceBus>()?;
             for favorite_manga in manga.iter() {
                 let mut m: model::Manga = {
                     extensions
-                        .get(favorite_manga.source_id)?
-                        .get_manga_detail(favorite_manga.path.clone())
+                        .get_manga_detail(favorite_manga.source_id, favorite_manga.path.clone())
                         .await?
                         .into()
                 };

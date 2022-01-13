@@ -11,7 +11,7 @@ use crate::{
     notifier::Notifier,
 };
 use reqwest::Url;
-use tanoshi_vm::extension::SourceManager;
+use tanoshi_vm::extension::SourceBus;
 
 use tokio::{
     sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender},
@@ -32,7 +32,7 @@ pub struct DownloadWorker {
     dir: PathBuf,
     client: reqwest::Client,
     db: MangaDatabase,
-    ext: SourceManager,
+    ext: SourceBus,
     _notifier: Notifier,
     tx: DownloadSender,
     rx: DownloadReceiver,
@@ -42,7 +42,7 @@ impl DownloadWorker {
     pub fn new<P: AsRef<Path>>(
         dir: P,
         db: MangaDatabase,
-        ext: SourceManager,
+        ext: SourceBus,
         notifier: Notifier,
     ) -> (Self, DownloadSender) {
         let (tx, rx) = unbounded_channel::<Command>();
@@ -76,11 +76,10 @@ impl DownloadWorker {
         let manga = self.db.get_manga_by_id(chapter.manga_id).await?;
         let pages = self
             .ext
-            .get(manga.source_id)?
-            .get_pages(chapter.path.clone())
+            .get_pages(manga.source_id, chapter.path.clone())
             .await?;
 
-        let source = self.ext.get(manga.source_id)?.get_source_info();
+        let source = self.ext.get_source_info(manga.source_id).await?;
 
         let mut queue = vec![];
         let date_added = chrono::Utc::now().naive_utc();
@@ -88,7 +87,7 @@ impl DownloadWorker {
             queue.push(DownloadQueue {
                 id: 0,
                 source_id: source.id,
-                source_name: source.name.clone(),
+                source_name: source.name.to_string(),
                 manga_id: manga.id,
                 manga_title: manga.title.clone(),
                 chapter_id: chapter.id,
@@ -258,8 +257,9 @@ impl DownloadWorker {
 
                     let referrer = self
                         .ext
-                        .get(queue.source_id)
-                        .map(|ext| ext.get_source_info().url)
+                        .get_source_info(queue.source_id)
+                        .await
+                        .map(|s| s.url.to_string())
                         .unwrap_or_default();
 
                     let res = if let Ok(res) = self
@@ -350,7 +350,7 @@ impl DownloadWorker {
 pub fn start<P: AsRef<Path>>(
     dir: P,
     mangadb: MangaDatabase,
-    ext: SourceManager,
+    ext: SourceBus,
     notifier: Notifier,
 ) -> (DownloadSender, JoinHandle<()>) {
     let (mut download_worker, tx) = DownloadWorker::new(dir, mangadb, ext, notifier);

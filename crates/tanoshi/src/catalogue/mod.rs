@@ -7,7 +7,7 @@ pub use manga::Manga;
 
 pub mod chapter;
 pub use chapter::Chapter;
-use tanoshi_vm::extension::SourceManager;
+use tanoshi_vm::extension::SourceBus;
 
 use crate::db::MangaDatabase;
 
@@ -33,9 +33,8 @@ impl CatalogueRoot {
         #[graphql(desc = "page")] page: i64,
     ) -> Result<Vec<Manga>> {
         let fetched_manga = ctx
-            .data::<SourceManager>()?
-            .get(source_id)?
-            .get_popular_manga(page)
+            .data::<SourceBus>()?
+            .get_popular_manga(source_id, page)
             .await?
             .into_iter()
             .map(Manga::from)
@@ -50,9 +49,8 @@ impl CatalogueRoot {
         #[graphql(desc = "page")] page: i64,
     ) -> Result<Vec<Manga>> {
         let fetched_manga = ctx
-            .data::<SourceManager>()?
-            .get(source_id)?
-            .get_latest_manga(page)
+            .data::<SourceBus>()?
+            .get_latest_manga(source_id, page)
             .await?
             .into_iter()
             .map(Manga::from)
@@ -70,9 +68,8 @@ impl CatalogueRoot {
         #[graphql(desc = "filters")] filters: Option<InputList>,
     ) -> Result<Vec<Manga>> {
         let fetched_manga = ctx
-            .data::<SourceManager>()?
-            .get(source_id)?
-            .search_manga(page, query, filters.map(|filters| filters.0))
+            .data::<SourceBus>()?
+            .search_manga(source_id, page, query, filters.map(|filters| filters.0))
             .await?
             .into_iter()
             .map(Manga::from)
@@ -93,9 +90,8 @@ impl CatalogueRoot {
             manga
         } else {
             let mut m: crate::db::model::Manga = ctx
-                .data::<SourceManager>()?
-                .get(source_id)?
-                .get_manga_detail(path)
+                .data::<SourceBus>()?
+                .get_manga_detail(source_id, path)
                 .await?
                 .into();
 
@@ -116,9 +112,8 @@ impl CatalogueRoot {
         let manga = db.get_manga_by_id(id).await?;
         if refresh {
             let mut m: crate::db::model::Manga = ctx
-                .data::<SourceManager>()?
-                .get(manga.source_id)?
-                .get_manga_detail(manga.path.clone())
+                .data::<SourceBus>()?
+                .get_manga_detail(manga.source_id, manga.path.clone())
                 .await?
                 .into();
 

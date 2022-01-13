@@ -1,6 +1,6 @@
 // from https://github.com/tauri-apps/tauri-plugin-localhost
 
-use tanoshi_vm::prelude::SourceManager;
+use tanoshi_vm::prelude::{Source, SourceBus};
 use tauri::{
   plugin::{Plugin, Result as PluginResult},
   AppHandle, Runtime,
@@ -10,8 +10,6 @@ use tanoshi::{
   config::{self, GLOBAL_CONFIG},
   db, local, notifier, schema, server, worker,
 };
-
-use std::sync::Arc;
 
 pub struct Server {
   port: u16,
@@ -49,29 +47,31 @@ impl<R: Runtime> Plugin<R> for Server {
       let mangadb = db::MangaDatabase::new(pool.clone());
       let userdb = db::UserDatabase::new(pool.clone());
 
-      let extension_manager = SourceManager::new(&config.plugin_path);
+      let extension_manager = SourceBus::new(&config.plugin_path);
+
+      let _ = extension_manager.load_all().await;
 
       match &config.local_path {
         config::LocalFolders::Single(local_path) => {
-          extension_manager
-            .insert(Arc::new(local::Local::new(
+          let _ = extension_manager
+            .insert(Source::from(Box::new(local::Local::new(
               10000,
               "Local".to_string(),
               local_path,
-            )))
-            .unwrap();
+            ))))
+            .await;
         }
         config::LocalFolders::Multiple(local_paths) => {
           for (index, local_path) in local_paths.iter().enumerate() {
             // source id starts from 10000
             let index = index + 10000;
-            extension_manager
-              .insert(Arc::new(local::Local::new(
+            let _ = extension_manager
+              .insert(Source::from(Box::new(local::Local::new(
                 index as i64,
                 local_path.name.clone(),
                 &local_path.path,
-              )))
-              .unwrap();
+              ))))
+              .await;
           }
         }
       }

@@ -7,7 +7,7 @@ use async_graphql::{
     Context, Object, Result, SimpleObject,
 };
 use chrono::NaiveDateTime;
-use tanoshi_vm::extension::SourceManager;
+use tanoshi_vm::extension::SourceBus;
 
 #[derive(Debug, Clone, SimpleObject)]
 pub struct ReadProgress {
@@ -260,9 +260,9 @@ impl Chapter {
 
     async fn source(&self, ctx: &Context<'_>) -> Result<Source> {
         let source = ctx
-            .data::<SourceManager>()?
-            .get(self.source_id)?
-            .get_source_info();
+            .data::<SourceBus>()?
+            .get_source_info(self.source_id)
+            .await?;
         Ok(source.into())
     }
 
@@ -286,9 +286,8 @@ impl Chapter {
             tokio::task::spawn_blocking(move || local::get_pages_from_archive(&downloaded_path))
                 .await??
         } else {
-            ctx.data::<SourceManager>()?
-                .get(self.source_id)?
-                .get_pages(self.path.clone())
+            ctx.data::<SourceBus>()?
+                .get_pages(self.source_id, self.path.clone())
                 .await?
         };
 

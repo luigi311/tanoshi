@@ -4,8 +4,6 @@ use serde::{Deserialize, Serialize};
 
 /// A type represent manga details, normalized across source
 #[derive(Debug, Deserialize, Serialize)]
-#[cfg_attr(feature = "js", derive(FromJs, IntoJs))]
-#[cfg_attr(feature = "js", quickjs(rename_all = "camelCase"))]
 pub struct MangaInfo {
     pub source_id: i64,
     pub title: String,

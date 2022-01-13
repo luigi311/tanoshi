@@ -7,7 +7,7 @@ use async_graphql::{
     Context, Object, Result,
 };
 use chrono::NaiveDateTime;
-use tanoshi_vm::extension::SourceManager;
+use tanoshi_vm::extension::SourceBus;
 
 pub type UserFavoriteId = (i64, i64);
 
@@ -248,9 +248,9 @@ impl Manga {
 
     async fn link(&self, ctx: &Context<'_>) -> Result<String> {
         let detail = ctx
-            .data::<SourceManager>()?
-            .get(self.source_id)?
-            .get_source_info();
+            .data::<SourceBus>()?
+            .get_source_info(self.source_id)
+            .await?;
         Ok(format!("{}{}", detail.url, self.path))
     }
 
@@ -300,9 +300,9 @@ impl Manga {
 
     async fn source(&self, ctx: &Context<'_>) -> Result<Source> {
         let source = ctx
-            .data::<SourceManager>()?
-            .get(self.source_id)?
-            .get_source_info();
+            .data::<SourceBus>()?
+            .get_source_info(self.source_id)
+            .await?;
         Ok(source.into())
     }
 
@@ -320,9 +320,8 @@ impl Manga {
         }
 
         let chapters: Vec<crate::db::model::Chapter> = ctx
-            .data::<SourceManager>()?
-            .get(self.source_id)?
-            .get_chapters(self.path.clone())
+            .data::<SourceBus>()?
+            .get_chapters(self.source_id, self.path.clone())
             .await?
             .into_iter()
             .map(|c| {

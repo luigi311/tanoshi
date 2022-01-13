@@ -4,7 +4,7 @@ use crate::{config::GLOBAL_CONFIG, guard::AdminGuard, user::Claims};
 use async_graphql::{Context, Object, Result};
 use serde::Deserialize;
 use tanoshi_lib::prelude::Version;
-use tanoshi_vm::extension::SourceManager;
+use tanoshi_vm::extension::SourceBus;
 
 use super::InputList;
 
@@ -23,10 +23,10 @@ impl From<tanoshi_lib::models::SourceInfo> for Source {
     fn from(s: tanoshi_lib::models::SourceInfo) -> Self {
         Self {
             id: s.id,
-            name: s.name,
-            url: s.url,
+            name: s.name.to_string(),
+            url: s.url.to_string(),
             version: s.version.to_string(),
-            icon: s.icon,
+            icon: s.icon.to_string(),
             has_update: false,
         }
     }
@@ -59,16 +59,13 @@ impl Source {
     }
 
     async fn filters(&self, ctx: &Context<'_>) -> Result<InputList> {
-        let filters = ctx.data::<SourceManager>()?.get(self.id)?.filter_list();
+        let filters = ctx.data::<SourceBus>()?.filter_list(self.id).await?;
 
         Ok(InputList(filters))
     }
 
     async fn preferences(&self, ctx: &Context<'_>) -> Result<InputList> {
-        let preferences = ctx
-            .data::<SourceManager>()?
-            .get(self.id)?
-            .get_preferences()?;
+        let preferences = ctx.data::<SourceBus>()?.get_preferences(self.id).await?;
 
         Ok(InputList(preferences))
     }
@@ -85,7 +82,7 @@ impl SourceRoot {
         check_update: bool,
     ) -> Result<Vec<Source>> {
         let _ = ctx.data::<Claims>()?;
-        let installed_sources = ctx.data::<SourceManager>()?.list()?;
+        let installed_sources = ctx.data::<SourceBus>()?.list().await?;
         let mut sources: Vec<Source> = vec![];
         if check_update {
             let available_sources_map = {
@@ -124,11 +121,11 @@ impl SourceRoot {
             .map(|cfg| format!("{}/index.json", cfg.extension_repository))
             .ok_or("no config set")?;
         let source_indexes: Vec<Source> = reqwest::get(&url).await?.json().await?;
-        let extensions = ctx.data::<SourceManager>()?;
+        let extensions = ctx.data::<SourceBus>()?;
 
         let mut sources: Vec<Source> = vec![];
         for index in source_indexes {
-            if extensions.get(index.id).is_err() {
+            if !extensions.exists(index.id).await? {
                 sources.push(index);
             }
         }
@@ -137,10 +134,7 @@ impl SourceRoot {
 
     async fn source(&self, ctx: &Context<'_>, source_id: i64) -> Result<Source> {
         let _ = ctx.data::<Claims>()?;
-        let source = ctx
-            .data::<SourceManager>()?
-            .get(source_id)?
-            .get_source_info();
+        let source = ctx.data::<SourceBus>()?.get_source_info(source_id).await?;
         Ok(source.into())
     }
 }
@@ -152,7 +146,7 @@ pub struct SourceMutationRoot;
 impl SourceMutationRoot {
     #[graphql(guard = "AdminGuard::new()")]
     async fn install_source(&self, ctx: &Context<'_>, source_id: i64) -> Result<i64> {
-        if ctx.data::<SourceManager>()?.get(source_id).is_ok() {
+        if ctx.data::<SourceBus>()?.exists(source_id).await? {
             return Err("source installed, use updateSource to update".into());
         }
 
@@ -174,24 +168,22 @@ impl SourceMutationRoot {
             .await?
             .bytes()
             .await?;
-        ctx.data::<SourceManager>()?
-            .install(&source.name, &raw)
-            .await?;
+        ctx.data::<SourceBus>()?.install(&source.name, &raw).await?;
 
         Ok(source.id)
     }
 
     #[graphql(guard = "AdminGuard::new()")]
     async fn uninstall_source(&self, ctx: &Context<'_>, source_id: i64) -> Result<i64> {
-        ctx.data::<SourceManager>()?.remove(source_id).await?;
+        ctx.data::<SourceBus>()?.remove(source_id).await?;
 
         Ok(source_id)
     }
 
     #[graphql(guard = "AdminGuard::new()")]
     async fn update_source(&self, ctx: &Context<'_>, source_id: i64) -> Result<i64> {
-        let extensions = ctx.data::<SourceManager>()?;
-        let installed_source = extensions.get(source_id)?;
+        let extensions = ctx.data::<SourceBus>()?;
+        let installed_source = extensions.get_source_info(source_id).await?;
 
         let url = GLOBAL_CONFIG
             .get()
@@ -208,9 +200,7 @@ impl SourceMutationRoot {
             .ok_or("source not found")?
             .clone();
 
-        if Version::from_str(&installed_source.get_source_info().version)?
-            == Version::from_str(&source.version)?
-        {
+        if Version::from_str(&installed_source.version)? == Version::from_str(&source.version)? {
             return Err("No new version".into());
         }
 
@@ -232,8 +222,9 @@ impl SourceMutationRoot {
         source_id: i64,
         preferences: InputList,
     ) -> Result<i64> {
-        ctx.data::<SourceManager>()?
-            .set_preferences(source_id, preferences.0)?;
+        ctx.data::<SourceBus>()?
+            .set_preferences(source_id, preferences.0)
+            .await?;
 
         Ok(source_id)
     }

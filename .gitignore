@@ -16,3 +16,4 @@ dist/
 .parcel-cache/
 *.pem
 .tanoshi/
+output/

@@ -27,9 +27,8 @@ use crate::{
 };
 use clap::Parser;
 use futures::future::OptionFuture;
-use tanoshi_vm::extension::SourceManager;
+use tanoshi_vm::{extension::SourceBus, prelude::Source};
 
-use std::sync::Arc;
 use teloxide::prelude::RequesterExt;
 
 #[derive(Parser)]
@@ -63,35 +62,31 @@ async fn main() -> Result<(), anyhow::Error> {
     let mangadb = db::MangaDatabase::new(pool.clone());
     let userdb = db::UserDatabase::new(pool.clone());
 
-    let extension_manager = SourceManager::new(&config.plugin_path);
+    let extension_manager = SourceBus::new(&config.plugin_path);
 
-    let mut read_dir = tokio::fs::read_dir(&config.plugin_path).await?;
-    while let Some(entry) = read_dir.next_entry().await? {
-        let mut name = format!("{:?}", entry.file_name());
-        name.remove(0);
-        name.remove(name.len() - 1);
-        if name.ends_with(".mjs") {
-            extension_manager.load(&name[0..name.len() - 4])?;
-        }
-    }
+    extension_manager.load_all().await?;
 
     match &config.local_path {
         config::LocalFolders::Single(local_path) => {
-            extension_manager.insert(Arc::new(local::Local::new(
-                10000,
-                "Local".to_string(),
-                local_path,
-            )))?;
+            extension_manager
+                .insert(Source::from(Box::new(local::Local::new(
+                    10000,
+                    "Local".to_string(),
+                    local_path,
+                ))))
+                .await?;
         }
         config::LocalFolders::Multiple(local_paths) => {
             for (index, local_path) in local_paths.iter().enumerate() {
                 // source id starts from 10000
                 let index = index + 10000;
-                extension_manager.insert(Arc::new(local::Local::new(
-                    index as i64,
-                    local_path.name.clone(),
-                    &local_path.path,
-                )))?;
+                extension_manager
+                    .insert(Source::from(Box::new(local::Local::new(
+                        index as i64,
+                        local_path.name.clone(),
+                        &local_path.path,
+                    ))))
+                    .await?;
             }
         }
     }

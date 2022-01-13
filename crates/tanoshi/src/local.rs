@@ -233,8 +233,8 @@ impl Extension for Local {
             id: self.id,
             name: self.name.clone(),
             url: format!("{}", self.path.display()),
-            version: "0.0.0".to_string(),
-            icon: "/icons/192.png".to_string(),
+            version: "0.0.0",
+            icon: "/icons/192.png",
             languages: Lang::All,
             nsfw: false,
         }
@@ -252,19 +252,19 @@ impl Extension for Local {
         Ok(vec![])
     }
 
-    fn set_preferences(&self, _: Vec<Input>) -> Result<()> {
+    fn set_preferences(&mut self, _: Vec<Input>) -> Result<()> {
         Ok(())
     }
 
-    async fn get_popular_manga(&self, page: i64) -> Result<Vec<MangaInfo>> {
-        self.search_manga(page, None, None).await
+    fn get_popular_manga(&self, page: i64) -> Result<Vec<MangaInfo>> {
+        self.search_manga(page, None, None)
     }
 
-    async fn get_latest_manga(&self, page: i64) -> Result<Vec<MangaInfo>> {
-        self.search_manga(page, None, None).await
+    fn get_latest_manga(&self, page: i64) -> Result<Vec<MangaInfo>> {
+        self.search_manga(page, None, None)
     }
 
-    async fn search_manga(
+    fn search_manga(
         &self,
         page: i64,
         query: Option<String>,
@@ -272,158 +272,146 @@ impl Extension for Local {
     ) -> Result<Vec<MangaInfo>> {
         let id = self.id;
         let path = self.path.clone();
-        tokio::task::spawn_blocking(move || -> Result<Vec<MangaInfo>> {
-            let offset = (page - 1) * 20;
+        let offset = (page - 1) * 20;
 
-            let read_dir = match std::fs::read_dir(&path) {
-                Ok(read_dir) => read_dir,
-                Err(e) => {
-                    return Err(anyhow!("{}", e));
-                }
-            };
-
-            let mut data: Box<dyn Iterator<Item = _>> = Box::new(
-                read_dir
-                    .into_iter()
-                    .filter_map(filter_supported_files_and_folders),
-            );
-
-            if let Some(keyword) = query {
-                data = Box::new(data.filter(move |entry| {
-                    entry
-                        .file_name()
-                        .to_str()
-                        .map(|a| a.to_lowercase().contains(&keyword))
-                        .unwrap_or_else(|| false)
-                }));
+        let read_dir = match std::fs::read_dir(&path) {
+            Ok(read_dir) => read_dir,
+            Err(e) => {
+                return Err(anyhow!("{}", e));
             }
+        };
 
-            let manga = data
-                .skip(offset as _)
-                .take(20)
-                .map(|entry| MangaInfo {
-                    source_id: id,
-                    title: entry
-                        .path()
-                        .file_stem()
-                        .and_then(|s| s.to_str())
-                        .unwrap_or_default()
-                        .to_string(),
-                    author: vec![],
-                    genre: vec![],
-                    status: None,
-                    description: None,
-                    path: entry.path().to_str().unwrap_or("").to_string(),
-                    cover_url: find_cover_url(&entry.path()),
-                })
-                .collect::<Vec<_>>();
+        let mut data: Box<dyn Iterator<Item = _>> = Box::new(
+            read_dir
+                .into_iter()
+                .filter_map(filter_supported_files_and_folders),
+        );
 
-            Ok(manga)
-        })
-        .await?
-    }
+        if let Some(keyword) = query {
+            data = Box::new(data.filter(move |entry| {
+                entry
+                    .file_name()
+                    .to_str()
+                    .map(|a| a.to_lowercase().contains(&keyword))
+                    .unwrap_or_else(|| false)
+            }));
+        }
 
-    async fn get_manga_detail(&self, path: String) -> Result<MangaInfo> {
-        let id = self.id;
-        tokio::task::spawn_blocking(move || -> Result<MangaInfo> {
-            let path = PathBuf::from(path);
-
-            let title = path
-                .file_stem()
-                .and_then(OsStr::to_str)
-                .unwrap_or("")
-                .to_string();
-            let cover_url = find_cover_url(&path);
-
-            let mut manga = MangaInfo {
+        let manga = data
+            .skip(offset as _)
+            .take(20)
+            .map(|entry| MangaInfo {
                 source_id: id,
-                title: title.clone(),
+                title: entry
+                    .path()
+                    .file_stem()
+                    .and_then(|s| s.to_str())
+                    .unwrap_or_default()
+                    .to_string(),
                 author: vec![],
                 genre: vec![],
-                status: Some("".to_string()),
-                description: Some(title),
-                path: path.display().to_string(),
-                cover_url,
-            };
+                status: None,
+                description: None,
+                path: entry.path().to_str().unwrap_or("").to_string(),
+                cover_url: find_cover_url(&entry.path()),
+            })
+            .collect::<Vec<_>>();
 
-            if let Some(info) = find_details(&path)
-                .and_then(|object| serde_json::from_slice::<LocalMangaInfo>(&object).ok())
-            {
-                if let Some(title) = info.title {
-                    manga.title = title;
-                }
-                if let Some(cover_path) = info.cover_path {
-                    manga.cover_url = path.join(cover_path).display().to_string();
-                }
-                if let Some(author) = info.author {
-                    manga.author = author;
-                }
-                if let Some(genre) = info.genre {
-                    manga.genre = genre;
-                }
-                if let Some(description) = info.description {
-                    manga.description = Some(description);
-                }
-            }
-
-            Ok(manga)
-        })
-        .await?
+        Ok(manga)
     }
 
-    async fn get_chapters(&self, path: String) -> Result<Vec<ChapterInfo>> {
+    fn get_manga_detail(&self, path: String) -> Result<MangaInfo> {
+        let id = self.id;
+        let path = PathBuf::from(path);
+
+        let title = path
+            .file_stem()
+            .and_then(OsStr::to_str)
+            .unwrap_or("")
+            .to_string();
+        let cover_url = find_cover_url(&path);
+
+        let mut manga = MangaInfo {
+            source_id: id,
+            title: title.clone(),
+            author: vec![],
+            genre: vec![],
+            status: Some("".to_string()),
+            description: Some(title),
+            path: path.display().to_string(),
+            cover_url,
+        };
+
+        if let Some(info) = find_details(&path)
+            .and_then(|object| serde_json::from_slice::<LocalMangaInfo>(&object).ok())
+        {
+            if let Some(title) = info.title {
+                manga.title = title;
+            }
+            if let Some(cover_path) = info.cover_path {
+                manga.cover_url = path.join(cover_path).display().to_string();
+            }
+            if let Some(author) = info.author {
+                manga.author = author;
+            }
+            if let Some(genre) = info.genre {
+                manga.genre = genre;
+            }
+            if let Some(description) = info.description {
+                manga.description = Some(description);
+            }
+        }
+
+        Ok(manga)
+    }
+
+    fn get_chapters(&self, path: String) -> Result<Vec<ChapterInfo>> {
         let source_id = self.id;
-        tokio::task::spawn_blocking(move || -> Result<Vec<ChapterInfo>> {
-            let path = PathBuf::from(path);
-            if path.is_file() {
-                if let Some(data) = map_entry_to_chapter(source_id, &path) {
-                    return Ok(vec![data]);
-                }
+        let path = PathBuf::from(path);
+        if path.is_file() {
+            if let Some(data) = map_entry_to_chapter(source_id, &path) {
+                return Ok(vec![data]);
             }
+        }
 
-            let read_dir = match std::fs::read_dir(&path) {
-                Ok(read_dir) => read_dir,
-                Err(e) => {
-                    return Err(anyhow!("{}", e));
-                }
-            };
+        let read_dir = match std::fs::read_dir(&path) {
+            Ok(read_dir) => read_dir,
+            Err(e) => {
+                return Err(anyhow!("{}", e));
+            }
+        };
 
-            let mut data: Vec<ChapterInfo> = read_dir
-                .into_iter()
-                .filter_map(filter_supported_files_and_folders)
-                .filter_map(|entry| map_entry_to_chapter(source_id, &entry.path()))
-                .collect();
+        let mut data: Vec<ChapterInfo> = read_dir
+            .into_iter()
+            .filter_map(filter_supported_files_and_folders)
+            .filter_map(|entry| map_entry_to_chapter(source_id, &entry.path()))
+            .collect();
 
-            data.sort_by(|a, b| a.number.partial_cmp(&b.number).unwrap());
-            data.reverse();
+        data.sort_by(|a, b| a.number.partial_cmp(&b.number).unwrap());
+        data.reverse();
 
-            Ok(data)
-        })
-        .await?
+        Ok(data)
     }
 
-    async fn get_pages(&self, filename: String) -> Result<Vec<String>> {
-        tokio::task::spawn_blocking(move || -> Result<Vec<String>> {
-            let path = PathBuf::from(filename);
-            let mut pages = if path.is_dir() {
-                match get_pages_from_dir(&path) {
-                    Ok(pages) => pages,
-                    Err(e) => return Err(anyhow!("{}", e)),
-                }
-            } else if path.is_file() {
-                match get_pages_from_archive(&path) {
-                    Ok(pages) => pages,
-                    Err(e) => return Err(anyhow!("{}", e)),
-                }
-            } else {
-                return Err(anyhow!("filename neither file or dir"));
-            };
+    fn get_pages(&self, filename: String) -> Result<Vec<String>> {
+        let path = PathBuf::from(filename);
+        let mut pages = if path.is_dir() {
+            match get_pages_from_dir(&path) {
+                Ok(pages) => pages,
+                Err(e) => return Err(anyhow!("{}", e)),
+            }
+        } else if path.is_file() {
+            match get_pages_from_archive(&path) {
+                Ok(pages) => pages,
+                Err(e) => return Err(anyhow!("{}", e)),
+            }
+        } else {
+            return Err(anyhow!("filename neither file or dir"));
+        };
 
-            pages.sort_by(|a, b| human_sort::compare(a, b));
+        pages.sort_by(|a, b| human_sort::compare(a, b));
 
-            Ok(pages)
-        })
-        .await?
+        Ok(pages)
     }
 }
 
@@ -436,7 +424,7 @@ mod test {
     #[tokio::test]
     async fn test_positive_get_popular_manga() {
         let local = Local::new(1, "Local".to_string(), "../../test/data/manga");
-        let manga = local.get_popular_manga(1).await;
+        let manga = local.get_popular_manga(1);
 
         if let Ok(data) = manga {
             assert_eq!(data.len(), 3);
@@ -472,7 +460,7 @@ mod test {
     #[tokio::test]
     async fn test_negative_get_popular_manga() {
         let local = Local::new(1, "Local".to_string(), "../../test/data/not_manga");
-        let manga = local.get_popular_manga(1).await;
+        let manga = local.get_popular_manga(1);
 
         assert!(manga.is_err());
     }
@@ -480,7 +468,7 @@ mod test {
     #[tokio::test]
     async fn test_positive_get_popular_manga_with_page() {
         let local = Local::new(1, "Local".to_string(), "../../test/data/manga");
-        let manga = local.get_popular_manga(2).await;
+        let manga = local.get_popular_manga(2);
 
         assert!(manga.is_ok());
         assert_eq!(manga.unwrap().len(), 0);
@@ -490,17 +478,13 @@ mod test {
     async fn test_get_manga_detail_single_archive() {
         let local = Local::new(1, "Local".to_string(), "../../test/data/manga");
         #[cfg(target_family = "windows")]
-        let manga = local
-            .get_manga_detail(
-                "../../test/data/manga\\Space_Adventures_004__c2c__diff_ver.cbz".to_string(),
-            )
-            .await;
+        let manga = local.get_manga_detail(
+            "../../test/data/manga\\Space_Adventures_004__c2c__diff_ver.cbz".to_string(),
+        );
         #[cfg(target_family = "unix")]
-        let manga = local
-            .get_manga_detail(
-                "../../test/data/manga/Space_Adventures_004__c2c__diff_ver.cbz".to_string(),
-            )
-            .await;
+        let manga = local.get_manga_detail(
+            "../../test/data/manga/Space_Adventures_004__c2c__diff_ver.cbz".to_string(),
+        );
 
         assert!(manga.is_ok());
 
@@ -524,13 +508,9 @@ mod test {
     async fn test_get_manga_detail() {
         let local = Local::new(1, "Local".to_string(), "../../test/data/manga");
         #[cfg(target_family = "windows")]
-        let manga = local
-            .get_manga_detail("../../test/data/manga\\Super Duck".to_string())
-            .await;
+        let manga = local.get_manga_detail("../../test/data/manga\\Super Duck".to_string());
         #[cfg(target_family = "unix")]
-        let manga = local
-            .get_manga_detail("../../test/data/manga/Super Duck".to_string())
-            .await;
+        let manga = local.get_manga_detail("../../test/data/manga/Super Duck".to_string());
 
         assert!(manga.is_ok());
 
@@ -555,17 +535,13 @@ mod test {
     async fn test_single_chapter_manga_get_chapters() {
         let local = Local::new(1, "Local".to_string(), "../../test/data/manga");
         #[cfg(target_family = "windows")]
-        let chapter = local
-            .get_chapters(
-                "../../test/data/manga\\Space_Adventures_004__c2c__diff_ver.cbz".to_string(),
-            )
-            .await;
+        let chapter = local.get_chapters(
+            "../../test/data/manga\\Space_Adventures_004__c2c__diff_ver.cbz".to_string(),
+        );
         #[cfg(target_family = "unix")]
-        let chapter = local
-            .get_chapters(
-                "../../test/data/manga/Space_Adventures_004__c2c__diff_ver.cbz".to_string(),
-            )
-            .await;
+        let chapter = local.get_chapters(
+            "../../test/data/manga/Space_Adventures_004__c2c__diff_ver.cbz".to_string(),
+        );
 
         assert!(chapter.is_ok());
 
@@ -591,13 +567,9 @@ mod test {
     async fn test_manga_get_chapters() {
         let local = Local::new(1, "Local".to_string(), "../../test/data/manga");
         #[cfg(target_family = "windows")]
-        let chapter = local
-            .get_chapters("../../test/data/manga\\Space Adventures".to_string())
-            .await;
+        let chapter = local.get_chapters("../../test/data/manga\\Space Adventures".to_string());
         #[cfg(target_family = "unix")]
-        let chapter = local
-            .get_chapters("../../test/data/manga/Space Adventures".to_string())
-            .await;
+        let chapter = local.get_chapters("../../test/data/manga/Space Adventures".to_string());
 
         assert!(chapter.is_ok());
 
@@ -638,19 +610,15 @@ mod test {
     async fn test_archive_get_pages() {
         let local = Local::new(1, "Local".to_string(), "../../test/data/manga");
         #[cfg(target_family = "windows")]
-        let pages = local
-            .get_pages(
-                "../../test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver"
-                    .to_string(),
-            )
-            .await;
+        let pages = local.get_pages(
+            "../../test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver"
+                .to_string(),
+        );
         #[cfg(target_family = "unix")]
-        let pages = local
-            .get_pages(
-                "../../test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver"
-                    .to_string(),
-            )
-            .await;
+        let pages = local.get_pages(
+            "../../test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver"
+                .to_string(),
+        );
 
         assert!(pages.is_ok());
 

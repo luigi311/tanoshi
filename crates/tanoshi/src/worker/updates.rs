@@ -3,7 +3,7 @@ use std::{collections::HashMap, str::FromStr};
 use serde::Deserialize;
 
 use tanoshi_lib::prelude::Version;
-use tanoshi_vm::extension::SourceManager;
+use tanoshi_vm::extension::SourceBus;
 
 use crate::{
     catalogue::Source,
@@ -29,7 +29,7 @@ struct UpdatesWorker {
     period: u64,
     client: reqwest::Client,
     mangadb: MangaDatabase,
-    extensions: SourceManager,
+    extensions: SourceBus,
     auto_download_chapters: bool,
     download_tx: DownloadSender,
     notifier: Notifier,
@@ -39,7 +39,7 @@ impl UpdatesWorker {
     fn new(
         period: u64,
         mangadb: MangaDatabase,
-        extensions: SourceManager,
+        extensions: SourceBus,
         download_tx: DownloadSender,
         notifier: Notifier,
     ) -> Self {
@@ -78,13 +78,12 @@ impl UpdatesWorker {
                 .map(|ch| ch.uploaded);
 
             debug!("Checking updates: {}", item.manga.title);
-            let ext = if let Ok(ext) = self.extensions.get(item.manga.source_id) {
-                ext
-            } else {
-                continue;
-            };
 
-            let chapters = match ext.get_chapters(item.manga.path.clone()).await {
+            let chapters = match self
+                .extensions
+                .get_chapters(item.manga.source_id, item.manga.path.clone())
+                .await
+            {
                 Ok(chapters) => {
                     let chapters: Vec<Chapter> = chapters
                         .into_iter()
@@ -174,7 +173,7 @@ impl UpdatesWorker {
             .map(|source| (source.id, source))
             .collect::<HashMap<i64, Source>>();
 
-        let installed_sources = self.extensions.list()?;
+        let installed_sources = self.extensions.list().await?;
 
         for source in installed_sources {
             if available_sources_map
@@ -290,7 +289,7 @@ impl UpdatesWorker {
 pub fn start(
     period: u64,
     mangadb: MangaDatabase,
-    extensions: SourceManager,
+    extensions: SourceBus,
     download_tx: DownloadSender,
     notifier: Notifier,
 ) -> JoinHandle<()> {
