@@ -19,7 +19,7 @@ on:
 
 jobs:
   build-docker:
-    if: ${{ github.ref == 'refs/heads/master' }}
+    if: ${{ github.ref == 'refs/heads/master' || github.ref == 'refs/heads/libloading' }}
     runs-on: ubuntu-latest
     environment: default
     steps:
