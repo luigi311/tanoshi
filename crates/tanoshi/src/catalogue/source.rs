@@ -149,7 +149,6 @@ impl SourceMutationRoot {
         if ctx.data::<SourceBus>()?.exists(source_id).await? {
             return Err("source installed, use updateSource to update".into());
         }
-
         let url = GLOBAL_CONFIG
             .get()
             .map(|cfg| cfg.extension_repository.clone())
@@ -164,11 +163,7 @@ impl SourceMutationRoot {
             .ok_or("source not found")?
             .clone();
 
-        let raw = reqwest::get(format!("{}/{}.mjs", url, source.name))
-            .await?
-            .bytes()
-            .await?;
-        ctx.data::<SourceBus>()?.install(&source.name, &raw).await?;
+        ctx.data::<SourceBus>()?.install(&url, &source.name).await?;
 
         Ok(source.id)
     }
@@ -204,13 +199,8 @@ impl SourceMutationRoot {
             return Err("No new version".into());
         }
 
-        let raw = reqwest::get(format!("{}/{}.mjs", url, source.name))
-            .await?
-            .bytes()
-            .await?;
-
         extensions.remove(source_id).await?;
-        extensions.install(&source.name, &raw).await?;
+        extensions.install(&url, &source.name).await?;
 
         Ok(source_id)
     }

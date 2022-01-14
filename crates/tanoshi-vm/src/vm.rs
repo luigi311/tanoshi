@@ -12,11 +12,11 @@ use tokio::sync::oneshot;
 use crate::prelude::Source;
 
 #[cfg(target_os = "windows")]
-pub(crate) const PLUGIN_EXTENSION: &str = "dll";
+pub const PLUGIN_EXTENSION: &str = "dll";
 #[cfg(target_os = "macos")]
-pub(crate) const PLUGIN_EXTENSION: &str = "dylib";
+pub const PLUGIN_EXTENSION: &str = "dylib";
 #[cfg(target_os = "linux")]
-pub(crate) const PLUGIN_EXTENSION: &str = "so";
+pub const PLUGIN_EXTENSION: &str = "so";
 
 pub enum SourceCommand {
     Insert(Source),
@@ -173,7 +173,10 @@ fn extension_main_thread<P: AsRef<Path>>(
 }
 
 pub(crate) fn load<P: AsRef<Path>>(extension_dir: P, name: &str) -> Result<Source> {
-    let library_path = PathBuf::new().join(extension_dir).join(name);
+    let library_path = PathBuf::new()
+        .join(extension_dir)
+        .join(name)
+        .with_extension(PLUGIN_EXTENSION);
     info!("load {:?}", library_path.display());
 
     #[cfg(target_os = "macos")]

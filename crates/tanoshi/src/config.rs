@@ -91,7 +91,7 @@ fn default_port() -> u16 {
 }
 
 fn default_extension_repository() -> String {
-    "https://raw.githubusercontent.com/faldez/tanoshi-extensions/dist".to_string()
+    "https://raw.githubusercontent.com/faldez/tanoshi-extensions/repository".to_string()
 }
 
 fn default_update_interval() -> u64 {

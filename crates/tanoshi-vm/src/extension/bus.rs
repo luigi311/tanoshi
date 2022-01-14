@@ -54,8 +54,27 @@ impl SourceBus {
         Ok(rx.await?)
     }
 
-    pub async fn install(&self, name: &str, contents: &[u8]) -> Result<()> {
-        tokio::fs::write(self.dir.join(&name.to_lowercase()), contents).await?;
+    pub async fn install(&self, repo_url: &str, name: &str) -> Result<()> {
+        let source_file_url = format!(
+            "{}/{}/{}.{}",
+            repo_url,
+            env!("TARGET"),
+            name.to_lowercase(),
+            PLUGIN_EXTENSION
+        );
+
+        info!("downloading {}", source_file_url);
+
+        let contents = reqwest::get(&source_file_url).await?.bytes().await?;
+
+        tokio::fs::write(
+            self.dir
+                .join(&name.to_lowercase())
+                .with_extension(PLUGIN_EXTENSION),
+            contents,
+        )
+        .await?;
+
         let source = vm::load(&self.dir, &name.to_lowercase())?;
         self.insert(source).await
     }

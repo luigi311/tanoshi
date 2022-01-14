@@ -3,16 +3,9 @@ extern crate log;
 use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
-use tanoshi_vm::prelude::SourceBus;
+use tanoshi_vm::{prelude::SourceBus, vm::PLUGIN_EXTENSION};
 
 const TARGET: &str = env!("TARGET");
-
-#[cfg(target_os = "windows")]
-pub(crate) const PLUGIN_EXTENSION: &str = "dll";
-#[cfg(target_os = "macos")]
-pub(crate) const PLUGIN_EXTENSION: &str = "dylib";
-#[cfg(target_os = "linux")]
-pub(crate) const PLUGIN_EXTENSION: &str = "so";
 
 #[derive(Parser)]
 #[clap(version = "0.1.1")]
