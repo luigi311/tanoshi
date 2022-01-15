@@ -127,26 +127,29 @@ jobs:
           vcpkg install libarchive:x64-windows-static-md
       - name: Build tanoshi
         if: ${{ matrix.os == 'ubuntu-latest' }}
-        uses: actions-rs/cargo@v1
+        uses: marcopolo/cargo@master
         with:
           command: tauri
           args: build
+          working-directory: crates/tanoshi
         env:
           RUSTFLAGS: "-Clink-arg=-Wl,--allow-multiple-definition"
       - name: Build tanoshi
         if: ${{ matrix.os == 'macos-latest' }}
-        uses: actions-rs/cargo@v1
+        uses: marcopolo/cargo@master
         with:
           command: tauri
           args: build
+          working-directory: crates/tanoshi
         env:
           PKG_CONFIG_PATH: /usr/local/opt/icu4c/lib/pkgconfig:/usr/local/opt/libarchive/lib/pkgconfig:/usr/local/opt/zlib/lib/pkgconfig:/usr/local/opt/expat/lib/pkgconfig
       - name: Build tanoshi
         if: ${{ matrix.os == 'windows-latest' }}
-        uses: actions-rs/cargo@v1
+        uses: marcopolo/cargo@master
         with:
           command: tauri
           args: build
+          working-directory: crates/tanoshi
         env:
           LIBCLANG_PATH: C:\Program Files\LLVM\bin
       - name: Upload Release Asset
