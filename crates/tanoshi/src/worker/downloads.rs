@@ -1,8 +1,3 @@
-use std::{
-    io::Write,
-    path::{Path, PathBuf},
-};
-
 use crate::{
     db::{
         model::{Chapter, DownloadQueue},
@@ -10,8 +5,15 @@ use crate::{
     },
     notifier::Notifier,
 };
+use anyhow::{anyhow, Result};
 use reqwest::Url;
+use std::{
+    fs::File,
+    io::Write,
+    path::{Path, PathBuf},
+};
 use tanoshi_vm::extension::SourceBus;
+use zip::{ZipArchive, ZipWriter};
 
 use tokio::{
     sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender},
@@ -98,7 +100,7 @@ impl DownloadWorker {
                 date_added,
             })
         }
-        debug!("queue: {:?}", queue);
+
         self.db.insert_download_queue(&queue).await?;
 
         Ok(())
@@ -106,6 +108,144 @@ impl DownloadWorker {
 
     async fn paused(&self) -> bool {
         self.dir.join(".pause").exists()
+    }
+
+    fn open_readable_zip_file<P: AsRef<Path>>(&self, archive_path: P) -> Result<ZipArchive<File>> {
+        let file = std::fs::OpenOptions::new().read(true).open(&archive_path)?;
+        Ok(zip::ZipArchive::new(file)?)
+    }
+
+    fn open_or_create_writeble_zip_file<P: AsRef<Path>>(
+        &self,
+        manga_path: P,
+        archive_path: P,
+    ) -> Result<ZipWriter<File>> {
+        if let Ok(file) = std::fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open(&archive_path)
+        {
+            return Ok(zip::ZipWriter::new_append(file)?);
+        } else if let Ok(file) =
+            std::fs::create_dir_all(manga_path).and_then(|_| std::fs::File::create(&archive_path))
+        {
+            return Ok(zip::ZipWriter::new(file));
+        }
+
+        Err(anyhow!("cannot open or create new zip file"))
+    }
+
+    async fn download(&mut self) -> Result<()> {
+        let queue = self
+            .db
+            .get_single_download_queue()
+            .await?
+            .ok_or_else(|| anyhow!("no queue"))?;
+
+        debug!("got {}", queue.url);
+
+        let url = Url::parse(&queue.url)?;
+
+        let filename = url
+            .path_segments()
+            .and_then(|seg| seg.last())
+            .map(|s| s.to_string())
+            .ok_or_else(|| anyhow!("no filename"))?;
+
+        let source_name = if cfg!(windows) {
+            queue
+                .source_name
+                .replace(&['\\', '/', ':', '*', '?', '\"', '<', '>', '|'][..], "")
+        } else {
+            queue.source_name
+        };
+
+        let manga_title = if cfg!(windows) {
+            queue
+                .manga_title
+                .replace(&['\\', '/', ':', '*', '?', '\"', '<', '>', '|'][..], "")
+        } else {
+            queue.manga_title
+        };
+
+        let chapter_title = if cfg!(windows) {
+            queue
+                .chapter_title
+                .replace(&['\\', '/', ':', '*', '?', '\"', '<', '>', '|'][..], "")
+        } else {
+            queue.chapter_title
+        };
+
+        let manga_path = self.dir.join(&source_name).join(&manga_title);
+
+        let archive_path = manga_path.join(format!("{}.cbz", chapter_title));
+
+        if let Ok(mut zip) = self.open_readable_zip_file(&archive_path) {
+            if zip.by_name(&filename).is_ok() {
+                debug!("file already downloaded, mark as compeleted then skip");
+                self.db
+                    .mark_single_download_queue_as_completed(queue.id)
+                    .await?;
+                if !self.paused().await {
+                    self.tx.send(Command::Download).unwrap();
+                }
+                return Ok(());
+            }
+        }
+
+        let mut zip = self.open_or_create_writeble_zip_file(&manga_path, &archive_path)?;
+
+        tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+
+        let referrer = self
+            .ext
+            .get_source_info(queue.source_id)
+            .await
+            .map(|s| s.url.to_string())
+            .unwrap_or_default();
+
+        let contents = self
+            .client
+            .request(reqwest::Method::GET, url.clone())
+            .header("referer", referrer)
+            .send()
+            .await?
+            .bytes()
+            .await?;
+
+        zip.start_file(&filename, Default::default())?;
+
+        zip.write_all(contents.to_vec().as_slice())?;
+
+        self.db
+            .mark_single_download_queue_as_completed(queue.id)
+            .await?;
+
+        if self
+            .db
+            .get_single_chapter_download_status(queue.chapter_id)
+            .await
+            .unwrap_or_default()
+        {
+            self.db
+                .update_chapter_downloaded_path(
+                    queue.chapter_id,
+                    Some(archive_path.display().to_string()),
+                )
+                .await?;
+
+            self.db
+                .delete_single_chapter_download_queue(queue.chapter_id)
+                .await?;
+        }
+
+        zip.finish()?;
+
+        if !self.paused().await {
+            self.tx.send(Command::Download).unwrap();
+        }
+
+        Ok(())
     }
 
     pub async fn run(&mut self) {
@@ -148,198 +288,8 @@ impl DownloadWorker {
                         continue;
                     }
 
-                    let queue = match self.db.get_single_download_queue().await {
-                        Ok(Some(queue)) => queue,
-                        Err(e) => {
-                            error!("error get single download queue: {}", e);
-                            continue;
-                        }
-                        Ok(None) => {
-                            info!("download done");
-                            continue;
-                        }
-                    };
-
-                    debug!("got {}", queue.url);
-
-                    let url = if let Ok(url) = Url::parse(&queue.url) {
-                        url
-                    } else {
-                        continue;
-                    };
-
-                    let filename = if let Some(filename) = url
-                        .path_segments()
-                        .and_then(|seg| seg.last())
-                        .map(|s| s.to_string())
-                    {
-                        filename
-                    } else {
-                        continue;
-                    };
-
-                    let source_name = if cfg!(windows) {
-                        queue
-                            .source_name
-                            .replace(&['\\', '/', ':', '*', '?', '\"', '<', '>', '|'][..], "")
-                    } else {
-                        queue.source_name
-                    };
-
-                    let manga_title = if cfg!(windows) {
-                        queue
-                            .manga_title
-                            .replace(&['\\', '/', ':', '*', '?', '\"', '<', '>', '|'][..], "")
-                    } else {
-                        queue.manga_title
-                    };
-
-                    let chapter_title = if cfg!(windows) {
-                        queue
-                            .chapter_title
-                            .replace(&['\\', '/', ':', '*', '?', '\"', '<', '>', '|'][..], "")
-                    } else {
-                        queue.chapter_title
-                    };
-
-                    let manga_path = self.dir.join(&source_name).join(&manga_title);
-
-                    let archive_path = manga_path.join(format!("{}.cbz", chapter_title));
-
-                    if let Ok(file) = std::fs::OpenOptions::new()
-                        .read(true)
-                        .write(true)
-                        .open(&archive_path)
-                    {
-                        if zip::ZipArchive::new(&file)
-                            .map(|mut zip| zip.by_name(&filename).is_ok())
-                            .unwrap_or_default()
-                        {
-                            debug!("file already downloaded, mark as compeleted then skip");
-                            if let Err(e) = self
-                                .db
-                                .mark_single_download_queue_as_completed(queue.id)
-                                .await
-                            {
-                                error!(
-                                    "error mark single download queue as completed, reason {}",
-                                    e
-                                );
-                            }
-                            if !self.paused().await {
-                                self.tx.send(Command::Download).unwrap();
-                            }
-                            continue;
-                        }
-                    }
-
-                    let mut zip = if let Ok(file) = std::fs::OpenOptions::new()
-                        .read(true)
-                        .write(true)
-                        .open(&archive_path)
-                    {
-                        match zip::ZipWriter::new_append(file) {
-                            Ok(zip) => zip,
-                            Err(e) => {
-                                error!("failed to open archive file, reason {}", e);
-                                continue;
-                            }
-                        }
-                    } else if let Ok(file) = std::fs::create_dir_all(manga_path)
-                        .and_then(|_| std::fs::File::create(&archive_path))
-                    {
-                        zip::ZipWriter::new(file)
-                    } else {
-                        continue;
-                    };
-
-                    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
-
-                    let referrer = self
-                        .ext
-                        .get_source_info(queue.source_id)
-                        .await
-                        .map(|s| s.url.to_string())
-                        .unwrap_or_default();
-
-                    let res = if let Ok(res) = self
-                        .client
-                        .request(reqwest::Method::GET, url.clone())
-                        .header("referer", referrer)
-                        .send()
-                        .await
-                    {
-                        res
-                    } else {
-                        continue;
-                    };
-
-                    let contents = if let Ok(contents) = res.bytes().await {
-                        contents
-                    } else {
-                        continue;
-                    };
-
-                    if let Err(e) = zip.start_file(&filename, Default::default()) {
-                        error!("failed to create file inside archive, reason {}", e);
-                        continue;
-                    }
-
-                    match zip.write_all(contents.to_vec().as_slice()) {
-                        Ok(_) => {
-                            info!("downloaded to {}", archive_path.display());
-                        }
-                        Err(e) => {
-                            error!("error downloading {}, reason {}", url, e);
-                            continue;
-                        }
-                    }
-
-                    if let Err(e) = self
-                        .db
-                        .mark_single_download_queue_as_completed(queue.id)
-                        .await
-                    {
-                        error!(
-                            "error mark single download queue as completed, reason {}",
-                            e
-                        );
-                        continue;
-                    }
-
-                    if self
-                        .db
-                        .get_single_chapter_download_status(queue.chapter_id)
-                        .await
-                        .unwrap_or_default()
-                    {
-                        if let Err(e) = self
-                            .db
-                            .update_chapter_downloaded_path(
-                                queue.chapter_id,
-                                Some(archive_path.display().to_string()),
-                            )
-                            .await
-                        {
-                            error!("error update chapter downloaded path, {}", e);
-                            continue;
-                        }
-                        if let Err(e) = self
-                            .db
-                            .delete_single_chapter_download_queue(queue.chapter_id)
-                            .await
-                        {
-                            error!("error delete single chapter download queue, {}", e);
-                            continue;
-                        }
-                    }
-
-                    if let Err(e) = zip.finish() {
-                        error!("error finishing zip, reason {}", e);
-                    }
-
-                    if !self.paused().await {
-                        self.tx.send(Command::Download).unwrap();
+                    if let Err(e) = self.download().await {
+                        error!("{e}")
                     }
                 }
             }
