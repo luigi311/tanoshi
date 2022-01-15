@@ -1,28 +1,39 @@
-use std::path::{Path, PathBuf};
-
-use anyhow::{anyhow, Result};
-use tanoshi_lib::prelude::{Input, SourceInfo};
-use tokio::sync::oneshot;
-
-use crate::{
-    prelude::Source,
-    vm::{self, SourceCommand, PLUGIN_EXTENSION},
+use std::{
+    path::{Path, PathBuf},
+    sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard},
 };
+
+use anyhow::{anyhow, bail, Result};
+use fnv::FnvHashMap;
+use libloading::Library;
+use tanoshi_lib::prelude::{Input, PluginDeclaration, SourceInfo};
+
+use crate::{prelude::Source, PLUGIN_EXTENSION};
 
 #[derive(Clone)]
 pub struct SourceBus {
     dir: PathBuf,
-    tx: flume::Sender<SourceCommand>,
+    extensions: Arc<RwLock<FnvHashMap<i64, Source>>>,
 }
 
 impl SourceBus {
     pub fn new<P: AsRef<Path>>(extension_dir: P) -> Self {
-        let (tx, rx) = flume::unbounded();
-        vm::run(&extension_dir, rx);
         Self {
             dir: PathBuf::new().join(extension_dir),
-            tx,
+            extensions: Arc::new(RwLock::new(FnvHashMap::default())),
         }
+    }
+
+    fn read(&self) -> Result<RwLockReadGuard<FnvHashMap<i64, Source>>> {
+        self.extensions
+            .read()
+            .map_err(|e| anyhow!("failed to lock read: {e}"))
+    }
+
+    fn write(&self) -> Result<RwLockWriteGuard<FnvHashMap<i64, Source>>> {
+        self.extensions
+            .write()
+            .map_err(|e| anyhow!("failed to lock write: {e}"))
     }
 
     pub async fn load_all(&self) -> Result<()> {
@@ -39,19 +50,15 @@ impl SourceBus {
     }
 
     pub async fn exists(&self, source_id: i64) -> Result<bool> {
-        let (tx, rx) = oneshot::channel();
-        self.tx
-            .send_async(SourceCommand::Exists(source_id, tx))
-            .await?;
-
-        Ok(rx.await?)
+        Ok(self.read()?.get(&source_id).is_some())
     }
 
     pub async fn list(&self) -> Result<Vec<SourceInfo>> {
-        let (tx, rx) = oneshot::channel();
-        self.tx.send_async(SourceCommand::List(tx)).await?;
-
-        Ok(rx.await?)
+        Ok(self
+            .read()?
+            .values()
+            .filter_map(|s| s.extension.get().map(|s| s.get_source_info()))
+            .collect())
     }
 
     pub async fn install(&self, repo_url: &str, name: &str) -> Result<()> {
@@ -75,13 +82,60 @@ impl SourceBus {
         )
         .await?;
 
-        let source = vm::load(&self.dir, &name.to_lowercase())?;
+        let source = self.load_library(&name.to_lowercase())?;
         self.insert(source).await
     }
 
-    pub async fn load(&self, name: &str) -> Result<()> {
-        let mut source = vm::load(&self.dir, name)?;
+    fn load_library(&self, name: &str) -> Result<Source> {
+        let library_path = PathBuf::new()
+            .join(&self.dir)
+            .join(name)
+            .with_extension(PLUGIN_EXTENSION);
+        info!("load {:?}", library_path.display());
 
+        #[cfg(target_os = "macos")]
+        if let Err(e) = std::process::Command::new("install_name_tool")
+            .current_dir(library_path.parent().unwrap())
+            .arg("-id")
+            .arg("''")
+            .arg(library_path.file_name().unwrap())
+            .output()
+        {
+            error!("failed to run install_name_tool: {}", e);
+        }
+
+        unsafe {
+            let library = Arc::new(Library::new(&library_path)?);
+
+            let decl = library
+                .get::<*mut PluginDeclaration>(b"plugin_declaration\0")?
+                .read();
+
+            if decl.rustc_version != tanoshi_lib::RUSTC_VERSION {
+                bail!(
+                    "Version mismatch: extension.rustc_version={} != tanoshi_lib.rustc_version={}",
+                    decl.rustc_version,
+                    tanoshi_lib::RUSTC_VERSION,
+                );
+            }
+
+            if decl.core_version != tanoshi_lib::LIB_VERSION {
+                bail!(
+                    "Version mismatch: extension.lib_version={} != tanoshi_lib::lib_version={}",
+                    tanoshi_lib::RUSTC_VERSION,
+                    tanoshi_lib::LIB_VERSION
+                );
+            }
+
+            let mut registrar = Source::new(Arc::clone(&library));
+            (decl.register)(&mut registrar);
+
+            Ok(registrar)
+        }
+    }
+
+    pub async fn load(&self, name: &str) -> Result<()> {
+        let mut source = self.load_library(name)?;
         let source_name = source
             .extension
             .get()
@@ -107,12 +161,27 @@ impl SourceBus {
     }
 
     pub async fn insert(&self, source: Source) -> Result<()> {
-        self.tx.send_async(SourceCommand::Insert(source)).await?;
+        let info = source
+            .extension
+            .get()
+            .map(|s| s.get_source_info())
+            .ok_or_else(|| anyhow!("error"))?;
+        self.write()?.insert(info.id, source);
         Ok(())
     }
 
     pub async fn unload(&self, source_id: i64) -> Result<()> {
-        self.tx.send_async(SourceCommand::Unload(source_id)).await?;
+        if let Some(source) = self
+            .write()?
+            .remove(&source_id)
+            .and_then(|s| s.extension.get().map(|s| s.get_source_info()))
+        {
+            std::fs::remove_file(
+                self.dir
+                    .join(&source.name.to_lowercase())
+                    .with_extension(PLUGIN_EXTENSION),
+            )?;
+        }
         Ok(())
     }
 
@@ -121,41 +190,45 @@ impl SourceBus {
     }
 
     pub async fn get_source_info(&self, source_id: i64) -> Result<SourceInfo> {
-        let (tx, rx) = oneshot::channel();
-        self.tx
-            .send_async(SourceCommand::GetSourceInfo(source_id, tx))
-            .await?;
-
-        rx.await?
+        Ok(self
+            .read()?
+            .get(&source_id)
+            .ok_or(anyhow!("no such source"))?
+            .extension
+            .get()
+            .ok_or(anyhow!("uninitiated"))?
+            .get_source_info())
     }
 
     pub async fn filter_list(&self, source_id: i64) -> Result<Vec<Input>> {
-        let (tx, rx) = oneshot::channel();
-        self.tx
-            .send_async(SourceCommand::GetFilterList(source_id, tx))
-            .await?;
-
-        rx.await?
+        Ok(self
+            .read()?
+            .get(&source_id)
+            .ok_or(anyhow!("no such source"))?
+            .extension
+            .get()
+            .ok_or(anyhow!("uninitiated"))?
+            .filter_list())
     }
 
     pub async fn get_preferences(&self, source_id: i64) -> Result<Vec<Input>> {
-        let (tx, rx) = oneshot::channel();
-        self.tx
-            .send_async(SourceCommand::GetPreferences(source_id, tx))
-            .await?;
-        rx.await?
+        self.read()?
+            .get(&source_id)
+            .ok_or(anyhow!("no such source"))?
+            .extension
+            .get()
+            .ok_or(anyhow!("uninitiated"))?
+            .get_preferences()
     }
 
     pub async fn set_preferences(&self, source_id: i64, preferences: Vec<Input>) -> Result<()> {
-        let (tx, rx) = oneshot::channel();
-        self.tx
-            .send_async(SourceCommand::SetPreferences(
-                source_id,
-                preferences.clone(),
-                tx,
-            ))
-            .await?;
-        let _ = rx.await?;
+        self.write()?
+            .get_mut(&source_id)
+            .ok_or(anyhow!("no such source"))?
+            .extension
+            .get_mut()
+            .ok_or(anyhow!("uninitiated"))?
+            .set_preferences(preferences.clone())?;
 
         let source_info = self.get_source_info(source_id).await?;
         tokio::fs::write(
@@ -174,11 +247,19 @@ impl SourceBus {
         source_id: i64,
         page: i64,
     ) -> Result<Vec<tanoshi_lib::prelude::MangaInfo>> {
-        let (tx, rx) = oneshot::channel();
-        self.tx
-            .send_async(SourceCommand::GetPopularManga(source_id, page, tx))
-            .await?;
-        rx.await?
+        let extensions = self.extensions.clone();
+        tokio::task::spawn_blocking(move || {
+            extensions
+                .read()
+                .map_err(|e| anyhow!("failed to lock read: {e}"))?
+                .get(&source_id)
+                .ok_or(anyhow!("no such source"))?
+                .extension
+                .get()
+                .ok_or(anyhow!("uninitiated"))?
+                .get_popular_manga(page)
+        })
+        .await?
     }
 
     pub async fn get_latest_manga(
@@ -186,11 +267,19 @@ impl SourceBus {
         source_id: i64,
         page: i64,
     ) -> Result<Vec<tanoshi_lib::prelude::MangaInfo>> {
-        let (tx, rx) = oneshot::channel();
-        self.tx
-            .send_async(SourceCommand::GetLatestManga(source_id, page, tx))
-            .await?;
-        rx.await?
+        let extensions = self.extensions.clone();
+        tokio::task::spawn_blocking(move || {
+            extensions
+                .read()
+                .map_err(|e| anyhow!("failed to lock read: {e}"))?
+                .get(&source_id)
+                .ok_or(anyhow!("no such source"))?
+                .extension
+                .get()
+                .ok_or(anyhow!("uninitiated"))?
+                .get_latest_manga(page)
+        })
+        .await?
     }
 
     pub async fn search_manga(
@@ -200,13 +289,19 @@ impl SourceBus {
         query: Option<String>,
         filters: Option<Vec<Input>>,
     ) -> Result<Vec<tanoshi_lib::prelude::MangaInfo>> {
-        let (tx, rx) = oneshot::channel();
-        self.tx
-            .send_async(SourceCommand::SearchManga(
-                source_id, page, query, filters, tx,
-            ))
-            .await?;
-        rx.await?
+        let extensions = self.extensions.clone();
+        tokio::task::spawn_blocking(move || {
+            extensions
+                .read()
+                .map_err(|e| anyhow!("failed to lock read: {e}"))?
+                .get(&source_id)
+                .ok_or(anyhow!("no such source"))?
+                .extension
+                .get()
+                .ok_or(anyhow!("uninitiated"))?
+                .search_manga(page, query, filters)
+        })
+        .await?
     }
 
     pub async fn get_manga_detail(
@@ -214,11 +309,19 @@ impl SourceBus {
         source_id: i64,
         path: String,
     ) -> Result<tanoshi_lib::prelude::MangaInfo> {
-        let (tx, rx) = oneshot::channel();
-        self.tx
-            .send_async(SourceCommand::GetMangaDetail(source_id, path, tx))
-            .await?;
-        rx.await?
+        let extensions = self.extensions.clone();
+        tokio::task::spawn_blocking(move || {
+            extensions
+                .read()
+                .map_err(|e| anyhow!("failed to lock read: {e}"))?
+                .get(&source_id)
+                .ok_or(anyhow!("no such source"))?
+                .extension
+                .get()
+                .ok_or(anyhow!("uninitiated"))?
+                .get_manga_detail(path)
+        })
+        .await?
     }
 
     pub async fn get_chapters(
@@ -226,18 +329,34 @@ impl SourceBus {
         source_id: i64,
         path: String,
     ) -> Result<Vec<tanoshi_lib::prelude::ChapterInfo>> {
-        let (tx, rx) = oneshot::channel();
-        self.tx
-            .send_async(SourceCommand::GetChapters(source_id, path, tx))
-            .await?;
-        rx.await?
+        let extensions = self.extensions.clone();
+        tokio::task::spawn_blocking(move || {
+            extensions
+                .read()
+                .map_err(|e| anyhow!("failed to lock read: {e}"))?
+                .get(&source_id)
+                .ok_or(anyhow!("no such source"))?
+                .extension
+                .get()
+                .ok_or(anyhow!("uninitiated"))?
+                .get_chapters(path)
+        })
+        .await?
     }
 
     pub async fn get_pages(&self, source_id: i64, path: String) -> Result<Vec<String>> {
-        let (tx, rx) = oneshot::channel();
-        self.tx
-            .send_async(SourceCommand::GetPages(source_id, path, tx))
-            .await?;
-        rx.await?
+        let extensions = self.extensions.clone();
+        tokio::task::spawn_blocking(move || {
+            extensions
+                .read()
+                .map_err(|e| anyhow!("failed to lock read: {e}"))?
+                .get(&source_id)
+                .ok_or(anyhow!("no such source"))?
+                .extension
+                .get()
+                .ok_or(anyhow!("uninitiated"))?
+                .get_pages(path)
+        })
+        .await?
     }
 }

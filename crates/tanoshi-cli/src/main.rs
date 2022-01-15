@@ -3,7 +3,7 @@ extern crate log;
 use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
-use tanoshi_vm::{prelude::SourceBus, vm::PLUGIN_EXTENSION};
+use tanoshi_vm::{prelude::SourceBus, PLUGIN_EXTENSION};
 
 const TARGET: &str = env!("TARGET");
 
