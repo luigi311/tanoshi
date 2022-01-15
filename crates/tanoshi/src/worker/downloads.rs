@@ -201,7 +201,7 @@ impl DownloadWorker {
             .ext
             .get_source_info(queue.source_id)
             .await
-            .map(|s| s.url.to_string())
+            .map(|s| s.url)
             .unwrap_or_default();
 
         let contents = self

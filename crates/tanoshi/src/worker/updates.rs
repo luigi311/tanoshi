@@ -179,7 +179,7 @@ impl UpdatesWorker {
             if available_sources_map
                 .get(&source.id)
                 .and_then(|index| Version::from_str(&index.version).ok())
-                .map(|v| v > Version::from_str(&source.version).unwrap_or_default())
+                .map(|v| v > Version::from_str(source.version).unwrap_or_default())
                 .unwrap_or(false)
             {
                 let message = format!("{} extension update available", source.name);

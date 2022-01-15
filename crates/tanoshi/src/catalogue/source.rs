@@ -195,7 +195,7 @@ impl SourceMutationRoot {
             .ok_or("source not found")?
             .clone();
 
-        if Version::from_str(&installed_source.version)? == Version::from_str(&source.version)? {
+        if Version::from_str(installed_source.version)? == Version::from_str(&source.version)? {
             return Err("No new version".into());
         }
 

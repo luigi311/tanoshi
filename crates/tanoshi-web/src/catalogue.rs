@@ -100,7 +100,7 @@ impl Catalogue {
         catalogue.loader.load(clone!(catalogue => async move {
             match query::fetch_source_filters(catalogue.source_id).await {
                 Ok(data) => {
-                    catalogue.input_list_modal.set(data.source.filters.clone());
+                    catalogue.input_list_modal.set(data.source.filters);
                 }
                 Err(e) => {
                     snackbar::show(format!("Fetch manga from source failed: {}", e))
