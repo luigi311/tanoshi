@@ -87,7 +87,14 @@ jobs:
         with:
           name: dist
           path: crates/tanoshi-web/dist
-      - run: cargo install tauri-cli --version ^1.0.0-beta --locked
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: 1.58.0
+          override: true
+      - uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: tauri-cli --version ^1.0.0-beta --locked
       - name: Install deps
         if: ${{ matrix.os == 'ubuntu-latest' }}
         run: sudo apt update && sudo apt upgrade -y && sudo apt install -y libssl-dev libarchive-dev build-essential cmake llvm clang libicu-dev nettle-dev libacl1-dev liblzma-dev libzstd-dev liblz4-dev libbz2-dev zlib1g-dev libxml2-dev lsb-release wget software-properties-common libwebkit2gtk-4.0-dev curl libgtk-3-dev libappindicator3-dev patchelf librsvg2-dev libpango1.0-dev
@@ -120,20 +127,26 @@ jobs:
           vcpkg install libarchive:x64-windows-static-md
       - name: Build tanoshi
         if: ${{ matrix.os == 'ubuntu-latest' }}
-        run: cargo tauri build
-        working-directory: crates/tanoshi
+        uses: actions-rs/cargo@v1
+        with:
+          command: tauri
+          args: build
         env:
           RUSTFLAGS: "-Clink-arg=-Wl,--allow-multiple-definition"
       - name: Build tanoshi
         if: ${{ matrix.os == 'macos-latest' }}
-        run: cargo tauri build
-        working-directory: crates/tanoshi
+        uses: actions-rs/cargo@v1
+        with:
+          command: tauri
+          args: build
         env:
           PKG_CONFIG_PATH: /usr/local/opt/icu4c/lib/pkgconfig:/usr/local/opt/libarchive/lib/pkgconfig:/usr/local/opt/zlib/lib/pkgconfig:/usr/local/opt/expat/lib/pkgconfig
       - name: Build tanoshi
         if: ${{ matrix.os == 'windows-latest' }}
-        run: cargo tauri build
-        working-directory: crates/tanoshi
+        uses: actions-rs/cargo@v1
+        with:
+          command: tauri
+          args: build
         env:
           LIBCLANG_PATH: C:\Program Files\LLVM\bin
       - name: Upload Release Asset
@@ -231,21 +244,34 @@ jobs:
           vcpkg integrate install
           vcpkg install --only-downloads libarchive:x64-windows-static-md
           vcpkg install libarchive:x64-windows-static-md
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: 1.58.0
+          override: true
       - name: Build tanoshi
         if: ${{ matrix.os == 'ubuntu-latest' }}
-        run: cargo build -p tanoshi --release
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: -p tanoshi --release
         env:
           RUSTFLAGS: "-Clink-arg=-Wl,--allow-multiple-definition"
           LLVM_SYS_110_PREFIX: ${{ env.LLVM_PATH }}
       - name: Build tanoshi
         if: ${{ matrix.os == 'macos-latest' }}
-        run: cargo build -p tanoshi --release
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: -p tanoshi --release
         env:
           PKG_CONFIG_PATH: /usr/local/opt/icu4c/lib/pkgconfig:/usr/local/opt/libarchive/lib/pkgconfig:/usr/local/opt/zlib/lib/pkgconfig:/usr/local/opt/expat/lib/pkgconfig
           LLVM_SYS_110_PREFIX: /usr/local/opt/llvm
       - name: Build tanoshi
         if: ${{ matrix.os == 'windows-latest' }}
-        run: cargo build -p tanoshi --release
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: -p tanoshi --release
         env:
           LLVM_SYS_110_PREFIX: C:\LLVM
           LIBCLANG_PATH: C:\Program Files\LLVM\bin
