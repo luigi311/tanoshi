@@ -136,7 +136,7 @@ impl DownloadWorker {
     }
 
     async fn download(&mut self) -> Result<()> {
-        let queue = self
+        let mut queue = self
             .db
             .get_single_download_queue()
             .await?
@@ -152,33 +152,22 @@ impl DownloadWorker {
             .map(|s| s.to_string())
             .ok_or_else(|| anyhow!("no filename"))?;
 
-        let source_name = if cfg!(windows) {
-            queue
+        #[cfg(target_os = "windows")]
+        {
+            queue.source_name = queue
                 .source_name
-                .replace(&['\\', '/', ':', '*', '?', '\"', '<', '>', '|'][..], "")
-        } else {
-            queue.source_name
-        };
-
-        let manga_title = if cfg!(windows) {
-            queue
+                .replace(&['\\', '/', ':', '*', '?', '\"', '<', '>', '|'][..], "");
+            queue.manga_title = queue
                 .manga_title
-                .replace(&['\\', '/', ':', '*', '?', '\"', '<', '>', '|'][..], "")
-        } else {
-            queue.manga_title
-        };
-
-        let chapter_title = if cfg!(windows) {
-            queue
+                .replace(&['\\', '/', ':', '*', '?', '\"', '<', '>', '|'][..], "");
+            queue.chapter_title = queue
                 .chapter_title
-                .replace(&['\\', '/', ':', '*', '?', '\"', '<', '>', '|'][..], "")
-        } else {
-            queue.chapter_title
-        };
+                .replace(&['\\', '/', ':', '*', '?', '\"', '<', '>', '|'][..], "");
+        }
 
-        let manga_path = self.dir.join(&source_name).join(&manga_title);
+        let manga_path = self.dir.join(&queue.source_name).join(&queue.manga_title);
 
-        let archive_path = manga_path.join(format!("{}.cbz", chapter_title));
+        let archive_path = manga_path.join(format!("{}.cbz", queue.chapter_title));
 
         if let Ok(mut zip) = self.open_readable_zip_file(&archive_path) {
             if zip.by_name(&filename).is_ok() {
@@ -239,7 +228,7 @@ impl DownloadWorker {
                 .await?;
         }
 
-        zip.finish()?;
+        zip.flush()?;
 
         if !self.paused().await {
             self.tx.send(Command::Download).unwrap();
