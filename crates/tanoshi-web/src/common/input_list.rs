@@ -126,7 +126,7 @@ impl InputList {
                                 .attr_signal("value", state.signal_cloned())
                                 .with_node!(input => {
                                     .event(clone!(state => move |_: events::Input| {
-                                        state.set(Some(input.value()));
+                                        state.set((!input.value().is_empty()).then(|| input.value()));
                                     }))
                                 })
                             })
