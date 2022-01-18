@@ -247,10 +247,7 @@ impl Manga {
     }
 
     async fn link(&self, ctx: &Context<'_>) -> Result<String> {
-        let detail = ctx
-            .data::<SourceBus>()?
-            .get_source_info(self.source_id)
-            .await?;
+        let detail = ctx.data::<SourceBus>()?.get_source_info(self.source_id)?;
         Ok(format!("{}{}", detail.url, self.path))
     }
 
@@ -299,10 +296,7 @@ impl Manga {
     }
 
     async fn source(&self, ctx: &Context<'_>) -> Result<Source> {
-        let source = ctx
-            .data::<SourceBus>()?
-            .get_source_info(self.source_id)
-            .await?;
+        let source = ctx.data::<SourceBus>()?.get_source_info(self.source_id)?;
         Ok(source.into())
     }
 

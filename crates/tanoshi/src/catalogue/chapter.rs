@@ -259,10 +259,7 @@ impl Chapter {
     }
 
     async fn source(&self, ctx: &Context<'_>) -> Result<Source> {
-        let source = ctx
-            .data::<SourceBus>()?
-            .get_source_info(self.source_id)
-            .await?;
+        let source = ctx.data::<SourceBus>()?.get_source_info(self.source_id)?;
         Ok(source.into())
     }
 

@@ -81,7 +81,7 @@ impl DownloadWorker {
             .get_pages(manga.source_id, chapter.path.clone())
             .await?;
 
-        let source = self.ext.get_source_info(manga.source_id).await?;
+        let source = self.ext.get_source_info(manga.source_id)?;
 
         let mut queue = vec![];
         let date_added = chrono::Utc::now().naive_utc();
@@ -189,7 +189,6 @@ impl DownloadWorker {
         let referrer = self
             .ext
             .get_source_info(queue.source_id)
-            .await
             .map(|s| s.url)
             .unwrap_or_default();
 

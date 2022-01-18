@@ -59,13 +59,13 @@ impl Source {
     }
 
     async fn filters(&self, ctx: &Context<'_>) -> Result<InputList> {
-        let filters = ctx.data::<SourceBus>()?.filter_list(self.id).await?;
+        let filters = ctx.data::<SourceBus>()?.filter_list(self.id)?;
 
         Ok(InputList(filters))
     }
 
     async fn preferences(&self, ctx: &Context<'_>) -> Result<InputList> {
-        let preferences = ctx.data::<SourceBus>()?.get_preferences(self.id).await?;
+        let preferences = ctx.data::<SourceBus>()?.get_preferences(self.id)?;
 
         Ok(InputList(preferences))
     }
@@ -134,7 +134,7 @@ impl SourceRoot {
 
     async fn source(&self, ctx: &Context<'_>, source_id: i64) -> Result<Source> {
         let _ = ctx.data::<Claims>()?;
-        let source = ctx.data::<SourceBus>()?.get_source_info(source_id).await?;
+        let source = ctx.data::<SourceBus>()?.get_source_info(source_id)?;
         Ok(source.into())
     }
 }
@@ -178,7 +178,7 @@ impl SourceMutationRoot {
     #[graphql(guard = "AdminGuard::new()")]
     async fn update_source(&self, ctx: &Context<'_>, source_id: i64) -> Result<i64> {
         let extensions = ctx.data::<SourceBus>()?;
-        let installed_source = extensions.get_source_info(source_id).await?;
+        let installed_source = extensions.get_source_info(source_id)?;
 
         let url = GLOBAL_CONFIG
             .get()
