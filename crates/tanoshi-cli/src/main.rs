@@ -3,6 +3,8 @@ extern crate log;
 use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
+use serde::Serialize;
+use tanoshi_lib::prelude::SourceInfo;
 use tanoshi_vm::{prelude::SourceBus, PLUGIN_EXTENSION};
 
 const TARGET: &str = env!("TARGET");
@@ -19,6 +21,14 @@ struct Opts {
 #[derive(Subcommand)]
 enum Command {
     GenerateJson,
+}
+
+#[derive(Debug, Serialize)]
+struct SourceIndex {
+    #[serde(flatten)]
+    source: SourceInfo,
+    rustc_version: String,
+    lib_version: String,
 }
 
 #[tokio::main]
@@ -50,7 +60,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             extension_manager.load_all().await?;
             let source_list = extension_manager.list().await?;
 
-            let json = serde_json::to_string(&source_list)?;
+            let mut indexes = vec![];
+            for source in source_list {
+                let (rustc_version, lib_version) = extension_manager.get_version(source.id)?;
+                indexes.push(SourceIndex {
+                    source,
+                    rustc_version,
+                    lib_version,
+                })
+            }
+
+            let json = serde_json::to_string(&indexes)?;
             tokio::fs::write(target_dir_path.join("index").with_extension("json"), json).await?;
         }
     }
