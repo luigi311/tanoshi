@@ -55,21 +55,18 @@ sqlx = { version = "^0.5.9", features = [
 reqwest = { version = "^0.11.4", features = ["json"] }
 futures = "^0.3"
 rust-argon2 = "^0.8.3"
-ron = "^0.6.5"
 fancy-regex = "0.7"
 compress-tools = { git = "https://github.com/faldez/compress-tools-rs", features = [
     "static",
 ] }
 zip = { version = "0.5", default-features = false }
 teloxide = { version = "^0.5.2", features = ["auto-send", "macros"] }
-html-escape = "^0.2.9"
 phf = { version = "^0.10", features = ["macros"] }
 human-sort = "^0.2.2"
 aes = "^0.7.5"
 block-modes = "^0.8.1"
 once_cell = "^1.8.0"
 async-trait = "^0.1.51"
-portpicker = "0.1"
 tauri = { version = "1.0.0-beta.8", default-features = false, features = [
     "notification-all",
 ], optional = true }

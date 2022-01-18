@@ -15,13 +15,11 @@ console_error_panic_hook = "^0.1"
 dominator = "^0.5"
 log = "0.4"
 wasm-logger = "0.2"
-thiserror = "1"
 chrono = { version = "0.4", features = ["serde"] }
 graphql_client = { version = "^0.10", features = ["reqwest"] }
 wasm-bindgen = "^0.2"
 serde = { version = "^1.0", features = ["derive", "rc"] }
 serde_json = "1.0"
-serde_plain = "^1.0.0"
 futures-signals = "^0.3"
 futures = "^0.3"
 js-sys = "^0.3"

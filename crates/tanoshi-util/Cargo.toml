@@ -14,7 +14,6 @@ exclude = [".github/*"]
 [dependencies]
 ureq = { version = "2", optional = true }
 serde = { version = "1", features = ["derive"] }
-log = "0.4.14"
 ron = "0.6.4"
 
 [features]
