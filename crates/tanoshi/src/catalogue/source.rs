@@ -14,6 +14,8 @@ pub struct Source {
     pub name: String,
     pub url: String,
     pub version: String,
+    pub rustc_version: String,
+    pub lib_version: String,
     pub icon: String,
     #[serde(default)]
     pub has_update: bool,
@@ -26,6 +28,8 @@ impl From<tanoshi_lib::models::SourceInfo> for Source {
             name: s.name.to_string(),
             url: s.url.to_string(),
             version: s.version.to_string(),
+            rustc_version: "".to_string(),
+            lib_version: "".to_string(),
             icon: s.icon.to_string(),
             has_update: false,
         }
@@ -163,6 +167,12 @@ impl SourceMutationRoot {
             .ok_or("source not found")?
             .clone();
 
+        if source.rustc_version != tanoshi_lib::RUSTC_VERSION
+            || source.lib_version != tanoshi_lib::LIB_VERSION
+        {
+            return Err("Incompatible version, update tanoshi server".into());
+        }
+
         ctx.data::<SourceBus>()?.install(&url, &source.name).await?;
 
         Ok(source.id)
@@ -197,6 +207,12 @@ impl SourceMutationRoot {
 
         if Version::from_str(installed_source.version)? == Version::from_str(&source.version)? {
             return Err("No new version".into());
+        }
+
+        if source.rustc_version != tanoshi_lib::RUSTC_VERSION
+            || source.lib_version != tanoshi_lib::LIB_VERSION
+        {
+            return Err("Incompatible version, update tanoshi server".into());
         }
 
         extensions.remove(source_id).await?;
