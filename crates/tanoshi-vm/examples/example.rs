@@ -13,13 +13,16 @@ async fn main() {
     let bus = SourceBus::new(path);
     bus.load(source_name).await.unwrap();
 
-    let source_info = bus.get_source_info(source_id).await.unwrap();
+    let (rustc_version, lib_version) = bus.get_version(source_id).unwrap();
+    println!("extension rustc_version: {rustc_version} lib_version: {lib_version}");
+
+    let source_info = bus.get_source_info(source_id).unwrap();
     println!("{:?}", source_info);
 
-    let prefs = bus.get_preferences(source_id).await.unwrap();
+    let prefs = bus.get_preferences(source_id).unwrap();
     println!("{:?}", prefs);
 
-    let mut filters = bus.filter_list(source_id).await.unwrap();
+    let mut filters = bus.filter_list(source_id).unwrap();
     println!("{:?}", filters);
 
     for filter in filters.iter_mut() {
@@ -31,7 +34,7 @@ async fn main() {
                     selected: Some(TriState::Included),
                 }]
             }
-            _ => todo!(),
+            _ => {}
         }
     }
 

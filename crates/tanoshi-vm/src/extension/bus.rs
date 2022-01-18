@@ -105,7 +105,7 @@ impl SourceBus {
         }
 
         unsafe {
-            let library = Arc::new(Library::new(&library_path)?);
+            let library = Library::new(&library_path)?;
 
             let decl = library
                 .get::<*mut PluginDeclaration>(b"plugin_declaration\0")?
@@ -127,7 +127,7 @@ impl SourceBus {
                 );
             }
 
-            let mut registrar = Source::new(Arc::clone(&library));
+            let mut registrar = Source::new(library, decl.rustc_version, decl.core_version);
             (decl.register)(&mut registrar);
 
             Ok(registrar)
@@ -189,7 +189,13 @@ impl SourceBus {
         self.unload(source_id).await
     }
 
-    pub async fn get_source_info(&self, source_id: i64) -> Result<SourceInfo> {
+    pub fn get_version(&self, source_id: i64) -> Result<(String, String)> {
+        let lock = self.read()?;
+        let source = lock.get(&source_id).ok_or(anyhow!("no such source"))?;
+        Ok((source.rustc_version.clone(), source.lib_version.clone()))
+    }
+
+    pub fn get_source_info(&self, source_id: i64) -> Result<SourceInfo> {
         Ok(self
             .read()?
             .get(&source_id)
@@ -200,7 +206,7 @@ impl SourceBus {
             .get_source_info())
     }
 
-    pub async fn filter_list(&self, source_id: i64) -> Result<Vec<Input>> {
+    pub fn filter_list(&self, source_id: i64) -> Result<Vec<Input>> {
         Ok(self
             .read()?
             .get(&source_id)
@@ -211,7 +217,7 @@ impl SourceBus {
             .filter_list())
     }
 
-    pub async fn get_preferences(&self, source_id: i64) -> Result<Vec<Input>> {
+    pub fn get_preferences(&self, source_id: i64) -> Result<Vec<Input>> {
         self.read()?
             .get(&source_id)
             .ok_or(anyhow!("no such source"))?
@@ -230,7 +236,7 @@ impl SourceBus {
             .ok_or(anyhow!("uninitiated"))?
             .set_preferences(preferences.clone())?;
 
-        let source_info = self.get_source_info(source_id).await?;
+        let source_info = self.get_source_info(source_id)?;
         tokio::fs::write(
             self.dir
                 .join(source_info.name.to_lowercase())
