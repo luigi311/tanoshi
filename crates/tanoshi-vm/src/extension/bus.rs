@@ -122,7 +122,7 @@ impl SourceBus {
             if decl.core_version != tanoshi_lib::LIB_VERSION {
                 bail!(
                     "Version mismatch: extension.lib_version={} != tanoshi_lib::lib_version={}",
-                    tanoshi_lib::RUSTC_VERSION,
+                    decl.core_version,
                     tanoshi_lib::LIB_VERSION
                 );
             }
