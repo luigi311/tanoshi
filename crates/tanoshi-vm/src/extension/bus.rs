@@ -43,7 +43,9 @@ impl SourceBus {
             name.remove(0);
             name.remove(name.len() - 1);
             if name.ends_with(PLUGIN_EXTENSION) {
-                self.load(&name).await?;
+                if let Err(e) = self.load(&name).await {
+                    error!("failed to load {name}: {e}");
+                }
             }
         }
         Ok(())
