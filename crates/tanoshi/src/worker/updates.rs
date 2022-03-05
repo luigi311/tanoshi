@@ -101,11 +101,6 @@ impl UpdatesWorker {
                 }
             };
 
-            if let Err(e) = self.mangadb.insert_chapters(&chapters).await {
-                error!("error inserting new chapters, reason: {}", e);
-                continue;
-            }
-
             let chapters = if let Some(last_uploaded_chapter) = last_uploaded_chapter {
                 chapters
                     .into_iter()
@@ -122,6 +117,14 @@ impl UpdatesWorker {
             );
 
             for chapter in chapters {
+                let chapter_id = match self.mangadb.insert_chapter(&chapter).await {
+                    Ok(chapter_id) => chapter_id,
+                    Err(e) => {
+                        error!("error inserting new chapters, reason: {}", e);
+                        continue;
+                    }
+                };
+
                 #[cfg(feature = "desktop")]
                 if let Err(e) = self
                     .notifier
@@ -133,7 +136,12 @@ impl UpdatesWorker {
                 for user_id in item.user_ids.iter() {
                     if let Err(e) = self
                         .notifier
-                        .send_all_to_user(*user_id, Some(item.manga.title.clone()), &chapter.title)
+                        .send_chapter_notification(
+                            *user_id,
+                            &item.manga.title,
+                            &chapter.title,
+                            chapter_id,
+                        )
                         .await
                     {
                         error!("failed to send notification, reason {}", e);

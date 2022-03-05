@@ -94,4 +94,27 @@ impl Pushover {
 
         Ok(())
     }
+
+    pub async fn send_notification_with_title_and_url(
+        &self,
+        user_key: &str,
+        title: &str,
+        message: &str,
+        url: &str,
+        url_title: &str,
+    ) -> Result<(), Error> {
+        let payload = Payload {
+            token: self.token.clone(),
+            user: user_key.to_string(),
+            title: title.to_string(),
+            message: message.to_string(),
+            url: url.to_string(),
+            url_title: url_title.to_string(),
+            ..Default::default()
+        };
+
+        self.send_payload(&payload).await?;
+
+        Ok(())
+    }
 }

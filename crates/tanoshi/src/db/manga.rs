@@ -1185,7 +1185,6 @@ impl Db {
         })
     }
 
-    #[allow(dead_code)]
     pub async fn insert_chapter(&self, chapter: &Chapter) -> Result<i64> {
         let mut conn = self.pool.acquire().await?;
         let row_id = sqlx::query(
