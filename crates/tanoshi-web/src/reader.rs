@@ -765,7 +765,7 @@ impl Reader {
                         .style_signal("margin-top", reader.reader_settings.padding.signal().map(|x| x.then(|| "0.25rem")))
                         .style_signal("margin-bottom", reader.reader_settings.padding.signal().map(|x| x.then(|| "0.25rem")))
                         .attribute("id", format!("{}", index).as_str())
-                        .attribute_signal("src", reader.image_src_signal(index, 2, 3, page.clone(), status))
+                        .attribute_signal("src", reader.image_src_signal(index, 3, 4, page.clone(), status))
                         .style_signal("max-width", reader.fit_signal().map(|(fit, zoom)| match fit {
                             crate::common::Fit::Height => "none".to_string(),
                             _ => format!("{}px", 768.0 * zoom),
