@@ -152,18 +152,15 @@ impl DownloadWorker {
             .map(|s| s.to_string())
             .ok_or_else(|| anyhow!("no filename"))?;
 
-        #[cfg(target_os = "windows")]
-        {
-            queue.source_name = queue
-                .source_name
-                .replace(&['\\', '/', ':', '*', '?', '\"', '<', '>', '|'][..], "");
-            queue.manga_title = queue
-                .manga_title
-                .replace(&['\\', '/', ':', '*', '?', '\"', '<', '>', '|'][..], "");
-            queue.chapter_title = queue
-                .chapter_title
-                .replace(&['\\', '/', ':', '*', '?', '\"', '<', '>', '|'][..], "");
-        }
+        queue.source_name = queue
+            .source_name
+            .replace(&['\\', '/', ':', '*', '?', '\"', '<', '>', '|'][..], "");
+        queue.manga_title = queue
+            .manga_title
+            .replace(&['\\', '/', ':', '*', '?', '\"', '<', '>', '|'][..], "");
+        queue.chapter_title = queue
+            .chapter_title
+            .replace(&['\\', '/', ':', '*', '?', '\"', '<', '>', '|'][..], "");
 
         let manga_path = self.dir.join(&queue.source_name).join(&queue.manga_title);
 
