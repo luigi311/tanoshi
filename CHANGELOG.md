@@ -397,6 +397,7 @@ Nothing changes, this release to build for multiarch docker image
 
 - fix panic when using local source
 
+[Unreleased]: https://github.com/faldez/tanoshi/compare/v0.27.0...HEAD
 [0.27.0]: https://github.com/faldez/tanoshi/compare/v0.26.1...v0.27.0
 [0.26.1]: https://github.com/faldez/tanoshi/compare/v0.26.0...v0.26.1
 [0.26.0]: https://github.com/faldez/tanoshi/compare/v0.25.22...v0.26.0
