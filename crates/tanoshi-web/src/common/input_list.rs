@@ -150,7 +150,10 @@ impl InputList {
                             html!("input", {
                                 .attr("id", &name)
                                 .attr("type", "checkbox")
-                                .attr_signal("checked", state.signal().map(|state|  state.and_then(|state| state.then(|| "checked"))))
+                                .attr_signal("checked", state.signal().map(|state| state.and_then(|state| state.then(|| "checked"))))
+                                .event(clone!(state => move |e: events::Change| {
+                                    state.set(e.checked());
+                                }))
                             }),
                         ])
                     })
