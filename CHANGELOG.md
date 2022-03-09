@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+#[Unreleased]
+### Added
+- [tanoshi] add link to chapter on chapter update notification if `BASE_URL` is set
+  
+### Changed
+- [tanoshi] clean download file name is now done regardless of OS
+- [tanoshi-web] increas preload by 1 on continous reader
+  
+### Fixed
+- [tanoshi-web] filter input checkbox state not changed
+
 ## [0.27.0]
 ### Changed
 - [tanoshi] extension is back using dynamic library instead of webassembly or javascript
