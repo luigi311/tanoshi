@@ -1,6 +1,6 @@
-use teloxide::{adaptors::DefaultParseMode, prelude::*, utils::command::BotCommand};
+use teloxide::{adaptors::DefaultParseMode, prelude2::*, utils::command::BotCommand};
 
-#[derive(BotCommand)]
+#[derive(BotCommand, Clone)]
 #[command(rename = "lowercase", description = "These commands are supported:")]
 enum TelegramCommand {
     #[command(description = "display this text.")]
@@ -10,16 +10,23 @@ enum TelegramCommand {
 }
 
 async fn answer(
-    cx: UpdateWithCx<DefaultParseMode<AutoSend<Bot>>, Message>,
+    bot: DefaultParseMode<AutoSend<Bot>>,
+    message: Message,
     command: TelegramCommand,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     match command {
-        TelegramCommand::Help => cx.answer(TelegramCommand::descriptions()).await?,
+        TelegramCommand::Help => {
+            bot.send_message(message.chat.id, TelegramCommand::descriptions())
+                .await?
+        }
         TelegramCommand::NotifyMe => {
-            cx.answer(format!(
-                "Put the following chat id on tanoshi profile settings: {}",
-                cx.chat_id()
-            ))
+            bot.send_message(
+                message.chat.id,
+                format!(
+                    "Put the following chat id on tanoshi profile settings: {}",
+                    message.chat.id
+                ),
+            )
             .await?
         }
     };
@@ -27,11 +34,7 @@ async fn answer(
     Ok(())
 }
 
-pub async fn run(name: String, bot: DefaultParseMode<AutoSend<Bot>>) {
+pub async fn run(bot: DefaultParseMode<AutoSend<Bot>>) {
     info!("start telegram bot");
-    teloxide::commands_repl(
-        bot,
-        name,
-        answer,
-    ).await;
+    teloxide::repls2::commands_repl(bot, answer, TelegramCommand::ty()).await;
 }

@@ -98,7 +98,7 @@ async fn main() -> Result<(), anyhow::Error> {
         let bot = teloxide::Bot::new(telegram_config.token)
             .auto_send()
             .parse_mode(teloxide::types::ParseMode::Html);
-        telegram_bot_fut = Some(notifier::telegram::run(telegram_config.name, bot.clone())).into();
+        telegram_bot_fut = Some(notifier::telegram::run(bot.clone())).into();
         notifier_builder = notifier_builder.telegram(bot);
     }
 

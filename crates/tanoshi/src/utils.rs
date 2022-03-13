@@ -1,14 +1,13 @@
 use std::iter;
 
-use aes::Aes128;
-use block_modes::block_padding::Pkcs7;
-use block_modes::{BlockMode, Cbc};
+use aes::cipher::{block_padding::Pkcs7, BlockDecryptMut, BlockEncryptMut, KeyIvInit};
 use rand::distributions::Alphanumeric;
 use rand::prelude::StdRng;
 use rand::{Rng, SeedableRng};
 
 // create an alias for convenience
-type Aes128Cbc = Cbc<Aes128, Pkcs7>;
+type Aes128CbcEnc = cbc::Encryptor<aes::Aes128>;
+type Aes128CbcDec = cbc::Decryptor<aes::Aes128>;
 
 #[allow(dead_code)]
 fn generate_iv() -> String {
@@ -26,8 +25,9 @@ pub fn encrypt_url(key: &str, url: &str) -> Result<String, anyhow::Error> {
     buffer.splice(..pos, url.as_bytes().to_vec());
 
     let iv = [0_u8; 16];
-    let chiper = Aes128Cbc::new_from_slices(key.as_bytes(), &iv)?;
-    let chipertext = chiper.encrypt(&mut buffer, pos)?;
+    let chipertext = Aes128CbcEnc::new(key.as_bytes().into(), &iv.into())
+        .encrypt_padded_mut::<Pkcs7>(&mut buffer, pos)
+        .map_err(|e| anyhow::anyhow!("error encrypt url {e}"))?;
 
     let encoded = base64::encode_config(chipertext, base64::URL_SAFE_NO_PAD);
 
@@ -40,8 +40,10 @@ pub fn decrypt_url(key: &str, data: &str) -> Result<String, anyhow::Error> {
 
     let iv = [0_u8; 16];
 
-    let chiper = Aes128Cbc::new_from_slices(key.as_bytes(), &iv)?;
-    let bytes = chiper.decrypt(&mut decoded)?.to_vec();
+    let bytes = Aes128CbcDec::new(key.as_bytes().into(), &iv.into())
+        .decrypt_padded_mut::<Pkcs7>(&mut decoded)
+        .map_err(|e| anyhow::anyhow!("error decrypt url {e}"))?
+        .to_vec();
 
     let url = String::from_utf8(bytes)?;
     Ok(url)

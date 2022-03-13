@@ -12,7 +12,7 @@ use axum::{
     extract::{Extension, FromRequest, RequestParts, TypedHeader},
     response::{self, IntoResponse},
     routing::{get, post},
-    AddExtensionLayer, Router, Server,
+    Router, Server,
 };
 use headers::{authorization::Bearer, Authorization};
 use jsonwebtoken::{DecodingKey, Validation};
@@ -21,7 +21,7 @@ use std::{
     str::FromStr,
     sync::Arc,
 };
-use tower_http::cors::{any, CorsLayer};
+use tower_http::cors::{Any, CorsLayer};
 
 struct Token(String);
 
@@ -82,7 +82,7 @@ pub fn init_app(config: &Config, schema: TanoshiSchema) -> Router<axum::body::Bo
     app = app
         .route("/health", get(health_check))
         .route("/image/:url", get(Proxy::proxy))
-        .layer(AddExtensionLayer::new(proxy));
+        .layer(Extension(proxy));
 
     if config.enable_playground {
         app = app
@@ -94,11 +94,11 @@ pub fn init_app(config: &Config, schema: TanoshiSchema) -> Router<axum::body::Bo
             .route("/graphql/", post(graphql_handler));
     }
 
-    app = app.layer(AddExtensionLayer::new(schema)).layer(
+    app = app.layer(Extension(schema)).layer(
         CorsLayer::new()
-            .allow_origin(any())
-            .allow_methods(any())
-            .allow_headers(any())
+            .allow_origin(Any)
+            .allow_methods(Any)
+            .allow_headers(Any)
             .allow_credentials(true),
     );
 
