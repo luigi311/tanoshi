@@ -3,3 +3,6 @@ backend = "http://localhost:3030/graphql"
 
 [[proxy]]
 backend = "http://localhost:3030/image"
+
+[tools]
+sass = "1.49.9"
