@@ -6,3 +6,5 @@ backend = "http://localhost:3030/image"
 
 [tools]
 sass = "1.49.9"
+wasm_bindgen = "0.2.79"
+wasm_opt = "version_91"
