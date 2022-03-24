@@ -17,7 +17,7 @@ RUN cd crates/tanoshi-web && trunk build --release
 
 RUN cargo build -p tanoshi --release
 
-FROM debian:stable-slim AS runtime
+FROM debian:bookworm-slim AS runtime
 
 WORKDIR /app
 
