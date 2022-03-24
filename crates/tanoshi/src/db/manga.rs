@@ -1197,7 +1197,14 @@ impl Db {
                 scanlator,
                 uploaded,
                 date_added
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"#,
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(source_id, path) DO UPDATE SET
+            manga_id=excluded.manga_id,
+            title=excluded.title,
+            number=excluded.number,
+            scanlator=excluded.scanlator,
+            uploaded=excluded.uploaded,
+            date_added=excluded.date_added"#,
         )
         .bind(chapter.source_id)
         .bind(chapter.manga_id)
