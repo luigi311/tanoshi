@@ -59,7 +59,7 @@ fancy-regex = "0.8"
 compress-tools = { git = "https://github.com/faldez/compress-tools-rs", features = [
     "static",
 ] }
-zip = { version = "0.5", default-features = false }
+zip = { version = "0.6", default-features = false }
 teloxide = { version = "0.7", features = ["auto-send", "macros"] }
 phf = { version = "^0.10", features = ["macros"] }
 human-sort = "^0.2.2"
