@@ -1,4 +1,4 @@
-use super::model::User;
+use super::model::{Token, User};
 use anyhow::{anyhow, Result};
 use sqlx::{
     sqlite::{SqliteArguments, SqlitePool},
@@ -185,5 +185,39 @@ impl Db {
             .rows_affected();
 
         Ok(rows_affected)
+    }
+
+    pub async fn insert_tracker_credential(
+        &self,
+        user_id: i64,
+        tracker: &str,
+        token: Token,
+    ) -> Result<()> {
+        let mut conn = self.pool.acquire().await?;
+        sqlx::query(
+            r#"INSERT INTO tracker_credential(
+                user_id,
+                tracker,
+                token_type,
+                expires_in,
+                access_token,
+                refresh_token
+            ) VALUES (?, ?, ?, ?, ?, ?) 
+            ON CONFLICT(user_id, tracker) DO UPDATE SET 
+            token_type = excluded.token_type,
+            expires_in = excluded.expires_in,
+            access_token = excluded.access_token,
+            refresh_token = excluded.refresh_token"#,
+        )
+        .bind(user_id)
+        .bind(tracker)
+        .bind(token.token_type)
+        .bind(token.expires_in)
+        .bind(token.access_token)
+        .bind(token.refresh_token)
+        .execute(&mut conn)
+        .await?;
+
+        Ok(())
     }
 }

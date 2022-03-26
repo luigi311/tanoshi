@@ -18,6 +18,12 @@ pub struct PushoverConfig {
     pub application_key: String,
 }
 
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct MyAnimeListConfig {
+    pub client_id: String,
+    pub client_secret: String,
+}
+
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct LocalFolder {
     pub name: String,
@@ -59,6 +65,7 @@ pub struct Config {
     pub enable_playground: bool,
     pub telegram: Option<TelegramConfig>,
     pub pushover: Option<PushoverConfig>,
+    pub myanimelist: Option<MyAnimeListConfig>,
 }
 
 impl Default for Config {
@@ -78,6 +85,7 @@ impl Default for Config {
             enable_playground: false,
             telegram: None,
             pushover: None,
+            myanimelist: None,
         }
     }
 }

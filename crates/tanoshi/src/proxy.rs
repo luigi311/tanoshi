@@ -34,7 +34,7 @@ impl Proxy {
         headers: HeaderMap,
         Path(url): Path<String>,
         Query(params): Query<Params>,
-        state: Extension<std::sync::Arc<Self>>,
+        state: Extension<Self>,
     ) -> impl IntoResponse {
         debug!("encrypted image url: {}", url);
         let url = match utils::decrypt_url(&state.secret, &url) {
@@ -45,7 +45,7 @@ impl Proxy {
             }
         };
         debug!("get image from {}", url);
-        let res: Response<Body> = match state.as_ref().get_image(headers, &url, params).await {
+        let res: Response<Body> = match state.get_image(headers, &url, params).await {
             Ok(body) => body,
             Err(status) => http::Response::builder()
                 .status(status)
