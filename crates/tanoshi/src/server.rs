@@ -1,9 +1,4 @@
-use crate::{
-    config::{Config, GLOBAL_CONFIG},
-    proxy::Proxy,
-    schema::TanoshiSchema,
-    user::Claims,
-};
+use crate::{config::GLOBAL_CONFIG, proxy::Proxy, schema::TanoshiSchema, user::Claims};
 
 use async_graphql::http::{playground_source, GraphQLPlaygroundConfig};
 use async_graphql_axum::{GraphQLRequest, GraphQLResponse};
@@ -19,7 +14,6 @@ use jsonwebtoken::{DecodingKey, Validation};
 use std::{
     net::{IpAddr, SocketAddr},
     str::FromStr,
-    sync::Arc,
 };
 use tower_http::cors::{Any, CorsLayer};
 
@@ -74,9 +68,11 @@ async fn health_check() -> impl IntoResponse {
     response::Html("OK")
 }
 
-pub fn init_app(config: &Config, schema: TanoshiSchema) -> Router<axum::body::Body> {
-    let proxy = Arc::new(Proxy::new(config.secret.clone()));
-
+pub fn init_app(
+    enable_playground: bool,
+    schema: TanoshiSchema,
+    proxy: Proxy,
+) -> Router<axum::body::Body> {
     let mut app = Router::new();
 
     app = app
@@ -84,7 +80,7 @@ pub fn init_app(config: &Config, schema: TanoshiSchema) -> Router<axum::body::Bo
         .route("/image/:url", get(Proxy::proxy))
         .layer(Extension(proxy));
 
-    if config.enable_playground {
+    if enable_playground {
         app = app
             .route("/graphql", get(graphql_playground).post(graphql_handler))
             .route("/graphql/", post(graphql_handler));

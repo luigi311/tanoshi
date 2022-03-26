@@ -10,6 +10,8 @@ use crate::{
     notification::NotificationRoot,
     notifier::Notifier,
     status::StatusRoot,
+    tracker::MyAnimeList,
+    tracking::TrackingRoot,
     user::{UserMutationRoot, UserRoot},
     worker::downloads::DownloadSender,
 };
@@ -29,6 +31,7 @@ pub struct QueryRoot(
     StatusRoot,
     NotificationRoot,
     DownloadRoot,
+    TrackingRoot,
 );
 
 #[derive(MergedObject, Default)]
@@ -46,8 +49,9 @@ pub fn build(
     ext_manager: SourceBus,
     download_tx: DownloadSender,
     notifier: Notifier,
+    mal_client: Option<MyAnimeList>,
 ) -> TanoshiSchema {
-    let schemabuilder = Schema::build(
+    let mut builder = Schema::build(
         QueryRoot::default(),
         MutationRoot::default(),
         EmptySubscription::default(),
@@ -101,5 +105,9 @@ pub fn build(
     .data(notifier)
     .data(download_tx);
 
-    schemabuilder.finish()
+    if let Some(mal_client) = mal_client {
+        builder = builder.data(mal_client);
+    }
+
+    builder.finish()
 }
