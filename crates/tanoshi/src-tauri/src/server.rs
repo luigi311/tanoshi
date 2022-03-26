@@ -8,7 +8,11 @@ use tauri::{
 
 use tanoshi::{
   config::{self, GLOBAL_CONFIG},
-  db, local, notifier, schema, server, worker,
+  db, local, notifier,
+  proxy::Proxy,
+  schema, server,
+  tracker::MyAnimeList,
+  worker,
 };
 
 pub struct Server {
