@@ -9,7 +9,6 @@ on:
   push:
     branches:
       - master
-      - libloading
     paths:
       - .github/workflows/master.yml
       - Dockerfile
@@ -19,7 +18,7 @@ on:
 
 jobs:
   build-docker:
-    if: ${{ github.ref == 'refs/heads/master' || github.ref == 'refs/heads/libloading' }}
+    if: ${{ github.ref == 'refs/heads/master' }}
     runs-on: ubuntu-latest
     environment: default
     steps:
