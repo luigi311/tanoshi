@@ -93,9 +93,31 @@ impl<R: Runtime> Plugin<R> for Server {
         notifier.clone(),
       );
 
-      let schema = schema::build(userdb, mangadb, extension_manager, download_tx, notifier);
+      let mal_client = config
+        .base_url
+        .clone()
+        .zip(config.myanimelist.clone())
+        .and_then(|(base_url, mal_cfg)| {
+          MyAnimeList::new(
+            &base_url,
+            mal_cfg.client_id.clone(),
+            mal_cfg.client_secret.clone(),
+          )
+          .ok()
+        });
 
-      let app = server::init_app(config, schema);
+      let schema = schema::build(
+        userdb.clone(),
+        mangadb,
+        extension_manager,
+        download_tx,
+        notifier,
+        mal_client,
+      );
+
+      let proxy = Proxy::new(config.secret.clone());
+
+      let app = server::init_app(config.enable_playground, schema, proxy);
       let server_fut = server::serve("127.0.0.1", port, app);
 
       tokio::select! {
