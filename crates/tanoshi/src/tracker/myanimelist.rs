@@ -3,12 +3,41 @@ use oauth2::{
     basic::BasicClient, AuthUrl, ClientId, ClientSecret, CsrfToken, PkceCodeChallenge, RedirectUrl,
     TokenUrl,
 };
+use serde::Deserialize;
 
 use super::Session;
 
+pub const NAME: &'static str = "myanimelist";
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct MainPicture {
+    pub medium: String,
+    pub large: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct Manga {
+    pub id: i64,
+    pub title: String,
+    pub synopsis: String,
+    pub main_picture: MainPicture,
+    pub status: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct Node<T> {
+    pub node: T,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct GetMangaListResponse {
+    pub data: Vec<Node<Manga>>,
+}
+
 #[derive(Debug, Clone)]
 pub struct MyAnimeList {
-    pub client: BasicClient,
+    pub oauth_client: BasicClient,
+    api_client: reqwest::Client,
 }
 
 impl MyAnimeList {
@@ -28,13 +57,16 @@ impl MyAnimeList {
         )
         .set_redirect_uri(redirect_url);
 
-        Ok(Self { client })
+        Ok(Self {
+            oauth_client: client,
+            api_client: reqwest::Client::new(),
+        })
     }
 
     pub fn get_authorize_url(&self) -> Result<Session> {
         let (pkce_code_challenge, pkce_code_verifier) = PkceCodeChallenge::new_random_plain();
         let (authorize_url, csrf_state) = self
-            .client
+            .oauth_client
             .authorize_url(CsrfToken::new_random)
             .set_pkce_challenge(pkce_code_challenge)
             .url();
@@ -44,5 +76,30 @@ impl MyAnimeList {
             csrf_state,
             pkce_code_verifier: Some(pkce_code_verifier),
         })
+    }
+
+    pub async fn get_manga_list(
+        &self,
+        token: String,
+        q: String,
+        limit: i64,
+        offset: i64,
+        fields: String,
+    ) -> Result<Vec<Manga>> {
+        let res: GetMangaListResponse = self
+            .api_client
+            .get("https://api.myanimelist.net/v2/manga")
+            .bearer_auth(token)
+            .query(&[
+                ("q", q),
+                ("fields", fields),
+                ("limit", format!("{limit}")),
+                ("offset", format!("{offset}")),
+            ])
+            .send()
+            .await?
+            .json()
+            .await?;
+        Ok(res.data.into_iter().map(|node| node.node).collect())
     }
 }

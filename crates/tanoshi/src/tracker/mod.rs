@@ -1,4 +1,4 @@
-mod myanimelist;
+pub mod myanimelist;
 pub use myanimelist::MyAnimeList;
 
 use oauth2::{CsrfToken, PkceCodeVerifier};

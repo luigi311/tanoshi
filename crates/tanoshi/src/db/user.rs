@@ -221,6 +221,24 @@ impl Db {
         Ok(())
     }
 
+    pub async fn get_user_tracker_token(&self, tracker: &str, user_id: i64) -> Result<Token> {
+        let mut conn = self.pool.acquire().await?;
+        let row = sqlx::query(
+            r#"SELECT token_type, access_token, refresh_token, expires_in FROM tracker_credential WHERE user_id = ? AND tracker = ?"#,
+        )
+        .bind(user_id)
+        .bind(tracker)
+        .fetch_one(&mut conn)
+        .await;
+
+        Ok(row.map(|row| Token {
+            token_type: row.get(0),
+            access_token: row.get(1),
+            refresh_token: row.get(2),
+            expires_in: row.get(3),
+        })?)
+    }
+
     pub async fn user_tracker_login_status(&self, tracker: &str, user_id: i64) -> Result<bool> {
         let mut conn = self.pool.acquire().await?;
         let row = sqlx::query(

@@ -4,8 +4,9 @@ use oauth2::{reqwest::async_http_client, AuthorizationCode, CsrfToken, PkceCodeV
 use serde::Deserialize;
 
 use crate::{
+    catalogue::Manga,
     db::{model, UserDatabase},
-    tracker::MyAnimeList,
+    tracker::{self, MyAnimeList},
     user::Claims,
 };
 
@@ -56,16 +57,47 @@ impl TrackingRoot {
                 expires_in: token.expires_in,
             })?;
         ctx.data::<UserDatabase>()?
-            .insert_tracker_credential(user.sub, "myanimelist", token)
+            .insert_tracker_credential(user.sub, tracker::myanimelist::NAME, token)
             .await?;
         Ok("Success".to_string())
     }
-}
 
-#[derive(Debug, Deserialize)]
-pub struct RedirectParams {
-    pub code: String,
-    pub state: String,
+    async fn myanimelist_search_manga(
+        &self,
+        ctx: &Context<'_>,
+        title: String,
+    ) -> Result<Vec<Manga>> {
+        let user = ctx
+            .data::<Claims>()
+            .map_err(|_| "token not exists, please login")?;
+        let tracker_token = ctx
+            .data::<UserDatabase>()?
+            .get_user_tracker_token(tracker::myanimelist::NAME, user.sub)
+            .await?;
+
+        let manga_list = ctx
+            .data::<MyAnimeList>()?
+            .get_manga_list(
+                tracker_token.access_token,
+                title,
+                100,
+                0,
+                "id,title,main_picture,synopsis,status".to_string(),
+            )
+            .await?;
+
+        Ok(manga_list
+            .into_iter()
+            .map(|m| Manga {
+                id: m.id,
+                title: m.title,
+                status: Some(m.status.replace("_", " ")),
+                description: Some(m.synopsis),
+                cover_url: m.main_picture.medium,
+                ..Default::default()
+            })
+            .collect())
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -92,7 +124,7 @@ async fn exchange_code(
         .ok_or_else(|| anyhow!("no pkce-code-verifier cookie"))?;
 
     let token = client
-        .client
+        .oauth_client
         .exchange_code(code)
         .set_pkce_verifier(pkce_code_verifier)
         .request_async(async_http_client)

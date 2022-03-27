@@ -1,4 +1,4 @@
-use crate::{config::GLOBAL_CONFIG, db::UserDatabase, guard::AdminGuard};
+use crate::{config::GLOBAL_CONFIG, db::UserDatabase, guard::AdminGuard, tracker};
 use async_graphql::{Context, InputObject, Object, Result};
 use rand::RngCore;
 
@@ -77,7 +77,7 @@ impl User {
             .map_err(|_| "token not exists, please login")?;
         Ok(ctx
             .data::<UserDatabase>()?
-            .user_tracker_login_status("myanimelist", user.sub)
+            .user_tracker_login_status(tracker::myanimelist::NAME, user.sub)
             .await?)
     }
 }
@@ -250,7 +250,7 @@ impl UserMutationRoot {
 
         Ok(ctx
             .data::<UserDatabase>()?
-            .delete_user_tracker_login("myanimelist", claims.sub)
+            .delete_user_tracker_login(tracker::myanimelist::NAME, claims.sub)
             .await?)
     }
 }
