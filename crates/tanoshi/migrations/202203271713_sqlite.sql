@@ -1,9 +1,10 @@
 CREATE TABLE tracker_manga (
     id INTEGER PRIMARY KEY,
-    tracker VARCHAR(256) NOT NULL,
-    tracker_manga_id VARCHAR(256),
+    user_id INTEGER NOT NULL,
     manga_id INTEGER NOT NULL,
-    UNIQUE(manga_id, tracker),
-    UNIQUE(tracker, tracker_manga_id),
+    tracker VARCHAR(256) NOT NULL,
+    tracker_manga_id VARCHAR(256) NOT NULL,
+    UNIQUE(user_id, manga_id, tracker),
+    FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE,
     FOREIGN KEY (manga_id) REFERENCES manga(id) ON DELETE CASCADE
 );

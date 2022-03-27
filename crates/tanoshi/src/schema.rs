@@ -11,7 +11,7 @@ use crate::{
     notifier::Notifier,
     status::StatusRoot,
     tracker::MyAnimeList,
-    tracking::TrackingRoot,
+    tracking::{TrackingMutationRoot, TrackingRoot},
     user::{UserMutationRoot, UserRoot},
     worker::downloads::DownloadSender,
 };
@@ -41,6 +41,7 @@ pub struct MutationRoot(
     UserMutationRoot,
     SourceMutationRoot,
     DownloadMutationRoot,
+    TrackingMutationRoot,
 );
 
 pub fn build(

@@ -1995,4 +1995,32 @@ impl Db {
             .map(|res| res.rows_affected())
             .map_err(|e| anyhow::anyhow!(e))
     }
+
+    pub async fn insert_tracker_manga(
+        &self,
+        user_id: i64,
+        manga_id: i64,
+        tracker: &str,
+        tracker_manga_id: i64,
+    ) -> Result<i64> {
+        let mut conn = self.pool.acquire().await?;
+        let row_id = sqlx::query(
+            r#"
+            INSERT INTO tracker_manga(
+                user_id,
+                manga_id,
+                tracker,
+                tracker_manga_id
+            ) VALUES (?, ?, ?, ?)"#,
+        )
+        .bind(user_id)
+        .bind(manga_id)
+        .bind(tracker)
+        .bind(tracker_manga_id)
+        .execute(&mut conn)
+        .await?
+        .last_insert_rowid();
+
+        Ok(row_id)
+    }
 }

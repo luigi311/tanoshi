@@ -5,8 +5,8 @@ use serde::Deserialize;
 
 use crate::{
     catalogue::Manga,
-    db::{model, UserDatabase},
-    tracker::{self, MyAnimeList},
+    db::{model, MangaDatabase, UserDatabase},
+    tracker::{self, myanimelist, MyAnimeList},
     user::Claims,
 };
 
@@ -15,6 +15,40 @@ pub struct Session {
     pub authorize_url: String,
     pub csrf_state: String,
     pub pkce_code_verifier: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Token {
+    pub token_type: String,
+    pub access_token: String,
+    pub refresh_token: String,
+    pub expires_in: i64,
+}
+
+async fn exchange_code(
+    code: String,
+    state: String,
+    csrf_state: String,
+    pkce_code_verifier: Option<String>,
+    client: &MyAnimeList,
+) -> anyhow::Result<Token> {
+    let code = AuthorizationCode::new(code);
+    let _state = CsrfToken::new(state);
+
+    let _csrf_state = CsrfToken::new(csrf_state);
+    let pkce_code_verifier = pkce_code_verifier
+        .map(|value| PkceCodeVerifier::new(value.to_owned()))
+        .ok_or_else(|| anyhow!("no pkce-code-verifier cookie"))?;
+
+    let token = client
+        .oauth_client
+        .exchange_code(code)
+        .set_pkce_verifier(pkce_code_verifier)
+        .request_async(async_http_client)
+        .await?;
+
+    let token_str = serde_json::to_string(&token)?;
+    Ok(serde_json::from_str(&token_str)?)
 }
 
 #[derive(Default)]
@@ -100,36 +134,23 @@ impl TrackingRoot {
     }
 }
 
-#[derive(Debug, Deserialize)]
-pub struct Token {
-    pub token_type: String,
-    pub access_token: String,
-    pub refresh_token: String,
-    pub expires_in: i64,
-}
+#[derive(Default)]
+pub struct TrackingMutationRoot;
 
-async fn exchange_code(
-    code: String,
-    state: String,
-    csrf_state: String,
-    pkce_code_verifier: Option<String>,
-    client: &MyAnimeList,
-) -> anyhow::Result<Token> {
-    let code = AuthorizationCode::new(code);
-    let _state = CsrfToken::new(state);
-
-    let _csrf_state = CsrfToken::new(csrf_state);
-    let pkce_code_verifier = pkce_code_verifier
-        .map(|value| PkceCodeVerifier::new(value.to_owned()))
-        .ok_or_else(|| anyhow!("no pkce-code-verifier cookie"))?;
-
-    let token = client
-        .oauth_client
-        .exchange_code(code)
-        .set_pkce_verifier(pkce_code_verifier)
-        .request_async(async_http_client)
-        .await?;
-
-    let token_str = serde_json::to_string(&token)?;
-    Ok(serde_json::from_str(&token_str)?)
+#[Object]
+impl TrackingMutationRoot {
+    async fn myanimelist_link_manga(
+        &self,
+        ctx: &Context<'_>,
+        manga_id: i64,
+        tracker_manga_id: i64,
+    ) -> Result<i64> {
+        let user = ctx
+            .data::<Claims>()
+            .map_err(|_| "token not exists, please login")?;
+        Ok(ctx
+            .data::<MangaDatabase>()?
+            .insert_tracker_manga(user.sub, manga_id, myanimelist::NAME, tracker_manga_id)
+            .await?)
+    }
 }
