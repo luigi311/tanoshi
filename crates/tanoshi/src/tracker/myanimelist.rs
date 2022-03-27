@@ -19,7 +19,7 @@ impl MyAnimeList {
             AuthUrl::new("https://myanimelist.net/v1/oauth2/authorize".to_string())?;
         let token_url = TokenUrl::new("https://myanimelist.net/v1/oauth2/token".to_string())?;
 
-        let redirect_url = RedirectUrl::new(format!("{base_url}/tracker/mal/redirect"))?;
+        let redirect_url = RedirectUrl::new(format!("{base_url}/tracker/myanimelist/redirect"))?;
         let client = BasicClient::new(
             client_id,
             Some(client_secret),

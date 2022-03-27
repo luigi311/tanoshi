@@ -38,6 +38,12 @@ pub enum Route {
     Updates,
     Histories,
     Settings(SettingCategory),
+    TrackerLogin(String),
+    TrackerRedirect {
+        tracker: String,
+        code: String,
+        state: String,
+    },
     NotFound,
 }
 
@@ -141,6 +147,22 @@ impl Route {
                             Route::NotFound
                         }
                     }
+                    ["tracker", tracker, "login"] => Route::TrackerLogin(tracker.to_string()),
+                    ["tracker", tracker, "redirect"] => {
+                        let params = url.search_params();
+                        let code = params.get("code");
+                        let state = params.get("state");
+                        match *tracker {
+                            "myanimelist" if code.is_some() && state.is_some() => {
+                                Route::TrackerRedirect {
+                                    tracker: tracker.to_string(),
+                                    code: code.unwrap(),
+                                    state: state.unwrap(),
+                                }
+                            }
+                            _ => Route::NotFound,
+                        }
+                    }
                     _ => Route::NotFound,
                 }
             })
@@ -199,6 +221,12 @@ impl Route {
             Route::Settings(SettingCategory::DownloadQueue) => {
                 "/settings/downloads-queue".to_string()
             }
+            Route::TrackerLogin(tracker) => format!("/tracker/{tracker}/login"),
+            Route::TrackerRedirect {
+                tracker,
+                code,
+                state,
+            } => format!("/tracker/{tracker}/redirect?code={code}&state={state}"),
             Route::NotFound => "/notfound".to_string(),
         }
     }

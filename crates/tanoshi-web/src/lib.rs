@@ -18,6 +18,8 @@ mod settings_categories;
 mod settings_download_queue;
 mod settings_manage_downloads;
 mod settings_source;
+mod tracker_login;
+mod tracker_redirect;
 mod updates;
 mod utils;
 

@@ -7,7 +7,7 @@ use futures_signals::signal::SignalExt;
 use wasm_bindgen::UnwrapThrowExt;
 use web_sys::HtmlInputElement;
 
-use crate::common::{events, snackbar};
+use crate::common::{events, snackbar, Route};
 use crate::query;
 use crate::utils::{is_tauri_signal, local_storage, AsyncLoader};
 
@@ -17,6 +17,7 @@ pub struct Profile {
     confirm_password: Mutable<String>,
     telegram_chat_id: Mutable<Option<String>>,
     pushover_user_key: Mutable<Option<String>>,
+    myanimelist_status: Mutable<bool>,
     pub loader: AsyncLoader,
 }
 
@@ -28,6 +29,7 @@ impl Profile {
             confirm_password: Mutable::new("".to_string()),
             telegram_chat_id: Mutable::new(None),
             pushover_user_key: Mutable::new(None),
+            myanimelist_status: Mutable::new(false),
             loader: AsyncLoader::new(),
         })
     }
@@ -125,11 +127,13 @@ impl Profile {
             .style("margin-left", "auto")
             .style("margin-right", "auto")
             .style("margin-bottom", "0.5rem")
+            .style("padding", "0.5rem")
             .style("border-radius", "0.5rem")
             .style("border", "var(--list-group-border)")
             .children(&mut [
                 html!("span", {
-                    .style("margin-left", "0.5rem")
+                    .style("margin-left", "0.25rem")
+                    .style("margin-bottom", "0.5rem")
                     .text("Change Password")
                 }),
                 html!("input" => HtmlInputElement, {
@@ -182,7 +186,7 @@ impl Profile {
                 html!("div", {
                     .style("display", "flex")
                     .style("justify-content", "flex-end")
-                    .style("margin", "0.5rem")
+                    .style("margin-top", "0.5rem")
                     .children(&mut [
                         html!("input", {
                             .attribute("type", "submit")
@@ -206,8 +210,6 @@ impl Profile {
     }
 
     pub fn render_notification_setting(profile: Rc<Self>) -> Dom {
-        Self::fetch_me(profile.clone());
-
         html!("form", {
             .class("content")
             .style("display", "flex")
@@ -216,11 +218,13 @@ impl Profile {
             .style("margin-left", "auto")
             .style("margin-right", "auto")
             .style("margin-bottom", "0.5rem")
+            .style("padding", "0.5rem")
             .style("border-radius", "0.5rem")
             .style("border", "var(--list-group-border)")
             .children(&mut [
                 html!("span", {
-                    .style("margin-left", "0.5rem")
+                    .style("margin-left", "0.25rem")
+                    .style("margin-bottom", "0.5rem")
                     .text("Notification")
                 }),
                 html!("div", {
@@ -294,7 +298,6 @@ impl Profile {
                 html!("div", {
                     .style("display", "flex")
                     .style("justify-content", "flex-end")
-                    .style("margin-right", "0.5rem")
                     .style("margin-top", "0.5rem")
                     .children(&mut [
                         html!("input", {
@@ -311,11 +314,69 @@ impl Profile {
         })
     }
 
+    fn render_tracker_setting(profile: Rc<Self>) -> Dom {
+        html!("div", {
+            .class("content")
+            .style("display", "flex")
+            .style("flex-direction", "column")
+            .style("max-width", "1024px")
+            .style("margin-left", "auto")
+            .style("margin-right", "auto")
+            .style("padding", "0.75rem")
+            .style("margin-bottom", "0.5rem")
+            .style("border-radius", "0.5rem")
+            .style("border", "var(--list-group-border)")
+            .children(&mut [
+                html!("span", {
+                    .style("margin-bottom", "0.5rem")
+                    .text("Tracker")
+                }),
+                html!("div", {
+                    .style("display", "flex")
+                    .children(&mut [
+                        html!("div", {
+                            .style("display", "flex")
+                            .style("align-items", "center")
+                            .style("width", "100%")
+                            .children(&mut [
+                                html!("img", {
+                                    .style("height", "20px")
+                                    .style("width", "20px")
+                                    .style("margin-right", "0.5rem")
+                                    .attribute("src", "https://myanimelist.net/img/common/pwa/launcher-icon-0-75x.png")
+                                }),
+                                html!("span", {
+                                    .text("MyAnimeList")
+                                })
+                            ])
+                        }),
+                    ])
+                    .child_signal(profile.myanimelist_status.signal_cloned().map(|status| if status {
+                        Some(html!("button", {
+                            .style("color", "red")
+                            .text("Logout")
+                        }))
+                    } else {
+                        Some(html!("a", {
+                            .class("button")
+                            .attribute("href", &Route::TrackerLogin("myanimelist".to_string()).url())
+                            .attribute("target", "_blank")
+                            .text("Login")
+                        }))
+                    }))
+                }),
+            ])
+        })
+    }
+
     pub fn render(profile: Rc<Self>) -> Dom {
+        Self::fetch_me(profile.clone());
+
         html!("div", {
             .children(&mut [
                 Self::render_change_password(profile.clone()),
-                Self::render_notification_setting(profile),
+                Self::render_notification_setting(profile.clone()),
+                Self::render_tracker_setting(profile),
                 html!("div", {
                     .style("max-width", "1024px")
                     .style("margin-left", "auto")

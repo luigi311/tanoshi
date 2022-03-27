@@ -865,3 +865,42 @@ pub async fn download_status() -> Result<bool, Box<dyn Error>> {
     let data = post_graphql::<DownloadStatus>(var).await?;
     Ok(data.download_status)
 }
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/schema.graphql",
+    query_path = "graphql/myanimelist_login_start.graphql",
+    response_derives = "Debug"
+)]
+pub struct MyanimelistLoginStart;
+
+pub async fn myanimelist_login_start(
+) -> Result<myanimelist_login_start::MyanimelistLoginStartMyanimelistLoginStart, Box<dyn Error>> {
+    let var = myanimelist_login_start::Variables {};
+    let data = post_graphql::<MyanimelistLoginStart>(var).await?;
+    Ok(data.myanimelist_login_start)
+}
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/schema.graphql",
+    query_path = "graphql/myanimelist_login_end.graphql",
+    response_derives = "Debug"
+)]
+pub struct MyanimelistLoginEnd;
+
+pub async fn myanimelist_login_end(
+    code: String,
+    state: String,
+    csrf_state: String,
+    pkce_code_verifier: String,
+) -> Result<(), Box<dyn Error>> {
+    let var = myanimelist_login_end::Variables {
+        code,
+        state,
+        csrf_state,
+        pkce_code_verifier,
+    };
+    let _ = post_graphql::<MyanimelistLoginEnd>(var).await?;
+    Ok(())
+}

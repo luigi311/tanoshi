@@ -15,6 +15,7 @@ thread_local! {
     static DOCUMENT: Document = WINDOW.with(|w| w.document().unwrap_throw());
     static BODY: HtmlElement = DOCUMENT.with(|d| d.body().unwrap_throw());
     static LOCAL_STORAGE: Storage = WINDOW.with(|w| w.local_storage().unwrap_throw().unwrap_throw());
+    static SESSION_STORAGE: Storage = WINDOW.with(|w| w.session_storage().unwrap_throw().unwrap_throw());
     static HISTORY: History = WINDOW.with(|w| w.history().unwrap_throw());
     static IMAGE_PROXY_HOST: std::cell::RefCell<String> = std::cell::RefCell::new("/image".to_string());
     static GRAPHQL_HOST: std::cell::RefCell<String> = std::cell::RefCell::new("/graphql".to_string());
@@ -212,6 +213,10 @@ pub fn window() -> Window {
 
 pub fn local_storage() -> Storage {
     LOCAL_STORAGE.with(|s| s.clone())
+}
+
+pub fn session_storage() -> Storage {
+    SESSION_STORAGE.with(|s| s.clone())
 }
 
 pub fn history() -> History {

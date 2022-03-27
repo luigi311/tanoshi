@@ -14,6 +14,8 @@ use crate::login::Login;
 use crate::manga::Manga;
 use crate::query;
 use crate::reader::Reader;
+use crate::tracker_login::TrackerLogin;
+use crate::tracker_redirect::TrackerRedirect;
 use crate::utils::local_storage;
 use crate::{
     common::{Bottombar, Route, Spinner},
@@ -132,6 +134,12 @@ impl App {
                     Route::Settings(category) => {
                         let server_version = app.server_status.get_cloned().unwrap_or_default().version;
                         Some(Settings::new(server_version, category).render())
+                    }
+                    Route::TrackerLogin(tracker) => {
+                        Some(TrackerLogin::render(TrackerLogin::new(tracker.to_owned())))
+                    }
+                    Route::TrackerRedirect{tracker, code, state} => {
+                        Some(TrackerRedirect::render(TrackerRedirect::new(tracker.to_owned(), code.to_owned(), state.to_owned())))
                     }
                     Route::NotFound => Some(
                         html!("div", {

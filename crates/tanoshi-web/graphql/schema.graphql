@@ -288,6 +288,13 @@ type QueryRoot {
     first: Int
     last: Int
   ): ChapterConnection!
+  myanimelistLoginStart: Session!
+  myanimelistLoginEnd(
+    code: String!
+    state: String!
+    csrfState: String!
+    pkceCodeVerifier: String
+  ): String!
 }
 
 type ReadProgress {
@@ -347,6 +354,12 @@ type RecentUpdateEdge {
 
   # A cursor for use in pagination
   cursor: String!
+}
+
+type Session {
+  authorizeUrl: String!
+  csrfState: String!
+  pkceCodeVerifier: String
 }
 
 type Source {
