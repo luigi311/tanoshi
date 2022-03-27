@@ -90,6 +90,17 @@ impl Profile {
         });
     }
 
+    fn myanimelist_logout(profile: Rc<Self>) {
+        profile.loader.load(clone!(profile => async move {
+            match query::myanimelist_logout().await {
+                Ok(_) => Self::fetch_me(profile),
+                Err(err) => {
+                    snackbar::show(format!("{}", err));
+                }
+            }
+        }))
+    }
+
     fn change_password(profile: Rc<Self>) {
         profile.loader.load(clone!(profile => async move {
             let old_password = profile.old_password.get_cloned();
@@ -352,10 +363,14 @@ impl Profile {
                             ])
                         }),
                     ])
-                    .child_signal(profile.myanimelist_status.signal_cloned().map(|status| if status {
+                    .child_signal(profile.myanimelist_status.signal_cloned().map(clone!(profile => move |status| if status {
                         Some(html!("button", {
                             .style("color", "red")
                             .text("Logout")
+                            .event_with_options(&EventOptions::preventable(), clone!(profile => move |e: events::Click| {
+                                e.prevent_default();
+                                Self::myanimelist_logout(profile.clone());
+                            }))
                         }))
                     } else {
                         Some(html!("a", {
@@ -364,7 +379,7 @@ impl Profile {
                             .attribute("target", "_blank")
                             .text("Login")
                         }))
-                    }))
+                    })))
                 }),
             ])
         })

@@ -233,4 +233,15 @@ impl Db {
 
         Ok(row.get::<i64, _>(0) > 0)
     }
+
+    pub async fn delete_user_tracker_login(&self, tracker: &str, user_id: i64) -> Result<u64> {
+        let mut conn = self.pool.acquire().await?;
+        sqlx::query("DELETE FROM tracker_credential WHERE user_id = ? AND tracker = ?")
+            .bind(user_id)
+            .bind(tracker)
+            .execute(&mut conn)
+            .await
+            .map(|res| res.rows_affected())
+            .map_err(|e| anyhow::anyhow!(e))
+    }
 }

@@ -880,7 +880,6 @@ pub async fn myanimelist_login_start(
     let data = post_graphql::<MyanimelistLoginStart>(var).await?;
     Ok(data.myanimelist_login_start)
 }
-
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "graphql/schema.graphql",
@@ -902,5 +901,19 @@ pub async fn myanimelist_login_end(
         pkce_code_verifier,
     };
     let _ = post_graphql::<MyanimelistLoginEnd>(var).await?;
+    Ok(())
+}
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/schema.graphql",
+    query_path = "graphql/myanimelist_logout.graphql",
+    response_derives = "Debug"
+)]
+pub struct MyanimelistLogout;
+
+pub async fn myanimelist_logout() -> Result<(), Box<dyn Error>> {
+    let var = myanimelist_logout::Variables {};
+    let _ = post_graphql::<MyanimelistLogout>(var).await?;
     Ok(())
 }

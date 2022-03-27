@@ -152,6 +152,7 @@ type MutationRoot {
     newPassword: String!
   ): Int!
   updateProfile(input: ProfileInput!): Int!
+  myanimelistLogout: Int!
   installSource(sourceId: Int!): Int!
   uninstallSource(sourceId: Int!): Int!
   updateSource(sourceId: Int!): Int!

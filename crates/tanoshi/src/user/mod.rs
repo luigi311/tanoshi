@@ -225,7 +225,6 @@ impl UserMutationRoot {
     }
 
     async fn update_profile(&self, ctx: &Context<'_>, input: ProfileInput) -> Result<u64> {
-        debug!("update_profile");
         let claims = ctx
             .data::<Claims>()
             .map_err(|_| "token not exists, please login")?;
@@ -242,5 +241,16 @@ impl UserMutationRoot {
         debug!("update_profile: {} rows affected", row);
 
         Ok(row)
+    }
+
+    async fn myanimelist_logout(&self, ctx: &Context<'_>) -> Result<u64> {
+        let claims = ctx
+            .data::<Claims>()
+            .map_err(|_| "token not exists, please login")?;
+
+        Ok(ctx
+            .data::<UserDatabase>()?
+            .delete_user_tracker_login("myanimelist", claims.sub)
+            .await?)
     }
 }
