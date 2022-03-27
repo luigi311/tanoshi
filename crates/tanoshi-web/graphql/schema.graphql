@@ -384,4 +384,5 @@ type User {
   isAdmin: Boolean!
   telegramChatId: Int
   pushoverUserKey: String
+  myanimelistStatus: Boolean!
 }

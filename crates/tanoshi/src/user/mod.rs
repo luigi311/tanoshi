@@ -1,5 +1,5 @@
 use crate::{config::GLOBAL_CONFIG, db::UserDatabase, guard::AdminGuard};
-use async_graphql::{Context, InputObject, Object, Result, SimpleObject};
+use async_graphql::{Context, InputObject, Object, Result};
 use rand::RngCore;
 
 use jsonwebtoken::{EncodingKey, Header};
@@ -14,11 +14,10 @@ pub struct Claims {
     pub exp: usize,
 }
 
-#[derive(Debug, SimpleObject)]
+#[derive(Debug)]
 pub struct User {
     pub id: i64,
     pub username: String,
-    #[graphql(skip)]
     pub password: String,
     pub is_admin: bool,
     telegram_chat_id: Option<i64>,
@@ -47,6 +46,39 @@ impl From<User> for crate::db::model::User {
             is_admin: val.is_admin,
             ..Default::default()
         }
+    }
+}
+
+#[Object]
+impl User {
+    async fn id(&self) -> i64 {
+        self.id
+    }
+
+    async fn username(&self) -> String {
+        self.username.clone()
+    }
+
+    async fn is_admin(&self) -> bool {
+        self.is_admin
+    }
+
+    async fn telegram_chat_id(&self) -> Option<i64> {
+        self.telegram_chat_id
+    }
+
+    async fn pushover_user_key(&self) -> Option<String> {
+        self.pushover_user_key.clone()
+    }
+
+    async fn myanimelist_status(&self, ctx: &Context<'_>) -> Result<bool> {
+        let user = ctx
+            .data::<Claims>()
+            .map_err(|_| "token not exists, please login")?;
+        Ok(ctx
+            .data::<UserDatabase>()?
+            .user_tracker_login_status("myanimelist", user.sub)
+            .await?)
     }
 }
 

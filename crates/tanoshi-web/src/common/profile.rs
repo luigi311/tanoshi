@@ -40,6 +40,7 @@ impl Profile {
                 Ok(result) => {
                     profile.telegram_chat_id.set(result.telegram_chat_id.map(|id| id.to_string()));
                     profile.pushover_user_key.set(result.pushover_user_key);
+                    profile.myanimelist_status.set(result.myanimelist_status)
                 },
                 Err(err) => {
                     snackbar::show(format!("{}", err));
