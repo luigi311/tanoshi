@@ -124,7 +124,9 @@ impl Profile {
             .style("max-width", "1024px")
             .style("margin-left", "auto")
             .style("margin-right", "auto")
+            .style("margin-bottom", "0.5rem")
             .style("border-radius", "0.5rem")
+            .style("border", "var(--list-group-border)")
             .children(&mut [
                 html!("span", {
                     .style("margin-left", "0.5rem")
@@ -213,7 +215,9 @@ impl Profile {
             .style("max-width", "1024px")
             .style("margin-left", "auto")
             .style("margin-right", "auto")
+            .style("margin-bottom", "0.5rem")
             .style("border-radius", "0.5rem")
+            .style("border", "var(--list-group-border)")
             .children(&mut [
                 html!("span", {
                     .style("margin-left", "0.5rem")
@@ -237,22 +241,20 @@ impl Profile {
                         }),
                     ])
                 }),
-                html!("input" => HtmlInputElement, {
-                    .attribute("type", "text")
-                    .attribute("placeholder", "Telegram chat id, get from telegram bot")
-                    .property_signal("value", profile.telegram_chat_id.signal_cloned().map(|id| id.unwrap_or_else(|| "".to_string())))
-                    .with_node!(input => {
-                        .event(clone!(profile => move |_: events::Input| {
-                            profile.telegram_chat_id.set(Some(input.value()));
-                        }))
-                    })
-                }),
                 html!("div", {
                     .style("display", "flex")
-                    .style("justify-content", "flex-end")
-                    .style("margin-right", "0.5rem")
-                    .style("margin-top", "0.5rem")
                     .children(&mut [
+                        html!("input" => HtmlInputElement, {
+                            .style("width", "100%")
+                            .attribute("type", "text")
+                            .attribute("placeholder", "Telegram chat id, get from telegram bot")
+                            .property_signal("value", profile.telegram_chat_id.signal_cloned().map(|id| id.unwrap_or_else(|| "".to_string())))
+                            .with_node!(input => {
+                                .event(clone!(profile => move |_: events::Input| {
+                                    profile.telegram_chat_id.set(Some(input.value()));
+                                }))
+                            })
+                        }),
                         html!("input", {
                             .attribute("type", "button")
                             .attribute("value", "Test")
@@ -264,22 +266,20 @@ impl Profile {
                         }),
                     ])
                 }),
-                html!("input" => HtmlInputElement, {
-                    .attribute("type", "text")
-                    .attribute("placeholder", "Pushover user key, get from pushover dashboard")
-                    .property_signal("value", profile.pushover_user_key.signal_cloned().map(|id| id.unwrap_or_else(|| "".to_string())))
-                    .with_node!(input => {
-                        .event(clone!(profile => move |_: events::Input| {
-                            profile.pushover_user_key.set(Some(input.value()));
-                        }))
-                    })
-                }),
                 html!("div", {
                     .style("display", "flex")
-                    .style("justify-content", "flex-end")
-                    .style("margin-right", "0.5rem")
-                    .style("margin-top", "0.5rem")
                     .children(&mut [
+                        html!("input" => HtmlInputElement, {
+                            .style("width", "100%")
+                            .attribute("type", "text")
+                            .attribute("placeholder", "Pushover user key, get from pushover dashboard")
+                            .property_signal("value", profile.pushover_user_key.signal_cloned().map(|id| id.unwrap_or_else(|| "".to_string())))
+                            .with_node!(input => {
+                                .event(clone!(profile => move |_: events::Input| {
+                                    profile.pushover_user_key.set(Some(input.value()));
+                                }))
+                            })
+                        }),
                         html!("input", {
                             .attribute("type", "button")
                             .attribute("value", "Test")
