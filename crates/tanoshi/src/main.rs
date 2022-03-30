@@ -10,6 +10,7 @@ mod db;
 mod downloads;
 mod guard;
 mod library;
+mod loader;
 mod local;
 mod notification;
 mod notifier;

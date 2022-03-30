@@ -10,6 +10,7 @@ pub mod db;
 pub mod downloads;
 pub mod guard;
 pub mod library;
+pub mod loader;
 pub mod local;
 pub mod notification;
 pub mod notifier;

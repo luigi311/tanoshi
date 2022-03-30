@@ -1,12 +1,9 @@
 use crate::{
-    catalogue::{
-        chapter::{MangaLoader, NextChapterLoader, PrevChapterLoader, ReadProgressLoader},
-        manga::{FavoriteLoader, UserLastReadLoader, UserUnreadChaptersLoader},
-        CatalogueRoot, SourceMutationRoot, SourceRoot,
-    },
+    catalogue::{CatalogueRoot, SourceMutationRoot, SourceRoot},
     db::{MangaDatabase, UserDatabase},
     downloads::{DownloadMutationRoot, DownloadRoot},
     library::{CategoryMutationRoot, CategoryRoot, LibraryMutationRoot, LibraryRoot},
+    loader::DatabaseLoader,
     notification::NotificationRoot,
     notifier::Notifier,
     status::StatusRoot,
@@ -59,43 +56,7 @@ pub fn build(
     )
     // .extension(ApolloTracing)
     .data(DataLoader::new(
-        FavoriteLoader {
-            mangadb: mangadb.clone(),
-        },
-        tokio::spawn,
-    ))
-    .data(DataLoader::new(
-        UserLastReadLoader {
-            mangadb: mangadb.clone(),
-        },
-        tokio::spawn,
-    ))
-    .data(DataLoader::new(
-        UserUnreadChaptersLoader {
-            mangadb: mangadb.clone(),
-        },
-        tokio::spawn,
-    ))
-    .data(DataLoader::new(
-        ReadProgressLoader {
-            mangadb: mangadb.clone(),
-        },
-        tokio::spawn,
-    ))
-    .data(DataLoader::new(
-        PrevChapterLoader {
-            mangadb: mangadb.clone(),
-        },
-        tokio::spawn,
-    ))
-    .data(DataLoader::new(
-        NextChapterLoader {
-            mangadb: mangadb.clone(),
-        },
-        tokio::spawn,
-    ))
-    .data(DataLoader::new(
-        MangaLoader {
+        DatabaseLoader {
             mangadb: mangadb.clone(),
         },
         tokio::spawn,
