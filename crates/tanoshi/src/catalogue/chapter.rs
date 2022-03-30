@@ -1,11 +1,14 @@
-use std::{collections::HashMap, path::PathBuf, sync::Arc};
+use std::path::PathBuf;
 
 use super::{Manga, Source};
-use crate::{config::GLOBAL_CONFIG, db::MangaDatabase, local, user::Claims, utils};
-use async_graphql::{
-    dataloader::{DataLoader, Loader},
-    Context, Object, Result, SimpleObject,
+use crate::{
+    config::GLOBAL_CONFIG,
+    loader::{DatabaseLoader, MangaId, NextChapterId, PrevChapterId, UserHistoryId},
+    local,
+    user::Claims,
+    utils,
 };
+use async_graphql::{dataloader::DataLoader, Context, Object, Result, SimpleObject};
 use chrono::NaiveDateTime;
 use tanoshi_vm::extension::SourceBus;
 
@@ -23,103 +26,6 @@ impl From<crate::db::model::ReadProgress> for ReadProgress {
             last_page: val.last_page,
             is_complete: val.is_complete,
         }
-    }
-}
-
-pub type UserHistoryId = (i64, i64);
-
-pub struct ReadProgressLoader {
-    pub mangadb: MangaDatabase,
-}
-
-#[async_trait::async_trait]
-impl Loader<UserHistoryId> for ReadProgressLoader {
-    type Value = ReadProgress;
-
-    type Error = Arc<anyhow::Error>;
-
-    async fn load(
-        &self,
-        keys: &[UserHistoryId],
-    ) -> Result<HashMap<UserHistoryId, Self::Value>, Self::Error> {
-        let user_id = keys
-            .iter()
-            .next()
-            .map(|key| key.0)
-            .ok_or_else(|| anyhow::anyhow!("no user id"))?;
-        let chapter_ids: Vec<i64> = keys.iter().map(|key| key.1).collect();
-        let res = self
-            .mangadb
-            .get_user_history_progress_by_chapter_ids(user_id, &chapter_ids)
-            .await?
-            .into_iter()
-            .map(|(chapter_id, progress)| ((user_id, chapter_id), progress.into()))
-            .collect();
-        Ok(res)
-    }
-}
-
-pub type ChapterId = i64;
-
-pub struct PrevChapterLoader {
-    pub mangadb: MangaDatabase,
-}
-
-#[async_trait::async_trait]
-impl Loader<ChapterId> for PrevChapterLoader {
-    type Value = i64;
-
-    type Error = Arc<anyhow::Error>;
-
-    async fn load(
-        &self,
-        keys: &[ChapterId],
-    ) -> Result<HashMap<ChapterId, Self::Value>, Self::Error> {
-        let res = self.mangadb.get_prev_chapter_id_by_ids(keys).await?;
-        Ok(res)
-    }
-}
-
-pub type MangaId = i64;
-
-pub struct MangaLoader {
-    pub mangadb: MangaDatabase,
-}
-
-#[async_trait::async_trait]
-impl Loader<MangaId> for MangaLoader {
-    type Value = Manga;
-
-    type Error = Arc<anyhow::Error>;
-
-    async fn load(&self, keys: &[ChapterId]) -> Result<HashMap<MangaId, Self::Value>, Self::Error> {
-        let res = self
-            .mangadb
-            .get_manga_by_ids(keys)
-            .await?
-            .into_iter()
-            .map(|m| (m.id, m.into()))
-            .collect();
-        Ok(res)
-    }
-}
-
-pub struct NextChapterLoader {
-    pub mangadb: MangaDatabase,
-}
-
-#[async_trait::async_trait]
-impl Loader<ChapterId> for NextChapterLoader {
-    type Value = i64;
-
-    type Error = Arc<anyhow::Error>;
-
-    async fn load(
-        &self,
-        keys: &[ChapterId],
-    ) -> Result<HashMap<ChapterId, Self::Value>, Self::Error> {
-        let res = self.mangadb.get_next_chapter_id_by_ids(keys).await?;
-        Ok(res)
     }
 }
 
@@ -232,13 +138,13 @@ impl Chapter {
     }
 
     async fn prev(&self, ctx: &Context<'_>) -> Result<Option<i64>> {
-        let loader = ctx.data::<DataLoader<PrevChapterLoader>>()?;
-        Ok(loader.load_one(self.id).await?)
+        let loader = ctx.data::<DataLoader<DatabaseLoader>>()?;
+        Ok(loader.load_one(PrevChapterId(self.id)).await?)
     }
 
     async fn next(&self, ctx: &Context<'_>) -> Result<Option<i64>> {
-        let loader = ctx.data::<DataLoader<NextChapterLoader>>()?;
-        Ok(loader.load_one(self.id).await?)
+        let loader = ctx.data::<DataLoader<DatabaseLoader>>()?;
+        Ok(loader.load_one(NextChapterId(self.id)).await?)
     }
 
     async fn read_progress(&self, ctx: &Context<'_>) -> Result<Option<ReadProgress>> {
@@ -246,8 +152,8 @@ impl Chapter {
             .data::<Claims>()
             .map_err(|_| "token not exists, please login")?;
 
-        let loader = ctx.data::<DataLoader<ReadProgressLoader>>()?;
-        Ok(loader.load_one((user.sub, self.id)).await?)
+        let loader = ctx.data::<DataLoader<DatabaseLoader>>()?;
+        Ok(loader.load_one(UserHistoryId(user.sub, self.id)).await?)
     }
 
     async fn uploaded(&self) -> NaiveDateTime {
@@ -264,9 +170,9 @@ impl Chapter {
     }
 
     async fn manga(&self, ctx: &Context<'_>) -> Result<Manga> {
-        let loader = ctx.data::<DataLoader<MangaLoader>>()?;
+        let loader = ctx.data::<DataLoader<DatabaseLoader>>()?;
         loader
-            .load_one(self.manga_id)
+            .load_one(MangaId(self.manga_id))
             .await?
             .ok_or_else(|| "manga not found".into())
     }
