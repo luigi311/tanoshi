@@ -151,3 +151,10 @@ pub struct Token {
     pub refresh_token: String,
     pub expires_in: i64,
 }
+
+#[derive(Debug, Clone)]
+pub struct TrackedManga {
+    pub manga_id: i64,
+    pub tracker: String,
+    pub tracker_manga_id: Option<String>,
+}

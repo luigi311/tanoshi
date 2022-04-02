@@ -20,6 +20,10 @@ query FetchMangaBySourcePath($sourceId: Int, $path: String) {
         isComplete
       }
     }
+    trackers {
+      tracker
+      trackerMangaId
+    }
     chapters {
       id
       title

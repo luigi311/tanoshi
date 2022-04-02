@@ -1,4 +1,4 @@
-use dominator::{clone, events, html, Dom};
+use dominator::{events, html, Dom};
 use futures_signals::signal::{Mutable, SignalExt};
 use std::rc::Rc;
 
@@ -17,6 +17,13 @@ impl Modal {
         })
     }
 
+    pub fn new_with_default(show: bool) -> Rc<Self> {
+        Rc::new(Self {
+            first_render: Mutable::new(false),
+            show: Mutable::new(show),
+        })
+    }
+
     pub fn toggle_show(&self) {
         self.show.replace_with(|show| !*show);
         self.first_render.replace_with(|_| false);
@@ -32,28 +39,31 @@ impl Modal {
         self.first_render.replace_with(|_| false);
     }
 
-    pub fn render(modal: Rc<Self>, children: Dom) -> Dom {
+    pub fn render(self: &Rc<Self>, children: &mut [Dom]) -> Dom {
         html!("div", {
+            .style_important("overflow", "initial")
             .children(&mut [
                 html!("div", {
-                    .visible_signal(modal.show.signal())
+                    .visible_signal(self.show.signal())
                     .class("reader-settings-background")
-                    .event(clone!(modal => move |_: events::Click| {
-                        modal.show.set_neq(false);
-                    }))
+                    .event({
+                        let modal = self.clone();
+                        move |_: events::Click| {
+                            modal.show.set_neq(false);
+                        }
+                    })
                 }),
                 html!("div", {
                     .class("reader-settings")
                     .class("modal")
                     .class("animate__animated")
                     .class("animate__faster")
-                    .class_signal("animate__slideInUp", modal.show.signal())
-                    .class_signal("animate__slideOutDown", modal.show.signal().map(|x| !x))
+                    .class_signal("animate__slideInUp", self.show.signal())
+                    .class_signal("animate__slideOutDown", self.show.signal().map(|x| !x))
                     .style("padding-bottom", "calc(env(safe-area-inset-bottom) + 0.5rem)")
-                    .visible_signal(modal.first_render.signal().map(|x| !x))
-                    .children(&mut [
-                        children
-                    ])
+                    .style("max-height", "80vh")
+                    .visible_signal(self.first_render.signal().map(|x| !x))
+                    .children(children)
                 })
             ])
         })

@@ -12,6 +12,10 @@ query FetchMangaDetail($id: Int, $refresh: Boolean) {
     source {
       name
     }
+    trackers {
+      tracker
+      trackerMangaId
+    }
     nextChapter {
       id
       readProgress {

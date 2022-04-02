@@ -87,6 +87,7 @@ type Manga {
     id: Int!
   ): Chapter!
   nextChapter: Chapter
+  trackers: [Tracker!]!
 }
 
 type MutationRoot {
@@ -163,6 +164,7 @@ type MutationRoot {
   removeChaptersFromQueue(ids: [Int!]!): Int!
   removeDownloadedChapters(ids: [Int!]!): Int!
   updateChapterPriority(id: Int!, priority: Int!): Boolean!
+  trackManga(tracker: String!, mangaId: Int!, trackerMangaId: String!): Int!
 }
 
 # ISO 8601 combined date and time without timezone.
@@ -296,6 +298,7 @@ type QueryRoot {
     csrfState: String!
     pkceCodeVerifier: String
   ): String!
+  searchTrackerManga(tracker: String!, title: String!): [TrackerManga!]!
 }
 
 type ReadProgress {
@@ -377,6 +380,20 @@ type Source {
 type Status {
   activated: Boolean!
   version: String!
+}
+
+type Tracker {
+  tracker: String!
+  trackerMangaId: String
+}
+
+type TrackerManga {
+  tracker: String!
+  trackerMangaId: String!
+  title: String!
+  synopsis: String!
+  coverUrl: String!
+  status: String!
 }
 
 type User {

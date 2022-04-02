@@ -4,7 +4,6 @@ use oauth2::{reqwest::async_http_client, AuthorizationCode, CsrfToken, PkceCodeV
 use serde::Deserialize;
 
 use crate::{
-    catalogue::Manga,
     db::{model, MangaDatabase, UserDatabase},
     tracker::{self, myanimelist, MyAnimeList},
     user::Claims,
@@ -49,6 +48,16 @@ async fn exchange_code(
 
     let token_str = serde_json::to_string(&token)?;
     Ok(serde_json::from_str(&token_str)?)
+}
+
+#[derive(Default, SimpleObject)]
+pub struct TrackerManga {
+    pub tracker: String,
+    pub tracker_manga_id: String,
+    pub title: String,
+    pub synopsis: String,
+    pub cover_url: String,
+    pub status: String,
 }
 
 #[derive(Default)]
@@ -96,41 +105,48 @@ impl TrackingRoot {
         Ok("Success".to_string())
     }
 
-    async fn myanimelist_search_manga(
+    async fn search_tracker_manga(
         &self,
         ctx: &Context<'_>,
+        tracker: String,
         title: String,
-    ) -> Result<Vec<Manga>> {
+    ) -> Result<Vec<TrackerManga>> {
         let user = ctx
             .data::<Claims>()
             .map_err(|_| "token not exists, please login")?;
-        let tracker_token = ctx
-            .data::<UserDatabase>()?
-            .get_user_tracker_token(tracker::myanimelist::NAME, user.sub)
-            .await?;
 
-        let manga_list = ctx
-            .data::<MyAnimeList>()?
-            .get_manga_list(
-                tracker_token.access_token,
-                title,
-                100,
-                0,
-                "id,title,main_picture,synopsis,status".to_string(),
-            )
-            .await?;
+        match tracker.as_str() {
+            myanimelist::NAME => {
+                let tracker_token = ctx
+                    .data::<UserDatabase>()?
+                    .get_user_tracker_token(tracker::myanimelist::NAME, user.sub)
+                    .await?;
 
-        Ok(manga_list
-            .into_iter()
-            .map(|m| Manga {
-                id: m.id,
-                title: m.title,
-                status: Some(m.status.replace("_", " ")),
-                description: Some(m.synopsis),
-                cover_url: m.main_picture.medium,
-                ..Default::default()
-            })
-            .collect())
+                let manga_list = ctx
+                    .data::<MyAnimeList>()?
+                    .get_manga_list(
+                        tracker_token.access_token,
+                        title,
+                        6,
+                        0,
+                        "id,title,main_picture,synopsis,status".to_string(),
+                    )
+                    .await?;
+
+                Ok(manga_list
+                    .into_iter()
+                    .map(|m| TrackerManga {
+                        tracker: myanimelist::NAME.to_string(),
+                        tracker_manga_id: m.id.to_string(),
+                        title: m.title,
+                        synopsis: m.synopsis,
+                        cover_url: m.main_picture.medium,
+                        status: m.status,
+                    })
+                    .collect())
+            }
+            _ => Err("tracker not available".into()),
+        }
     }
 }
 
@@ -139,18 +155,24 @@ pub struct TrackingMutationRoot;
 
 #[Object]
 impl TrackingMutationRoot {
-    async fn myanimelist_link_manga(
+    async fn track_manga(
         &self,
         ctx: &Context<'_>,
+        tracker: String,
         manga_id: i64,
-        tracker_manga_id: i64,
+        tracker_manga_id: String,
     ) -> Result<i64> {
         let user = ctx
             .data::<Claims>()
             .map_err(|_| "token not exists, please login")?;
+
+        if !matches!(tracker.as_str(), myanimelist::NAME) {
+            return Err("tracker not available".into());
+        }
+
         Ok(ctx
             .data::<MangaDatabase>()?
-            .insert_tracker_manga(user.sub, manga_id, myanimelist::NAME, tracker_manga_id)
+            .insert_tracker_manga(user.sub, manga_id, &tracker, tracker_manga_id)
             .await?)
     }
 }

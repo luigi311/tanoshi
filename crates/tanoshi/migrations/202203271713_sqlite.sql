@@ -6,5 +6,6 @@ CREATE TABLE tracker_manga (
     tracker_manga_id VARCHAR(256) NOT NULL,
     UNIQUE(user_id, manga_id, tracker),
     FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE,
-    FOREIGN KEY (manga_id) REFERENCES manga(id) ON DELETE CASCADE
+    FOREIGN KEY (manga_id) REFERENCES manga(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id, tracker) REFERENCES tracker_credential(user_id, tracker) ON DELETE CASCADE
 );

@@ -3,14 +3,21 @@ use crate::{
     config::GLOBAL_CONFIG,
     db::MangaDatabase,
     loader::{
-        DatabaseLoader, UserFavoriteId, UserFavoritePath, UserLastReadId, UserUnreadChaptersId,
+        DatabaseLoader, UserFavoriteId, UserFavoritePath, UserLastReadId, UserTrackerMangaId,
+        UserUnreadChaptersId,
     },
     user::Claims,
     utils,
 };
-use async_graphql::{dataloader::DataLoader, Context, Object, Result};
+use async_graphql::{dataloader::DataLoader, Context, Object, Result, SimpleObject};
 use chrono::NaiveDateTime;
 use tanoshi_vm::extension::SourceBus;
+
+#[derive(Debug, SimpleObject)]
+pub struct Tracker {
+    pub tracker: String,
+    pub tracker_manga_id: Option<String>,
+}
 
 /// A type represent manga details, normalized across source
 #[derive(Debug, Clone)]
@@ -270,5 +277,24 @@ impl Manga {
             .get_next_chapter_by_manga_id(user.sub, id)
             .await?
             .map(|c| c.into()))
+    }
+
+    async fn trackers(&self, ctx: &Context<'_>) -> Result<Vec<Tracker>> {
+        let user = ctx
+            .data::<Claims>()
+            .map_err(|_| "token not exists, please login")?;
+        let loader = ctx.data::<DataLoader<DatabaseLoader>>()?;
+        let data = loader
+            .load_one(UserTrackerMangaId(user.sub, self.id))
+            .await?
+            .unwrap_or(vec![])
+            .into_iter()
+            .map(|(tracker, tracker_manga_id)| Tracker {
+                tracker,
+                tracker_manga_id,
+            })
+            .collect();
+
+        Ok(data)
     }
 }

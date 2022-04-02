@@ -1,13 +1,13 @@
 use std::collections::HashMap;
 
-use super::model::{
-    Category, Chapter, DownloadQueue, DownloadQueueEntry, Manga, ReadProgress, UserMangaLibrary,
-};
+use super::model::*;
 use crate::library::{RecentChapter, RecentUpdate};
 use anyhow::{anyhow, Result};
 use chrono::NaiveDateTime;
-use sqlx::sqlite::{SqliteArguments, SqlitePool};
-use sqlx::{Arguments, Row};
+use sqlx::{
+    sqlite::{SqliteArguments, SqlitePool},
+    Arguments, Row,
+};
 use tokio_stream::StreamExt;
 
 #[derive(Debug, Clone)]
@@ -2001,7 +2001,7 @@ impl Db {
         user_id: i64,
         manga_id: i64,
         tracker: &str,
-        tracker_manga_id: i64,
+        tracker_manga_id: String,
     ) -> Result<i64> {
         let mut conn = self.pool.acquire().await?;
         let row_id = sqlx::query(
@@ -2022,5 +2022,43 @@ impl Db {
         .last_insert_rowid();
 
         Ok(row_id)
+    }
+
+    pub async fn get_tracker_manga_ids(
+        &self,
+        user_id: i64,
+        manga_ids: &[i64],
+    ) -> Result<Vec<TrackedManga>> {
+        let mut conn = self.pool.acquire().await?;
+
+        let query_str = format!(
+            r#"
+            SELECT m.id as manga_id, tc.tracker, tm.tracker_manga_id FROM tracker_credential tc 
+            LEFT JOIN manga m ON m.id IN ({})
+            LEFT JOIN tracker_manga tm ON tc.tracker = tm.tracker AND tm.manga_id = m.id
+            WHERE tc.user_id = ?;
+            "#,
+            vec!["?"; manga_ids.len()].join(",")
+        );
+
+        let mut query = sqlx::query(&query_str);
+
+        for manga_id in manga_ids {
+            query = query.bind(manga_id);
+        }
+
+        let rows = query
+            .bind(user_id)
+            .fetch_all(&mut conn)
+            .await?
+            .iter()
+            .map(|row| TrackedManga {
+                manga_id: row.get(0),
+                tracker: row.get(1),
+                tracker_manga_id: row.get(2),
+            })
+            .collect();
+
+        Ok(rows)
     }
 }

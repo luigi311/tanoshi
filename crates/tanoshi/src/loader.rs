@@ -1,11 +1,11 @@
-use std::{collections::HashMap, sync::Arc};
-
 use crate::{
     catalogue::{chapter::ReadProgress, Manga},
     db::MangaDatabase,
 };
 use async_graphql::{dataloader::Loader, Result};
 use chrono::NaiveDateTime;
+use itertools::Itertools;
+use std::{collections::HashMap, sync::Arc};
 
 pub struct DatabaseLoader {
     pub mangadb: MangaDatabase,
@@ -228,6 +228,46 @@ impl Loader<NextChapterId> for DatabaseLoader {
             .await?
             .into_iter()
             .map(|(chapter_id, next_chapter_id)| (NextChapterId(chapter_id), next_chapter_id))
+            .collect();
+        Ok(res)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct UserTrackerMangaId(pub i64, pub i64);
+
+#[async_trait::async_trait]
+impl Loader<UserTrackerMangaId> for DatabaseLoader {
+    type Value = Vec<(String, Option<String>)>;
+
+    type Error = Arc<anyhow::Error>;
+
+    async fn load(
+        &self,
+        keys: &[UserTrackerMangaId],
+    ) -> Result<HashMap<UserTrackerMangaId, Self::Value>, Self::Error> {
+        let user_id = keys
+            .iter()
+            .next()
+            .map(|key| key.0)
+            .ok_or_else(|| anyhow::anyhow!("no user id"))?;
+
+        let manga_ids: Vec<i64> = keys.iter().map(|key| key.1).collect();
+        let res = self
+            .mangadb
+            .get_tracker_manga_ids(user_id, &manga_ids)
+            .await?
+            .iter()
+            .group_by(|m| UserTrackerMangaId(user_id, m.manga_id))
+            .into_iter()
+            .map(|(key, group)| {
+                (
+                    key,
+                    (group
+                        .map(|v| (v.tracker.clone(), v.tracker_manga_id.clone()))
+                        .collect()),
+                )
+            })
             .collect();
         Ok(res)
     }

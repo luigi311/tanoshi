@@ -880,6 +880,7 @@ pub async fn myanimelist_login_start(
     let data = post_graphql::<MyanimelistLoginStart>(var).await?;
     Ok(data.myanimelist_login_start)
 }
+
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "graphql/schema.graphql",
@@ -915,5 +916,46 @@ pub struct MyanimelistLogout;
 pub async fn myanimelist_logout() -> Result<(), Box<dyn Error>> {
     let var = myanimelist_logout::Variables {};
     let _ = post_graphql::<MyanimelistLogout>(var).await?;
+    Ok(())
+}
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/schema.graphql",
+    query_path = "graphql/search_tracker_manga.graphql",
+    response_derives = "Debug"
+)]
+pub struct SearchTrackerManga;
+
+pub async fn search_tracker_manga(
+    tracker: String,
+    title: String,
+) -> Result<Vec<search_tracker_manga::SearchTrackerMangaSearchTrackerManga>, Box<dyn Error>> {
+    let var = search_tracker_manga::Variables { tracker, title };
+    let data = post_graphql::<SearchTrackerManga>(var).await?;
+
+    Ok(data.search_tracker_manga)
+}
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/schema.graphql",
+    query_path = "graphql/track_manga.graphql",
+    response_derives = "Debug"
+)]
+pub struct TrackManga;
+
+pub async fn track_manga(
+    manga_id: i64,
+    tracker: String,
+    tracker_manga_id: String,
+) -> Result<(), Box<dyn Error>> {
+    let var = track_manga::Variables {
+        manga_id,
+        tracker,
+        tracker_manga_id,
+    };
+    let _ = post_graphql::<TrackManga>(var).await?;
+
     Ok(())
 }
