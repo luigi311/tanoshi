@@ -2024,6 +2024,29 @@ impl Db {
         Ok(row_id)
     }
 
+    pub async fn delete_tracker_manga(
+        &self,
+        user_id: i64,
+        manga_id: i64,
+        tracker: &str,
+    ) -> Result<u64> {
+        let mut conn = self.pool.acquire().await?;
+        let rows = sqlx::query(
+            r#"
+            DELETE FROM tracker_manga
+            WHERE user_id = ? AND manga_id = ? AND tracker = ?
+            "#,
+        )
+        .bind(user_id)
+        .bind(manga_id)
+        .bind(tracker)
+        .execute(&mut conn)
+        .await?
+        .rows_affected();
+
+        Ok(rows)
+    }
+
     pub async fn get_tracker_manga_ids(
         &self,
         user_id: i64,
@@ -2048,6 +2071,38 @@ impl Db {
         }
 
         let rows = query
+            .bind(user_id)
+            .fetch_all(&mut conn)
+            .await?
+            .iter()
+            .map(|row| TrackedManga {
+                manga_id: row.get(0),
+                tracker: row.get(1),
+                tracker_manga_id: row.get(2),
+            })
+            .collect();
+
+        Ok(rows)
+    }
+
+    pub async fn get_tracker_manga_id(
+        &self,
+        user_id: i64,
+        manga_id: i64,
+    ) -> Result<Vec<TrackedManga>> {
+        let mut conn = self.pool.acquire().await?;
+
+        let query = sqlx::query(
+            r#"
+        SELECT m.id as manga_id, tc.tracker, tm.tracker_manga_id FROM tracker_credential tc 
+        LEFT JOIN manga m ON m.id = ?
+        LEFT JOIN tracker_manga tm ON tc.tracker = tm.tracker AND tm.manga_id = m.id
+        WHERE tc.user_id = ?;
+        "#,
+        );
+
+        let rows = query
+            .bind(manga_id)
             .bind(user_id)
             .fetch_all(&mut conn)
             .await?

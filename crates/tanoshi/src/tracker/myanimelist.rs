@@ -1,4 +1,5 @@
 use anyhow::Result;
+use chrono::NaiveDateTime;
 use oauth2::{
     basic::BasicClient, AuthUrl, ClientId, ClientSecret, CsrfToken, PkceCodeChallenge, RedirectUrl,
     TokenUrl,
@@ -9,19 +10,32 @@ use super::Session;
 
 pub const NAME: &'static str = "myanimelist";
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Default, Clone, Deserialize)]
+#[serde(default)]
+pub struct MyListStatus {
+    pub status: Option<String>,
+    pub score: i64,
+    pub num_chapters_read: i64,
+    pub start_date: Option<NaiveDateTime>,
+    pub finish_date: Option<NaiveDateTime>,
+}
+
+#[derive(Debug, Default, Clone, Deserialize)]
+#[serde(default)]
 pub struct MainPicture {
     pub medium: String,
     pub large: String,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Default, Clone, Deserialize)]
+#[serde(default)]
 pub struct Manga {
     pub id: i64,
     pub title: String,
     pub synopsis: String,
     pub main_picture: MainPicture,
     pub status: String,
+    pub my_list_status: Option<MyListStatus>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -101,5 +115,26 @@ impl MyAnimeList {
             .json()
             .await?;
         Ok(res.data.into_iter().map(|node| node.node).collect())
+    }
+
+    pub async fn get_manga_details(
+        &self,
+        token: String,
+        tracker_manga_id: String,
+        fields: String,
+    ) -> Result<Manga> {
+        let res: Manga = self
+            .api_client
+            .get(format!(
+                "https://api.myanimelist.net/v2/manga/{tracker_manga_id}"
+            ))
+            .bearer_auth(token)
+            .query(&[("fields", fields)])
+            .send()
+            .await?
+            .json()
+            .await?;
+
+        Ok(res)
     }
 }

@@ -1,5 +1,6 @@
 use anyhow::anyhow;
 use async_graphql::{Context, Object, Result, SimpleObject};
+use chrono::NaiveDateTime;
 use oauth2::{reqwest::async_http_client, AuthorizationCode, CsrfToken, PkceCodeVerifier};
 use serde::Deserialize;
 
@@ -48,6 +49,18 @@ async fn exchange_code(
 
     let token_str = serde_json::to_string(&token)?;
     Ok(serde_json::from_str(&token_str)?)
+}
+
+#[derive(Debug, Default, SimpleObject)]
+pub struct TrackerStatus {
+    pub tracker: String,
+    pub tracker_manga_id: Option<String>,
+    pub tracker_manga_title: Option<String>,
+    pub status: Option<String>,
+    pub score: Option<i64>,
+    pub num_chapters_read: Option<i64>,
+    pub start_date: Option<NaiveDateTime>,
+    pub finish_date: Option<NaiveDateTime>,
 }
 
 #[derive(Default, SimpleObject)]
@@ -148,6 +161,73 @@ impl TrackingRoot {
             _ => Err("tracker not available".into()),
         }
     }
+
+    async fn manga_tracker_status(
+        &self,
+        ctx: &Context<'_>,
+        manga_id: i64,
+    ) -> Result<Vec<TrackerStatus>> {
+        let user = ctx
+            .data::<Claims>()
+            .map_err(|_| "token not exists, please login")?;
+
+        let trackers = ctx
+            .data::<MangaDatabase>()?
+            .get_tracker_manga_id(user.sub, manga_id)
+            .await?;
+
+        let mut data: Vec<TrackerStatus> = vec![];
+        for tracker in trackers {
+            let status = match (
+                tracker.tracker.as_str(),
+                tracker.tracker_manga_id.to_owned(),
+            ) {
+                (myanimelist::NAME, Some(tracker_manga_id)) => {
+                    let tracker_token = ctx
+                        .data::<UserDatabase>()?
+                        .get_user_tracker_token(myanimelist::NAME, user.sub)
+                        .await?;
+
+                    let tracker_data = ctx
+                        .data::<MyAnimeList>()?
+                        .get_manga_details(
+                            tracker_token.access_token,
+                            tracker_manga_id.to_owned(),
+                            "title,my_list_status".to_string(),
+                        )
+                        .await?;
+
+                    let tracker_manga_title = tracker_data.title;
+                    if let Some(status) = tracker_data.my_list_status {
+                        Some(TrackerStatus {
+                            tracker: tracker.tracker.to_owned(),
+                            tracker_manga_id: Some(tracker_manga_id),
+                            tracker_manga_title: Some(tracker_manga_title),
+                            status: status.status,
+                            num_chapters_read: Some(status.num_chapters_read),
+                            score: Some(status.score),
+                            start_date: status.start_date,
+                            finish_date: status.finish_date,
+                        })
+                    } else {
+                        Some(TrackerStatus {
+                            tracker: tracker.tracker.to_owned(),
+                            tracker_manga_id: Some(tracker_manga_id),
+                            ..Default::default()
+                        })
+                    }
+                }
+                (_, _) => None,
+            };
+
+            data.push(status.unwrap_or_else(|| TrackerStatus {
+                tracker: tracker.tracker,
+                ..Default::default()
+            }));
+        }
+
+        Ok(data)
+    }
 }
 
 #[derive(Default)]
@@ -173,6 +253,22 @@ impl TrackingMutationRoot {
         Ok(ctx
             .data::<MangaDatabase>()?
             .insert_tracker_manga(user.sub, manga_id, &tracker, tracker_manga_id)
+            .await?)
+    }
+
+    async fn untrack_manga(
+        &self,
+        ctx: &Context<'_>,
+        tracker: String,
+        manga_id: i64,
+    ) -> Result<u64> {
+        let user = ctx
+            .data::<Claims>()
+            .map_err(|_| "token not exists, please login")?;
+
+        Ok(ctx
+            .data::<MangaDatabase>()?
+            .delete_tracker_manga(user.sub, manga_id, &tracker)
             .await?)
     }
 }

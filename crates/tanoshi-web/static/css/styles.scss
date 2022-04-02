@@ -1,4 +1,4 @@
-$color--interval:     12.5%;
+$color--interval: 12.5%;
 
 $color-gray: #888888;
 $color-gray-100: lighten($color-gray, $color--interval * 4);
@@ -14,7 +14,9 @@ $color-gray-800: darken($color-gray, $color--interval * 3);
 $color-gray-850: darken($color-gray, $color--interval * 3.5);
 $color-gray-900: darken($color-gray, $color--interval * 4);
 
-$font-stack:    Helvetica, Roboto, sans-serif;
+$font-stack: Helvetica,
+Roboto,
+sans-serif;
 $primary-color: rgba(91, 116, 155, 1);
 $primary-color-100: lighten($primary-color, $color--interval * 4);
 $primary-color-200: lighten($primary-color, $color--interval * 3);
@@ -27,7 +29,8 @@ $primary-color-800: darken($primary-color, $color--interval * 3);
 $primary-color-850: darken($primary-color, $color--interval * 3.5);
 $primary-color-900: darken($primary-color, $color--interval * 4);
 
-$shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+$shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1),
+0 1px 2px 0 rgba(0, 0, 0, 0.06);
 
 $background-color-light: $color-gray-100;
 $background-color-dark: $color-gray-900;
@@ -57,17 +60,17 @@ $divide-color-dark-1: $color-gray-700;
     --topbar-button-color: white;
     --topbar-text-color: white;
     --topbar-bottom-border: 1px solid #{$primary-color-600};
-    
+
     --bottombar-background-color: #{$bottombar-background-light};
     --color: #{$text-color-light};
-    
+
     --divider-color: #{$divide-color-light};
     --divider-color-1: #{$divide-color-light-1};
-    
+
     --shadow: #{$shadow};
     --list-group-background-color: var(--background-color);
     --list-group-border: 1px solid var(--background-color-200);
-    
+
     --primary-color: #{$primary-color};
     --primary-color-300: #{$primary-color-300};
 
@@ -100,7 +103,7 @@ body.dark {
 
     --shadow: none;
     --list-group-background-color: #{$color-gray-800};
-    --list-group-border: none;
+    --list-group-border: 1px solid var(--background-color-200);
 
     --action-button-color: #{$color-gray-200};
     --action-button-background: #{$color-gray-800};
@@ -135,7 +138,7 @@ body.tauri {
     --topbar-bottom-border: 1px solid #{$color-gray-200};
 }
 
-@media (min-width: 1024px) { 
+@media (min-width: 1024px) {
     .main {
         margin-left: 5rem !important;
     }
@@ -159,7 +162,8 @@ a {
     outline: none
 }
 
-button, .button {
+button,
+.button {
     font: 100% $font-stack;
     color: #{$primary-color};
     font-family: inherit;
@@ -172,14 +176,15 @@ button, .button {
         outline-offset: 2px;
     }
 
-    &:hover, &:active {
+    &:hover,
+    &:active {
         opacity: 0.5;
     }
 }
 
 .action-button {
     @extend .button;
-    
+
     color: var(--action-button-color) !important;
     background: var(--action-button-background) !important;
     border-radius: 0.25rem;
@@ -200,15 +205,19 @@ input {
         height: 0.1rem;
     }
 
-    &[type="text"], &[type="username"], &[type="password"] {
+    &[type="text"],
+    &[type="username"],
+    &[type="password"] {
         padding: 0.5rem !important;
     }
 
-    &[type="checkbox"], &[type="radio"] {
+    &[type="checkbox"],
+    &[type="radio"] {
         border-radius: 100% !important;
     }
 
-    &[type="checkbox"]:checked, &[type="radio"]:checked {
+    &[type="checkbox"]:checked,
+    &[type="radio"]:checked {
         background-color: #{$primary-color} !important;
     }
 
@@ -223,43 +232,44 @@ input {
         height: 0;
     }
 
-    &.tri-state[type="radio"]:checked + svg {
+    &.tri-state[type="radio"]:checked+svg {
         color: #{$primary-color} !important;
         visibility: visible;
     }
 
-    &.tri-state[type="radio"] + svg {
+    &.tri-state[type="radio"]+svg {
         visibility: hidden;
     }
 
     &.tri-state[type="checkbox"] {
         background-color: black;
     }
-    
+
     &.error {
         outline-color: red;
         color: red;
     }
 
-    &[type="submit"], &[type="button"] {
+    &[type="submit"],
+    &[type="button"] {
         background-color: transparent;
         color: #{$primary-color};
-        
+
         &:hover {
             opacity: 0.5;
         }
     }
 
-    
+
 }
 
-@media (min-width: 1024px) { 
+@media (min-width: 1024px) {
     .topbar.tauri {
         left: 5rem !important;
         z-index: initial !important;
         border-bottom: 0px !important;
         background-color: var(--background-color) !important;
-    
+
         input[type="text"] {
             background-color: var(--background-color-100) !important;
             padding: 0.25rem !important;
@@ -284,13 +294,15 @@ input {
     border-bottom: var(--topbar-bottom-border);
     -webkit-padding-after: 0.25rem;
     height: 2rem;
-    
-    span, input {
+
+    span,
+    input {
         background-color: inherit;
         color: var(--topbar-text-color);
     }
 
-    button, .button {
+    button,
+    .button {
         background-color: inherit;
         color: var(--topbar-button-color);
         -webkit-padding-before: 0px;
@@ -323,7 +335,7 @@ input {
     }
 }
 
-@media (min-width: 1024px) { 
+@media (min-width: 1024px) {
     .bottombar {
         flex-direction: column;
         justify-content: start !important;
@@ -339,7 +351,8 @@ input {
             top: 0px !important;
         }
 
-        a, button {
+        a,
+        button {
             margin-top: 0.5rem !important;
             margin-bottom: 0.5rem !important;
         }
@@ -365,7 +378,8 @@ input {
     background-color: var(--bottombar-background-color);
     border-top: 1px solid var(--background-color-100);
 
-    a, button {
+    a,
+    button {
         display: flex;
         padding-left: 0.5rem;
         padding-right: 0.5rem;
@@ -378,7 +392,8 @@ input {
             color: #{$primary-color};
         }
 
-        &:hover, &:active {
+        &:hover,
+        &:active {
             opacity: 0.5;
         }
 
@@ -434,7 +449,8 @@ input {
     background-color: var(--bottombar-background-color);
     border-top: 1px solid var(--background-color-100);
 
-    a, button {
+    a,
+    button {
         display: flex;
         padding-left: 0.5rem;
         padding-right: 0.5rem;
@@ -447,7 +463,8 @@ input {
             color: #{$primary-color};
         }
 
-        &:hover, &:active {
+        &:hover,
+        &:active {
             opacity: 0.5;
         }
 
@@ -479,9 +496,8 @@ input {
     padding: 0.5rem;
 }
 
-$manga-grid: (
-    '0px': 3,
-    '768px': 4, 
+$manga-grid: ('0px': 3,
+    '768px': 4,
     '1024px': 6,
     '1280px': 8,
     '1480px': 10,
@@ -494,8 +510,9 @@ $manga-grid: (
     gap: 0.5rem;
 }
 
-@each $width, $grid in $manga-grid {
-    @media (min-width: $width) { 
+@each $width,
+$grid in $manga-grid {
+    @media (min-width: $width) {
         .manga-grid {
             grid-template-columns: repeat($grid, minmax(0, 1fr));
         }
@@ -508,7 +525,7 @@ $manga-grid: (
     border-radius: 0.375rem;
     padding-bottom: 141.5094339622642%;
     background-color: var(--manga-cover-background-color);
-    
+
     &.favorite {
         filter: brightness(50%);
     }
@@ -553,12 +570,12 @@ $manga-grid: (
         white-space: nowrap;
         border-bottom-right-radius: 0.375rem;
         border-bottom-left-radius: 0.375rem;
-        
+
         span {
             margin: 0.125rem;
         }
     }
-    
+
 }
 
 @media (min-width: 1024px) {
@@ -636,7 +653,8 @@ $manga-grid: (
     flex-grow: 1;
     align-items: center;
 
-    img, svg {
+    img,
+    svg {
         margin: 0.5rem;
         height: 1.5rem;
         width: 1.5rem;
@@ -665,7 +683,7 @@ $manga-grid: (
 
     &-thumbnail {
         flex-shrink: 0;
-    
+
         img {
             width: 4rem;
             object-fit: cover;
@@ -682,6 +700,7 @@ $manga-grid: (
             margin: 0 {
                 bottom: 0.5rem;
             }
+
             font-size: large;
         }
 
@@ -689,6 +708,7 @@ $manga-grid: (
             margin: 0 {
                 bottom: 0.5rem;
             }
+
             font-size: medium;
         }
 
@@ -696,6 +716,7 @@ $manga-grid: (
             margin: 0 {
                 bottom: 0.5rem;
             }
+
             font-size: small;
         }
     }
@@ -782,7 +803,7 @@ $manga-grid: (
     background-color: var(--background-color-100);
     padding: 0.5rem;
     width: 100%;
-    
+
     span {
         color: #ee4444;
     }
@@ -801,12 +822,13 @@ $manga-grid: (
 
 .reader-settings {
     background-color: var(--background-color);
+
     &-row {
         border-radius: 0.25rem;
         margin-top: 0.25rem;
         margin-bottom: 0.25rem;
         background-color: var(--background-color-100);
-        
+
         input[type="text"] {
             width: 100%;
             margin: 0;
@@ -828,7 +850,7 @@ $manga-grid: (
         button {
             color: var(--color);
         }
-    
+
         button.active {
             background-color: var(--background-color-200);
             border-radius: 0.25rem;
@@ -864,13 +886,13 @@ $manga-grid: (
 }
 
 
-$continuous-width: (
-    '0px': '100vw',
+$continuous-width: ('0px': '100vw',
     '768px': '768px'
 );
 
-@each $min-width, $width in $continuous-width {
-    @media (min-width: $min-width) { 
+@each $min-width,
+$width in $continuous-width {
+    @media (min-width: $min-width) {
         .continuous-image-loading {
             width: #{$width} !important;
             height: calc(1.46 * #{$width}) !important;
@@ -924,7 +946,7 @@ $continuous-width: (
         background-color: var(--background-color-200);
         display: flex;
         align-items: center;
-        
+
         span {
             flex-grow: 1;
             color: var(--color);
@@ -954,40 +976,45 @@ $continuous-width: (
 
     .loader {
         border: 0.25rem solid #f3f3f3;
-        border-top: 0.25rem solid  #{$primary-color};
+        border-top: 0.25rem solid #{$primary-color};
         border-radius: 50%;
         width: 1.5rem;
         height: 1.5rem;
         margin: auto;
         animation: spin 2s linear infinite;
-      }
+    }
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 ::-webkit-scrollbar {
-    width:9px;
+    width: 9px;
 }
 
 ::-webkit-scrollbar-track {
-    -webkit-border-radius:5px;
-    border-radius:5px;
-    background:rgba(0,0,0,0.0);
+    -webkit-border-radius: 5px;
+    border-radius: 5px;
+    background: rgba(0, 0, 0, 0.0);
 }
 
 ::-webkit-scrollbar-thumb {
-    -webkit-border-radius:5px;
-    border-radius:5px;
-    background:rgba(0,0,0,0.2);
+    -webkit-border-radius: 5px;
+    border-radius: 5px;
+    background: rgba(0, 0, 0, 0.2);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background:rgba(0,0,0,0.4);
+    background: rgba(0, 0, 0, 0.4);
 }
 
 ::-webkit-scrollbar-thumb:window-inactive {
-    background:rgba(0,0,0,0.05);
+    background: rgba(0, 0, 0, 0.05);
 }

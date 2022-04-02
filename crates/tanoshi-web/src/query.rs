@@ -959,3 +959,38 @@ pub async fn track_manga(
 
     Ok(())
 }
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/schema.graphql",
+    query_path = "graphql/untrack_manga.graphql",
+    response_derives = "Debug"
+)]
+pub struct UntrackManga;
+
+pub async fn untrack_manga(manga_id: i64, tracker: String) -> Result<(), Box<dyn Error>> {
+    let var = untrack_manga::Variables { manga_id, tracker };
+    let _ = post_graphql::<UntrackManga>(var).await?;
+
+    Ok(())
+}
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/schema.graphql",
+    query_path = "graphql/fetch_manga_tracker_status.graphql",
+    response_derives = "Debug"
+)]
+pub struct FetchMangaTrackerStatus;
+
+pub async fn fetch_manga_tracker_status(
+    manga_id: i64,
+) -> Result<
+    Vec<fetch_manga_tracker_status::FetchMangaTrackerStatusMangaTrackerStatus>,
+    Box<dyn Error>,
+> {
+    let var = fetch_manga_tracker_status::Variables { manga_id };
+    let data = post_graphql::<FetchMangaTrackerStatus>(var).await?;
+
+    Ok(data.manga_tracker_status)
+}

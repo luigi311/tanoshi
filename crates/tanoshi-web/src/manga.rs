@@ -1,4 +1,10 @@
-use crate::{common::{ChapterSettings, ChapterSort, Filter,  Order, Route, Sort, Spinner, snackbar, SelectCategoryModal, SelectTrackMangaModal, Tracker}, query, utils::{AsyncLoader, proxied_image_url, window}};
+use crate::{
+    common::{
+        ChapterSettings, ChapterSort, Filter,  Order, Route, Sort, Spinner, snackbar, SelectCategoryModal, SelectTrackMangaModal, TrackerStatus
+    }, 
+    query, 
+    utils::{AsyncLoader, proxied_image_url, window}
+};
 use chrono::NaiveDateTime;
 use dominator::{Dom, EventOptions, clone, events, html, routing, svg, with_node};
 use futures_signals::{signal::{self, Mutable, SignalExt}, signal_vec::{MutableVec, SignalVecExt}};
@@ -64,8 +70,8 @@ pub struct Manga {
     chapters: MutableVec<Rc<Chapter>>,
     is_edit_chapter: Mutable<bool>,
     is_tracker_available: Mutable<bool>,
-    is_tracked: Mutable<bool>,
-    trackers: MutableVec<Tracker>,
+    num_tracked: Mutable<i64>,
+    trackers: MutableVec<TrackerStatus>,
     chapter_settings: Rc<ChapterSettings>,
     select_state: Mutable<SelectState>,
     loader: AsyncLoader,
@@ -90,7 +96,7 @@ impl Manga {
             chapters: MutableVec::new(),
             is_edit_chapter: Mutable::new(false),
             is_tracker_available: Mutable::new(false),
-            is_tracked: Mutable::new(false),
+            num_tracked: Mutable::new(0),
             trackers: MutableVec::new(),
             chapter_settings: ChapterSettings::new(false, true),
             select_state: Mutable::new(SelectState::None),
@@ -121,8 +127,12 @@ impl Manga {
                         ..Default::default()
                     }));
                     manga.is_tracker_available.set(result.trackers.len() > 0);
-                    manga.is_tracked.set(result.trackers.iter().find(|tracker| tracker.tracker_manga_id.is_some()).is_some());
-                    manga.trackers.lock_mut().replace_cloned(result.trackers.iter().map(|t|Tracker{tracker: t.tracker.clone(), tracker_manga_id: t.tracker_manga_id.clone()}).collect());
+                    manga.num_tracked.set(result.trackers.iter().map(|tracker| if tracker.tracker_manga_id.is_some() { 1 } else { 0 }).sum());
+                    manga.trackers.lock_mut().replace_cloned(result.trackers.iter().map(|t| TrackerStatus{
+                        tracker: t.tracker.clone(), 
+                        tracker_manga_id: Mutable::new(t.tracker_manga_id.clone()),
+                        ..Default::default()
+                    }).collect());
                     manga.chapters.lock_mut().replace_cloned(result.chapters.iter().map(|chapter| Rc::new(Chapter{
                         id: chapter.id,
                         title: chapter.title.clone(),
@@ -171,8 +181,12 @@ impl Manga {
                         ..Default::default()
                     }));
                     manga.is_tracker_available.set(result.trackers.len() > 0);
-                    manga.is_tracked.set(result.trackers.iter().find(|tracker| tracker.tracker_manga_id.is_some()).is_some());
-                    manga.trackers.lock_mut().replace_cloned(result.trackers.iter().map(|t|Tracker{tracker: t.tracker.clone(), tracker_manga_id: t.tracker_manga_id.clone()}).collect());
+                    manga.num_tracked.set(result.trackers.iter().map(|tracker| if tracker.tracker_manga_id.is_some() { 1 } else { 0 }).sum());
+                    manga.trackers.lock_mut().replace_cloned(result.trackers.iter().map(|t| TrackerStatus{
+                        tracker: t.tracker.clone(), 
+                        tracker_manga_id: Mutable::new(t.tracker_manga_id.clone()),
+                        ..Default::default()
+                    }).collect());
                     manga.chapters.lock_mut().replace_cloned(result.chapters.iter().map(|chapter| Rc::new(Chapter{
                         id: chapter.id,
                         title: chapter.title.clone(),
@@ -656,10 +670,10 @@ impl Manga {
                         }),
                         html!("span", {
                             .style("margin-left", "0.5rem")
-                            .text_signal(manga.is_tracked.signal_cloned().map(|is_tracked| if is_tracked {
-                                "Tracked"
+                            .text_signal(manga.num_tracked.signal_cloned().map(|num_tracked| if num_tracked > 0 {
+                                format!("{num_tracked} Tracked")
                             } else {
-                                "Track"
+                                "Track".to_string()
                             }))
                         })
                     ])
@@ -952,13 +966,15 @@ impl Manga {
             .child_signal(manga_page.select_state.signal_cloned().map(clone!(manga_page => move |select_state| {
                 match select_state {
                     SelectState::Tracker => {
-                        let trackers = manga_page.trackers.lock_ref().to_owned();
-                        info!("render select track: {trackers:?}");
-                        Some(SelectTrackMangaModal::new(trackers, manga_page.id.get(), manga_page.title.get_cloned().unwrap()).render())
+                        Some(SelectTrackMangaModal::new(manga_page.id.get(), manga_page.title.get_cloned().unwrap()).render(clone!(manga_page => move || {
+                            Self::fetch_detail(manga_page.clone(), false);
+                            manga_page.select_state.set(SelectState::None);                          
+                        })))
                     }
                     SelectState::Category => {
                         Some(SelectCategoryModal::new().render(clone!(manga_page => move |category_ids: Vec<i64>| {
                             Self::add_to_library(manga_page.clone(), category_ids);
+                            manga_page.select_state.set(SelectState::None);    
                         })))
                     }
                     _ => None
