@@ -290,9 +290,9 @@ impl LibraryMutationRoot {
             .update_page_read_at(user.sub, chapter_id, page, is_complete)
             .await?;
 
-        if is_complete {
-            let chapter = mangadb.get_chapter_by_id(chapter_id).await?;
-
+        let chapter = mangadb.get_chapter_by_id(chapter_id).await?;
+        // TODO: nepnep source have weird number, don't update tracker status for them for now
+        if is_complete && chapter.source_id != 3 && chapter.source_id != 4 {
             let trackers = mangadb
                 .get_tracker_manga_id(user.sub, chapter.manga_id)
                 .await?;
