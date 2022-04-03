@@ -25,6 +25,7 @@ async-graphql = { version = "3.0.7", features = [
     "apollo_tracing",
     "chrono",
     "dataloader",
+    "log",
 ] }
 async-graphql-axum = { version = "3.0.7", optional = true }
 axum = { version = "0.4.3", features = ["headers"], optional = true }

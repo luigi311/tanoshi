@@ -14,7 +14,9 @@ use crate::{
 };
 use tanoshi_vm::extension::SourceBus;
 
-use async_graphql::{dataloader::DataLoader, EmptySubscription, MergedObject, Schema};
+use async_graphql::{
+    dataloader::DataLoader, extensions::Logger, EmptySubscription, MergedObject, Schema,
+};
 
 pub type TanoshiSchema = Schema<QueryRoot, MutationRoot, EmptySubscription>;
 
@@ -55,6 +57,7 @@ pub fn build(
         EmptySubscription::default(),
     )
     // .extension(ApolloTracing)
+    .extension(Logger)
     .data(DataLoader::new(
         DatabaseLoader {
             mangadb: mangadb.clone(),

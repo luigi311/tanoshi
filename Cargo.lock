@@ -221,6 +221,7 @@ dependencies = [
  "futures-util",
  "http",
  "indexmap",
+ "log",
  "lru",
  "mime",
  "multer",
