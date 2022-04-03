@@ -101,21 +101,7 @@ impl UpdatesWorker {
                 }
             };
 
-            let chapters = if let Some(last_uploaded_chapter) = last_uploaded_chapter {
-                chapters
-                    .into_iter()
-                    .filter(|ch| ch.uploaded > last_uploaded_chapter)
-                    .collect()
-            } else {
-                chapters
-            };
-
-            info!(
-                "Found: {} has {} new chapters",
-                item.manga.title,
-                chapters.len()
-            );
-
+            let mut new_chapter_count = 0;
             for chapter in chapters {
                 let chapter_id = match self.mangadb.insert_chapter(&chapter).await {
                     Ok(chapter_id) => chapter_id,
@@ -124,6 +110,14 @@ impl UpdatesWorker {
                         continue;
                     }
                 };
+
+                if let Some(last_uploaded_chapter) = last_uploaded_chapter {
+                    if chapter.uploaded < last_uploaded_chapter {
+                        continue;
+                    }
+                }
+
+                new_chapter_count += 1;
 
                 #[cfg(feature = "desktop")]
                 if let Err(e) = self
@@ -158,6 +152,11 @@ impl UpdatesWorker {
                         .unwrap();
                 }
             }
+
+            info!(
+                "Found: {} has {new_chapter_count} new chapters",
+                item.manga.title,
+            );
 
             tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
         }
