@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use anyhow::Result;
 use chrono::NaiveDateTime;
 use oauth2::{
@@ -107,6 +109,7 @@ impl MyAnimeList {
             .query(&[
                 ("q", q),
                 ("fields", fields),
+                ("nsfw", "true".to_string()),
                 ("limit", format!("{limit}")),
                 ("offset", format!("{offset}")),
             ])
@@ -129,12 +132,32 @@ impl MyAnimeList {
                 "https://api.myanimelist.net/v2/manga/{tracker_manga_id}"
             ))
             .bearer_auth(token)
-            .query(&[("fields", fields)])
+            .query(&[("fields", &fields)])
             .send()
             .await?
             .json()
             .await?;
 
         Ok(res)
+    }
+
+    pub async fn update_my_list_status(
+        &self,
+        token: String,
+        tracker_manga_id: String,
+        params: &[(&str, &str)],
+    ) -> Result<()> {
+        let params: HashMap<&str, &str> = params.iter().map(|param| param.to_owned()).collect();
+
+        self.api_client
+            .patch(format!(
+                "https://api.myanimelist.net/v2/manga/{tracker_manga_id}/my_list_status"
+            ))
+            .bearer_auth(token)
+            .form(&params)
+            .send()
+            .await?;
+
+        Ok(())
     }
 }

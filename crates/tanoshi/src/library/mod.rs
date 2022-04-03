@@ -1,6 +1,7 @@
 use crate::{
     catalogue::Manga,
-    db::{model, MangaDatabase},
+    db::{model, MangaDatabase, UserDatabase},
+    tracker::{myanimelist, MyAnimeList},
     user::Claims,
     utils::{decode_cursor, encode_cursor},
 };
@@ -283,14 +284,57 @@ impl LibraryMutationRoot {
         let user = ctx
             .data::<Claims>()
             .map_err(|_| "token not exists, please login")?;
-        match ctx
-            .data::<MangaDatabase>()?
+
+        let mangadb = ctx.data::<MangaDatabase>()?;
+        let rows = mangadb
             .update_page_read_at(user.sub, chapter_id, page, is_complete)
-            .await
-        {
-            Ok(rows) => Ok(rows),
-            Err(err) => Err(format!("error update page read_at: {}", err).into()),
+            .await?;
+
+        if is_complete {
+            let chapter = mangadb.get_chapter_by_id(chapter_id).await?;
+
+            let trackers = mangadb
+                .get_tracker_manga_id(user.sub, chapter.manga_id)
+                .await?;
+            for tracker in trackers {
+                match (
+                    tracker.tracker.as_str(),
+                    tracker.tracker_manga_id.to_owned(),
+                ) {
+                    (myanimelist::NAME, Some(tracker_manga_id)) => {
+                        let tracker_token = ctx
+                            .data::<UserDatabase>()?
+                            .get_user_tracker_token(myanimelist::NAME, user.sub)
+                            .await?;
+                        let mal_client = ctx.data::<MyAnimeList>()?;
+                        let tracker_data = mal_client
+                            .get_manga_details(
+                                tracker_token.access_token.clone(),
+                                tracker_manga_id.to_owned(),
+                                "my_list_status".to_string(),
+                            )
+                            .await?;
+
+                        if let Some(status) = tracker_data.my_list_status {
+                            if chapter.number < status.num_chapters_read as f64 {
+                                continue;
+                            }
+                        }
+
+                        mal_client
+                            .update_my_list_status(
+                                tracker_token.access_token,
+                                tracker_manga_id,
+                                &[("num_chapters_read", &format!("{}", chapter.number))],
+                            )
+                            .await?;
+                    }
+                    (_, _) => {}
+                }
+            }
         }
+
+        Ok(rows)
     }
 
     async fn mark_chapter_as_read(
