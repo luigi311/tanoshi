@@ -1,5 +1,5 @@
 use crate::{
-    common::{snackbar, Modal},
+    common::{snackbar, Modal, Spinner},
     query,
     utils::AsyncLoader,
 };
@@ -318,6 +318,7 @@ impl SelectTrackMangaModal {
                         Some(select.render_manga_list(&tracker))
                     }
                 })))
+                .child_signal(select.loader.is_loading().map(|is_loading| is_loading.then(|| Spinner::render_spinner(true))))
             })],
         )
     }
