@@ -213,6 +213,7 @@ impl TrackingRoot {
                         Some(TrackerStatus {
                             tracker: tracker.tracker.to_owned(),
                             tracker_manga_id: Some(tracker_manga_id),
+                            tracker_manga_title: Some(tracker_manga_title),
                             ..Default::default()
                         })
                     }
