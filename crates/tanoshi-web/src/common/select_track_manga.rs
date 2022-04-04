@@ -10,7 +10,7 @@ use futures_signals::{
     signal_vec::{MutableVec, SignalVecExt},
 };
 use std::rc::Rc;
-use web_sys::HtmlInputElement;
+use web_sys::{HtmlInputElement, HtmlSelectElement};
 
 #[derive(Debug, Default, Clone)]
 pub struct TrackerStatus {
@@ -124,17 +124,45 @@ impl SelectTrackMangaModal {
     }
 
     pub fn untrack_manga(self: &Rc<Self>, manga_id: i64, tracker: String) {
-        let select = self.clone();
-        self.loader.load(clone!(select => async move {
+        self.loader.load(async move {
             match query::untrack_manga(manga_id, tracker).await {
                 Ok(_) => {
-                    select.fetch_manga_tracker_status();
+
                 }
                 Err(e) => {
                     snackbar::show(format!("failed to add manga to tracker {}", e));
                 }
             }
-        }));
+        });
+    }
+
+    pub fn update_tracker_status(self: &Rc<Self>,
+        tracker: String,
+        tracker_manga_id: String,
+        status: Option<String>,
+        score: Option<i64>,
+        num_chapters_read: Option<i64>,
+        start_date: Option<String>,
+        finish_date: Option<String>,) {
+        self.loader.load(async move {
+            match query::update_tracker_status(
+                tracker, 
+                tracker_manga_id, 
+                status, 
+                score, 
+                num_chapters_read, 
+                start_date,
+                finish_date
+                ).await {
+                Ok(_) => {
+
+                }
+                Err(e) => {
+                    snackbar::show(format!("failed to add manga to tracker {}", e));
+                }
+            }
+           
+        });
     }
 
     pub fn render_header<F>(self: &Rc<Self>, f: F) -> Dom where F: Fn() + Clone + 'static {
@@ -292,6 +320,200 @@ impl SelectTrackMangaModal {
                         })))
                     })
                 ])
+                .child_signal(tracker.tracker_manga_id.signal_cloned().map(clone!(select, tracker => move |tracker_manga_id| if let Some(tracker_manga_id) = tracker_manga_id {
+                    Some(html!("table", {
+                            .style("width", "100%")
+                            .style("padding", "0.25rem")
+                            .style("background-color", "var(--background-color-100)")
+                            .style("border", "var(--list-group-border)")
+                            .style("border-radius", "0.375rem")
+                            .children(&mut [
+                                html!("tr", {
+                                    .children(&mut [
+                                        html!("td", {
+                                            .style("width", "16.6%")
+                                        }),
+                                        html!("td", {
+                                            .style("width", "16.6%")
+                                        }),
+                                        html!("td", {
+                                            .style("width", "16.6%")
+                                        }),
+                                        html!("td", {
+                                            .style("width", "16.6%")
+                                        }),
+                                        html!("td", {
+                                            .style("width", "16.6%")
+                                        }),
+                                        html!("td", {
+                                            .style("width", "16.6%")
+                                        }),
+                                    ])
+                                }),
+                                html!("tr", {
+                                    .children(&mut [
+                                        html!("td", {
+                                            .attribute("colspan", "2")
+                                            .children(&mut [
+                                                html!("select" => HtmlSelectElement, {
+                                                    .style_important("background-color", "var(--background-color-100)")
+                                                    .style_important("width", "100%")
+                                                    .style_important("padding", "initial")
+                                                    .style_important("text-align", "center")
+                                                    .style_important("border", "0px")
+                                                    .attribute("type", "text")
+                                                    .attribute("placeholder", "Status")
+                                                    .children(&mut [
+                                                        html!("option", {
+                                                            .property("value", "")
+                                                            .attribute("disabled", "disabled")
+                                                            .attribute_signal("selected", tracker.status.signal_cloned().map(|status| status.is_none().then(|| "true")))
+                                                        }),
+                                                        html!("option", {
+                                                            .property("value", "reading")
+                                                            .text("Reading")
+                                                            .attribute_signal("selected", tracker.status.signal_cloned().map(|status| status.and_then(|s| (s == "reading").then(|| "true"))))
+                                                        }),
+                                                        html!("option", {
+                                                            .property("value", "completed")
+                                                            .text("Completed")
+                                                            .attribute_signal("selected", tracker.status.signal_cloned().map(|status| status.and_then(|s| (s == "completed").then(|| "true"))))
+                                                        }),
+                                                        html!("option", {
+                                                            .property("value", "on_hold")
+                                                            .text("On hold")
+                                                            .attribute_signal("selected", tracker.status.signal_cloned().map(|status| status.and_then(|s| (s == "on_hold").then(|| "true"))))
+                                                        }),
+                                                        html!("option", {
+                                                            .property("value", "dropped")
+                                                            .text("Dropped")
+                                                            .attribute_signal("selected", tracker.status.signal_cloned().map(|status| status.and_then(|s| (s == "dropped").then(|| "true"))))
+                                                        }),
+                                                        html!("option", {
+                                                            .property("value", "plan_to_read")
+                                                            .text("Plan to read")
+                                                            .attribute_signal("selected", tracker.status.signal_cloned().map(|status| status.and_then(|s| (s == "plan_to_read").then(|| "true"))))
+                                                        })
+                                                    ])
+                                                    .with_node!(el => {
+                                                        .event(clone!(select, el, tracker, tracker_manga_id => move |_: events::Change| {
+                                                            let value = el.value();
+                                                            info!("status {value}");
+                                                            select.update_tracker_status(
+                                                                tracker.tracker.clone(), 
+                                                                tracker_manga_id.clone(),
+                                                                Some(value),
+                                                                None,
+                                                                None,
+                                                                None,
+                                                                None,
+                                                            );
+                                                        }))
+                                                    })
+                                                })
+                                            ])
+                                        }),
+                                        html!("td", {
+                                            .attribute("colspan", "2")
+                                            .children(&mut [
+                                                html!("input" => HtmlInputElement, {
+                                                    .style_important("background-color", "var(--background-color-100)")
+                                                    .style_important("width", "100%")
+                                                    .style_important("padding", "initial")
+                                                    .style_important("text-align", "center")
+                                                    .attribute("type", "number")
+                                                    .attribute("placeholder", "Chapter")
+                                                    .property_signal("value", tracker.num_chapters_read.signal_cloned().map(|num_chapters_read| num_chapters_read.map(|num_chapters_read| format!("{num_chapters_read}")).unwrap_or_else(|| "".to_string())))
+                                                    .with_node!(input => {
+                                                        .event(clone!(select, input, tracker, tracker_manga_id => move |_: events::Change| {
+                                                            if let Ok(value) = input.value().parse::<i64>() {
+                                                                info!("status {value}");
+                                                                select.update_tracker_status(
+                                                                    tracker.tracker.clone(), 
+                                                                    tracker_manga_id.clone(),
+                                                                    None,
+                                                                    None,
+                                                                    Some(value),
+                                                                    None,
+                                                                    None,
+                                                                );
+                                                            }
+                                                            
+                                                        }))
+                                                    })
+                                                })
+                                            ])
+                                        }),
+                                        html!("td", {
+                                            .attribute("colspan", "2")
+                                            .children(&mut [
+                                                html!("input" => HtmlInputElement, {
+                                                    .style_important("background-color", "var(--background-color-100)")
+                                                    .style_important("width", "100%")
+                                                    .style_important("padding", "initial")
+                                                    .style_important("text-align", "center")
+                                                    .attribute("type", "number")
+                                                    .attribute("placeholder", "Score")
+                                                    .property_signal("value", tracker.score.signal_cloned().map(|score| score.map(|score| format!("{score}")).unwrap_or_else(|| "".to_string())))
+                                                    .with_node!(input => {
+                                                        .event(clone!(select, input, tracker, tracker_manga_id => move |_: events::Change| {
+                                                            if let Ok(value) = input.value().parse::<i64>() {
+                                                                info!("status {value}");
+                                                                select.update_tracker_status(
+                                                                    tracker.tracker.clone(), 
+                                                                    tracker_manga_id.clone(),
+                                                                    None,
+                                                                    Some(value),
+                                                                    None,
+                                                                    None,
+                                                                    None,
+                                                                );
+                                                            }
+                                                            
+                                                        }))
+                                                    })
+                                                })
+                                            ])
+                                        })
+                                    ])
+                                }),
+                                // html!("tr", {
+                                //     .children(&mut [
+                                //         html!("td", {
+                                //             .attribute("colspan", "3")
+                                //             .children(&mut [
+                                //                 html!("input" => HtmlInputElement, {
+                                //                     .style_important("background-color", "var(--background-color-100)")
+                                //                     .style_important("width", "100%")
+                                //                     .style_important("padding", "initial")
+                                //                     .style_important("text-align", "center")
+                                //                     .attribute("type", "date")
+                                //                     .attribute("placeholder", "Start Date")
+                                //                     .property_signal("value", tracker.start_date.signal_cloned().map(|start_date| start_date.map(|start_date| format!("{start_date}")).unwrap_or_else(|| "".to_string())))
+                                //                 })
+                                //             ])
+                                //         }),
+                                //         html!("td", {
+                                //             .attribute("colspan", "3")
+                                //             .children(&mut [
+                                //                 html!("input" => HtmlInputElement, {
+                                //                     .style_important("background-color", "var(--background-color-100)")
+                                //                     .style_important("width", "100%")
+                                //                     .style_important("padding", "initial")
+                                //                     .style_important("text-align", "center")
+                                //                     .attribute("type", "date")
+                                //                     .attribute("placeholder", "Finish Date")
+                                //                     .property_signal("value", tracker.finish_date.signal_cloned().map(|finish_date| finish_date.map(|finish_date| format!("{finish_date}")).unwrap_or_else(|| "".to_string())))
+                                //                 })
+                                //             ])
+                                //         }),
+                                //     ])
+                                // }),
+                            ])
+                        }))
+                } else {
+                    None
+                })))
             }))))
         })
     }

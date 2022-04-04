@@ -994,3 +994,36 @@ pub async fn fetch_manga_tracker_status(
 
     Ok(data.manga_tracker_status)
 }
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/schema.graphql",
+    query_path = "graphql/update_tracker_status.graphql",
+    response_derives = "Debug"
+)]
+pub struct UpdateTrackerStatus;
+
+pub async fn update_tracker_status(
+    tracker: String,
+    tracker_manga_id: String,
+    status: Option<String>,
+    score: Option<i64>,
+    num_chapters_read: Option<i64>,
+    start_date: Option<String>,
+    finish_date: Option<String>,
+) -> Result<(), Box<dyn Error>> {
+    let var = update_tracker_status::Variables {
+        tracker,
+        tracker_manga_id,
+        status: update_tracker_status::TrackerStatusInput {
+            status,
+            score,
+            numChaptersRead: num_chapters_read,
+            startDate: start_date,
+            finishDate: finish_date,
+        },
+    };
+    let _ = post_graphql::<UpdateTrackerStatus>(var).await?;
+
+    Ok(())
+}

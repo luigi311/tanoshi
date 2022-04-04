@@ -166,6 +166,11 @@ type MutationRoot {
   updateChapterPriority(id: Int!, priority: Int!): Boolean!
   trackManga(tracker: String!, mangaId: Int!, trackerMangaId: String!): Int!
   untrackManga(tracker: String!, mangaId: Int!): Int!
+  updateTrackerStatus(
+    tracker: String!
+    trackerMangaId: String!
+    status: TrackerStatusInput!
+  ): Boolean!
 }
 
 # ISO 8601 combined date and time without timezone.
@@ -402,6 +407,14 @@ type TrackerStatus {
   tracker: String!
   trackerMangaId: String
   trackerMangaTitle: String
+  status: String
+  score: Int
+  numChaptersRead: Int
+  startDate: NaiveDateTime
+  finishDate: NaiveDateTime
+}
+
+input TrackerStatusInput {
   status: String
   score: Int
   numChaptersRead: Int

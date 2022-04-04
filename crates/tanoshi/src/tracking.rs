@@ -1,5 +1,5 @@
 use anyhow::anyhow;
-use async_graphql::{Context, Object, Result, SimpleObject};
+use async_graphql::{Context, InputObject, Object, Result, SimpleObject};
 use chrono::NaiveDateTime;
 use oauth2::{reqwest::async_http_client, AuthorizationCode, CsrfToken, PkceCodeVerifier};
 use serde::Deserialize;
@@ -56,6 +56,15 @@ pub struct TrackerStatus {
     pub tracker: String,
     pub tracker_manga_id: Option<String>,
     pub tracker_manga_title: Option<String>,
+    pub status: Option<String>,
+    pub score: Option<i64>,
+    pub num_chapters_read: Option<i64>,
+    pub start_date: Option<NaiveDateTime>,
+    pub finish_date: Option<NaiveDateTime>,
+}
+
+#[derive(Debug, Default, InputObject)]
+pub struct TrackerStatusInput {
     pub status: Option<String>,
     pub score: Option<i64>,
     pub num_chapters_read: Option<i64>,
@@ -271,5 +280,50 @@ impl TrackingMutationRoot {
             .data::<MangaDatabase>()?
             .delete_tracker_manga(user.sub, manga_id, &tracker)
             .await?)
+    }
+
+    async fn update_tracker_status(
+        &self,
+        ctx: &Context<'_>,
+        tracker: String,
+        tracker_manga_id: String,
+        status: TrackerStatusInput,
+    ) -> Result<bool> {
+        let user = ctx
+            .data::<Claims>()
+            .map_err(|_| "token not exists, please login")?;
+
+        match tracker.as_str() {
+            myanimelist::NAME => {
+                let tracker_token = ctx
+                    .data::<UserDatabase>()?
+                    .get_user_tracker_token(myanimelist::NAME, user.sub)
+                    .await?;
+
+                let mut params = vec![];
+                if let Some(status) = status.status.as_ref() {
+                    params.push(("status", status.to_owned()));
+                }
+                if let Some(score) = status.score {
+                    params.push(("score", format!("{score}")));
+                }
+                if let Some(num_chapters_read) = status.num_chapters_read {
+                    params.push(("num_chapters_read", format!("{num_chapters_read}")));
+                }
+                if let Some(start_date) = status.start_date.as_ref() {
+                    params.push(("start_date", format!("{start_date}")));
+                }
+                if let Some(finish_date) = status.finish_date.as_ref() {
+                    params.push(("finish_date", format!("{finish_date}")));
+                }
+
+                ctx.data::<MyAnimeList>()?
+                    .update_my_list_status(tracker_token.access_token, tracker_manga_id, &params)
+                    .await?;
+            }
+            _ => {}
+        }
+
+        Ok(true)
     }
 }

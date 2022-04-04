@@ -1,12 +1,10 @@
-use std::collections::HashMap;
-
 use anyhow::Result;
 use chrono::NaiveDateTime;
 use oauth2::{
     basic::BasicClient, AuthUrl, ClientId, ClientSecret, CsrfToken, PkceCodeChallenge, RedirectUrl,
     TokenUrl,
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use super::Session;
 
@@ -141,20 +139,18 @@ impl MyAnimeList {
         Ok(res)
     }
 
-    pub async fn update_my_list_status(
+    pub async fn update_my_list_status<T: Serialize + ?Sized>(
         &self,
         token: String,
         tracker_manga_id: String,
-        params: &[(&str, &str)],
+        params: &T,
     ) -> Result<()> {
-        let params: HashMap<&str, &str> = params.iter().map(|param| param.to_owned()).collect();
-
         self.api_client
             .patch(format!(
                 "https://api.myanimelist.net/v2/manga/{tracker_manga_id}/my_list_status"
             ))
             .bearer_auth(token)
-            .form(&params)
+            .form(params)
             .send()
             .await?;
 
