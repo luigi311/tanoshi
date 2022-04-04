@@ -62,6 +62,7 @@ impl Modal {
                     .class_signal("animate__slideOutDown", self.show.signal().map(|x| !x))
                     .style("padding-bottom", "calc(env(safe-area-inset-bottom) + 0.5rem)")
                     .style("max-height", "80vh")
+                    .style("min-height", "5vh")
                     .visible_signal(self.first_render.signal().map(|x| !x))
                     .children(children)
                 })
