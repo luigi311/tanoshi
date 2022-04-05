@@ -1,5 +1,6 @@
 use std::{collections::HashMap, str::FromStr};
 
+use chrono::NaiveDateTime;
 use serde::Deserialize;
 
 use tanoshi_lib::prelude::Version;
@@ -75,7 +76,8 @@ impl UpdatesWorker {
                 .mangadb
                 .get_last_uploaded_chapters_by_manga_id(item.manga.id)
                 .await
-                .map(|ch| ch.uploaded);
+                .map(|ch| ch.uploaded)
+                .unwrap_or_else(|| NaiveDateTime::from_timestamp(0, 0));
 
             debug!("Checking updates: {}", item.manga.title);
 
@@ -111,11 +113,14 @@ impl UpdatesWorker {
                     }
                 };
 
-                if let Some(last_uploaded_chapter) = last_uploaded_chapter {
-                    if chapter.uploaded < last_uploaded_chapter {
-                        continue;
-                    }
+                if chapter.uploaded <= last_uploaded_chapter {
+                    continue;
                 }
+
+                info!(
+                    "{} {} {} {}",
+                    item.manga.id, chapter.id, chapter.uploaded, last_uploaded_chapter
+                );
 
                 new_chapter_count += 1;
 
