@@ -102,12 +102,7 @@ impl Notifier {
         chapter_id: i64,
     ) -> Result<(), anyhow::Error> {
         let user = self.userdb.get_user_by_id(user_id).await?;
-        if let Some(user_key) = user.pushover_user_key {
-            let pushover = self
-                .pushover
-                .as_ref()
-                .ok_or_else(|| anyhow::anyhow!("pushover not set"))?;
-
+        if let Some((user_key, pushover)) = user.pushover_user_key.zip(self.pushover.as_ref()) {
             if let Some(base_url) = GLOBAL_CONFIG.get().and_then(|cfg| cfg.base_url.clone()) {
                 pushover
                     .send_notification_with_title_and_url(
