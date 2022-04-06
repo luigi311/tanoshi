@@ -1,12 +1,9 @@
-use anyhow::anyhow;
 use async_graphql::{Context, InputObject, Object, Result, SimpleObject};
 use chrono::NaiveDateTime;
-use oauth2::{reqwest::async_http_client, AuthorizationCode, CsrfToken, PkceCodeVerifier};
-use serde::Deserialize;
 
 use crate::{
     db::{model, MangaDatabase, UserDatabase},
-    tracker::{self, myanimelist, MyAnimeList},
+    tracker::{anilist, myanimelist, AniList, MyAnimeList},
     user::Claims,
 };
 
@@ -15,40 +12,6 @@ pub struct Session {
     pub authorize_url: String,
     pub csrf_state: String,
     pub pkce_code_verifier: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct Token {
-    pub token_type: String,
-    pub access_token: String,
-    pub refresh_token: String,
-    pub expires_in: i64,
-}
-
-async fn exchange_code(
-    code: String,
-    state: String,
-    csrf_state: String,
-    pkce_code_verifier: Option<String>,
-    client: &MyAnimeList,
-) -> anyhow::Result<Token> {
-    let code = AuthorizationCode::new(code);
-    let _state = CsrfToken::new(state);
-
-    let _csrf_state = CsrfToken::new(csrf_state);
-    let pkce_code_verifier = pkce_code_verifier
-        .map(|value| PkceCodeVerifier::new(value.to_owned()))
-        .ok_or_else(|| anyhow!("no pkce-code-verifier cookie"))?;
-
-    let token = client
-        .oauth_client
-        .exchange_code(code)
-        .set_pkce_verifier(pkce_code_verifier)
-        .request_async(async_http_client)
-        .await?;
-
-    let token_str = serde_json::to_string(&token)?;
-    Ok(serde_json::from_str(&token_str)?)
 }
 
 #[derive(Debug, Default, SimpleObject)]
@@ -107,13 +70,14 @@ impl TrackingRoot {
         code: String,
         state: String,
         csrf_state: String,
-        pkce_code_verifier: Option<String>,
+        pkce_code_verifier: String,
     ) -> Result<String> {
         let user = ctx
             .data::<Claims>()
             .map_err(|_| "token not exists, please login")?;
         let client = ctx.data::<MyAnimeList>()?;
-        let token = exchange_code(code, state, csrf_state, pkce_code_verifier, client)
+        let token = client
+            .exchange_code(code, state, csrf_state, pkce_code_verifier)
             .await
             .map(|token| model::Token {
                 token_type: token.token_type,
@@ -122,7 +86,38 @@ impl TrackingRoot {
                 expires_in: token.expires_in,
             })?;
         ctx.data::<UserDatabase>()?
-            .insert_tracker_credential(user.sub, tracker::myanimelist::NAME, token)
+            .insert_tracker_credential(user.sub, myanimelist::NAME, token)
+            .await?;
+        Ok("Success".to_string())
+    }
+
+    async fn anilist_login_start(&self, ctx: &Context<'_>) -> Result<Session> {
+        let _ = ctx
+            .data::<Claims>()
+            .map_err(|_| "token not exists, please login")?;
+        let session = ctx.data::<AniList>()?.get_authorize_url().unwrap();
+        Ok(Session {
+            authorize_url: session.authorize_url,
+            csrf_state: session.csrf_state.secret().to_owned(),
+            pkce_code_verifier: session
+                .pkce_code_verifier
+                .map(|val| val.secret().to_owned()),
+        })
+    }
+
+    async fn anilist_login_end(&self, ctx: &Context<'_>, code: String) -> Result<String> {
+        let user = ctx
+            .data::<Claims>()
+            .map_err(|_| "token not exists, please login")?;
+        let client = ctx.data::<AniList>()?;
+        let token = client.exchange_code(code).await.map(|token| model::Token {
+            token_type: token.token_type,
+            access_token: token.access_token,
+            refresh_token: token.refresh_token,
+            expires_in: token.expires_in,
+        })?;
+        ctx.data::<UserDatabase>()?
+            .insert_tracker_credential(user.sub, anilist::NAME, token)
             .await?;
         Ok("Success".to_string())
     }
@@ -141,7 +136,7 @@ impl TrackingRoot {
             myanimelist::NAME => {
                 let tracker_token = ctx
                     .data::<UserDatabase>()?
-                    .get_user_tracker_token(tracker::myanimelist::NAME, user.sub)
+                    .get_user_tracker_token(myanimelist::NAME, user.sub)
                     .await?;
 
                 let manga_list = ctx
@@ -166,6 +161,14 @@ impl TrackingRoot {
                         status: m.status,
                     })
                     .collect())
+            }
+            anilist::NAME => {
+                let tracker_token = ctx
+                    .data::<UserDatabase>()?
+                    .get_user_tracker_token(anilist::NAME, user.sub)
+                    .await?;
+
+                todo!()
             }
             _ => Err("tracker not available".into()),
         }

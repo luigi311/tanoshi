@@ -18,6 +18,7 @@ pub struct Profile {
     telegram_chat_id: Mutable<Option<String>>,
     pushover_user_key: Mutable<Option<String>>,
     myanimelist_status: Mutable<bool>,
+    anilist_status: Mutable<bool>,
     pub loader: AsyncLoader,
 }
 
@@ -30,6 +31,7 @@ impl Profile {
             telegram_chat_id: Mutable::new(None),
             pushover_user_key: Mutable::new(None),
             myanimelist_status: Mutable::new(false),
+            anilist_status: Mutable::new(false),
             loader: AsyncLoader::new(),
         })
     }
@@ -40,7 +42,8 @@ impl Profile {
                 Ok(result) => {
                     profile.telegram_chat_id.set(result.telegram_chat_id.map(|id| id.to_string()));
                     profile.pushover_user_key.set(result.pushover_user_key);
-                    profile.myanimelist_status.set(result.myanimelist_status)
+                    profile.myanimelist_status.set(result.myanimelist_status);
+                    profile.anilist_status.set(result.anilist_status);
                 },
                 Err(err) => {
                     snackbar::show(format!("{}", err));
@@ -344,7 +347,9 @@ impl Profile {
                     .text("Tracker")
                 }),
                 html!("div", {
+                    .attribute("id", "myanimelist")
                     .style("display", "flex")
+                    .style("margin-bottom", "0.5rem")
                     .children(&mut [
                         html!("div", {
                             .style("display", "flex")
@@ -376,6 +381,46 @@ impl Profile {
                         Some(html!("a", {
                             .class("button")
                             .attribute("href", &Route::TrackerLogin("myanimelist".to_string()).url())
+                            .attribute("target", "_blank")
+                            .text("Login")
+                        }))
+                    })))
+                }),
+                html!("div", {
+                    .attribute("id", "anilist")
+                    .style("display", "flex")
+                    .style("margin-bottom", "0.5rem")
+                    .children(&mut [
+                        html!("div", {
+                            .style("display", "flex")
+                            .style("align-items", "center")
+                            .style("width", "100%")
+                            .children(&mut [
+                                html!("img", {
+                                    .style("height", "20px")
+                                    .style("width", "20px")
+                                    .style("margin-right", "0.5rem")
+                                    .attribute("src", "https://www.gitbook.com/cdn-cgi/image/width=40,height=40,fit=contain,dpr=1.5,format=auto/https%3A%2F%2F553834213-files.gitbook.io%2F~%2Ffiles%2Fv0%2Fb%2Fgitbook-legacy-files%2Fo%2Fspaces%252F-LHizcWWtVphqU90YAXO%252Favatar.png%3Fgeneration%3D1531944291782256%26alt%3Dmedia")
+                                }),
+                                html!("span", {
+                                    .text("AniList")
+                                })
+                            ])
+                        }),
+                    ])
+                    .child_signal(profile.anilist_status.signal_cloned().map(clone!(profile => move |status| if status {
+                        Some(html!("button", {
+                            .style("color", "red")
+                            .text("Logout")
+                            .event_with_options(&EventOptions::preventable(), clone!(profile => move |e: events::Click| {
+                                e.prevent_default();
+                                Self::myanimelist_logout(profile.clone());
+                            }))
+                        }))
+                    } else {
+                        Some(html!("a", {
+                            .class("button")
+                            .attribute("href", &Route::TrackerLogin("anilist".to_string()).url())
                             .attribute("target", "_blank")
                             .text("Login")
                         }))

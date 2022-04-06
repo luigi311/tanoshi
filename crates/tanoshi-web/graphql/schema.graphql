@@ -302,8 +302,10 @@ type QueryRoot {
     code: String!
     state: String!
     csrfState: String!
-    pkceCodeVerifier: String
+    pkceCodeVerifier: String!
   ): String!
+  anilistLoginStart: Session!
+  anilistLoginEnd(code: String!, state: String!, csrfState: String!): String!
   searchTrackerManga(tracker: String!, title: String!): [TrackerManga!]!
   mangaTrackerStatus(mangaId: Int!): [TrackerStatus!]!
 }
@@ -429,4 +431,5 @@ type User {
   telegramChatId: Int
   pushoverUserKey: String
   myanimelistStatus: Boolean!
+  anilistStatus: Boolean!
 }

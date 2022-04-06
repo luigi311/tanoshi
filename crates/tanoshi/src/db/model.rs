@@ -146,10 +146,10 @@ pub struct TrackingOauthSession {
 
 #[derive(Debug, Clone)]
 pub struct Token {
-    pub token_type: String,
+    pub token_type: Option<String>,
     pub access_token: String,
-    pub refresh_token: String,
-    pub expires_in: i64,
+    pub refresh_token: Option<String>,
+    pub expires_in: Option<i64>,
 }
 
 #[derive(Debug, Clone)]

@@ -42,7 +42,7 @@ pub enum Route {
     TrackerRedirect {
         tracker: String,
         code: String,
-        state: String,
+        state: Option<String>,
     },
     NotFound,
 }
@@ -157,7 +157,14 @@ impl Route {
                                 Route::TrackerRedirect {
                                     tracker: tracker.to_string(),
                                     code: code.unwrap(),
-                                    state: state.unwrap(),
+                                    state,
+                                }
+                            }
+                            "anilist" if code.is_some() && state.is_some() => {
+                                Route::TrackerRedirect {
+                                    tracker: tracker.to_string(),
+                                    code: code.unwrap(),
+                                    state,
                                 }
                             }
                             _ => Route::NotFound,
@@ -225,8 +232,13 @@ impl Route {
             Route::TrackerRedirect {
                 tracker,
                 code,
-                state,
+                state: Some(state),
             } => format!("/tracker/{tracker}/redirect?code={code}&state={state}"),
+            Route::TrackerRedirect {
+                tracker,
+                code,
+                state: None,
+            } => format!("/tracker/{tracker}/redirect?code={code}"),
             Route::NotFound => "/notfound".to_string(),
         }
     }

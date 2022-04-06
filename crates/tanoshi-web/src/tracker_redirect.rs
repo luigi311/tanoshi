@@ -20,13 +20,13 @@ enum AuthorizationState {
 pub struct TrackerRedirect {
     tracker: String,
     code: String,
-    state: String,
+    state: Option<String>,
     authorization_state: Mutable<AuthorizationState>,
     loader: AsyncLoader,
 }
 
 impl TrackerRedirect {
-    pub fn new(tracker: String, code: String, state: String) -> Arc<Self> {
+    pub fn new(tracker: String, code: String, state: Option<String>) -> Arc<Self> {
         Arc::new(Self {
             tracker,
             code,
@@ -38,7 +38,14 @@ impl TrackerRedirect {
 
     fn fetch_myanimelist_login_end(self: Arc<Self>) {
         let code = self.code.clone();
-        let state = self.state.clone();
+        let state = if let Some(state) = self.state.clone() {
+            state
+        } else {
+            self.authorization_state
+                .set_neq(AuthorizationState::Failed(format!("no state code")));
+            return;
+        };
+
         let tracker_redirect = self.clone();
         self.loader.load(async move {
             let session_storage = session_storage();
@@ -66,9 +73,29 @@ impl TrackerRedirect {
         });
     }
 
+    fn fetch_anilist_login_end(self: Arc<Self>) {
+        let code = self.code.clone();
+        let tracker_redirect = self.clone();
+        self.loader.load(async move {
+            tracker_redirect
+                .authorization_state
+                .set_neq(AuthorizationState::Authorizing);
+
+            match query::anilist_login_end(code).await {
+                Ok(()) => tracker_redirect
+                    .authorization_state
+                    .set_neq(AuthorizationState::Success),
+                Err(e) => tracker_redirect
+                    .authorization_state
+                    .set_neq(AuthorizationState::Failed(format!("{e}"))),
+            }
+        });
+    }
+
     pub fn render(self: Arc<Self>) -> Dom {
         match self.tracker.as_str() {
             "myanimelist" => self.clone().fetch_myanimelist_login_end(),
+            "anilist" => self.clone().fetch_anilist_login_end(),
             _ => {}
         }
 

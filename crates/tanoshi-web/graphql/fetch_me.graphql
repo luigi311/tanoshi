@@ -6,5 +6,6 @@ query FetchMe {
     telegramChatId
     pushoverUserKey
     myanimelistStatus
+    anilistStatus
   }
 }

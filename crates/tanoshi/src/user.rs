@@ -77,8 +77,20 @@ impl User {
             .map_err(|_| "token not exists, please login")?;
         Ok(ctx
             .data::<UserDatabase>()?
-            .user_tracker_login_status(tracker::myanimelist::NAME, user.sub)
-            .await?)
+            .get_user_tracker_token(tracker::myanimelist::NAME, user.sub)
+            .await
+            .is_ok())
+    }
+
+    async fn anilist_status(&self, ctx: &Context<'_>) -> Result<bool> {
+        let user = ctx
+            .data::<Claims>()
+            .map_err(|_| "token not exists, please login")?;
+        Ok(ctx
+            .data::<UserDatabase>()?
+            .get_user_tracker_token(tracker::anilist::NAME, user.sub)
+            .await
+            .is_ok())
     }
 }
 

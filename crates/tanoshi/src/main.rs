@@ -28,7 +28,7 @@ use crate::{
     config::{Config, GLOBAL_CONFIG},
     notifier::pushover::Pushover,
     proxy::Proxy,
-    tracker::MyAnimeList,
+    tracker::{AniList, MyAnimeList},
 };
 use clap::Parser;
 use futures::future::OptionFuture;
@@ -142,6 +142,19 @@ async fn main() -> Result<(), anyhow::Error> {
             .ok()
         });
 
+    let al_client = config
+        .base_url
+        .clone()
+        .zip(config.anilist.clone())
+        .and_then(|(base_url, al_cfg)| {
+            AniList::new(
+                &base_url,
+                al_cfg.client_id.clone(),
+                al_cfg.client_secret.clone(),
+            )
+            .ok()
+        });
+
     let schema = schema::build(
         userdb.clone(),
         mangadb,
@@ -149,6 +162,7 @@ async fn main() -> Result<(), anyhow::Error> {
         download_tx,
         notifier,
         mal_client,
+        al_client,
     );
 
     let proxy = Proxy::new(config.secret.clone());

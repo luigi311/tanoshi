@@ -1,6 +1,9 @@
 pub mod myanimelist;
 pub use myanimelist::MyAnimeList;
 
+pub mod anilist;
+pub use anilist::AniList;
+
 use oauth2::{CsrfToken, PkceCodeVerifier};
 use serde::Deserialize;
 

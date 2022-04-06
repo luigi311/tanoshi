@@ -239,19 +239,6 @@ impl Db {
         })?)
     }
 
-    pub async fn user_tracker_login_status(&self, tracker: &str, user_id: i64) -> Result<bool> {
-        let mut conn = self.pool.acquire().await?;
-        let row = sqlx::query(
-            r#"SELECT COUNT(1) FROM tracker_credential WHERE user_id = ? AND tracker = ?"#,
-        )
-        .bind(user_id)
-        .bind(tracker)
-        .fetch_one(&mut conn)
-        .await?;
-
-        Ok(row.get::<i64, _>(0) > 0)
-    }
-
     pub async fn delete_user_tracker_login(&self, tracker: &str, user_id: i64) -> Result<u64> {
         let mut conn = self.pool.acquire().await?;
         sqlx::query("DELETE FROM tracker_credential WHERE user_id = ? AND tracker = ?")

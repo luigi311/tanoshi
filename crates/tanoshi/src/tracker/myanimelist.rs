@@ -1,12 +1,12 @@
 use anyhow::Result;
 use chrono::NaiveDateTime;
 use oauth2::{
-    basic::BasicClient, AuthUrl, ClientId, ClientSecret, CsrfToken, PkceCodeChallenge, RedirectUrl,
-    TokenUrl,
+    basic::BasicClient, reqwest::async_http_client, AuthUrl, AuthorizationCode, ClientId,
+    ClientSecret, CsrfToken, PkceCodeChallenge, PkceCodeVerifier, RedirectUrl, TokenUrl,
 };
 use serde::{Deserialize, Serialize};
 
-use super::Session;
+use super::{Session, Token};
 
 pub const NAME: &'static str = "myanimelist";
 
@@ -62,7 +62,7 @@ impl MyAnimeList {
             AuthUrl::new("https://myanimelist.net/v1/oauth2/authorize".to_string())?;
         let token_url = TokenUrl::new("https://myanimelist.net/v1/oauth2/token".to_string())?;
 
-        let redirect_url = RedirectUrl::new(format!("{base_url}/tracker/myanimelist/redirect"))?;
+        let redirect_url = RedirectUrl::new(format!("{base_url}/tracker/{NAME}/redirect"))?;
         let client = BasicClient::new(
             client_id,
             Some(client_secret),
@@ -90,6 +90,31 @@ impl MyAnimeList {
             csrf_state,
             pkce_code_verifier: Some(pkce_code_verifier),
         })
+    }
+
+    pub async fn exchange_code(
+        &self,
+        code: String,
+        state: String,
+        csrf_state: String,
+        pkce_code_verifier: String,
+    ) -> Result<Token> {
+        let code = AuthorizationCode::new(code);
+        let _state = CsrfToken::new(state);
+
+        let _csrf_state = CsrfToken::new(csrf_state);
+
+        let pkce_code_verifier = PkceCodeVerifier::new(pkce_code_verifier);
+
+        let token = self
+            .oauth_client
+            .exchange_code(code)
+            .set_pkce_verifier(pkce_code_verifier)
+            .request_async(async_http_client)
+            .await?;
+
+        let token_str = serde_json::to_string(&token)?;
+        Ok(serde_json::from_str(&token_str)?)
     }
 
     pub async fn get_manga_list(

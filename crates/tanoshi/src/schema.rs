@@ -7,7 +7,7 @@ use crate::{
     notification::NotificationRoot,
     notifier::Notifier,
     status::StatusRoot,
-    tracker::MyAnimeList,
+    tracker::{AniList, MyAnimeList},
     tracking::{TrackingMutationRoot, TrackingRoot},
     user::{UserMutationRoot, UserRoot},
     worker::downloads::DownloadSender,
@@ -50,6 +50,7 @@ pub fn build(
     download_tx: DownloadSender,
     notifier: Notifier,
     mal_client: Option<MyAnimeList>,
+    al_client: Option<AniList>,
 ) -> TanoshiSchema {
     let mut builder = Schema::build(
         QueryRoot::default(),
@@ -72,6 +73,10 @@ pub fn build(
 
     if let Some(mal_client) = mal_client {
         builder = builder.data(mal_client);
+    }
+
+    if let Some(al_client) = al_client {
+        builder = builder.data(al_client);
     }
 
     builder.finish()

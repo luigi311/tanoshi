@@ -24,6 +24,12 @@ pub struct MyAnimeListConfig {
     pub client_secret: String,
 }
 
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct AniListConfig {
+    pub client_id: String,
+    pub client_secret: String,
+}
+
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct LocalFolder {
     pub name: String,
@@ -66,6 +72,7 @@ pub struct Config {
     pub telegram: Option<TelegramConfig>,
     pub pushover: Option<PushoverConfig>,
     pub myanimelist: Option<MyAnimeListConfig>,
+    pub anilist: Option<AniListConfig>,
 }
 
 impl Default for Config {
@@ -86,6 +93,7 @@ impl Default for Config {
             telegram: None,
             pushover: None,
             myanimelist: None,
+            anilist: None,
         }
     }
 }

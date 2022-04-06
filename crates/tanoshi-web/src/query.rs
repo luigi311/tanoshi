@@ -922,6 +922,35 @@ pub async fn myanimelist_logout() -> Result<(), Box<dyn Error>> {
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "graphql/schema.graphql",
+    query_path = "graphql/anilist_login_start.graphql",
+    response_derives = "Debug"
+)]
+pub struct AnilistLoginStart;
+
+pub async fn anilist_login_start(
+) -> Result<anilist_login_start::AnilistLoginStartAnilistLoginStart, Box<dyn Error>> {
+    let var = anilist_login_start::Variables {};
+    let data = post_graphql::<AnilistLoginStart>(var).await?;
+    Ok(data.anilist_login_start)
+}
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/schema.graphql",
+    query_path = "graphql/anilist_login_end.graphql",
+    response_derives = "Debug"
+)]
+pub struct AnilistLoginEnd;
+
+pub async fn anilist_login_end(code: String) -> Result<(), Box<dyn Error>> {
+    let var = anilist_login_end::Variables { code };
+    let _ = post_graphql::<AnilistLoginEnd>(var).await?;
+    Ok(())
+}
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/schema.graphql",
     query_path = "graphql/search_tracker_manga.graphql",
     response_derives = "Debug"
 )]

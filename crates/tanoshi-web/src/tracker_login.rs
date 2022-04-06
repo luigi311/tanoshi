@@ -47,9 +47,26 @@ impl TrackerLogin {
         });
     }
 
+    fn fetch_anilist_login_start(self: Arc<Self>) {
+        self.loader.load(async move {
+            match query::anilist_login_start().await {
+                Ok(session) => {
+                    window()
+                        .location()
+                        .replace(&session.authorize_url)
+                        .unwrap_throw();
+                }
+                Err(e) => {
+                    snackbar::show(format!("error redirecting: {e}"));
+                }
+            }
+        });
+    }
+
     pub fn render(self: Arc<Self>) -> Dom {
         match self.tracker.as_str() {
             "myanimelist" => self.clone().fetch_myanimelist_login_start(),
+            "anilist" => self.clone().fetch_anilist_login_start(),
             _ => {}
         }
 
