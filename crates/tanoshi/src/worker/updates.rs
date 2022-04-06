@@ -105,6 +105,7 @@ impl UpdatesWorker {
 
             let mut new_chapter_count = 0;
             for chapter in chapters {
+                tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
                 let chapter_id = match self.mangadb.insert_chapter(&chapter).await {
                     Ok(chapter_id) => chapter_id,
                     Err(e) => {
