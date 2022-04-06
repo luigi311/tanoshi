@@ -2,36 +2,17 @@
 extern crate log;
 extern crate argon2;
 
-#[cfg(feature = "embed")]
-mod assets;
-mod catalogue;
-mod config;
-mod db;
-mod downloads;
-mod guard;
-mod library;
-mod loader;
-mod local;
-mod notification;
-mod notifier;
-mod proxy;
-mod schema;
-mod server;
-mod status;
-mod tracker;
-mod tracking;
-mod user;
-mod utils;
-mod worker;
-
-use crate::{
-    config::{Config, GLOBAL_CONFIG},
-    notifier::pushover::Pushover,
-    proxy::Proxy,
-    tracker::{AniList, MyAnimeList},
-};
 use clap::Parser;
 use futures::future::OptionFuture;
+use tanoshi::{
+    config::{self, Config, GLOBAL_CONFIG},
+    db, local,
+    notifier::{self, pushover::Pushover},
+    proxy::Proxy,
+    schema, server,
+    tracker::{AniList, MyAnimeList},
+    worker,
+};
 use tanoshi_vm::{extension::SourceBus, prelude::Source};
 
 use teloxide::prelude::RequesterExt;

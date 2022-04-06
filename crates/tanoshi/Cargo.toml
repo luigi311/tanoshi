@@ -7,6 +7,17 @@ description = "Tanoshi"
 repository = "https://github.com/faldez/tanoshi"
 license = "MIT"
 
+
+[lib]
+name = "tanoshi"
+path = "src/lib.rs"
+
+[[bin]]
+name = "tanoshi"
+path = "bin/tanoshi.rs"
+test = false
+bench = false
+
 [features]
 default = ["embed", "server"]
 embed = ["rust-embed"]
