@@ -1,6 +1,7 @@
-use crate::{config::GLOBAL_CONFIG, db::UserDatabase, guard::AdminGuard, tracker};
+use crate::{config::GLOBAL_CONFIG, db::UserDatabase, guard::AdminGuard};
 use async_graphql::{Context, InputObject, Object, Result};
 use rand::RngCore;
+use tracker;
 
 use jsonwebtoken::{EncodingKey, Header};
 use serde::{Deserialize, Serialize};

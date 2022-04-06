@@ -112,6 +112,7 @@ dependencies = [
  "tauri",
  "tauri-build",
  "tokio",
+ "tracker",
 ]
 
 [[package]]
@@ -4910,7 +4911,6 @@ dependencies = [
  "jsonwebtoken",
  "log",
  "mime_guess",
- "oauth2",
  "once_cell",
  "phf 0.10.1",
  "rand 0.8.5",
@@ -4928,6 +4928,7 @@ dependencies = [
  "tokio",
  "tokio-stream",
  "tower-http",
+ "tracker",
  "zip",
 ]
 
@@ -5683,6 +5684,18 @@ dependencies = [
  "tracing",
  "tracing-core",
  "tracing-log",
+]
+
+[[package]]
+name = "tracker"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "oauth2",
+ "reqwest",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

@@ -1,7 +1,6 @@
 use crate::{
     catalogue::Manga,
     db::{model, MangaDatabase, UserDatabase},
-    tracker::{myanimelist, MyAnimeList},
     user::Claims,
     utils::{decode_cursor, encode_cursor},
 };
@@ -11,6 +10,7 @@ use async_graphql::{
 };
 use async_graphql::{Context, Object, Result};
 use chrono::{Local, NaiveDateTime};
+use tracker::{myanimelist, MyAnimeList};
 
 mod categories;
 pub use categories::{Category, CategoryMutationRoot, CategoryRoot};

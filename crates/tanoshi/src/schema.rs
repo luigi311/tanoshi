@@ -7,11 +7,11 @@ use crate::{
     notification::NotificationRoot,
     notifier::Notifier,
     status::StatusRoot,
-    tracker::{AniList, MyAnimeList},
     tracking::{TrackingMutationRoot, TrackingRoot},
     user::{UserMutationRoot, UserRoot},
     worker::downloads::DownloadSender,
 };
+use tracker::{AniList, MyAnimeList};
 use tanoshi_vm::extension::SourceBus;
 
 use async_graphql::{

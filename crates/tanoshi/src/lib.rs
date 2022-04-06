@@ -19,7 +19,6 @@ pub mod schema;
 #[cfg(feature = "server")]
 pub mod server;
 pub mod status;
-pub mod tracker;
 pub mod tracking;
 pub mod user;
 pub mod utils;

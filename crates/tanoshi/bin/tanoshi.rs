@@ -10,9 +10,9 @@ use tanoshi::{
     notifier::{self, pushover::Pushover},
     proxy::Proxy,
     schema, server,
-    tracker::{AniList, MyAnimeList},
     worker,
 };
+use tracker::{AniList, MyAnimeList};
 use tanoshi_vm::{extension::SourceBus, prelude::Source};
 
 use teloxide::prelude::RequesterExt;

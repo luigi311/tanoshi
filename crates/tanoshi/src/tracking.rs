@@ -3,9 +3,9 @@ use chrono::NaiveDateTime;
 
 use crate::{
     db::{model, MangaDatabase, UserDatabase},
-    tracker::{anilist, myanimelist, AniList, MyAnimeList},
     user::Claims,
 };
+use tracker::{anilist, myanimelist, AniList, MyAnimeList};
 
 #[derive(SimpleObject)]
 pub struct Session {

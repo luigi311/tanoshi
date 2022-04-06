@@ -11,9 +11,9 @@ use tanoshi::{
   db, local, notifier,
   proxy::Proxy,
   schema, server,
-  tracker::{AniList, MyAnimeList},
   worker,
 };
+use tracker::{AniList, MyAnimeList};
 
 pub struct Server {
   port: u16,
