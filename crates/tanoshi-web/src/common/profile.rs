@@ -93,9 +93,9 @@ impl Profile {
         });
     }
 
-    fn myanimelist_logout(profile: Rc<Self>) {
+    fn tracker_logout(profile: Rc<Self>, tracker: String) {
         profile.loader.load(clone!(profile => async move {
-            match query::myanimelist_logout().await {
+            match query::tracker_logout(tracker).await {
                 Ok(_) => Self::fetch_me(profile),
                 Err(err) => {
                     snackbar::show(format!("{}", err));
@@ -374,7 +374,7 @@ impl Profile {
                             .text("Logout")
                             .event_with_options(&EventOptions::preventable(), clone!(profile => move |e: events::Click| {
                                 e.prevent_default();
-                                Self::myanimelist_logout(profile.clone());
+                                Self::tracker_logout(profile.clone(), "myanimelist".to_string());
                             }))
                         }))
                     } else {
@@ -414,7 +414,7 @@ impl Profile {
                             .text("Logout")
                             .event_with_options(&EventOptions::preventable(), clone!(profile => move |e: events::Click| {
                                 e.prevent_default();
-                                Self::myanimelist_logout(profile.clone());
+                                Self::tracker_logout(profile.clone(), "anilist".to_string());
                             }))
                         }))
                     } else {

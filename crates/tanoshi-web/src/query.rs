@@ -908,14 +908,14 @@ pub async fn myanimelist_login_end(
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "graphql/schema.graphql",
-    query_path = "graphql/myanimelist_logout.graphql",
+    query_path = "graphql/tracker_logout.graphql",
     response_derives = "Debug"
 )]
-pub struct MyanimelistLogout;
+pub struct TrackerLogout;
 
-pub async fn myanimelist_logout() -> Result<(), Box<dyn Error>> {
-    let var = myanimelist_logout::Variables {};
-    let _ = post_graphql::<MyanimelistLogout>(var).await?;
+pub async fn tracker_logout(tracker: String) -> Result<(), Box<dyn Error>> {
+    let var = tracker_logout::Variables { tracker };
+    let _ = post_graphql::<TrackerLogout>(var).await?;
     Ok(())
 }
 

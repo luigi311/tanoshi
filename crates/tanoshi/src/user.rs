@@ -1,9 +1,9 @@
 use crate::{config::GLOBAL_CONFIG, db::UserDatabase, guard::AdminGuard};
 use async_graphql::{Context, InputObject, Object, Result};
-use rand::RngCore;
-use tanoshi_tracker::{myanimelist, anilist};
 use jsonwebtoken::{EncodingKey, Header};
+use rand::RngCore;
 use serde::{Deserialize, Serialize};
+use tanoshi_tracker::{anilist, myanimelist};
 
 /// Our claims struct, it needs to derive `Serialize` and/or `Deserialize`
 #[derive(Debug, Serialize, Deserialize)]
@@ -255,14 +255,14 @@ impl UserMutationRoot {
         Ok(row)
     }
 
-    async fn myanimelist_logout(&self, ctx: &Context<'_>) -> Result<u64> {
+    async fn tracker_logout(&self, ctx: &Context<'_>, tracker: String) -> Result<u64> {
         let claims = ctx
             .data::<Claims>()
             .map_err(|_| "token not exists, please login")?;
 
         Ok(ctx
             .data::<UserDatabase>()?
-            .delete_user_tracker_login(myanimelist::NAME, claims.sub)
+            .delete_user_tracker_login(&tracker, claims.sub)
             .await?)
     }
 }
