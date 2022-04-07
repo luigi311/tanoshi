@@ -82,31 +82,31 @@ impl Reader {
         })
     }
 
-    fn fetch_detail(reader: Rc<Self>, chapter_id: i64, nav: Nav) {
-        let current_page = reader.current_page.get_cloned();
-        reader.spinner.set_active(true);
-        reader.loader.load(clone!(reader => async move {
+    fn fetch_detail(this: Rc<Self>, chapter_id: i64, nav: Nav) {
+        let current_page = this.current_page.get_cloned();
+        this.spinner.set_active(true);
+        this.loader.load(clone!(this => async move {
             match query::fetch_chapter(chapter_id).await {
                 Ok(result) => {
-                    reader.manga_id.set_neq(result.manga.id);
-                    reader.manga_title.set_neq(result.manga.title);
-                    reader.chapter_title.set_neq(result.title);
-                    reader.next_chapter.set_neq(result.next);
-                    reader.prev_chapter.set_neq(result.prev);
+                    this.manga_id.set_neq(result.manga.id);
+                    this.manga_title.set_neq(result.manga.title);
+                    this.chapter_title.set_neq(result.title);
+                    this.next_chapter.set_neq(result.next);
+                    this.prev_chapter.set_neq(result.prev);
 
                     let len = result.pages.len();
-                    reader.pages_len.set_neq(len);
+                    this.pages_len.set_neq(len);
 
-                    reader.reader_settings.load_by_manga_id(result.manga.id);
+                    this.reader_settings.load_by_manga_id(result.manga.id);
 
                     let page;
                     match nav {
                         Nav::None => {
                             info!("get current_page {}", current_page);
-                            page = match reader.reader_settings.reader_mode.get() {
+                            page = match this.reader_settings.reader_mode.get() {
                                 ReaderMode::Continous => current_page,
                                 ReaderMode::Paged => {
-                                    match reader.reader_settings.display_mode.get().get() {
+                                    match this.reader_settings.display_mode.get().get() {
                                         // display_mode.get() shouldn't return auto, here to satisfy compiler
                                         DisplayMode::Single | DisplayMode::Auto => current_page,
                                         DisplayMode::Double => {
@@ -121,10 +121,10 @@ impl Reader {
                             };
                         },
                         Nav::Prev => {
-                            page = match reader.reader_settings.reader_mode.get() {
+                            page = match this.reader_settings.reader_mode.get() {
                                 ReaderMode::Continous => len - 1,
                                 ReaderMode::Paged => {
-                                    match reader.reader_settings.display_mode.get().get() {
+                                    match this.reader_settings.display_mode.get().get() {
                                         // display_mode.get() shouldn't return auto, here to satisfy compiler
                                         DisplayMode::Single | DisplayMode::Auto => len - 1,
                                         DisplayMode::Double => {
@@ -144,13 +144,13 @@ impl Reader {
                     }
 
                     info!("set current_page to {} nav: {:?}", page, nav);
-                    reader.current_page.set_neq(page);
+                    this.current_page.set_neq(page);
 
-                    reader.pages_loaded.set(ContinousLoaded::Initial);
+                    this.pages_loaded.set(ContinousLoaded::Initial);
 
                     let source_url = result.source.url;
                     let pages = result.pages.iter().map(|page| (format!("{}?referer={}", page, source_url), PageStatus::Initial)).collect();
-                    reader.pages.lock_mut().replace_cloned(pages);
+                    this.pages.lock_mut().replace_cloned(pages);
                     
                     Self::replace_state_with_url(chapter_id, page + 1);
                 },
@@ -159,7 +159,7 @@ impl Reader {
                 }
             }
             
-            reader.spinner.set_active(false);
+            this.spinner.set_active(false);
         }));
     }
 
@@ -179,16 +179,16 @@ impl Reader {
         }
     }
 
-    fn update_page_read(reader: Rc<Self>, page: usize) {
-        let chapter_id = reader.chapter_id.get();
+    fn update_page_read(this: Rc<Self>, page: usize) {
+        let chapter_id = this.chapter_id.get();
         
-        let page = if matches!(reader.reader_settings.reader_mode.get(), ReaderMode::Paged) && matches!(reader.reader_settings.display_mode.get().get(), DisplayMode::Double) && page + 2 == reader.pages_len.get() {
+        let page = if matches!(this.reader_settings.reader_mode.get(), ReaderMode::Paged) && matches!(this.reader_settings.display_mode.get().get(), DisplayMode::Double) && page + 2 == this.pages_len.get() {
             page + 1
         } else {
             page
         };
         
-        let is_complete = page + 1 == reader.pages_len.get();
+        let is_complete = page + 1 == this.pages_len.get();
 
         Self::replace_state_with_url(chapter_id, page + 1);
         
@@ -204,16 +204,16 @@ impl Reader {
             });
         });
             
-        reader.timeout.set(Some(timeout));
+        this.timeout.set(Some(timeout));
     }
 
-    pub fn render_topbar(reader: Rc<Self>) -> Dom {
+    pub fn render_topbar(this: Rc<Self>) -> Dom {
         html!("div", {
             .class("topbar")
             .class("animate__animated")
             .class("animate__faster")
-            .class_signal("animate__slideInDown", reader.is_bar_visible.signal())
-            .class_signal("animate__slideOutUp", reader.is_bar_visible.signal().map(|x| !x))
+            .class_signal("animate__slideInDown", this.is_bar_visible.signal())
+            .class_signal("animate__slideOutUp", this.is_bar_visible.signal().map(|x| !x))
             .children(&mut [
                 html!("button", {
                     .children(&mut [
@@ -252,7 +252,7 @@ impl Reader {
                             .style("overflow", "hidden")
                             .style("text-overflow", "ellipsis")
                             .style("white-space", "nowrap")
-                            .text_signal(reader.manga_title.signal_cloned())
+                            .text_signal(this.manga_title.signal_cloned())
                         }),
                         html!("span", {
                             .style("flex", "1")
@@ -260,7 +260,7 @@ impl Reader {
                             .style("text-overflow", "ellipsis")
                             .style("white-space", "nowrap")
                             .style("font-size", "smaller")
-                            .text_signal(reader.chapter_title.signal_cloned())
+                            .text_signal(this.chapter_title.signal_cloned())
                         }),
                     ])
                 }),
@@ -290,15 +290,15 @@ impl Reader {
                             ])
                         })
                     ])
-                    .event(clone!(reader => move |_: events::Click| {
-                        reader.reader_settings.toggle_show();
+                    .event(clone!(this => move |_: events::Click| {
+                        this.reader_settings.toggle_show();
                     }))
                 })
             ])
         })
     }
 
-    pub fn render_bottombar(reader: Rc<Self>) -> Dom {
+    pub fn render_bottombar(this: Rc<Self>) -> Dom {
         html!("div", {
             .style("position", "fixed")
             .style("left", "0")
@@ -307,16 +307,16 @@ impl Reader {
             .style("z-index", "40")
             .class("animate__animated")
             .class("animate__faster")
-            .class_signal("animate__slideInUp", reader.is_bar_visible.signal())
-            .class_signal("animate__slideOutDown", reader.is_bar_visible.signal().map(|x| !x))
+            .class_signal("animate__slideInUp", this.is_bar_visible.signal())
+            .class_signal("animate__slideOutDown", this.is_bar_visible.signal().map(|x| !x))
             .children(&mut [
-                Self::render_page_slider(reader.clone()),
-                Self::render_action_bar(reader)
+                Self::render_page_slider(this.clone()),
+                Self::render_action_bar(this)
             ])
         })
     }
     
-    pub fn render_page_slider(reader: Rc<Self>) -> Dom {
+    pub fn render_page_slider(this: Rc<Self>) -> Dom {
         html!("div", {
             .style("padding-left", "0.125rem")
             .style("padding-right", "0.125rem")
@@ -345,12 +345,12 @@ impl Reader {
                     .style("border-right-style", "solid")
                     .style("border-right-color", "var(--background-color-100)")
                     .style("background-color", "var(--bottombar-background-color)")
-                    .style_signal("direction", reader.reader_settings.direction.signal().map(|direction| matches!(direction, Direction::RightToLeft).then(|| "rtl")))
+                    .style_signal("direction", this.reader_settings.direction.signal().map(|direction| matches!(direction, Direction::RightToLeft).then(|| "rtl")))
                     .children(&mut [
                         html!("button", {
                             .attribute("id", "prev-chapter-btn")
-                            .attribute_signal("disabled", reader.prev_chapter.signal().map(|prev_chapter| if prev_chapter.is_none() {Some("true")} else {None}))
-                            .child_signal(reader.reader_settings.reader_direction_signal().map(|mode| {
+                            .attribute_signal("disabled", this.prev_chapter.signal().map(|prev_chapter| if prev_chapter.is_none() {Some("true")} else {None}))
+                            .child_signal(this.reader_settings.reader_direction_signal().map(|mode| {
                                 match mode {
                                     (ReaderMode::Paged, Direction::RightToLeft) => Some(svg!("svg", {
                                         .attribute("xmlns", "http://www.w3.org/2000/svg")
@@ -384,14 +384,14 @@ impl Reader {
                                     }))
                                 }
                             }))
-                            .event(clone!(reader => move |_: events::Click| {
-                               if let Some(prev) = reader.prev_chapter.get() {
-                                   reader.chapter_id.set(prev);
+                            .event(clone!(this => move |_: events::Click| {
+                               if let Some(prev) = this.prev_chapter.get() {
+                                   this.chapter_id.set(prev);
                                }
                             }))
                         }),
                         html!("span", {
-                            .text_signal(reader.current_page.signal().map(|p| (p + 1).to_string()))
+                            .text_signal(this.current_page.signal().map(|p| (p + 1).to_string()))
                         }),
                         html!("div", {
                             .style("width", "100%")
@@ -402,13 +402,13 @@ impl Reader {
                                     .style("width", "100%")
                                     .attribute("type", "range")
                                     .attribute("min", "0")
-                                    .attribute_signal("max", reader.pages_len.signal().map(|len| (len.saturating_sub(1)).to_string()))
-                                    .attribute_signal("value", reader.current_page.signal().map(|p| p.to_string()))
+                                    .attribute_signal("max", this.pages_len.signal().map(|len| (len.saturating_sub(1)).to_string()))
+                                    .attribute_signal("value", this.current_page.signal().map(|p| p.to_string()))
                                     .with_node!(input => {
-                                        .event(clone!(reader, input => move |_: events::Change| {
+                                        .event(clone!(this, input => move |_: events::Change| {
                                             let page = input.value().parse().unwrap_or(0);
                                             info!("page: {}", page);
-                                            if matches!(reader.reader_settings.reader_mode.get(), ReaderMode::Continous) {
+                                            if matches!(this.reader_settings.reader_mode.get(), ReaderMode::Continous) {
                                                 let page_top =  document()
                                                     .get_element_by_id(format!("{}", page - 1).as_str())
                                                     .and_then(|el| el.dyn_into::<web_sys::HtmlElement>().ok())
@@ -418,20 +418,20 @@ impl Reader {
                                                 info!("scroll to {}", page_top);
                                                 window().scroll_to_with_x_and_y(0.0_f64, page_top);
                                             }
-                                            reader.current_page.set(page);
+                                            this.current_page.set(page);
                                         }))
                                     })
                                 }),
                             ])
                         }),
                         html!("span", {
-                            .text_signal(reader.pages_len.signal().map(|len| len.to_string()))
+                            .text_signal(this.pages_len.signal().map(|len| len.to_string()))
                         }),
                         html!("button", {
                             .attribute("id", "next-chapter-btn")
                             .style("border-radius", "100%")
-                            .attribute_signal("disabled", reader.next_chapter.signal().map(|next_chapter| if next_chapter.is_none() {Some("true")} else {None}))
-                            .child_signal(reader.reader_settings.reader_direction_signal().map(|mode| {
+                            .attribute_signal("disabled", this.next_chapter.signal().map(|next_chapter| if next_chapter.is_none() {Some("true")} else {None}))
+                            .child_signal(this.reader_settings.reader_direction_signal().map(|mode| {
                                 match mode {
                                     (ReaderMode::Paged, Direction::RightToLeft) => Some(svg!("svg", {
                                         .attribute("xmlns", "http://www.w3.org/2000/svg")
@@ -465,10 +465,10 @@ impl Reader {
                                     }))
                                 }
                             }))
-                            .event(clone!(reader => move |_: events::Click| {
-                               if let Some(next) = reader.next_chapter.get() {
-                                reader.chapter_id.set(next);
-                                if matches!(reader.reader_settings.reader_mode.get(), ReaderMode::Continous) {
+                            .event(clone!(this => move |_: events::Click| {
+                               if let Some(next) = this.next_chapter.get() {
+                                this.chapter_id.set(next);
+                                if matches!(this.reader_settings.reader_mode.get(), ReaderMode::Continous) {
                                     window().scroll_to_with_x_and_y(0.0_f64, 0.0_f64);
                                 }
                                }
@@ -480,7 +480,7 @@ impl Reader {
         })
     }
 
-    pub fn render_action_bar(reader: Rc<Self>) -> Dom {
+    pub fn render_action_bar(this: Rc<Self>) -> Dom {
         html!("div", {
             .style("left", "0")
             .style("right", "0")
@@ -504,9 +504,9 @@ impl Reader {
                     .style("margin-top", "0.5rem")
                     .style("margin-bottom", "0.25rem")
                     .style("text-align", "center")
-                    .event(clone!(reader => move |_: events::Click| {
+                    .event(clone!(this => move |_: events::Click| {
                         info!("zoom in");
-                        reader.zoom.set_neq(reader.zoom.get() + 0.5);   
+                        this.zoom.set_neq(this.zoom.get() + 0.5);   
                     }))
                     .children(&mut [
                         svg!("svg", {
@@ -532,18 +532,18 @@ impl Reader {
                     .style("margin-top", "0.25rem")
                     .style("margin-bottom", "0.25rem")
                     .style("font-size", "smaller")
-                    .text_signal(reader.zoom.signal().map(|zoom| format!("{}%", 100.0 * zoom)))
+                    .text_signal(this.zoom.signal().map(|zoom| format!("{}%", 100.0 * zoom)))
                 }),
                 html!("button", {
                     .attribute("id", "zoom-out")
                     .style("margin-top", "0.25rem")
                     .style("margin-bottom", "0.5rem")
                     .style("text-align", "center")
-                    .event(clone!(reader => move |_: events::Click| {
+                    .event(clone!(this => move |_: events::Click| {
                         info!("zoom out");
-                        let zoom = reader.zoom.get();
+                        let zoom = this.zoom.get();
                         if zoom > 0.0 {
-                            reader.zoom.set_neq(reader.zoom.get() - 0.5);   
+                            this.zoom.set_neq(this.zoom.get() - 0.5);   
                         }
                     }))
                     .children(&mut [
@@ -572,9 +572,9 @@ impl Reader {
         })
     }
 
-    pub fn render_page_indicator(reader: Rc<Self>) -> Dom {
+    pub fn render_page_indicator(this: Rc<Self>) -> Dom {
         html!("div", {
-            .visible_signal(reader.is_bar_visible.signal().map(|visible| !visible))
+            .visible_signal(this.is_bar_visible.signal().map(|visible| !visible))
             .style("display", "flex")
             .style("justify-content", "center")
             .style("align-items", "center")
@@ -596,13 +596,13 @@ impl Reader {
                     .style("-webkit-text-stroke-color", "black")
                     .children(&mut [
                         html!("span", {
-                            .text_signal(reader.current_page.signal().map(|p| (p + 1).to_string()))
+                            .text_signal(this.current_page.signal().map(|p| (p + 1).to_string()))
                         }),
                         html!("span", {
                             .text("/")
                         }),
                         html!("span", {
-                            .text_signal(reader.pages_len.signal().map(|len| len.to_string()))
+                            .text_signal(this.pages_len.signal().map(|len| len.to_string()))
                         }),
                     ])
                 }),
@@ -630,7 +630,7 @@ impl Reader {
         }
     }
 
-    fn render_navigation(reader: Rc<Self>) -> Dom {
+    fn render_navigation(this: Rc<Self>) -> Dom {
         html!("div", {
             .style("display", "flex")
             .style("position", "fixed")
@@ -638,23 +638,23 @@ impl Reader {
             .style("height", "100vh")
             .style("z-index", "10")
             .style("cursor", "pointer")
-            .style_signal("flex-direction", reader.reader_settings.direction.signal_cloned().map(|x| match x {
+            .style_signal("flex-direction", this.reader_settings.direction.signal_cloned().map(|x| match x {
                 Direction::LeftToRight => "row-reverse",
                 Direction::RightToLeft => "row",
             }))
-            .global_event(clone!(reader => move |e: events::KeyDown| {
-                let direction = reader.reader_settings.direction.get();
+            .global_event(clone!(this => move |e: events::KeyDown| {
+                let direction = this.reader_settings.direction.get();
                 if e.key() == "ArrowLeft" {
                     match direction {
-                        Direction::LeftToRight => reader.go_to_prev_page(),
-                        Direction::RightToLeft => reader.go_to_next_page(),
+                        Direction::LeftToRight => this.go_to_prev_page(),
+                        Direction::RightToLeft => this.go_to_next_page(),
                     }
                 } else if e.key() == " " {
-                    reader.is_bar_visible.set_neq(!reader.is_bar_visible.get());
+                    this.is_bar_visible.set_neq(!this.is_bar_visible.get());
                 } else if e.key() == "ArrowRight" {
                     match direction {
-                        Direction::LeftToRight => reader.go_to_next_page(),
-                        Direction::RightToLeft => reader.go_to_prev_page(),
+                        Direction::LeftToRight => this.go_to_next_page(),
+                        Direction::RightToLeft => this.go_to_prev_page(),
                     }
                 }
             }))
@@ -663,24 +663,24 @@ impl Reader {
                     .style("height", "100%")
                     .style("width", "33.3333%")
                     .attribute("id", "next")
-                    .event(clone!(reader => move |_: events::Click| {
-                        reader.go_to_next_page();
+                    .event(clone!(this => move |_: events::Click| {
+                        this.go_to_next_page();
                     }))
                 }),
                 html!("div", {
                     .style("height", "100%")
                     .style("width", "33.3333%")
                     .attribute("id", "hide-bar")
-                    .event(clone!(reader => move |_: events::Click| {
-                        reader.is_bar_visible.set_neq(!reader.is_bar_visible.get());
+                    .event(clone!(this => move |_: events::Click| {
+                        this.is_bar_visible.set_neq(!this.is_bar_visible.get());
                     }))
                 }),
                 html!("div", {
                     .style("height", "100%")
                     .style("width", "33.3333%")
                     .attribute("id", "prev")
-                    .event(clone!(reader => move |_: events::Click| {
-                        reader.go_to_prev_page();
+                    .event(clone!(this => move |_: events::Click| {
+                        this.go_to_prev_page();
                     }))
                 })
             ])
@@ -716,13 +716,13 @@ impl Reader {
     }
     }
 
-    fn render_vertical(reader: Rc<Self>) -> Dom {
+    fn render_vertical(this: Rc<Self>) -> Dom {
         html!("div", {
             .attribute("id", "page-list")
             .style("display", "flex")
             .style("flex-direction", "column")
-            .future(reader.pages_loaded.signal_cloned().for_each(clone!(reader => move |loaded| {
-                let page = reader.current_page.get();
+            .future(this.pages_loaded.signal_cloned().for_each(clone!(this => move |loaded| {
+                let page = this.current_page.get();
                 info!("page: {} loaded: {:?}", page, loaded);
                 if page > 0 && matches!(loaded, ContinousLoaded::Loaded) {
                     let page_top =  document()
@@ -733,7 +733,7 @@ impl Reader {
 
                     info!("scroll to {}", page_top);
                     window().scroll_to_with_x_and_y(0.0_f64, page_top);
-                    reader.pages_loaded.set_neq(ContinousLoaded::Scrolled);
+                    this.pages_loaded.set_neq(ContinousLoaded::Scrolled);
                 }
 
                 async {}
@@ -745,59 +745,59 @@ impl Reader {
                     .style("border-width", "2px")
                     .style("border-style", "dashed")
                     .style("margin-top", "env(safe-area-inset-top)")
-                    .attribute_signal("disabled", reader.prev_chapter.signal().map(|prev_chapter| if prev_chapter.is_some() { None } else { Some("true") }))
-                    .text_signal(reader.prev_chapter.signal().map(|prev_chapter| if prev_chapter.is_some() { "Prev Chapter" } else { "No Prev Chapter" }))
-                    .event(clone!(reader => move |_: events::Click| {
-                        if let Some(prev_chapter) = reader.prev_chapter.get() {
-                            reader.chapter_id.set(prev_chapter);
+                    .attribute_signal("disabled", this.prev_chapter.signal().map(|prev_chapter| if prev_chapter.is_some() { None } else { Some("true") }))
+                    .text_signal(this.prev_chapter.signal().map(|prev_chapter| if prev_chapter.is_some() { "Prev Chapter" } else { "No Prev Chapter" }))
+                    .event(clone!(this => move |_: events::Click| {
+                        if let Some(prev_chapter) = this.prev_chapter.get() {
+                            this.chapter_id.set(prev_chapter);
                         } else {
                             info!("no prev_page or prev_chapter");
                         }
                     }))
                 })
             ])
-            .children_signal_vec(reader.pages_signal().map(clone!(reader => move |(index, page, status)|
+            .children_signal_vec(this.pages_signal().map(clone!(this => move |(index, page, status)|
                 if !matches!(status, PageStatus::Error) {
                     html!("img" => HtmlImageElement, {
                         .class_signal("continuous-image-loading", signal::always(status).map(|s| matches!(s, PageStatus::Initial)))
                         .style("margin-left", "auto")
                         .style("margin-right", "auto")
-                        .style_signal("margin-top", reader.reader_settings.padding.signal().map(|x| x.then(|| "0.25rem")))
-                        .style_signal("margin-bottom", reader.reader_settings.padding.signal().map(|x| x.then(|| "0.25rem")))
+                        .style_signal("margin-top", this.reader_settings.padding.signal().map(|x| x.then(|| "0.25rem")))
+                        .style_signal("margin-bottom", this.reader_settings.padding.signal().map(|x| x.then(|| "0.25rem")))
                         .attribute("id", format!("{}", index).as_str())
-                        .attribute_signal("src", reader.image_src_signal(index, 3, 4, page.clone(), status))
-                        .style_signal("max-width", reader.fit_signal().map(|(fit, zoom)| match fit {
+                        .attribute_signal("src", this.image_src_signal(index, 3, 4, page.clone(), status))
+                        .style_signal("max-width", this.fit_signal().map(|(fit, zoom)| match fit {
                             crate::common::Fit::Height => "none".to_string(),
                             _ => format!("{}px", 768.0 * zoom),
                         }))
-                        .style_signal("object-fit", reader.reader_settings.fit.signal().map(|fit| match fit {
+                        .style_signal("object-fit", this.reader_settings.fit.signal().map(|fit| match fit {
                             crate::common::Fit::All => "contain",
                             _ => "initial",
                         }))
-                        .style_signal("width", reader.fit_signal().map(|(fit, zoom)| match fit {
+                        .style_signal("width", this.fit_signal().map(|(fit, zoom)| match fit {
                             crate::common::Fit::Height =>"initial".to_string(),
                             _ => format!("{}vw", 100.0 * zoom)
                         }))
-                        .style_signal("height", reader.fit_signal().map(|(fit, zoom)| match fit {
+                        .style_signal("height", this.fit_signal().map(|(fit, zoom)| match fit {
                             crate::common::Fit::Width => "initial".to_string(),
                             _ => format!("{}vh", 100.0 * zoom)
                         }))
-                        .event(clone!(reader, page => move |_: events::Error| {
+                        .event(clone!(this, page => move |_: events::Error| {
                             log::error!("error loading image");
-                            let mut lock = reader.pages.lock_mut();
+                            let mut lock = this.pages.lock_mut();
                             lock.set_cloned(index, (page.clone(), PageStatus::Error));
                         }))
-                        .event(clone!(reader, page => move |_: events::Load| {
-                            reader.pages_loaded.set_if(ContinousLoaded::Loaded, |a, _| {
+                        .event(clone!(this, page => move |_: events::Load| {
+                            this.pages_loaded.set_if(ContinousLoaded::Loaded, |a, _| {
                                 matches!(a, ContinousLoaded::Initial)
                             });
                             if !matches!(status, PageStatus::Loaded) {
-                                let mut lock = reader.pages.lock_mut();
+                                let mut lock = this.pages.lock_mut();
                                 lock.set_cloned(index, (page.clone(), PageStatus::Loaded));
                             }
                         }))
-                        .event(clone!(reader => move |_: events::Click| {
-                            reader.is_bar_visible.set_neq(!reader.is_bar_visible.get());
+                        .event(clone!(this => move |_: events::Click| {
+                            this.is_bar_visible.set_neq(!this.is_bar_visible.get());
                         }))
                     })
                 } else {
@@ -809,8 +809,8 @@ impl Reader {
                             html!("button", {
                                 .style("margin", "auto")
                                 .text("Retry")
-                                .event(clone!(reader, page => move |_: events::Click| {
-                                    let mut lock = reader.pages.lock_mut();
+                                .event(clone!(this, page => move |_: events::Click| {
+                                    let mut lock = this.pages.lock_mut();
                                     lock.set_cloned(index, (page.clone(), PageStatus::Initial));
                                 }))
                             })
@@ -825,11 +825,11 @@ impl Reader {
                     .style("border-width", "2px")
                     .style("border-style", "dashed")
                     .style("margin-bottom", "env(safe-area-inset-bottom)")
-                    .attribute_signal("disabled", reader.next_chapter.signal().map(|next_chapter| if next_chapter.is_some() { None } else { Some("true") }))
-                    .text_signal(reader.next_chapter.signal().map(|next_chapter| if next_chapter.is_some() { "Next Chapter" } else { "No Next Chapter" }))
-                    .event(clone!(reader => move |_: events::Click| {
-                        if let Some(next_chapter) = reader.next_chapter.get() {
-                            reader.chapter_id.set(next_chapter);
+                    .attribute_signal("disabled", this.next_chapter.signal().map(|next_chapter| if next_chapter.is_some() { None } else { Some("true") }))
+                    .text_signal(this.next_chapter.signal().map(|next_chapter| if next_chapter.is_some() { "Next Chapter" } else { "No Next Chapter" }))
+                    .event(clone!(this => move |_: events::Click| {
+                        if let Some(next_chapter) = this.next_chapter.get() {
+                            this.chapter_id.set(next_chapter);
                             window().scroll_to_with_x_and_y(0.0_f64, 0.0_f64);
                         } else {
                             info!("no next_page or next_chapter");
@@ -837,18 +837,18 @@ impl Reader {
                     }))
                 })
             ])
-            .global_event_with_options(&EventOptions::preventable(), clone!(reader => move |e: events::KeyDown| {
+            .global_event_with_options(&EventOptions::preventable(), clone!(this => move |e: events::KeyDown| {
                 if e.key() == " " {
                     e.prevent_default(); 
-                    reader.is_bar_visible.set_neq(!reader.is_bar_visible.get());
+                    this.is_bar_visible.set_neq(!this.is_bar_visible.get());
                 }
             }))
-            .global_event(clone!(reader => move |_: events::Scroll| {
+            .global_event(clone!(this => move |_: events::Scroll| {
                 let mut page_no = 0;
                 let window_height = body().offset_height();
                 let client_height = document().document_element().unwrap_throw().client_height();
                 let body_top = window().scroll_y().unwrap_throw().round() as i32;
-                for i in 0..reader.pages_len.get() {
+                for i in 0..this.pages_len.get() {
                     let page_top = document()
                         .get_element_by_id(format!("{}", i).as_str())
                         .and_then(|el| el.dyn_into::<web_sys::HtmlElement>().ok())
@@ -861,62 +861,62 @@ impl Reader {
                 }
                 if  body_top + client_height > window_height - 10 {
                     info!("window_height: {} body_top: {}", window_height, body_top + client_height);
-                    page_no = reader.pages_len.get() - 1;
+                    page_no = this.pages_len.get() - 1;
                 }
-                let is_last_page = reader.pages_len.get() == reader.current_page.get() + 1;
+                let is_last_page = this.pages_len.get() == this.current_page.get() + 1;
                 if !(is_last_page && page_no == 0) {
-                    reader.current_page.set_neq(page_no as usize);
+                    this.current_page.set_neq(page_no as usize);
                 }
             }))
         })
     }
 
-    fn render_single(reader: Rc<Self>) -> Dom {
+    fn render_single(this: Rc<Self>) -> Dom {
         html!("div", {
             .attribute("id", "page-list")
             .style("display", "flex")
             .style("align-items", "center")
             .style("margin", "auto")
-            .style_signal("width", reader.zoom.signal().map(|zoom| format!("{}vw", 100.0 * zoom)))
-            .style_signal("height", reader.zoom.signal().map(|zoom| format!("{}vh", 100.0 * zoom)))
-            .children_signal_vec(reader.pages_signal().map(clone!(reader => move |(index, page, status)|
+            .style_signal("width", this.zoom.signal().map(|zoom| format!("{}vw", 100.0 * zoom)))
+            .style_signal("height", this.zoom.signal().map(|zoom| format!("{}vh", 100.0 * zoom)))
+            .children_signal_vec(this.pages_signal().map(clone!(this => move |(index, page, status)|
                 if !matches!(status, PageStatus::Error) {
                     html!("img", {
                         .style("margin-left", "auto")
                         .style("margin-right", "auto")
-                        .style_signal("max-width", reader.fit_signal().map(|(fit, zoom)| match fit {
+                        .style_signal("max-width", this.fit_signal().map(|(fit, zoom)| match fit {
                             crate::common::Fit::Height => "none".to_string(),
                             _ => format!("{}%", 100.0 * zoom),
                         }))
-                        .style_signal("object-fit", reader.reader_settings.fit.signal().map(|x| match x {
+                        .style_signal("object-fit", this.reader_settings.fit.signal().map(|x| match x {
                             crate::common::Fit::All => "contain",
                             _ => "initial",
                         }))                        
-                        .style_signal("width", reader.fit_signal().map(|(fit, zoom)| match fit {
+                        .style_signal("width", this.fit_signal().map(|(fit, zoom)| match fit {
                             crate::common::Fit::Height => "initial".to_string(),
                             _ => format!("{}vw", 100.0 * zoom)
                         }))
-                        .style_signal("height", reader.fit_signal().map(|(fit, zoom)| match fit {
+                        .style_signal("height", this.fit_signal().map(|(fit, zoom)| match fit {
                             crate::common::Fit::Width => "initial".to_string(),
                             _ => format!("{}vh", 100.0 * zoom)
                         }))
-                        .visible_signal(reader.current_page.signal_cloned().map(clone!(reader => move |x| {
-                            reader.prev_page.set_neq(x.checked_sub(1));
-                            if x + 1 < reader.pages_len.get() {
-                                reader.next_page.set_neq(Some(x + 1));
+                        .visible_signal(this.current_page.signal_cloned().map(clone!(this => move |x| {
+                            this.prev_page.set_neq(x.checked_sub(1));
+                            if x + 1 < this.pages_len.get() {
+                                this.next_page.set_neq(Some(x + 1));
                             }
 
                             x == index
                         })))
-                        .attribute_signal("src", reader.image_src_signal(index, 2, 3, page.clone(), status))
-                        .event(clone!(reader, page => move |_: events::Error| {
+                        .attribute_signal("src", this.image_src_signal(index, 2, 3, page.clone(), status))
+                        .event(clone!(this, page => move |_: events::Error| {
                             log::error!("error loading image");
-                            let mut lock = reader.pages.lock_mut();
+                            let mut lock = this.pages.lock_mut();
                             lock.set_cloned(index, (page.clone(), PageStatus::Error));
                         }))
-                        .event(clone!(reader, page => move |_: events::Load| {
+                        .event(clone!(this, page => move |_: events::Load| {
                             if !matches!(status, PageStatus::Loaded) {
-                                let mut lock = reader.pages.lock_mut();
+                                let mut lock = this.pages.lock_mut();
                                 lock.set_cloned(index, (page.clone(), PageStatus::Loaded));
                             }
                         }))
@@ -927,10 +927,10 @@ impl Reader {
                         .style("display", "flex")
                         .style("height", "100vh")
                         .style("width", "100vw")
-                        .visible_signal(reader.current_page.signal_cloned().map(clone!(reader => move |x| {
-                            reader.prev_page.set_neq(x.checked_sub(1));
-                            if x + 1 < reader.pages_len.get() {
-                                reader.next_page.set_neq(Some(x + 1));
+                        .visible_signal(this.current_page.signal_cloned().map(clone!(this => move |x| {
+                            this.prev_page.set_neq(x.checked_sub(1));
+                            if x + 1 < this.pages_len.get() {
+                                this.next_page.set_neq(Some(x + 1));
                             }
 
                             x == index
@@ -940,8 +940,8 @@ impl Reader {
                                 .style("margin", "auto")
                                 .style("z-index", "20")
                                 .text("Retry")
-                                .event(clone!(reader, page => move |_: events::Click| {
-                                    let mut lock = reader.pages.lock_mut();
+                                .event(clone!(this, page => move |_: events::Click| {
+                                    let mut lock = this.pages.lock_mut();
                                     lock.set_cloned(index, (page.clone(), PageStatus::Initial));
                                 }))
                             })
@@ -952,58 +952,58 @@ impl Reader {
         })
     }
 
-    fn render_double(reader: Rc<Self>) -> Dom {
+    fn render_double(this: Rc<Self>) -> Dom {
         html!("div", {
             .attribute("id", "page-list")
             .style("display", "flex")
             .style("margin", "auto")
-            .style_signal("width", reader.zoom.signal().map(|zoom| format!("{}vw", 100.0 * zoom)))
-            .style_signal("height", reader.zoom.signal().map(|zoom| format!("{}vh", 100.0 * zoom)))
+            .style_signal("width", this.zoom.signal().map(|zoom| format!("{}vw", 100.0 * zoom)))
+            .style_signal("height", this.zoom.signal().map(|zoom| format!("{}vh", 100.0 * zoom)))
             .style("align-items", "center")
-            .style_signal("flex-direction", reader.reader_settings.direction.signal_cloned().map(|x| match x {
+            .style_signal("flex-direction", this.reader_settings.direction.signal_cloned().map(|x| match x {
                 Direction::LeftToRight => "row",
                 Direction::RightToLeft => "row-reverse",
             }))
-            .children_signal_vec(reader.pages_signal().map(clone!(reader => move |(index, page, status)|
+            .children_signal_vec(this.pages_signal().map(clone!(this => move |(index, page, status)|
                 if !matches!(status, PageStatus::Error) {
                     html!("img" => HtmlImageElement, {
                         .style("margin-left", "auto")
                         .style("margin-right", "auto")
                         .attribute("id", format!("{}", index).as_str())
-                        .style_signal("max-width", reader.reader_settings.fit.signal().map(|x| match x {
+                        .style_signal("max-width", this.reader_settings.fit.signal().map(|x| match x {
                             crate::common::Fit::Height => "none",
                             _ => "100%",
                         }))
-                        .style_signal("object-fit", reader.reader_settings.fit.signal().map(|x| match x {
+                        .style_signal("object-fit", this.reader_settings.fit.signal().map(|x| match x {
                             crate::common::Fit::All => "contain",
                             _ => "initial",
                         }))
-                        .style_signal("height", reader.reader_settings.fit.signal().map(|x| match x {
+                        .style_signal("height", this.reader_settings.fit.signal().map(|x| match x {
                             crate::common::Fit::Width => "initial",
                             _ => "100%"
                         }))
-                        .attribute_signal("src", reader.image_src_signal(index, 2, 4, page.clone(), status))
-                        .event(clone!(reader, page => move |_: events::Error| {
+                        .attribute_signal("src", this.image_src_signal(index, 2, 4, page.clone(), status))
+                        .event(clone!(this, page => move |_: events::Error| {
                             log::error!("error loading image");
-                            let mut lock = reader.pages.lock_mut();
+                            let mut lock = this.pages.lock_mut();
                             lock.set_cloned(index, (page.clone(), PageStatus::Error));
                         }))
-                        .event(clone!(reader, page => move |_: events::Load| {
+                        .event(clone!(this, page => move |_: events::Load| {
                             if !matches!(status, PageStatus::Loaded) {
-                                let mut lock = reader.pages.lock_mut();
+                                let mut lock = this.pages.lock_mut();
                                 lock.set_cloned(index, (page.clone(), PageStatus::Loaded));
                             }
                         }))
                         .with_node!(img => {
-                            .style_signal("width", reader.current_page.signal_cloned().map(clone!(reader, index, img => move |current_page|
+                            .style_signal("width", this.current_page.signal_cloned().map(clone!(this, index, img => move |current_page|
                                 if (index == current_page && img.natural_width() > img.natural_height())
-                                    || matches!(reader.reader_settings.fit.get(), crate::common::Fit::Height) {
+                                    || matches!(this.reader_settings.fit.get(), crate::common::Fit::Height) {
                                     "initial"
                                 } else {
                                     "50%"
                                 }
                             )))
-                            .visible_signal(reader.current_page.signal_cloned().map(clone!(reader, index, img => move |current_page| {
+                            .visible_signal(this.current_page.signal_cloned().map(clone!(this, index, img => move |current_page| {
                                 let mut hidden = true;
                                 if index == current_page {
                                     hidden = false;
@@ -1018,7 +1018,7 @@ impl Reader {
                                         } else {
                                             2
                                         };
-                                        reader.prev_page.set_neq(current_page.checked_sub(sub));
+                                        this.prev_page.set_neq(current_page.checked_sub(sub));
                                     }
                                 } else if index == current_page + 1 {
                                     let is_prev_img_portrait = if let Some(prev_img) = document().get_element_by_id(format!("{}", current_page).as_str()).and_then(|el| el.dyn_into::<web_sys::HtmlImageElement>().ok()) {
@@ -1029,24 +1029,24 @@ impl Reader {
 
                                     if img.natural_width() < img.natural_height() && is_prev_img_portrait {
                                         hidden = false;
-                                        if current_page + 2 < reader.pages_len.get() {
-                                            reader.next_page.set_neq(Some(current_page + 2));
+                                        if current_page + 2 < this.pages_len.get() {
+                                            this.next_page.set_neq(Some(current_page + 2));
                                         } else {
-                                            reader.next_page.set_neq(None);
+                                            this.next_page.set_neq(None);
                                         }
-                                    } else if current_page + 1 < reader.pages_len.get() {
-                                        reader.next_page.set_neq(Some(current_page + 1));
+                                    } else if current_page + 1 < this.pages_len.get() {
+                                        this.next_page.set_neq(Some(current_page + 1));
                                     } else {
-                                        reader.next_page.set_neq(None);
+                                        this.next_page.set_neq(None);
                                     }
                                 }
 
                                 !hidden
                             })))
-                            .event(clone!(reader, index => move |_: events::Load| {
-                                let current_page = reader.current_page.get();
+                            .event(clone!(this, index => move |_: events::Load| {
+                                let current_page = this.current_page.get();
                                 if index == current_page || index == current_page + 1 {
-                                    reader.current_page.set_neq(current_page);
+                                    this.current_page.set_neq(current_page);
                                 }
                             }))
                         })
@@ -1055,15 +1055,15 @@ impl Reader {
                     html!("div", {
                         .attribute("id", format!("{}", index).as_str())
                         .style("display", "flex")
-                        .style_signal("width", reader.reader_settings.fit.signal().map(|x| match x {
+                        .style_signal("width", this.reader_settings.fit.signal().map(|x| match x {
                             crate::common::Fit::Height => "none",
                             _ => "100%",
                         }))
-                        .style_signal("height", reader.reader_settings.fit.signal().map(|x| match x {
+                        .style_signal("height", this.reader_settings.fit.signal().map(|x| match x {
                             crate::common::Fit::Width => "initial",
                             _ => "100%"
                         }))
-                        .visible_signal(reader.current_page.signal_cloned().map(clone!(reader, index => move |current_page| {
+                        .visible_signal(this.current_page.signal_cloned().map(clone!(this, index => move |current_page| {
                             let mut hidden = true;
                             if index == current_page {
                                 hidden = false;
@@ -1073,14 +1073,14 @@ impl Reader {
                                     } else {
                                         2
                                     };
-                                    reader.prev_page.set_neq(current_page.checked_sub(sub));
+                                    this.prev_page.set_neq(current_page.checked_sub(sub));
                                 }
                             } else if index == current_page + 1 {
                                 hidden = false;
-                                if current_page + 2 < reader.pages_len.get() {
-                                    reader.next_page.set_neq(Some(current_page + 2));
+                                if current_page + 2 < this.pages_len.get() {
+                                    this.next_page.set_neq(Some(current_page + 2));
                                 } else {
-                                    reader.next_page.set_neq(None);
+                                    this.next_page.set_neq(None);
                                 }
                             }
 
@@ -1091,8 +1091,8 @@ impl Reader {
                                 .style("margin", "auto")
                                 .style("z-index", "20")
                                 .text("Retry")
-                                .event(clone!(reader, page => move |_: events::Click| {
-                                    let mut lock = reader.pages.lock_mut();
+                                .event(clone!(this, page => move |_: events::Click| {
+                                    let mut lock = this.pages.lock_mut();
                                     lock.set_cloned(index, (page.clone(), PageStatus::Initial));
                                 }))
                             })
@@ -1103,34 +1103,34 @@ impl Reader {
         })
     }
 
-    pub fn render(reader: Rc<Self>) -> Dom {
+    pub fn render(this: Rc<Self>) -> Dom {
         html!("div", {
-            .attribute("id", "reader")
-            .future(reader.current_page.signal().for_each(clone!(reader => move |page| {
-                Self::update_page_read(reader.clone(), page);
+            .attribute("id", "this")
+            .future(this.current_page.signal().for_each(clone!(this => move |page| {
+                Self::update_page_read(this.clone(), page);
 
-                reader.is_bar_visible.set_neq(false);
+                this.is_bar_visible.set_neq(false);
 
                 if page == 0 {
-                    reader.prev_page.set(None);
-                } else if page + 1 == reader.pages_len.get() {
-                    reader.next_page.set(None);
+                    this.prev_page.set(None);
+                } else if page + 1 == this.pages_len.get() {
+                    this.next_page.set(None);
                 }
 
                 async {}
             })))
-            .future(reader.chapter_id.signal().for_each(clone!(reader => move |chapter_id| {
+            .future(this.chapter_id.signal().for_each(clone!(this => move |chapter_id| {
                 let nav = match chapter_id {
-                    _ if Some(chapter_id) == reader.prev_chapter.get() => Nav::Prev,
-                    _ if Some(chapter_id) == reader.next_chapter.get() => Nav::Next,
+                    _ if Some(chapter_id) == this.prev_chapter.get() => Nav::Prev,
+                    _ if Some(chapter_id) == this.next_chapter.get() => Nav::Next,
                     _ => Nav::None,
                 };
 
-                Self::fetch_detail(reader.clone(), chapter_id, nav);
+                Self::fetch_detail(this.clone(), chapter_id, nav);
 
                 async {}
             })))
-            .future(reader.reader_settings.background.signal_cloned().for_each(|x| {
+            .future(this.reader_settings.background.signal_cloned().for_each(|x| {
                 document().body().map(|body| body.style().set_property("background-color", match x {
                     Background::White => "white",
                     Background::Black => "black",
@@ -1138,28 +1138,28 @@ impl Reader {
 
                 async {}
             }))
-            .global_event(clone!(reader => move |_:events::Resize| reader.reader_settings.display_mode.set(reader.reader_settings.display_mode.get())))
+            .global_event(clone!(this => move |_:events::Resize| this.reader_settings.display_mode.set(this.reader_settings.display_mode.get())))
             .children(&mut [
-                Self::render_topbar(reader.clone()),
+                Self::render_topbar(this.clone()),
             ])
-            .child_signal(reader.reader_settings.reader_mode.signal_cloned().map(clone!(reader => move |x| match x {
-                ReaderMode::Continous => Some(Self::render_vertical(reader.clone())),
+            .child_signal(this.reader_settings.reader_mode.signal_cloned().map(clone!(this => move |x| match x {
+                ReaderMode::Continous => Some(Self::render_vertical(this.clone())),
                 ReaderMode::Paged => Some(html!("div", {
                     .children(&mut [
-                        Self::render_navigation(reader.clone())
+                        Self::render_navigation(this.clone())
                     ])
-                    .child_signal(reader.reader_settings.display_mode.signal_cloned().map(clone!(reader => move |x| match x.get() {
-                        DisplayMode::Single => Some(Self::render_single(reader.clone())),
-                        DisplayMode::Double => Some(Self::render_double(reader.clone())),
+                    .child_signal(this.reader_settings.display_mode.signal_cloned().map(clone!(this => move |x| match x.get() {
+                        DisplayMode::Single => Some(Self::render_single(this.clone())),
+                        DisplayMode::Double => Some(Self::render_double(this.clone())),
                         DisplayMode::Auto => None // shouldn't return this
                     })))
                 }))
             })))
             .children(&mut [
-                Self::render_page_indicator(reader.clone()),
-                Self::render_bottombar(reader.clone()),
-                ReaderSettings::render(reader.reader_settings.clone()),
-                Spinner::render(&reader.spinner)
+                Self::render_page_indicator(this.clone()),
+                Self::render_bottombar(this.clone()),
+                ReaderSettings::render(this.reader_settings.clone()),
+                Spinner::render(&this.spinner)
             ])
         })
     }
