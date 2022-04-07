@@ -5,7 +5,7 @@ use crate::{
     db::{model, MangaDatabase, UserDatabase},
     user::Claims,
 };
-use tracker::{anilist, myanimelist, AniList, MyAnimeList};
+use tanoshi_tracker::{anilist, myanimelist, AniList, MyAnimeList};
 
 #[derive(SimpleObject)]
 pub struct Session {
@@ -269,21 +269,15 @@ impl TrackingRoot {
                             tracker_manga_id: Some(tracker_manga_id),
                             tracker_manga_title: Some(tracker_manga_title),
                             status: status.status.and_then(|s| match s {
-                                tracker::anilist::MediaListStatus::Current => {
-                                    Some("reading".to_string())
-                                }
-                                tracker::anilist::MediaListStatus::Planning => {
+                                anilist::MediaListStatus::Current => Some("reading".to_string()),
+                                anilist::MediaListStatus::Planning => {
                                     Some("plan_to_read".to_string())
                                 }
-                                tracker::anilist::MediaListStatus::Completed => {
+                                anilist::MediaListStatus::Completed => {
                                     Some("completed".to_string())
                                 }
-                                tracker::anilist::MediaListStatus::Dropped => {
-                                    Some("dropped".to_string())
-                                }
-                                tracker::anilist::MediaListStatus::Paused => {
-                                    Some("on_hold".to_string())
-                                }
+                                anilist::MediaListStatus::Dropped => Some("dropped".to_string()),
+                                anilist::MediaListStatus::Paused => Some("on_hold".to_string()),
                                 _ => None,
                             }),
                             num_chapters_read: status.progress,

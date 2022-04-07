@@ -1,8 +1,7 @@
 use crate::{config::GLOBAL_CONFIG, db::UserDatabase, guard::AdminGuard};
 use async_graphql::{Context, InputObject, Object, Result};
 use rand::RngCore;
-use tracker;
-
+use tanoshi_tracker::{myanimelist, anilist};
 use jsonwebtoken::{EncodingKey, Header};
 use serde::{Deserialize, Serialize};
 
@@ -78,7 +77,7 @@ impl User {
             .map_err(|_| "token not exists, please login")?;
         Ok(ctx
             .data::<UserDatabase>()?
-            .get_user_tracker_token(tracker::myanimelist::NAME, user.sub)
+            .get_user_tracker_token(myanimelist::NAME, user.sub)
             .await
             .is_ok())
     }
@@ -89,7 +88,7 @@ impl User {
             .map_err(|_| "token not exists, please login")?;
         Ok(ctx
             .data::<UserDatabase>()?
-            .get_user_tracker_token(tracker::anilist::NAME, user.sub)
+            .get_user_tracker_token(anilist::NAME, user.sub)
             .await
             .is_ok())
     }
@@ -263,7 +262,7 @@ impl UserMutationRoot {
 
         Ok(ctx
             .data::<UserDatabase>()?
-            .delete_user_tracker_login(tracker::myanimelist::NAME, claims.sub)
+            .delete_user_tracker_login(myanimelist::NAME, claims.sub)
             .await?)
     }
 }

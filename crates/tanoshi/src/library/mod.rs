@@ -10,7 +10,7 @@ use async_graphql::{
 };
 use async_graphql::{Context, Object, Result};
 use chrono::{Local, NaiveDateTime};
-use tracker::{anilist, myanimelist, AniList, MyAnimeList};
+use tanoshi_tracker::{anilist, myanimelist, AniList, MyAnimeList};
 
 mod categories;
 pub use categories::{Category, CategoryMutationRoot, CategoryRoot};

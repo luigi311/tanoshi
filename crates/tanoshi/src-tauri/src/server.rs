@@ -13,7 +13,7 @@ use tanoshi::{
   schema, server,
   worker,
 };
-use tracker::{AniList, MyAnimeList};
+use tanoshi_tracker::{AniList, MyAnimeList};
 
 pub struct Server {
   port: u16,

@@ -11,7 +11,7 @@ use crate::{
     user::{UserMutationRoot, UserRoot},
     worker::downloads::DownloadSender,
 };
-use tracker::{AniList, MyAnimeList};
+use tanoshi_tracker::{AniList, MyAnimeList};
 use tanoshi_vm::extension::SourceBus;
 
 use async_graphql::{

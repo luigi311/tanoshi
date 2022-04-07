@@ -27,7 +27,7 @@ desktop = ["tauri"]
 [dependencies]
 tanoshi-lib = { path = "../tanoshi-lib" }
 tanoshi-vm = { path = "../tanoshi-vm" }
-tracker = { path = "../tracker" }
+tanoshi-tracker = { path = "../tanoshi-tracker" }
 tanoshi-notifier = { path = "../tanoshi-notifier" }
 tokio = { version = "1", features = ["full"] }
 tokio-stream = "^0.1.5"

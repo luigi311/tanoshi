@@ -12,7 +12,7 @@ use tanoshi::{
 };
 use tanoshi_notifier::{pushover::Pushover, telegram::Telegram};
 use tanoshi_vm::{extension::SourceBus, prelude::Source};
-use tracker::{AniList, MyAnimeList};
+use tanoshi_tracker::{AniList, MyAnimeList};
 
 #[derive(Parser)]
 struct Opts {

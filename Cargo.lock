@@ -108,11 +108,11 @@ dependencies = [
  "serde",
  "serde_json",
  "tanoshi",
+ "tanoshi-tracker",
  "tanoshi-vm",
  "tauri",
  "tauri-build",
  "tokio",
- "tracker",
 ]
 
 [[package]]
@@ -4962,12 +4962,12 @@ dependencies = [
  "sqlx",
  "tanoshi-lib",
  "tanoshi-notifier",
+ "tanoshi-tracker",
  "tanoshi-vm",
  "tauri",
  "tokio",
  "tokio-stream",
  "tower-http",
- "tracker",
  "zip",
 ]
 
@@ -5008,6 +5008,20 @@ dependencies = [
  "serde",
  "serde_json",
  "teloxide",
+]
+
+[[package]]
+name = "tanoshi-tracker"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "insta",
+ "log",
+ "oauth2",
+ "reqwest",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -5747,20 +5761,6 @@ dependencies = [
  "tracing",
  "tracing-core",
  "tracing-log",
-]
-
-[[package]]
-name = "tracker"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "chrono",
- "insta",
- "log",
- "oauth2",
- "reqwest",
- "serde",
- "serde_json",
 ]
 
 [[package]]

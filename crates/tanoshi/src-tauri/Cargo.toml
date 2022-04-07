@@ -23,7 +23,7 @@ tanoshi = { path = "..", default-features = false, features = [
     "server",
 ] }
 tanoshi-vm = { path = "../../tanoshi-vm", default-features = false }
-tracker = { path = "../../tracker" }
+tanoshi-tracker = { path = "../../tanoshi-tracker" }
 tokio = { version = "1", features = ["full"] }
 portpicker = "0.1"
 
