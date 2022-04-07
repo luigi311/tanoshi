@@ -4,7 +4,7 @@ use anyhow::{anyhow, Result};
 use chrono::NaiveDate;
 use oauth2::{
     basic::BasicClient, reqwest::async_http_client, AuthUrl, AuthorizationCode, ClientId,
-    ClientSecret, CsrfToken, RedirectUrl, TokenUrl,
+    ClientSecret, CsrfToken, RedirectUrl, RefreshToken, TokenUrl,
 };
 use serde::Deserialize;
 use serde_json::json;
@@ -103,6 +103,16 @@ impl AniList {
             .request_async(async_http_client)
             .await?;
 
+        let token_str = serde_json::to_string(&token)?;
+        Ok(serde_json::from_str(&token_str)?)
+    }
+
+    pub async fn refresh_token(&self, refresh_token: String) -> Result<Token> {
+        let token = self
+            .oauth_client
+            .exchange_refresh_token(&RefreshToken::new(refresh_token))
+            .request_async(async_http_client)
+            .await?;
         let token_str = serde_json::to_string(&token)?;
         Ok(serde_json::from_str(&token_str)?)
     }

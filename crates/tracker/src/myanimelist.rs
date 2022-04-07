@@ -2,7 +2,8 @@ use anyhow::Result;
 use chrono::NaiveDateTime;
 use oauth2::{
     basic::BasicClient, reqwest::async_http_client, AuthUrl, AuthorizationCode, ClientId,
-    ClientSecret, CsrfToken, PkceCodeChallenge, PkceCodeVerifier, RedirectUrl, TokenUrl,
+    ClientSecret, CsrfToken, PkceCodeChallenge, PkceCodeVerifier, RedirectUrl, RefreshToken,
+    TokenUrl,
 };
 use serde::{Deserialize, Serialize};
 
@@ -84,7 +85,6 @@ impl MyAnimeList {
             .authorize_url(CsrfToken::new_random)
             .set_pkce_challenge(pkce_code_challenge)
             .url();
-
         Ok(Session {
             authorize_url: authorize_url.to_string(),
             csrf_state,
@@ -113,6 +113,16 @@ impl MyAnimeList {
             .request_async(async_http_client)
             .await?;
 
+        let token_str = serde_json::to_string(&token)?;
+        Ok(serde_json::from_str(&token_str)?)
+    }
+
+    pub async fn refresh_token(&self, refresh_token: String) -> Result<Token> {
+        let token = self
+            .oauth_client
+            .exchange_refresh_token(&RefreshToken::new(refresh_token))
+            .request_async(async_http_client)
+            .await?;
         let token_str = serde_json::to_string(&token)?;
         Ok(serde_json::from_str(&token_str)?)
     }
