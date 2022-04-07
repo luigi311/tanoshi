@@ -6,16 +6,13 @@ use clap::Parser;
 use futures::future::OptionFuture;
 use tanoshi::{
     config::{self, Config, GLOBAL_CONFIG},
-    db, local,
-    notifier::{self, pushover::Pushover},
+    db, local, notifier,
     proxy::Proxy,
-    schema, server,
-    worker,
+    schema, server, worker,
 };
-use tracker::{AniList, MyAnimeList};
+use tanoshi_notifier::{pushover::Pushover, telegram::Telegram};
 use tanoshi_vm::{extension::SourceBus, prelude::Source};
-
-use teloxide::prelude::RequesterExt;
+use tracker::{AniList, MyAnimeList};
 
 #[derive(Parser)]
 struct Opts {
@@ -81,10 +78,8 @@ async fn main() -> Result<(), anyhow::Error> {
 
     let mut telegram_bot_fut: OptionFuture<_> = None.into();
     if let Some(telegram_config) = config.telegram.clone() {
-        let bot = teloxide::Bot::new(telegram_config.token)
-            .auto_send()
-            .parse_mode(teloxide::types::ParseMode::Html);
-        telegram_bot_fut = Some(notifier::telegram::run(bot.clone())).into();
+        let bot = Telegram::new(telegram_config.token);
+        telegram_bot_fut = Some(tanoshi_notifier::telegram::run(bot.clone())).into();
         notifier_builder = notifier_builder.telegram(bot);
     }
 

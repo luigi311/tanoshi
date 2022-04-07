@@ -27,6 +27,8 @@ desktop = ["tauri"]
 [dependencies]
 tanoshi-lib = { path = "../tanoshi-lib" }
 tanoshi-vm = { path = "../tanoshi-vm" }
+tracker = { path = "../tracker" }
+tanoshi-notifier = { path = "../tanoshi-notifier" }
 tokio = { version = "1", features = ["full"] }
 tokio-stream = "^0.1.5"
 serde = { version = "1.0", features = ["derive"] }
@@ -72,7 +74,6 @@ compress-tools = { git = "https://github.com/faldez/compress-tools-rs", features
     "static",
 ] }
 zip = { version = "0.6", default-features = false }
-teloxide = { version = "0.7", features = ["auto-send", "macros"] }
 phf = { version = "^0.10", features = ["macros"] }
 human-sort = "^0.2.2"
 aes = "0.8"
@@ -83,4 +84,3 @@ tauri = { version = "1.0.0-rc", default-features = false, features = [
     "notification-all",
 ], optional = true }
 itertools = "0.10.2"
-tracker = { path = "../tracker" }

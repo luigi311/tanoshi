@@ -1,22 +1,12 @@
-use teloxide::{
-    adaptors::{AutoSend, DefaultParseMode},
-    prelude::Requester,
-    Bot,
-};
-
-use self::pushover::Pushover;
 use crate::{config::GLOBAL_CONFIG, db::UserDatabase};
-
-pub mod pushover;
-pub mod telegram;
-
-pub type Telegram = DefaultParseMode<AutoSend<Bot>>;
+use tanoshi_notifier::{telegram::Telegram, pushover::Pushover};
 
 pub struct Builder {
     userdb: UserDatabase,
     pushover: Option<Pushover>,
     telegram: Option<Telegram>,
 }
+
 impl Builder {
     pub fn new(userdb: UserDatabase) -> Self {
         Self {

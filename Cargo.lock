@@ -3032,16 +3032,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "notifier"
-version = "0.0.0"
-dependencies = [
- "reqwest",
- "serde",
- "serde_json",
- "teloxide",
-]
-
-[[package]]
 name = "notify-rust"
 version = "4.5.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4971,9 +4961,9 @@ dependencies = [
  "serde_yaml",
  "sqlx",
  "tanoshi-lib",
+ "tanoshi-notifier",
  "tanoshi-vm",
  "tauri",
- "teloxide",
  "tokio",
  "tokio-stream",
  "tower-http",
@@ -5004,6 +4994,20 @@ dependencies = [
  "rustc_version 0.4.0",
  "serde",
  "thiserror",
+]
+
+[[package]]
+name = "tanoshi-notifier"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "insta",
+ "log",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "teloxide",
 ]
 
 [[package]]
