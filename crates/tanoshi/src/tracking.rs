@@ -1,5 +1,5 @@
 use async_graphql::{Context, InputObject, Object, Result, SimpleObject};
-use chrono::NaiveDateTime;
+use chrono::{Datelike, NaiveDateTime, NaiveTime};
 
 use crate::{
     db::{model, MangaDatabase, UserDatabase},
@@ -168,7 +168,25 @@ impl TrackingRoot {
                     .get_user_tracker_token(anilist::NAME, user.sub)
                     .await?;
 
-                todo!()
+                let m = ctx
+                    .data::<AniList>()?
+                    .search_manga(tracker_token.access_token, title)
+                    .await?;
+
+                Ok(vec![TrackerManga {
+                    tracker: anilist::NAME.to_string(),
+                    tracker_manga_id: m.id.to_string(),
+                    title: m
+                        .title
+                        .and_then(|t| t.romaji)
+                        .unwrap_or_else(|| "".to_string()),
+                    synopsis: m.description.unwrap_or_else(|| "".to_string()),
+                    cover_url: m
+                        .cover_image
+                        .and_then(|c| c.medium)
+                        .unwrap_or_else(|| "".to_string()),
+                    status: m.status.unwrap_or_else(|| "".to_string()),
+                }])
             }
             _ => Err("tracker not available".into()),
         }
@@ -230,6 +248,62 @@ impl TrackingRoot {
                         })
                     }
                 }
+                (anilist::NAME, Some(tracker_manga_id)) => {
+                    let tracker_token = ctx
+                        .data::<UserDatabase>()?
+                        .get_user_tracker_token(anilist::NAME, user.sub)
+                        .await?;
+
+                    let tracker_data = ctx
+                        .data::<AniList>()?
+                        .get_manga_details(tracker_token.access_token, tracker_manga_id.parse()?)
+                        .await?;
+
+                    let tracker_manga_title = tracker_data
+                        .title
+                        .and_then(|t| t.romaji)
+                        .unwrap_or_else(|| "".to_string());
+                    if let Some(status) = tracker_data.media_list_entry {
+                        Some(TrackerStatus {
+                            tracker: tracker.tracker.to_owned(),
+                            tracker_manga_id: Some(tracker_manga_id),
+                            tracker_manga_title: Some(tracker_manga_title),
+                            status: status.status.and_then(|s| match s {
+                                tracker::anilist::MediaListStatus::Current => {
+                                    Some("reading".to_string())
+                                }
+                                tracker::anilist::MediaListStatus::Planning => {
+                                    Some("plan_to_read".to_string())
+                                }
+                                tracker::anilist::MediaListStatus::Completed => {
+                                    Some("completed".to_string())
+                                }
+                                tracker::anilist::MediaListStatus::Dropped => {
+                                    Some("dropped".to_string())
+                                }
+                                tracker::anilist::MediaListStatus::Paused => {
+                                    Some("on_hold".to_string())
+                                }
+                                _ => None,
+                            }),
+                            num_chapters_read: status.progress,
+                            score: status.score,
+                            start_date: status
+                                .started_at
+                                .map(|at| NaiveDateTime::new(at, NaiveTime::from_hms(0, 0, 0))),
+                            finish_date: status
+                                .completed_at
+                                .map(|at| NaiveDateTime::new(at, NaiveTime::from_hms(0, 0, 0))),
+                        })
+                    } else {
+                        Some(TrackerStatus {
+                            tracker: tracker.tracker.to_owned(),
+                            tracker_manga_id: Some(tracker_manga_id),
+                            tracker_manga_title: Some(tracker_manga_title),
+                            ..Default::default()
+                        })
+                    }
+                }
                 (_, _) => None,
             };
 
@@ -259,7 +333,7 @@ impl TrackingMutationRoot {
             .data::<Claims>()
             .map_err(|_| "token not exists, please login")?;
 
-        if !matches!(tracker.as_str(), myanimelist::NAME) {
+        if !matches!(tracker.as_str(), myanimelist::NAME | anilist::NAME) {
             return Err("tracker not available".into());
         }
 
@@ -296,13 +370,13 @@ impl TrackingMutationRoot {
             .data::<Claims>()
             .map_err(|_| "token not exists, please login")?;
 
+        let tracker_token = ctx
+            .data::<UserDatabase>()?
+            .get_user_tracker_token(&tracker, user.sub)
+            .await?;
+
         match tracker.as_str() {
             myanimelist::NAME => {
-                let tracker_token = ctx
-                    .data::<UserDatabase>()?
-                    .get_user_tracker_token(myanimelist::NAME, user.sub)
-                    .await?;
-
                 let mut params = vec![];
                 if let Some(status) = status.status.as_ref() {
                     params.push(("status", status.to_owned()));
@@ -322,6 +396,43 @@ impl TrackingMutationRoot {
 
                 ctx.data::<MyAnimeList>()?
                     .update_my_list_status(tracker_token.access_token, tracker_manga_id, &params)
+                    .await?;
+            }
+            anilist::NAME => {
+                let anilist = ctx.data::<AniList>()?;
+
+                let tracker_manga_id: i64 = tracker_manga_id.parse()?;
+                let entry_status = status.status.and_then(|s| match s.as_str() {
+                    "reading" => Some("CURRENT".to_string()),
+                    "completed" => Some("COMPLETED".to_string()),
+                    "on_hold" => Some("PAUSED".to_string()),
+                    "dropped" => Some("DROPPED".to_string()),
+                    "plan_to_read" => Some("PLANNING".to_string()),
+                    _ => None,
+                });
+                let score = status.score.map(|s| s * 10);
+                let started_at = status
+                    .start_date
+                    .map(|at| (at.year() as i64, at.month() as i64, at.day() as i64));
+                let completed_at = status
+                    .finish_date
+                    .map(|at| (at.year() as i64, at.month() as i64, at.day() as i64));
+
+                let id = anilist
+                    .get_manga_details(tracker_token.access_token.clone(), tracker_manga_id)
+                    .await
+                    .map(|res| res.media_list_entry.map(|entry| entry.id))?;
+                anilist
+                    .save_entry(
+                        tracker_token.access_token,
+                        id,
+                        tracker_manga_id,
+                        entry_status,
+                        score,
+                        status.num_chapters_read,
+                        started_at,
+                        completed_at,
+                    )
                     .await?;
             }
             _ => {}

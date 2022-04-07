@@ -10,7 +10,7 @@ use async_graphql::{
 };
 use async_graphql::{Context, Object, Result};
 use chrono::{Local, NaiveDateTime};
-use tracker::{myanimelist, MyAnimeList};
+use tracker::{anilist, myanimelist, AniList, MyAnimeList};
 
 mod categories;
 pub use categories::{Category, CategoryMutationRoot, CategoryRoot};
@@ -316,7 +316,7 @@ impl LibraryMutationRoot {
                             .await?;
 
                         if let Some(status) = tracker_data.my_list_status {
-                            if chapter.number < status.num_chapters_read as f64 {
+                            if chapter.number <= status.num_chapters_read as f64 {
                                 continue;
                             }
                         }
@@ -326,6 +326,42 @@ impl LibraryMutationRoot {
                                 tracker_token.access_token,
                                 tracker_manga_id,
                                 &[("num_chapters_read", &format!("{}", chapter.number))],
+                            )
+                            .await?;
+                    }
+                    (anilist::NAME, Some(tracker_manga_id)) => {
+                        let tracker_token = ctx
+                            .data::<UserDatabase>()?
+                            .get_user_tracker_token(anilist::NAME, user.sub)
+                            .await?;
+                        let tracker_manga_id = tracker_manga_id.parse()?;
+                        let al_client = ctx.data::<AniList>()?;
+                        let tracker_data = al_client
+                            .get_manga_details(tracker_token.access_token.clone(), tracker_manga_id)
+                            .await?;
+
+                        if let Some(progress) = tracker_data
+                            .media_list_entry
+                            .clone()
+                            .and_then(|status| status.progress)
+                        {
+                            if chapter.number <= progress as f64 {
+                                continue;
+                            }
+                        }
+
+                        let id = tracker_data.media_list_entry.map(|status| status.id);
+
+                        al_client
+                            .save_entry(
+                                tracker_token.access_token,
+                                id,
+                                tracker_manga_id,
+                                None,
+                                None,
+                                Some(chapter.number as i64),
+                                None,
+                                None,
                             )
                             .await?;
                     }

@@ -400,7 +400,7 @@ impl Profile {
                                     .style("height", "20px")
                                     .style("width", "20px")
                                     .style("margin-right", "0.5rem")
-                                    .attribute("src", "https://www.gitbook.com/cdn-cgi/image/width=40,height=40,fit=contain,dpr=1.5,format=auto/https%3A%2F%2F553834213-files.gitbook.io%2F~%2Ffiles%2Fv0%2Fb%2Fgitbook-legacy-files%2Fo%2Fspaces%252F-LHizcWWtVphqU90YAXO%252Favatar.png%3Fgeneration%3D1531944291782256%26alt%3Dmedia")
+                                    .attribute("src", "https://upload.wikimedia.org/wikipedia/commons/6/61/AniList_logo.svg")
                                 }),
                                 html!("span", {
                                     .text("AniList")

@@ -286,7 +286,11 @@ impl SelectTrackMangaModal {
                                     html!("img", {
                                         .style("width", "20px")
                                         .style("height", "20px")
-                                        .attribute("src", if tracker.tracker == "myanimelist" { "https://myanimelist.net/img/common/pwa/launcher-icon-0-75x.png" } else { "" })
+                                        .attribute("src", match tracker.tracker.as_str() {
+                                             "myanimelist" => "https://myanimelist.net/img/common/pwa/launcher-icon-0-75x.png",
+                                             "anilist" => "https://upload.wikimedia.org/wikipedia/commons/6/61/AniList_logo.svg",
+                                             _ => ""
+                                        })
                                     }),
                                 ])
                                 .child_signal(tracker.tracker_manga_title.signal_cloned().map(clone!(tracker => move |tracker_manga_title| if let Some(tracker_manga_title) = tracker_manga_title {
@@ -361,6 +365,7 @@ impl SelectTrackMangaModal {
                                                     .style_important("padding", "initial")
                                                     .style_important("text-align", "center")
                                                     .style_important("border", "0px")
+                                                    .style_important("color", "var(--color)")
                                                     .attribute("type", "text")
                                                     .attribute("placeholder", "Status")
                                                     .children(&mut [
