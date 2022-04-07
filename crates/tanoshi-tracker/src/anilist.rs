@@ -263,7 +263,7 @@ impl AniList {
             variables.insert("status", json!(status));
         }
         if let Some(score) = score {
-            variables.insert("scoreRaw", json!(score));
+            variables.insert("score", json!(score));
         }
         if let Some(progress) = progress {
             variables.insert("progress", json!(progress));
