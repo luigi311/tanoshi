@@ -135,18 +135,16 @@ impl AniList {
           }
         ";
 
-        let res = reqwest::Client::new()
-            .post("https://graphql.anilist.co/")
-            .bearer_auth(token)
-            .json(&json!({
-                "query": QUERY,
-                "variables": {
-                    "search": search
-                }
-            }))
-            .send()
-            .await?
-            .json::<serde_json::Value>()
+        let res = self
+            .post_graphql(
+                token,
+                &json!({
+                    "query": QUERY,
+                    "variables": {
+                        "search": search
+                    }
+                }),
+            )
             .await?;
 
         debug!("res: {res:?}");
@@ -195,18 +193,16 @@ impl AniList {
           }
         ";
 
-        let res = reqwest::Client::new()
-            .post("https://graphql.anilist.co/")
-            .bearer_auth(token)
-            .json(&json!({
-                "query": QUERY,
-                "variables": {
-                    "id": tracker_manga_id
-                }
-            }))
-            .send()
-            .await?
-            .json::<serde_json::Value>()
+        let res = self
+            .post_graphql(
+                token,
+                &json!({
+                    "query": QUERY,
+                    "variables": {
+                        "id": tracker_manga_id
+                    }
+                }),
+            )
             .await?;
 
         debug!("res: {res:?}");
@@ -289,20 +285,33 @@ impl AniList {
             );
         }
 
-        let res = reqwest::Client::new()
-            .post("https://graphql.anilist.co/")
-            .bearer_auth(token)
-            .json(&json!({
-                "query": QUERY,
-                "variables": variables
-            }))
-            .send()
-            .await?
-            .json::<serde_json::Value>()
+        let res = self
+            .post_graphql(
+                token,
+                &json!({
+                    "query": QUERY,
+                    "variables": variables
+                }),
+            )
             .await?;
 
         debug!("res: {res:?}");
 
         Ok(())
+    }
+
+    async fn post_graphql(
+        &self,
+        token: String,
+        body: &serde_json::Value,
+    ) -> Result<serde_json::Value> {
+        Ok(reqwest::Client::new()
+            .post("https://graphql.anilist.co/")
+            .bearer_auth(token)
+            .json(body)
+            .send()
+            .await?
+            .json::<serde_json::Value>()
+            .await?)
     }
 }
