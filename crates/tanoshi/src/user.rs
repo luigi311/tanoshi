@@ -127,7 +127,7 @@ impl UserRoot {
                 sub: user.id,
                 username: user.username,
                 is_admin: user.is_admin,
-                exp: 10000000000,
+                exp: 2678400, // 31 days
             },
             &EncodingKey::from_secret(secret.as_bytes()),
         )?;
