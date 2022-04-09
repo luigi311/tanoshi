@@ -19,8 +19,8 @@ pub struct Session {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct Token {
-    pub token_type: Option<String>,
-    pub expires_in: Option<i64>,
+    pub token_type: String,
+    pub expires_in: i64,
     pub access_token: String,
-    pub refresh_token: Option<String>,
+    pub refresh_token: String,
 }
