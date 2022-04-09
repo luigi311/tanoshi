@@ -121,13 +121,14 @@ impl UserRoot {
         }
 
         let secret = &GLOBAL_CONFIG.get().ok_or("secret not set")?.secret;
+        let current_time = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH)?;
         let token = jsonwebtoken::encode(
             &Header::default(),
             &Claims {
                 sub: user.id,
                 username: user.username,
                 is_admin: user.is_admin,
-                exp: 2678400, // 31 days
+                exp: (current_time + std::time::Duration::from_secs(2678400)).as_secs() as usize, // 31 days
             },
             &EncodingKey::from_secret(secret.as_bytes()),
         )?;
