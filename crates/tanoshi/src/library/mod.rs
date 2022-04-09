@@ -297,15 +297,16 @@ impl LibraryMutationRoot {
                 .get_tracker_manga_id(user.sub, chapter.manga_id)
                 .await?;
             for tracker in trackers {
+                let tracker_token = ctx
+                    .data::<UserDatabase>()?
+                    .get_user_tracker_token(&tracker.tracker, user.sub)
+                    .await?;
+
                 match (
                     tracker.tracker.as_str(),
                     tracker.tracker_manga_id.to_owned(),
                 ) {
                     (myanimelist::NAME, Some(tracker_manga_id)) => {
-                        let tracker_token = ctx
-                            .data::<UserDatabase>()?
-                            .get_user_tracker_token(myanimelist::NAME, user.sub)
-                            .await?;
                         let mal_client = ctx.data::<MyAnimeList>()?;
                         let tracker_manga_id = tracker_manga_id.parse()?;
                         let tracker_data = mal_client
@@ -333,10 +334,6 @@ impl LibraryMutationRoot {
                             .await?;
                     }
                     (anilist::NAME, Some(tracker_manga_id)) => {
-                        let tracker_token = ctx
-                            .data::<UserDatabase>()?
-                            .get_user_tracker_token(anilist::NAME, user.sub)
-                            .await?;
                         let tracker_manga_id = tracker_manga_id.parse()?;
                         let al_client = ctx.data::<AniList>()?;
                         let tracker_data = al_client

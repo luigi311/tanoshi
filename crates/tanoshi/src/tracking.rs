@@ -168,23 +168,17 @@ impl TrackingRoot {
             .data::<Claims>()
             .map_err(|_| "token not exists, please login")?;
 
+        let tracker_token = ctx
+            .data::<UserDatabase>()?
+            .get_user_tracker_token(&tracker, user.sub)
+            .await?;
         let manga_list = match tracker.as_str() {
             myanimelist::NAME => {
-                let tracker_token = ctx
-                    .data::<UserDatabase>()?
-                    .get_user_tracker_token(myanimelist::NAME, user.sub)
-                    .await?;
-
                 ctx.data::<MyAnimeList>()?
                     .search_manga(tracker_token.access_token, title)
                     .await?
             }
             anilist::NAME => {
-                let tracker_token = ctx
-                    .data::<UserDatabase>()?
-                    .get_user_tracker_token(anilist::NAME, user.sub)
-                    .await?;
-
                 ctx.data::<AniList>()?
                     .search_manga(tracker_token.access_token, title)
                     .await?
@@ -203,7 +197,6 @@ impl TrackingRoot {
         let user = ctx
             .data::<Claims>()
             .map_err(|_| "token not exists, please login")?;
-
         let trackers = ctx
             .data::<MangaDatabase>()?
             .get_tracker_manga_id(user.sub, manga_id)
@@ -211,34 +204,26 @@ impl TrackingRoot {
 
         let mut data: Vec<TrackerStatus> = vec![];
         for tracker in trackers {
+            let tracker_token = ctx
+                .data::<UserDatabase>()?
+                .get_user_tracker_token(&tracker.tracker, user.sub)
+                .await?;
             let status: Option<TrackerStatus> = match (
                 tracker.tracker.as_str(),
                 tracker.tracker_manga_id.to_owned(),
             ) {
-                (myanimelist::NAME, Some(tracker_manga_id)) => {
-                    let tracker_token = ctx
-                        .data::<UserDatabase>()?
-                        .get_user_tracker_token(myanimelist::NAME, user.sub)
-                        .await?;
-
-                    ctx.data::<MyAnimeList>()?
-                        .get_manga_details(tracker_token.access_token, tracker_manga_id.parse()?)
-                        .await?
-                        .tracker_status
-                        .map(|status| status.into())
-                }
-                (anilist::NAME, Some(tracker_manga_id)) => {
-                    let tracker_token = ctx
-                        .data::<UserDatabase>()?
-                        .get_user_tracker_token(anilist::NAME, user.sub)
-                        .await?;
-
-                    ctx.data::<AniList>()?
-                        .get_manga_details(tracker_token.access_token, tracker_manga_id.parse()?)
-                        .await?
-                        .tracker_status
-                        .map(|status| status.into())
-                }
+                (myanimelist::NAME, Some(tracker_manga_id)) => ctx
+                    .data::<MyAnimeList>()?
+                    .get_manga_details(tracker_token.access_token, tracker_manga_id.parse()?)
+                    .await?
+                    .tracker_status
+                    .map(|status| status.into()),
+                (anilist::NAME, Some(tracker_manga_id)) => ctx
+                    .data::<AniList>()?
+                    .get_manga_details(tracker_token.access_token, tracker_manga_id.parse()?)
+                    .await?
+                    .tracker_status
+                    .map(|status| status.into()),
                 (_, _) => None,
             };
 
