@@ -6,9 +6,10 @@ use oauth2::{
     ClientSecret, CsrfToken, PkceCodeChallenge, PkceCodeVerifier, RedirectUrl, RefreshToken,
     TokenUrl,
 };
+use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 
-use crate::{Tracker, TrackerManga, TrackerStatus};
+use crate::{Error, Tracker, TrackerManga, TrackerStatus};
 
 use super::{Session, Token};
 
@@ -92,7 +93,7 @@ pub struct MyAnimeList {
 
 #[async_trait]
 impl Tracker for MyAnimeList {
-    fn get_authorize_url(&self) -> Result<Session> {
+    fn get_authorize_url(&self) -> Result<Session, Error> {
         let (pkce_code_challenge, pkce_code_verifier) = PkceCodeChallenge::new_random_plain();
         let (authorize_url, csrf_state) = self
             .oauth_client
@@ -112,7 +113,7 @@ impl Tracker for MyAnimeList {
         state: Option<String>,
         csrf_state: Option<String>,
         pkce_code_verifier: Option<String>,
-    ) -> Result<Token> {
+    ) -> Result<Token, Error> {
         let code = AuthorizationCode::new(code);
 
         if let Some((state, csrf_state)) = state.zip(csrf_state) {
@@ -129,23 +130,29 @@ impl Tracker for MyAnimeList {
             .exchange_code(code)
             .set_pkce_verifier(pkce_code_verifier)
             .request_async(async_http_client)
-            .await?;
+            .await
+            .map_err(|e| anyhow!("{e}"))?;
 
-        let token_str = serde_json::to_string(&token)?;
-        Ok(serde_json::from_str(&token_str)?)
+        let token_str = serde_json::to_string(&token).map_err(|e| anyhow!("{e}"))?;
+        Ok(serde_json::from_str(&token_str).map_err(|e| anyhow!("{e}"))?)
     }
 
-    async fn refresh_token(&self, refresh_token: String) -> Result<Token> {
+    async fn refresh_token(&self, refresh_token: String) -> Result<Token, Error> {
         let token = self
             .oauth_client
             .exchange_refresh_token(&RefreshToken::new(refresh_token))
             .request_async(async_http_client)
-            .await?;
-        let token_str = serde_json::to_string(&token)?;
-        Ok(serde_json::from_str(&token_str)?)
+            .await
+            .map_err(|e| anyhow!("{e}"))?;
+        let token_str = serde_json::to_string(&token).map_err(|e| anyhow!("{e}"))?;
+        Ok(serde_json::from_str(&token_str).map_err(|e| anyhow!("{e}"))?)
     }
 
-    async fn search_manga(&self, token: String, search: String) -> Result<Vec<TrackerManga>> {
+    async fn search_manga(
+        &self,
+        token: String,
+        search: String,
+    ) -> Result<Vec<TrackerManga>, Error> {
         let manga_list = self
             .get_manga_list(
                 token,
@@ -163,7 +170,7 @@ impl Tracker for MyAnimeList {
         &self,
         token: String,
         tracker_manga_id: i64,
-    ) -> Result<TrackerManga> {
+    ) -> Result<TrackerManga, Error> {
         let manga = self
             .get_manga_details(
                 token,
@@ -183,7 +190,7 @@ impl Tracker for MyAnimeList {
         progress: Option<i64>,
         started_at: Option<NaiveDateTime>,
         completed_at: Option<NaiveDateTime>,
-    ) -> Result<()> {
+    ) -> Result<(), Error> {
         let mut params = vec![];
         if let Some(status) = status.as_ref() {
             params.push(("status", status.to_owned()));
@@ -208,14 +215,17 @@ impl Tracker for MyAnimeList {
 }
 
 impl MyAnimeList {
-    pub fn new(base_url: &str, client_id: String, client_secret: String) -> Result<Self> {
+    pub fn new(base_url: &str, client_id: String, client_secret: String) -> Result<Self, Error> {
         let client_id = ClientId::new(client_id);
         let client_secret = ClientSecret::new(client_secret);
         let authorization_url =
-            AuthUrl::new("https://myanimelist.net/v1/oauth2/authorize".to_string())?;
-        let token_url = TokenUrl::new("https://myanimelist.net/v1/oauth2/token".to_string())?;
+            AuthUrl::new("https://myanimelist.net/v1/oauth2/authorize".to_string())
+                .map_err(|e| anyhow!("{e}"))?;
+        let token_url = TokenUrl::new("https://myanimelist.net/v1/oauth2/token".to_string())
+            .map_err(|e| anyhow!("{e}"))?;
 
-        let redirect_url = RedirectUrl::new(format!("{base_url}/tracker/{NAME}/redirect"))?;
+        let redirect_url = RedirectUrl::new(format!("{base_url}/tracker/{NAME}/redirect"))
+            .map_err(|e| anyhow!("{e}"))?;
         let client = BasicClient::new(
             client_id,
             Some(client_secret),
@@ -237,7 +247,7 @@ impl MyAnimeList {
         limit: i64,
         offset: i64,
         fields: String,
-    ) -> Result<Vec<Manga>> {
+    ) -> Result<Vec<Manga>, Error> {
         let res: GetMangaListResponse = self
             .api_client
             .get("https://api.myanimelist.net/v2/manga")
@@ -250,9 +260,17 @@ impl MyAnimeList {
                 ("offset", format!("{offset}")),
             ])
             .send()
-            .await?
+            .await
+            .map_err(|e| {
+                if e.status() == Some(StatusCode::UNAUTHORIZED) {
+                    Error::Unauthorized
+                } else {
+                    Error::Other(anyhow!("{e}"))
+                }
+            })?
             .json()
-            .await?;
+            .await
+            .map_err(|e| anyhow!("{e}"))?;
         Ok(res.data.into_iter().map(|node| node.node).collect())
     }
 
@@ -261,7 +279,7 @@ impl MyAnimeList {
         token: String,
         tracker_manga_id: String,
         fields: String,
-    ) -> Result<Manga> {
+    ) -> Result<Manga, Error> {
         let res: Manga = self
             .api_client
             .get(format!(
@@ -270,9 +288,17 @@ impl MyAnimeList {
             .bearer_auth(token)
             .query(&[("fields", &fields)])
             .send()
-            .await?
+            .await
+            .map_err(|e| {
+                if e.status() == Some(StatusCode::UNAUTHORIZED) {
+                    Error::Unauthorized
+                } else {
+                    Error::Other(anyhow!("{e}"))
+                }
+            })?
             .json()
-            .await?;
+            .await
+            .map_err(|e| anyhow!("{e}"))?;
 
         Ok(res)
     }
@@ -282,7 +308,7 @@ impl MyAnimeList {
         token: String,
         tracker_manga_id: String,
         params: &T,
-    ) -> Result<()> {
+    ) -> Result<(), Error> {
         self.api_client
             .patch(format!(
                 "https://api.myanimelist.net/v2/manga/{tracker_manga_id}/my_list_status"
@@ -290,7 +316,14 @@ impl MyAnimeList {
             .bearer_auth(token)
             .form(params)
             .send()
-            .await?;
+            .await
+            .map_err(|e| {
+                if e.status() == Some(StatusCode::UNAUTHORIZED) {
+                    Error::Unauthorized
+                } else {
+                    Error::Other(anyhow!("{e}"))
+                }
+            })?;
 
         Ok(())
     }

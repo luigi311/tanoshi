@@ -8,10 +8,18 @@ pub use myanimelist::MyAnimeList;
 pub mod anilist;
 pub use anilist::AniList;
 
-use anyhow::Result;
 use async_trait::async_trait;
 use oauth2::{CsrfToken, PkceCodeVerifier};
 use serde::Deserialize;
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+pub enum Error {
+    #[error("unauthorized")]
+    Unauthorized,
+    #[error(transparent)]
+    Other(#[from] anyhow::Error),
+}
 
 #[derive(Debug)]
 pub struct Session {
@@ -53,7 +61,7 @@ pub struct TrackerStatus {
 
 #[async_trait]
 pub trait Tracker {
-    fn get_authorize_url(&self) -> Result<Session>;
+    fn get_authorize_url(&self) -> Result<Session, Error>;
 
     async fn exchange_code(
         &self,
@@ -61,13 +69,17 @@ pub trait Tracker {
         state: Option<String>,
         csrf_state: Option<String>,
         pkce_code_verifier: Option<String>,
-    ) -> Result<Token>;
+    ) -> Result<Token, Error>;
 
-    async fn refresh_token(&self, refresh_token: String) -> Result<Token>;
+    async fn refresh_token(&self, refresh_token: String) -> Result<Token, Error>;
 
-    async fn search_manga(&self, token: String, search: String) -> Result<Vec<TrackerManga>>;
-    async fn get_manga_details(&self, token: String, tracker_manga_id: i64)
-        -> Result<TrackerManga>;
+    async fn search_manga(&self, token: String, search: String)
+        -> Result<Vec<TrackerManga>, Error>;
+    async fn get_manga_details(
+        &self,
+        token: String,
+        tracker_manga_id: i64,
+    ) -> Result<TrackerManga, Error>;
     async fn update_tracker_status(
         &self,
         token: String,
@@ -77,5 +89,5 @@ pub trait Tracker {
         progress: Option<i64>,
         started_at: Option<NaiveDateTime>,
         completed_at: Option<NaiveDateTime>,
-    ) -> Result<()>;
+    ) -> Result<(), Error>;
 }

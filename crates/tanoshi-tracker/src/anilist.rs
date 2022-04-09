@@ -1,16 +1,17 @@
 use std::collections::HashMap;
 
-use anyhow::{anyhow, Result};
+use anyhow::anyhow;
 use async_trait::async_trait;
 use chrono::{Datelike, NaiveDate, NaiveDateTime, NaiveTime};
 use oauth2::{
     basic::BasicClient, reqwest::async_http_client, AuthUrl, AuthorizationCode, ClientId,
     ClientSecret, CsrfToken, RedirectUrl, RefreshToken, TokenUrl,
 };
+use reqwest::StatusCode;
 use serde::Deserialize;
 use serde_json::json;
 
-use crate::{Tracker, TrackerManga, TrackerStatus};
+use crate::{Error, Tracker, TrackerManga, TrackerStatus};
 
 use super::{Session, Token};
 
@@ -116,7 +117,7 @@ pub struct AniList {
 
 #[async_trait]
 impl Tracker for AniList {
-    fn get_authorize_url(&self) -> Result<Session> {
+    fn get_authorize_url(&self) -> Result<Session, Error> {
         let (authorize_url, csrf_state) =
             self.oauth_client.authorize_url(CsrfToken::new_random).url();
 
@@ -133,30 +134,36 @@ impl Tracker for AniList {
         _state: Option<String>,
         _csrf_state: Option<String>,
         _pkce_code_verifier: Option<String>,
-    ) -> Result<Token> {
+    ) -> Result<Token, Error> {
         let code = AuthorizationCode::new(code);
 
         let token = self
             .oauth_client
             .exchange_code(code)
             .request_async(async_http_client)
-            .await?;
+            .await
+            .map_err(|e| anyhow!("{e}"))?;
 
-        let token_str = serde_json::to_string(&token)?;
-        Ok(serde_json::from_str(&token_str)?)
+        let token_str = serde_json::to_string(&token).map_err(|e| anyhow!("{e}"))?;
+        Ok(serde_json::from_str(&token_str).map_err(|e| anyhow!("{e}"))?)
     }
 
-    async fn refresh_token(&self, refresh_token: String) -> Result<Token> {
+    async fn refresh_token(&self, refresh_token: String) -> Result<Token, Error> {
         let token = self
             .oauth_client
             .exchange_refresh_token(&RefreshToken::new(refresh_token))
             .request_async(async_http_client)
-            .await?;
-        let token_str = serde_json::to_string(&token)?;
-        Ok(serde_json::from_str(&token_str)?)
+            .await
+            .map_err(|e| anyhow!("{e}"))?;
+        let token_str = serde_json::to_string(&token).map_err(|e| anyhow!("{e}"))?;
+        Ok(serde_json::from_str(&token_str).map_err(|e| anyhow!("{e}"))?)
     }
 
-    async fn search_manga(&self, token: String, search: String) -> Result<Vec<TrackerManga>> {
+    async fn search_manga(
+        &self,
+        token: String,
+        search: String,
+    ) -> Result<Vec<TrackerManga>, Error> {
         const QUERY: &str = "
         query SearchManga($search: String!) {
             Media(search: $search, format_in: [MANGA, ONE_SHOT]) {
@@ -194,7 +201,7 @@ impl Tracker for AniList {
             .map(|media| media.to_owned())
             .ok_or_else(|| anyhow!("no data"))?;
 
-        let media: Media = serde_json::from_value(res)?;
+        let media: Media = serde_json::from_value(res).map_err(|e| anyhow!("{e}"))?;
         Ok(vec![media.into()])
     }
 
@@ -202,7 +209,7 @@ impl Tracker for AniList {
         &self,
         token: String,
         tracker_manga_id: i64,
-    ) -> Result<TrackerManga> {
+    ) -> Result<TrackerManga, Error> {
         let media = self.get_media_details(token, tracker_manga_id).await?;
         Ok(media.into())
     }
@@ -216,7 +223,7 @@ impl Tracker for AniList {
         progress: Option<i64>,
         started_at: Option<NaiveDateTime>,
         completed_at: Option<NaiveDateTime>,
-    ) -> Result<()> {
+    ) -> Result<(), Error> {
         let entry_status = status.and_then(|s| match s.as_str() {
             "reading" => Some("CURRENT".to_string()),
             "completed" => Some("COMPLETED".to_string()),
@@ -252,14 +259,17 @@ impl Tracker for AniList {
 }
 
 impl AniList {
-    pub fn new(base_url: &str, client_id: String, client_secret: String) -> Result<Self> {
+    pub fn new(base_url: &str, client_id: String, client_secret: String) -> Result<Self, Error> {
         let client_id = ClientId::new(client_id);
         let client_secret = ClientSecret::new(client_secret);
         let authorization_url =
-            AuthUrl::new("https://anilist.co/api/v2/oauth/authorize".to_string())?;
-        let token_url = TokenUrl::new("https://anilist.co/api/v2/oauth/token".to_string())?;
+            AuthUrl::new("https://anilist.co/api/v2/oauth/authorize".to_string())
+                .map_err(|e| anyhow!("{e}"))?;
+        let token_url = TokenUrl::new("https://anilist.co/api/v2/oauth/token".to_string())
+            .map_err(|e| anyhow!("{e}"))?;
 
-        let redirect_url = RedirectUrl::new(format!("{base_url}/tracker/{NAME}/redirect"))?;
+        let redirect_url = RedirectUrl::new(format!("{base_url}/tracker/{NAME}/redirect"))
+            .map_err(|e| anyhow!("{e}"))?;
         let client = BasicClient::new(
             client_id,
             Some(client_secret),
@@ -273,7 +283,7 @@ impl AniList {
         })
     }
 
-    async fn get_media_details(&self, token: String, media_id: i64) -> Result<Media> {
+    async fn get_media_details(&self, token: String, media_id: i64) -> Result<Media, Error> {
         const QUERY: &str = "
         query GetManga($id: Int!) {
             Media(id: $id) {
@@ -327,7 +337,7 @@ impl AniList {
             .map(|media| media.to_owned())
             .ok_or_else(|| anyhow!("no data"))?;
 
-        let media: Media = serde_json::from_value(res)?;
+        let media: Media = serde_json::from_value(res).map_err(|e| anyhow!("{e}"))?;
         Ok(media)
     }
 
@@ -341,7 +351,7 @@ impl AniList {
         progress: Option<i64>,
         started_at: Option<(i64, i64, i64)>,
         completed_at: Option<(i64, i64, i64)>,
-    ) -> Result<()> {
+    ) -> Result<(), Error> {
         const QUERY: &str = "
         mutation SaveEntry(
             $id: Int, 
@@ -419,14 +429,22 @@ impl AniList {
         &self,
         token: String,
         body: &serde_json::Value,
-    ) -> Result<serde_json::Value> {
+    ) -> Result<serde_json::Value, Error> {
         Ok(reqwest::Client::new()
             .post("https://graphql.anilist.co/")
             .bearer_auth(token)
             .json(body)
             .send()
-            .await?
+            .await
+            .map_err(|e| {
+                if e.status() == Some(StatusCode::UNAUTHORIZED) {
+                    Error::Unauthorized
+                } else {
+                    Error::Other(anyhow!("{e}"))
+                }
+            })?
             .json::<serde_json::Value>()
-            .await?)
+            .await
+            .map_err(|e| anyhow!("{e}"))?)
     }
 }
