@@ -2,11 +2,14 @@
 extern crate log;
 
 pub mod myanimelist;
+use chrono::NaiveDateTime;
 pub use myanimelist::MyAnimeList;
 
 pub mod anilist;
 pub use anilist::AniList;
 
+use anyhow::Result;
+use async_trait::async_trait;
 use oauth2::{CsrfToken, PkceCodeVerifier};
 use serde::Deserialize;
 
@@ -23,4 +26,56 @@ pub struct Token {
     pub expires_in: i64,
     pub access_token: String,
     pub refresh_token: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct TrackerManga {
+    pub tracker: String,
+    pub tracker_manga_id: String,
+    pub title: String,
+    pub synopsis: String,
+    pub cover_url: String,
+    pub status: String,
+    pub tracker_status: Option<TrackerStatus>,
+}
+
+#[derive(Debug, Default, Clone)]
+pub struct TrackerStatus {
+    pub tracker: String,
+    pub tracker_manga_id: Option<String>,
+    pub tracker_manga_title: Option<String>,
+    pub status: Option<String>,
+    pub score: Option<i64>,
+    pub num_chapters_read: Option<i64>,
+    pub start_date: Option<NaiveDateTime>,
+    pub finish_date: Option<NaiveDateTime>,
+}
+
+#[async_trait]
+pub trait Tracker {
+    fn get_authorize_url(&self) -> Result<Session>;
+
+    async fn exchange_code(
+        &self,
+        code: String,
+        state: Option<String>,
+        csrf_state: Option<String>,
+        pkce_code_verifier: Option<String>,
+    ) -> Result<Token>;
+
+    async fn refresh_token(&self, refresh_token: String) -> Result<Token>;
+
+    async fn search_manga(&self, token: String, search: String) -> Result<Vec<TrackerManga>>;
+    async fn get_manga_details(&self, token: String, tracker_manga_id: i64)
+        -> Result<TrackerManga>;
+    async fn update_tracker_status(
+        &self,
+        token: String,
+        tracker_manga_id: i64,
+        status: Option<String>,
+        score: Option<i64>,
+        progress: Option<i64>,
+        started_at: Option<NaiveDateTime>,
+        completed_at: Option<NaiveDateTime>,
+    ) -> Result<()>;
 }

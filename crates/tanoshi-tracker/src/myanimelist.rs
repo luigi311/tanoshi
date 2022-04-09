@@ -1,4 +1,5 @@
-use anyhow::Result;
+use anyhow::{anyhow, Result};
+use async_trait::async_trait;
 use chrono::NaiveDateTime;
 use oauth2::{
     basic::BasicClient, reqwest::async_http_client, AuthUrl, AuthorizationCode, ClientId,
@@ -6,6 +7,8 @@ use oauth2::{
     TokenUrl,
 };
 use serde::{Deserialize, Serialize};
+
+use crate::{Tracker, TrackerManga, TrackerStatus};
 
 use super::{Session, Token};
 
@@ -39,6 +42,38 @@ pub struct Manga {
     pub my_list_status: Option<MyListStatus>,
 }
 
+impl Into<TrackerManga> for Manga {
+    fn into(self) -> TrackerManga {
+        TrackerManga {
+            tracker: NAME.to_string(),
+            tracker_manga_id: self.id.to_string(),
+            title: self.title.clone(),
+            synopsis: self.synopsis,
+            cover_url: self.main_picture.medium,
+            status: self.status,
+            tracker_status: if let Some(status) = self.my_list_status {
+                Some(TrackerStatus {
+                    tracker: NAME.to_string(),
+                    tracker_manga_id: Some(self.id.to_string()),
+                    tracker_manga_title: Some(self.title.clone()),
+                    status: status.status,
+                    num_chapters_read: Some(status.num_chapters_read),
+                    score: Some(status.score),
+                    start_date: status.start_date,
+                    finish_date: status.finish_date,
+                })
+            } else {
+                Some(TrackerStatus {
+                    tracker: NAME.to_string(),
+                    tracker_manga_id: Some(self.id.to_string()),
+                    tracker_manga_title: Some(self.title.clone()),
+                    ..Default::default()
+                })
+            },
+        }
+    }
+}
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct Node<T> {
     pub node: T,
@@ -53,6 +88,123 @@ pub struct GetMangaListResponse {
 pub struct MyAnimeList {
     pub oauth_client: BasicClient,
     api_client: reqwest::Client,
+}
+
+#[async_trait]
+impl Tracker for MyAnimeList {
+    fn get_authorize_url(&self) -> Result<Session> {
+        let (pkce_code_challenge, pkce_code_verifier) = PkceCodeChallenge::new_random_plain();
+        let (authorize_url, csrf_state) = self
+            .oauth_client
+            .authorize_url(CsrfToken::new_random)
+            .set_pkce_challenge(pkce_code_challenge)
+            .url();
+        Ok(Session {
+            authorize_url: authorize_url.to_string(),
+            csrf_state,
+            pkce_code_verifier: Some(pkce_code_verifier),
+        })
+    }
+
+    async fn exchange_code(
+        &self,
+        code: String,
+        state: Option<String>,
+        csrf_state: Option<String>,
+        pkce_code_verifier: Option<String>,
+    ) -> Result<Token> {
+        let code = AuthorizationCode::new(code);
+
+        if let Some((state, csrf_state)) = state.zip(csrf_state) {
+            let _state = CsrfToken::new(state);
+            let _csrf_state = CsrfToken::new(csrf_state);
+        }
+
+        let pkce_code_verifier = PkceCodeVerifier::new(
+            pkce_code_verifier.ok_or_else(|| anyhow!("no pkce code verifier"))?,
+        );
+
+        let token = self
+            .oauth_client
+            .exchange_code(code)
+            .set_pkce_verifier(pkce_code_verifier)
+            .request_async(async_http_client)
+            .await?;
+
+        let token_str = serde_json::to_string(&token)?;
+        Ok(serde_json::from_str(&token_str)?)
+    }
+
+    async fn refresh_token(&self, refresh_token: String) -> Result<Token> {
+        let token = self
+            .oauth_client
+            .exchange_refresh_token(&RefreshToken::new(refresh_token))
+            .request_async(async_http_client)
+            .await?;
+        let token_str = serde_json::to_string(&token)?;
+        Ok(serde_json::from_str(&token_str)?)
+    }
+
+    async fn search_manga(&self, token: String, search: String) -> Result<Vec<TrackerManga>> {
+        let manga_list = self
+            .get_manga_list(
+                token,
+                search,
+                6,
+                0,
+                "id,title,main_picture,synopsis,status".to_string(),
+            )
+            .await?;
+
+        Ok(manga_list.into_iter().map(|m| m.into()).collect())
+    }
+
+    async fn get_manga_details(
+        &self,
+        token: String,
+        tracker_manga_id: i64,
+    ) -> Result<TrackerManga> {
+        let manga = self
+            .get_manga_details(
+                token,
+                tracker_manga_id.to_string(),
+                "title,my_list_status".to_string(),
+            )
+            .await?;
+        Ok(manga.into())
+    }
+
+    async fn update_tracker_status(
+        &self,
+        token: String,
+        tracker_manga_id: i64,
+        status: Option<String>,
+        score: Option<i64>,
+        progress: Option<i64>,
+        started_at: Option<NaiveDateTime>,
+        completed_at: Option<NaiveDateTime>,
+    ) -> Result<()> {
+        let mut params = vec![];
+        if let Some(status) = status.as_ref() {
+            params.push(("status", status.to_owned()));
+        }
+        if let Some(score) = score {
+            params.push(("score", format!("{score}")));
+        }
+        if let Some(num_chapters_read) = progress {
+            params.push(("num_chapters_read", format!("{num_chapters_read}")));
+        }
+        if let Some(start_date) = started_at.as_ref() {
+            params.push(("start_date", format!("{start_date}")));
+        }
+        if let Some(finish_date) = completed_at.as_ref() {
+            params.push(("finish_date", format!("{finish_date}")));
+        }
+
+        self.update_my_list_status(token, tracker_manga_id.to_string(), &params)
+            .await?;
+        Ok(())
+    }
 }
 
 impl MyAnimeList {
@@ -78,56 +230,7 @@ impl MyAnimeList {
         })
     }
 
-    pub fn get_authorize_url(&self) -> Result<Session> {
-        let (pkce_code_challenge, pkce_code_verifier) = PkceCodeChallenge::new_random_plain();
-        let (authorize_url, csrf_state) = self
-            .oauth_client
-            .authorize_url(CsrfToken::new_random)
-            .set_pkce_challenge(pkce_code_challenge)
-            .url();
-        Ok(Session {
-            authorize_url: authorize_url.to_string(),
-            csrf_state,
-            pkce_code_verifier: Some(pkce_code_verifier),
-        })
-    }
-
-    pub async fn exchange_code(
-        &self,
-        code: String,
-        state: String,
-        csrf_state: String,
-        pkce_code_verifier: String,
-    ) -> Result<Token> {
-        let code = AuthorizationCode::new(code);
-        let _state = CsrfToken::new(state);
-
-        let _csrf_state = CsrfToken::new(csrf_state);
-
-        let pkce_code_verifier = PkceCodeVerifier::new(pkce_code_verifier);
-
-        let token = self
-            .oauth_client
-            .exchange_code(code)
-            .set_pkce_verifier(pkce_code_verifier)
-            .request_async(async_http_client)
-            .await?;
-
-        let token_str = serde_json::to_string(&token)?;
-        Ok(serde_json::from_str(&token_str)?)
-    }
-
-    pub async fn refresh_token(&self, refresh_token: String) -> Result<Token> {
-        let token = self
-            .oauth_client
-            .exchange_refresh_token(&RefreshToken::new(refresh_token))
-            .request_async(async_http_client)
-            .await?;
-        let token_str = serde_json::to_string(&token)?;
-        Ok(serde_json::from_str(&token_str)?)
-    }
-
-    pub async fn get_manga_list(
+    async fn get_manga_list(
         &self,
         token: String,
         q: String,
@@ -153,7 +256,7 @@ impl MyAnimeList {
         Ok(res.data.into_iter().map(|node| node.node).collect())
     }
 
-    pub async fn get_manga_details(
+    async fn get_manga_details(
         &self,
         token: String,
         tracker_manga_id: String,
@@ -174,7 +277,7 @@ impl MyAnimeList {
         Ok(res)
     }
 
-    pub async fn update_my_list_status<T: Serialize + ?Sized>(
+    async fn update_my_list_status<T: Serialize + ?Sized>(
         &self,
         token: String,
         tracker_manga_id: String,

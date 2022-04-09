@@ -1,13 +1,16 @@
 use std::collections::HashMap;
 
 use anyhow::{anyhow, Result};
-use chrono::NaiveDate;
+use async_trait::async_trait;
+use chrono::{Datelike, NaiveDate, NaiveDateTime, NaiveTime};
 use oauth2::{
     basic::BasicClient, reqwest::async_http_client, AuthUrl, AuthorizationCode, ClientId,
     ClientSecret, CsrfToken, RedirectUrl, RefreshToken, TokenUrl,
 };
 use serde::Deserialize;
 use serde_json::json;
+
+use crate::{Tracker, TrackerManga, TrackerStatus};
 
 use super::{Session, Token};
 
@@ -57,33 +60,63 @@ pub struct Media {
     pub media_list_entry: Option<MediaListEntry>,
 }
 
+impl Into<TrackerManga> for Media {
+    fn into(self) -> TrackerManga {
+        let title = self
+            .title
+            .and_then(|t| t.romaji)
+            .unwrap_or_else(|| "".to_string());
+        TrackerManga {
+            tracker: NAME.to_string(),
+            tracker_manga_id: self.id.to_string(),
+            title: title.clone(),
+            synopsis: self.description.unwrap_or_else(|| "".to_string()),
+            cover_url: self
+                .cover_image
+                .and_then(|c| c.medium)
+                .unwrap_or_else(|| "".to_string()),
+            status: self.status.unwrap_or_else(|| "".to_string()),
+            tracker_status: if let Some(status) = self.media_list_entry {
+                Some(TrackerStatus {
+                    tracker: NAME.to_string(),
+                    tracker_manga_id: Some(self.id.to_string()),
+                    tracker_manga_title: Some(title.clone()),
+                    status: status.status.and_then(|s| match s {
+                        MediaListStatus::Current => Some("reading".to_string()),
+                        MediaListStatus::Planning => Some("plan_to_read".to_string()),
+                        MediaListStatus::Completed => Some("completed".to_string()),
+                        MediaListStatus::Dropped => Some("dropped".to_string()),
+                        MediaListStatus::Paused => Some("on_hold".to_string()),
+                        _ => None,
+                    }),
+                    num_chapters_read: status.progress,
+                    score: status.score,
+                    start_date: status
+                        .started_at
+                        .map(|at| NaiveDateTime::new(at, NaiveTime::from_hms(0, 0, 0))),
+                    finish_date: status
+                        .completed_at
+                        .map(|at| NaiveDateTime::new(at, NaiveTime::from_hms(0, 0, 0))),
+                })
+            } else {
+                Some(TrackerStatus {
+                    tracker: NAME.to_string(),
+                    tracker_manga_id: Some(self.id.to_string()),
+                    tracker_manga_title: Some(title.clone()),
+                    ..Default::default()
+                })
+            },
+        }
+    }
+}
+
 pub struct AniList {
     pub oauth_client: BasicClient,
 }
 
-impl AniList {
-    pub fn new(base_url: &str, client_id: String, client_secret: String) -> Result<Self> {
-        let client_id = ClientId::new(client_id);
-        let client_secret = ClientSecret::new(client_secret);
-        let authorization_url =
-            AuthUrl::new("https://anilist.co/api/v2/oauth/authorize".to_string())?;
-        let token_url = TokenUrl::new("https://anilist.co/api/v2/oauth/token".to_string())?;
-
-        let redirect_url = RedirectUrl::new(format!("{base_url}/tracker/{NAME}/redirect"))?;
-        let client = BasicClient::new(
-            client_id,
-            Some(client_secret),
-            authorization_url,
-            Some(token_url),
-        )
-        .set_redirect_uri(redirect_url);
-
-        Ok(Self {
-            oauth_client: client,
-        })
-    }
-
-    pub fn get_authorize_url(&self) -> Result<Session> {
+#[async_trait]
+impl Tracker for AniList {
+    fn get_authorize_url(&self) -> Result<Session> {
         let (authorize_url, csrf_state) =
             self.oauth_client.authorize_url(CsrfToken::new_random).url();
 
@@ -94,7 +127,13 @@ impl AniList {
         })
     }
 
-    pub async fn exchange_code(&self, code: String) -> Result<Token> {
+    async fn exchange_code(
+        &self,
+        code: String,
+        _state: Option<String>,
+        _csrf_state: Option<String>,
+        _pkce_code_verifier: Option<String>,
+    ) -> Result<Token> {
         let code = AuthorizationCode::new(code);
 
         let token = self
@@ -107,7 +146,7 @@ impl AniList {
         Ok(serde_json::from_str(&token_str)?)
     }
 
-    pub async fn refresh_token(&self, refresh_token: String) -> Result<Token> {
+    async fn refresh_token(&self, refresh_token: String) -> Result<Token> {
         let token = self
             .oauth_client
             .exchange_refresh_token(&RefreshToken::new(refresh_token))
@@ -117,7 +156,7 @@ impl AniList {
         Ok(serde_json::from_str(&token_str)?)
     }
 
-    pub async fn search_manga(&self, token: String, search: String) -> Result<Media> {
+    async fn search_manga(&self, token: String, search: String) -> Result<Vec<TrackerManga>> {
         const QUERY: &str = "
         query SearchManga($search: String!) {
             Media(search: $search, format_in: [MANGA, ONE_SHOT]) {
@@ -156,10 +195,85 @@ impl AniList {
             .ok_or_else(|| anyhow!("no data"))?;
 
         let media: Media = serde_json::from_value(res)?;
-        Ok(media)
+        Ok(vec![media.into()])
     }
 
-    pub async fn get_manga_details(&self, token: String, tracker_manga_id: i64) -> Result<Media> {
+    async fn get_manga_details(
+        &self,
+        token: String,
+        tracker_manga_id: i64,
+    ) -> Result<TrackerManga> {
+        let media = self.get_media_details(token, tracker_manga_id).await?;
+        Ok(media.into())
+    }
+
+    async fn update_tracker_status(
+        &self,
+        token: String,
+        tracker_manga_id: i64,
+        status: Option<String>,
+        score: Option<i64>,
+        progress: Option<i64>,
+        started_at: Option<NaiveDateTime>,
+        completed_at: Option<NaiveDateTime>,
+    ) -> Result<()> {
+        let entry_status = status.and_then(|s| match s.as_str() {
+            "reading" => Some("CURRENT".to_string()),
+            "completed" => Some("COMPLETED".to_string()),
+            "on_hold" => Some("PAUSED".to_string()),
+            "dropped" => Some("DROPPED".to_string()),
+            "plan_to_read" => Some("PLANNING".to_string()),
+            _ => None,
+        });
+        let score = score.map(|s| s * 10);
+        let started_at =
+            started_at.map(|at| (at.year() as i64, at.month() as i64, at.day() as i64));
+        let completed_at =
+            completed_at.map(|at| (at.year() as i64, at.month() as i64, at.day() as i64));
+
+        let id = self
+            .get_media_details(token.clone(), tracker_manga_id)
+            .await
+            .map(|res| res.media_list_entry.map(|entry| entry.id))?;
+
+        self.save_entry(
+            token,
+            id,
+            tracker_manga_id,
+            entry_status,
+            score,
+            progress,
+            started_at,
+            completed_at,
+        )
+        .await?;
+        Ok(())
+    }
+}
+
+impl AniList {
+    pub fn new(base_url: &str, client_id: String, client_secret: String) -> Result<Self> {
+        let client_id = ClientId::new(client_id);
+        let client_secret = ClientSecret::new(client_secret);
+        let authorization_url =
+            AuthUrl::new("https://anilist.co/api/v2/oauth/authorize".to_string())?;
+        let token_url = TokenUrl::new("https://anilist.co/api/v2/oauth/token".to_string())?;
+
+        let redirect_url = RedirectUrl::new(format!("{base_url}/tracker/{NAME}/redirect"))?;
+        let client = BasicClient::new(
+            client_id,
+            Some(client_secret),
+            authorization_url,
+            Some(token_url),
+        )
+        .set_redirect_uri(redirect_url);
+
+        Ok(Self {
+            oauth_client: client,
+        })
+    }
+
+    async fn get_media_details(&self, token: String, media_id: i64) -> Result<Media> {
         const QUERY: &str = "
         query GetManga($id: Int!) {
             Media(id: $id) {
@@ -199,7 +313,7 @@ impl AniList {
                 &json!({
                     "query": QUERY,
                     "variables": {
-                        "id": tracker_manga_id
+                        "id": media_id
                     }
                 }),
             )
@@ -216,7 +330,8 @@ impl AniList {
         let media: Media = serde_json::from_value(res)?;
         Ok(media)
     }
-    pub async fn save_entry(
+
+    async fn save_entry(
         &self,
         token: String,
         id: Option<i64>,

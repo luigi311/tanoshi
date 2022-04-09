@@ -10,7 +10,7 @@ use async_graphql::{
 };
 use async_graphql::{Context, Object, Result};
 use chrono::{Local, NaiveDateTime};
-use tanoshi_tracker::{anilist, myanimelist, AniList, MyAnimeList};
+use tanoshi_tracker::{anilist, myanimelist, AniList, MyAnimeList, Tracker};
 
 mod categories;
 pub use categories::{Category, CategoryMutationRoot, CategoryRoot};
@@ -307,25 +307,28 @@ impl LibraryMutationRoot {
                             .get_user_tracker_token(myanimelist::NAME, user.sub)
                             .await?;
                         let mal_client = ctx.data::<MyAnimeList>()?;
+                        let tracker_manga_id = tracker_manga_id.parse()?;
                         let tracker_data = mal_client
-                            .get_manga_details(
-                                tracker_token.access_token.clone(),
-                                tracker_manga_id.to_owned(),
-                                "my_list_status".to_string(),
-                            )
+                            .get_manga_details(tracker_token.access_token.clone(), tracker_manga_id)
                             .await?;
-
-                        if let Some(status) = tracker_data.my_list_status {
-                            if chapter.number <= status.num_chapters_read as f64 {
+                        if let Some(num_chapters_read) = tracker_data
+                            .tracker_status
+                            .and_then(|status| status.num_chapters_read)
+                        {
+                            if chapter.number <= num_chapters_read as f64 {
                                 continue;
                             }
                         }
 
                         mal_client
-                            .update_my_list_status(
+                            .update_tracker_status(
                                 tracker_token.access_token,
                                 tracker_manga_id,
-                                &[("num_chapters_read", &format!("{}", chapter.number))],
+                                None,
+                                None,
+                                Some(chapter.number as i64),
+                                None,
+                                None,
                             )
                             .await?;
                     }
@@ -340,22 +343,18 @@ impl LibraryMutationRoot {
                             .get_manga_details(tracker_token.access_token.clone(), tracker_manga_id)
                             .await?;
 
-                        if let Some(progress) = tracker_data
-                            .media_list_entry
-                            .clone()
-                            .and_then(|status| status.progress)
+                        if let Some(num_chapters_read) = tracker_data
+                            .tracker_status
+                            .and_then(|status| status.num_chapters_read)
                         {
-                            if chapter.number <= progress as f64 {
+                            if chapter.number <= num_chapters_read as f64 {
                                 continue;
                             }
                         }
 
-                        let id = tracker_data.media_list_entry.map(|status| status.id);
-
                         al_client
-                            .save_entry(
+                            .update_tracker_status(
                                 tracker_token.access_token,
-                                id,
                                 tracker_manga_id,
                                 None,
                                 None,

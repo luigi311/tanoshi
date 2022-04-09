@@ -5015,8 +5015,8 @@ name = "tanoshi-tracker"
 version = "0.0.0"
 dependencies = [
  "anyhow",
+ "async-trait",
  "chrono",
- "insta",
  "log",
  "oauth2",
  "reqwest",
