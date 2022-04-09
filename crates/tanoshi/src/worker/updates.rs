@@ -81,56 +81,55 @@ impl UpdatesWorker {
 
             debug!("Checking updates: {}", item.manga.title);
 
-            let chapters = match self
+            let chapters: Vec<Chapter> = match self
                 .extensions
                 .get_chapters(item.manga.source_id, item.manga.path.clone())
                 .await
             {
-                Ok(chapters) => {
-                    let chapters: Vec<Chapter> = chapters
-                        .into_iter()
-                        .map(|ch| {
-                            let mut c: Chapter = ch.into();
-                            c.manga_id = item.manga.id;
-                            c
-                        })
-                        .collect();
-                    chapters
-                }
+                Ok(chapters) => chapters
+                    .into_iter()
+                    .map(|ch| {
+                        let mut c: Chapter = ch.into();
+                        c.manga_id = item.manga.id;
+                        c
+                    })
+                    .collect(),
                 Err(e) => {
                     error!("error fetch new chapters, reason: {}", e);
                     continue;
                 }
             };
 
-            let mut new_chapter_count = 0;
-            for chapter in chapters {
-                tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
-                let chapter_id = match self.mangadb.insert_chapter(&chapter).await {
-                    Ok(chapter_id) => chapter_id,
-                    Err(e) => {
-                        error!("error inserting new chapters, reason: {}", e);
-                        continue;
-                    }
-                };
+            if let Err(e) = self.mangadb.insert_chapters(&chapters).await {
+                error!("error insert chapters, reason: {}", e);
+                continue;
+            }
 
-                if chapter.uploaded <= last_uploaded_chapter {
+            let chapters = match self
+                .mangadb
+                .get_chapters_by_manga_id_after(item.manga.id, last_uploaded_chapter)
+                .await
+            {
+                Ok(chapters) => chapters,
+                Err(e) => {
+                    error!("error insert chapters, reason: {}", e);
                     continue;
                 }
+            };
 
-                info!(
-                    "{} {} {} {}",
-                    item.manga.id, chapter.id, chapter.uploaded, last_uploaded_chapter
-                );
+            info!(
+                "Found: {} has {} new chapters",
+                item.manga.title,
+                chapters.len()
+            );
 
-                new_chapter_count += 1;
-
+            for chapter in chapters {
                 #[cfg(feature = "desktop")]
                 if let Err(e) = self
                     .notifier
                     .send_desktop_notification(Some(item.manga.title.clone()), &chapter.title)
                 {
-                    error!("failed to send notification, reason {}", e);
+                    error!("failed to send desktop notification, reason {}", e);
                 }
 
                 for user_id in item.user_ids.iter() {
@@ -140,7 +139,7 @@ impl UpdatesWorker {
                             *user_id,
                             &item.manga.title,
                             &chapter.title,
-                            chapter_id,
+                            chapter.id,
                         )
                         .await
                     {
@@ -158,11 +157,6 @@ impl UpdatesWorker {
                         .unwrap();
                 }
             }
-
-            info!(
-                "Found: {} has {new_chapter_count} new chapters",
-                item.manga.title,
-            );
 
             tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
         }

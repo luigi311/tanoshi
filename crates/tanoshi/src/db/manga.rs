@@ -1185,6 +1185,38 @@ impl Db {
         })
     }
 
+    pub async fn get_chapters_by_manga_id_after(
+        &self,
+        manga_id: i64,
+        after: NaiveDateTime,
+    ) -> Result<Vec<Chapter>> {
+        let mut conn = self.pool.acquire().await?;
+        let stream = sqlx::query(
+            r#"
+            SELECT * FROM chapter WHERE manga_id = ? AND uploaded > ? ORDER BY uploaded ASC"#,
+        )
+        .bind(manga_id)
+        .bind(after)
+        .fetch_all(&mut conn)
+        .await?;
+
+        Ok(stream
+            .iter()
+            .map(|row| Chapter {
+                id: row.get(0),
+                source_id: row.get(1),
+                manga_id: row.get(2),
+                title: row.get(3),
+                path: row.get(4),
+                number: row.get(5),
+                scanlator: row.get(6),
+                uploaded: row.get(7),
+                date_added: row.get(8),
+                downloaded_path: row.get(9),
+            })
+            .collect())
+    }
+
     pub async fn insert_chapter(&self, chapter: &Chapter) -> Result<i64> {
         let mut conn = self.pool.acquire().await?;
         let row_id = sqlx::query(
