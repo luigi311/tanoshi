@@ -172,21 +172,17 @@ impl TrackingRoot {
             .data::<UserDatabase>()?
             .get_user_tracker_token(&tracker, user.sub)
             .await?;
-        let manga_list = match tracker.as_str() {
-            myanimelist::NAME => {
-                ctx.data::<MyAnimeList>()?
-                    .search_manga(tracker_token.access_token, title)
-                    .await?
-            }
-            anilist::NAME => {
-                ctx.data::<AniList>()?
-                    .search_manga(tracker_token.access_token, title)
-                    .await?
-            }
+
+        let client: &dyn Tracker = match tracker.as_str() {
+            myanimelist::NAME => ctx.data::<MyAnimeList>()?,
+            anilist::NAME => ctx.data::<AniList>()?,
             _ => return Err("tracker not available".into()),
         };
 
-        Ok(manga_list.into_iter().map(|m| m.into()).collect())
+        match client.search_manga(tracker_token.access_token, title).await {
+            Ok(manga_list) => Ok(manga_list.into_iter().map(|m| m.into()).collect()),
+            Err(e) => Err(e.into()),
+        }
     }
 
     async fn manga_tracker_status(
@@ -208,24 +204,21 @@ impl TrackingRoot {
                 .data::<UserDatabase>()?
                 .get_user_tracker_token(&tracker.tracker, user.sub)
                 .await?;
-            let status: Option<TrackerStatus> = match (
-                tracker.tracker.as_str(),
-                tracker.tracker_manga_id.to_owned(),
-            ) {
-                (myanimelist::NAME, Some(tracker_manga_id)) => ctx
-                    .data::<MyAnimeList>()?
-                    .get_manga_details(tracker_token.access_token, tracker_manga_id.parse()?)
-                    .await?
-                    .tracker_status
-                    .map(|status| status.into()),
-                (anilist::NAME, Some(tracker_manga_id)) => ctx
-                    .data::<AniList>()?
-                    .get_manga_details(tracker_token.access_token, tracker_manga_id.parse()?)
-                    .await?
-                    .tracker_status
-                    .map(|status| status.into()),
-                (_, _) => None,
+
+            let client: &dyn Tracker = match tracker.tracker.as_str() {
+                myanimelist::NAME => ctx.data::<MyAnimeList>()?,
+                anilist::NAME => ctx.data::<AniList>()?,
+                _ => return Err("tracker not available".into()),
             };
+
+            let mut status: Option<TrackerStatus> = None;
+            if let Some(tracker_manga_id) = tracker.tracker_manga_id.to_owned() {
+                status = client
+                    .get_manga_details(tracker_token.access_token, tracker_manga_id.parse()?)
+                    .await?
+                    .tracker_status
+                    .map(|status| status.into())
+            }
 
             data.push(status.unwrap_or_else(|| TrackerStatus {
                 tracker: tracker.tracker,
@@ -297,36 +290,23 @@ impl TrackingMutationRoot {
 
         let tracker_manga_id: i64 = tracker_manga_id.parse()?;
 
-        match tracker.as_str() {
-            myanimelist::NAME => {
-                ctx.data::<MyAnimeList>()?
-                    .update_tracker_status(
-                        tracker_token.access_token,
-                        tracker_manga_id,
-                        status.status,
-                        status.score,
-                        status.num_chapters_read,
-                        status.start_date,
-                        status.finish_date,
-                    )
-                    .await?
-            }
-            anilist::NAME => {
-                let anilist = ctx.data::<AniList>()?;
-                anilist
-                    .update_tracker_status(
-                        tracker_token.access_token,
-                        tracker_manga_id,
-                        status.status,
-                        status.score,
-                        status.num_chapters_read,
-                        status.start_date,
-                        status.finish_date,
-                    )
-                    .await?;
-            }
-            _ => {}
-        }
+        let client: &dyn Tracker = match tracker.as_str() {
+            myanimelist::NAME => ctx.data::<MyAnimeList>()?,
+            anilist::NAME => ctx.data::<AniList>()?,
+            _ => return Err("tracker not available".into()),
+        };
+
+        client
+            .update_tracker_status(
+                tracker_token.access_token,
+                tracker_manga_id,
+                status.status,
+                status.score,
+                status.num_chapters_read,
+                status.start_date,
+                status.finish_date,
+            )
+            .await?;
 
         Ok(true)
     }

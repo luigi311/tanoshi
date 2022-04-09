@@ -292,77 +292,50 @@ impl LibraryMutationRoot {
 
         let chapter = mangadb.get_chapter_by_id(chapter_id).await?;
         // TODO: nepnep source have weird number, don't update tracker status for them for now
-        if is_complete && chapter.source_id != 3 && chapter.source_id != 4 {
-            let trackers = mangadb
-                .get_tracker_manga_id(user.sub, chapter.manga_id)
+        if !is_complete || (chapter.source_id == 3 || chapter.source_id == 4) {
+            return Ok(rows);
+        }
+
+        let trackers = mangadb
+            .get_tracker_manga_id(user.sub, chapter.manga_id)
+            .await?;
+        for tracker in trackers {
+            let tracker_token = ctx
+                .data::<UserDatabase>()?
+                .get_user_tracker_token(&tracker.tracker, user.sub)
                 .await?;
-            for tracker in trackers {
-                let tracker_token = ctx
-                    .data::<UserDatabase>()?
-                    .get_user_tracker_token(&tracker.tracker, user.sub)
+
+            let client: &dyn Tracker = match tracker.tracker.as_str() {
+                myanimelist::NAME => ctx.data::<MyAnimeList>()?,
+                anilist::NAME => ctx.data::<AniList>()?,
+                _ => return Err("tracker not available".into()),
+            };
+
+            if let Some(tracker_manga_id) = tracker.tracker_manga_id.to_owned() {
+                let tracker_manga_id = tracker_manga_id.parse()?;
+                let tracker_data = client
+                    .get_manga_details(tracker_token.access_token.clone(), tracker_manga_id)
                     .await?;
-
-                match (
-                    tracker.tracker.as_str(),
-                    tracker.tracker_manga_id.to_owned(),
-                ) {
-                    (myanimelist::NAME, Some(tracker_manga_id)) => {
-                        let mal_client = ctx.data::<MyAnimeList>()?;
-                        let tracker_manga_id = tracker_manga_id.parse()?;
-                        let tracker_data = mal_client
-                            .get_manga_details(tracker_token.access_token.clone(), tracker_manga_id)
-                            .await?;
-                        if let Some(num_chapters_read) = tracker_data
-                            .tracker_status
-                            .and_then(|status| status.num_chapters_read)
-                        {
-                            if chapter.number <= num_chapters_read as f64 {
-                                continue;
-                            }
-                        }
-
-                        mal_client
-                            .update_tracker_status(
-                                tracker_token.access_token,
-                                tracker_manga_id,
-                                None,
-                                None,
-                                Some(chapter.number as i64),
-                                None,
-                                None,
-                            )
-                            .await?;
+                if let Some(num_chapters_read) = tracker_data
+                    .tracker_status
+                    .and_then(|status| status.num_chapters_read)
+                {
+                    if chapter.number <= num_chapters_read as f64 {
+                        continue;
                     }
-                    (anilist::NAME, Some(tracker_manga_id)) => {
-                        let tracker_manga_id = tracker_manga_id.parse()?;
-                        let al_client = ctx.data::<AniList>()?;
-                        let tracker_data = al_client
-                            .get_manga_details(tracker_token.access_token.clone(), tracker_manga_id)
-                            .await?;
-
-                        if let Some(num_chapters_read) = tracker_data
-                            .tracker_status
-                            .and_then(|status| status.num_chapters_read)
-                        {
-                            if chapter.number <= num_chapters_read as f64 {
-                                continue;
-                            }
-                        }
-
-                        al_client
-                            .update_tracker_status(
-                                tracker_token.access_token,
-                                tracker_manga_id,
-                                None,
-                                None,
-                                Some(chapter.number as i64),
-                                None,
-                                None,
-                            )
-                            .await?;
-                    }
-                    (_, _) => {}
                 }
+
+                client
+                    .update_tracker_status(
+                        tracker_token.access_token,
+                        tracker_manga_id,
+                        None,
+                        None,
+                        Some(chapter.number as i64),
+                        None,
+                        None,
+                    )
+                    .await?;
             }
         }
 

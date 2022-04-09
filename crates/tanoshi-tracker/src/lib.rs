@@ -60,7 +60,7 @@ pub struct TrackerStatus {
 }
 
 #[async_trait]
-pub trait Tracker {
+pub trait Tracker: Sync + Send {
     fn get_authorize_url(&self) -> Result<Session, Error>;
 
     async fn exchange_code(
@@ -80,6 +80,7 @@ pub trait Tracker {
         token: String,
         tracker_manga_id: i64,
     ) -> Result<TrackerManga, Error>;
+
     async fn update_tracker_status(
         &self,
         token: String,
