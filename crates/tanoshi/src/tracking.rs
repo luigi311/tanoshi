@@ -181,7 +181,24 @@ impl TrackingRoot {
 
         match client.search_manga(tracker_token.access_token, title).await {
             Ok(manga_list) => Ok(manga_list.into_iter().map(|m| m.into()).collect()),
-            Err(e) => Err(e.into()),
+            Err(e) => {
+                if matches!(e, tanoshi_tracker::Error::Unauthorized) {
+                    let token = client
+                        .refresh_token(tracker_token.refresh_token)
+                        .await
+                        .map(|token| model::Token {
+                            token_type: token.token_type,
+                            access_token: token.access_token,
+                            refresh_token: token.refresh_token,
+                            expires_in: token.expires_in,
+                        })?;
+
+                    ctx.data::<UserDatabase>()?
+                        .insert_tracker_credential(user.sub, &tracker, token)
+                        .await?;
+                }
+                Err(e.into())
+            }
         }
     }
 
@@ -213,11 +230,31 @@ impl TrackingRoot {
 
             let mut status: Option<TrackerStatus> = None;
             if let Some(tracker_manga_id) = tracker.tracker_manga_id.to_owned() {
-                status = client
+                status = match client
                     .get_manga_details(tracker_token.access_token, tracker_manga_id.parse()?)
-                    .await?
-                    .tracker_status
-                    .map(|status| status.into())
+                    .await
+                {
+                    Ok(res) => res.tracker_status.map(|status| status.into()),
+                    Err(e) => {
+                        if matches!(e, tanoshi_tracker::Error::Unauthorized) {
+                            let token = client
+                                .refresh_token(tracker_token.refresh_token)
+                                .await
+                                .map(|token| model::Token {
+                                    token_type: token.token_type,
+                                    access_token: token.access_token,
+                                    refresh_token: token.refresh_token,
+                                    expires_in: token.expires_in,
+                                })?;
+
+                            ctx.data::<UserDatabase>()?
+                                .insert_tracker_credential(user.sub, &tracker.tracker, token)
+                                .await?;
+                        }
+
+                        return Err(e.into());
+                    }
+                }
             }
 
             data.push(status.unwrap_or_else(|| TrackerStatus {
@@ -296,7 +333,7 @@ impl TrackingMutationRoot {
             _ => return Err("tracker not available".into()),
         };
 
-        client
+        match client
             .update_tracker_status(
                 tracker_token.access_token,
                 tracker_manga_id,
@@ -306,8 +343,28 @@ impl TrackingMutationRoot {
                 status.start_date,
                 status.finish_date,
             )
-            .await?;
+            .await
+        {
+            Ok(_) => Ok(true),
+            Err(e) => {
+                if matches!(e, tanoshi_tracker::Error::Unauthorized) {
+                    let token = client
+                        .refresh_token(tracker_token.refresh_token)
+                        .await
+                        .map(|token| model::Token {
+                            token_type: token.token_type,
+                            access_token: token.access_token,
+                            refresh_token: token.refresh_token,
+                            expires_in: token.expires_in,
+                        })?;
 
-        Ok(true)
+                    ctx.data::<UserDatabase>()?
+                        .insert_tracker_credential(user.sub, &tracker, token)
+                        .await?;
+                }
+
+                Err(e.into())
+            }
+        }
     }
 }

@@ -313,9 +313,32 @@ impl LibraryMutationRoot {
 
             if let Some(tracker_manga_id) = tracker.tracker_manga_id.to_owned() {
                 let tracker_manga_id = tracker_manga_id.parse()?;
-                let tracker_data = client
+                let tracker_data = match client
                     .get_manga_details(tracker_token.access_token.clone(), tracker_manga_id)
-                    .await?;
+                    .await
+                {
+                    Ok(res) => res,
+                    Err(e) => {
+                        if matches!(e, tanoshi_tracker::Error::Unauthorized) {
+                            let token = client
+                                .refresh_token(tracker_token.refresh_token)
+                                .await
+                                .map(|token| model::Token {
+                                    token_type: token.token_type,
+                                    access_token: token.access_token,
+                                    refresh_token: token.refresh_token,
+                                    expires_in: token.expires_in,
+                                })?;
+
+                            ctx.data::<UserDatabase>()?
+                                .insert_tracker_credential(user.sub, &tracker.tracker, token)
+                                .await?;
+                        }
+
+                        return Err(e.into());
+                    }
+                };
+
                 if let Some(num_chapters_read) = tracker_data
                     .tracker_status
                     .and_then(|status| status.num_chapters_read)
