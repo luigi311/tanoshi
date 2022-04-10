@@ -9,6 +9,7 @@ use std::{
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use fancy_regex::Regex;
+use mime_guess::mime;
 use serde::{Deserialize, Serialize};
 use tanoshi_lib::prelude::{ChapterInfo, Extension, Input, Lang, MangaInfo, SourceInfo};
 
@@ -63,11 +64,24 @@ fn find_cover_from_archive(path: &Path) -> String {
         }
     };
 
-    compress_tools::list_archive_files(source)
-        .ok()
-        .and_then(|files| files.first().cloned())
-        .map(|page| path.join(page).display().to_string())
-        .unwrap_or_else(default_cover_url)
+    let mut cover_url = default_cover_url();
+    if let Ok(files) = compress_tools::list_archive_files(source) {
+        for file in files {
+            let file = PathBuf::from(&file);
+            let res = mime_guess::from_path(&file);
+            debug!("{} {:?}", file.display(), res.first());
+            if res
+                .first()
+                .map(|m| m.type_() == mime::IMAGE)
+                .unwrap_or(false)
+            {
+                cover_url = path.join(file).display().to_string();
+                break;
+            }
+        }
+    }
+
+    cover_url
 }
 
 // find first image from a directory
@@ -167,6 +181,12 @@ pub fn get_pages_from_archive(path: &Path) -> Result<Vec<String>, anyhow::Error>
         Ok(files) => {
             let pages = files
                 .into_iter()
+                .filter(|p| {
+                    mime_guess::from_path(&p)
+                        .first()
+                        .map(|m| m.type_() == mime::IMAGE)
+                        .unwrap_or(false)
+                })
                 .map(|p| path.join(p).display().to_string())
                 .collect();
             Ok(pages)

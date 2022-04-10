@@ -5,6 +5,7 @@ use axum::{
     http::{HeaderMap, HeaderValue, Response, StatusCode},
     response::IntoResponse,
 };
+use fancy_regex::Regex;
 use serde::Deserialize;
 
 use crate::utils;
@@ -44,6 +45,7 @@ impl Proxy {
                 "".to_string()
             }
         };
+
         debug!("get image from {}", url);
         let res: Response<Body> = match state.get_image(headers, &url, params).await {
             Ok(body) => body,
@@ -82,10 +84,10 @@ impl Proxy {
     }
 
     async fn get_image_from_file(&self, file: &str) -> Result<(String, Vec<u8>), anyhow::Error> {
-        let file = std::path::PathBuf::from(file);
+        let path = std::path::PathBuf::from(file);
 
         // if file is already a file, serve it
-        if file.is_file() {
+        if path.is_file() {
             let content_type = mime_guess::from_path(&file)
                 .first_or_octet_stream()
                 .to_string();
@@ -94,32 +96,31 @@ impl Proxy {
         } else {
             // else if its combination of archive files and path inside the archive
             // extract the file from archive
-            let filename = file
-                .parent()
-                .ok_or_else(|| anyhow::anyhow!("no parent"))?
-                .display()
-                .to_string();
-            let path = file
-                .file_name()
-                .ok_or_else(|| anyhow::anyhow!("no filename"))?
-                .to_str()
-                .ok_or_else(|| anyhow::anyhow!("failed convert to string"))?
-                .to_string();
-            let content_type = mime_guess::from_path(&path)
-                .first_or_octet_stream()
-                .to_string();
-            let filename = filename.clone();
-            let path = path.clone();
+            let full_path = file.to_string();
+            let re = Regex::new(r#"\.(cbz|cbr)[\/|\\]"#)?;
 
-            tokio::task::spawn_blocking(move || -> Result<(String, Vec<u8>), anyhow::Error> {
-                let source = std::fs::File::open(filename)?;
+            if let Some(matches) = re.find(file)? {
+                let archive_path = full_path[0..matches.end() - 1].to_owned();
+                let filename = full_path[matches.end()..full_path.len()].to_owned();
 
-                let mut buf: Vec<u8> = vec![];
-                compress_tools::uncompress_archive_file(source, &mut buf, &path)?;
+                debug!("{archive_path}\t{filename}");
 
-                Ok((content_type, buf))
-            })
-            .await?
+                let content_type = mime_guess::from_path(&path)
+                    .first_or_octet_stream()
+                    .to_string();
+
+                tokio::task::spawn_blocking(move || -> Result<(String, Vec<u8>), anyhow::Error> {
+                    let source = std::fs::File::open(archive_path)?;
+
+                    let mut buf: Vec<u8> = vec![];
+                    compress_tools::uncompress_archive_file(source, &mut buf, &filename)?;
+
+                    Ok((content_type, buf))
+                })
+                .await?
+            } else {
+                Err(anyhow::anyhow!("invalid file url"))
+            }
         }
     }
 
