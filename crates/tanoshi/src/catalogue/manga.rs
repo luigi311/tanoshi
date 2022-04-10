@@ -11,6 +11,7 @@ use crate::{
 };
 use async_graphql::{dataloader::DataLoader, Context, Object, Result, SimpleObject};
 use chrono::NaiveDateTime;
+use rayon::prelude::*;
 use tanoshi_vm::extension::SourceBus;
 
 #[derive(Debug, SimpleObject)]
@@ -213,7 +214,7 @@ impl Manga {
 
         if !refresh {
             if let Ok(chapters) = db.get_chapters_by_manga_id(self.id).await {
-                return Ok(chapters.into_iter().map(|c| c.into()).collect());
+                return Ok(chapters.into_par_iter().map(|c| c.into()).collect());
             }
         }
 
@@ -221,7 +222,7 @@ impl Manga {
             .data::<SourceBus>()?
             .get_chapters(self.source_id, self.path.clone())
             .await?
-            .into_iter()
+            .into_par_iter()
             .map(|c| {
                 let mut c: crate::db::model::Chapter = c.into();
                 c.manga_id = self.id;
@@ -239,7 +240,7 @@ impl Manga {
             .get_chapters_by_manga_id(self.id)
             .await
             .unwrap_or_default()
-            .into_iter()
+            .into_par_iter()
             .map(|c| c.into())
             .collect::<Vec<Chapter>>();
 
@@ -288,7 +289,7 @@ impl Manga {
             .load_one(UserTrackerMangaId(user.sub, self.id))
             .await?
             .unwrap_or(vec![])
-            .into_iter()
+            .into_par_iter()
             .map(|(tracker, tracker_manga_id)| Tracker {
                 tracker,
                 tracker_manga_id,

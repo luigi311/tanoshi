@@ -1,6 +1,7 @@
 use std::{collections::HashMap, str::FromStr};
 
 use chrono::NaiveDateTime;
+use rayon::prelude::*;
 use serde::Deserialize;
 
 use tanoshi_lib::prelude::Version;
@@ -87,7 +88,7 @@ impl UpdatesWorker {
                 .await
             {
                 Ok(chapters) => chapters
-                    .into_iter()
+                    .into_par_iter()
                     .map(|ch| {
                         let mut c: Chapter = ch.into();
                         c.manga_id = item.manga.id;
@@ -176,7 +177,7 @@ impl UpdatesWorker {
             .await?
             .json::<Vec<Source>>()
             .await?
-            .into_iter()
+            .into_par_iter()
             .map(|source| (source.id, source))
             .collect::<HashMap<i64, Source>>();
 

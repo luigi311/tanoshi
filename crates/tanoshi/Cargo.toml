@@ -84,3 +84,4 @@ tauri = { version = "1.0.0-rc", default-features = false, features = [
     "notification-all",
 ], optional = true }
 itertools = "0.10.2"
+rayon = "1.5"

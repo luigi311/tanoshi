@@ -12,6 +12,7 @@ use tanoshi_vm::extension::SourceBus;
 use crate::db::MangaDatabase;
 
 use async_graphql::{scalar, Context, Object, Result};
+use rayon::prelude::*;
 use tanoshi_lib::models::Input;
 
 use serde::{Deserialize, Serialize};
@@ -36,7 +37,7 @@ impl CatalogueRoot {
             .data::<SourceBus>()?
             .get_popular_manga(source_id, page)
             .await?
-            .into_iter()
+            .into_par_iter()
             .map(Manga::from)
             .collect();
 
@@ -52,7 +53,7 @@ impl CatalogueRoot {
             .data::<SourceBus>()?
             .get_latest_manga(source_id, page)
             .await?
-            .into_iter()
+            .into_par_iter()
             .map(Manga::from)
             .collect();
 
@@ -71,7 +72,7 @@ impl CatalogueRoot {
             .data::<SourceBus>()?
             .search_manga(source_id, page, query, filters.map(|filters| filters.0))
             .await?
-            .into_iter()
+            .into_par_iter()
             .map(Manga::from)
             .collect();
 
