@@ -9,13 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - [tanoshi] MyAnimeList tracking
 - [tanoshi] AniList tracking
-- [tanoshi] logger extension for graphql server
 
 ### Changed
 - [tanoshi] tracker and notifier move to their own crates
-
-## Changes
 - [tanoshi] chapter update worker will revert to insert all chapter and replace on conflict, but still only notify new chapter
+- [tanoshi] docker image use bookworm-slim
+- 
+### Fixes
+- [tanoshi] archive with folder cannot be read
 
 ## [0.27.1]
 ### Added
