@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 
 ### Fixes
 - [tanoshi] archive with folder cannot be read
+- [tanoshi] special character in filename return error
 
 ## [0.27.1]
 ### Added
