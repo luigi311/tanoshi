@@ -47,7 +47,9 @@ fn default_cover_url() -> String {
 
 fn filter_supported_files_and_folders(entry: Result<DirEntry, std::io::Error>) -> Option<DirEntry> {
     let entry = entry.ok()?;
-    if entry.path().is_dir() || SUPPORTED_FILES.contains(entry.path().extension()?.to_str()?) {
+    if entry.path().is_dir()
+        || SUPPORTED_FILES.contains(&entry.path().extension()?.to_string_lossy().to_string())
+    {
         Some(entry)
     } else {
         None
@@ -225,12 +227,7 @@ fn map_entry_to_chapter(source_id: i64, path: &Path) -> Option<ChapterInfo> {
             return None;
         }
     };
-    let file_name = match path.file_stem().and_then(|file_stem| file_stem.to_str()) {
-        Some(file_stem) => file_stem.to_string(),
-        None => {
-            return None;
-        }
-    };
+    let file_name = path.file_stem()?.to_string_lossy().to_string();
     let number = match number_re.find(&file_name).ok().and_then(|m| m) {
         Some(mat) => mat.as_str().parse().unwrap_or(0_f64),
         None => 10000_f64,
@@ -311,9 +308,9 @@ impl Extension for Local {
             data = Box::new(data.filter(move |entry| {
                 entry
                     .file_name()
-                    .to_str()
-                    .map(|a| a.to_lowercase().contains(&keyword))
-                    .unwrap_or_else(|| false)
+                    .to_string_lossy()
+                    .to_lowercase()
+                    .contains(&keyword)
             }));
         }
 
@@ -325,14 +322,13 @@ impl Extension for Local {
                 title: entry
                     .path()
                     .file_stem()
-                    .and_then(|s| s.to_str())
-                    .unwrap_or_default()
-                    .to_string(),
+                    .map(|s| s.to_string_lossy().to_string())
+                    .unwrap_or_else(|| "".to_string()),
                 author: vec![],
                 genre: vec![],
                 status: None,
                 description: None,
-                path: entry.path().to_str().unwrap_or("").to_string(),
+                path: entry.path().to_string_lossy().to_string(),
                 cover_url: find_cover_url(&entry.path()),
             })
             .collect::<Vec<_>>();
@@ -346,9 +342,8 @@ impl Extension for Local {
 
         let title = path
             .file_stem()
-            .and_then(OsStr::to_str)
-            .unwrap_or("")
-            .to_string();
+            .map(|s| s.to_string_lossy().to_string())
+            .unwrap_or_else(|| "".to_string());
         let cover_url = find_cover_url(&path);
 
         let mut manga = MangaInfo {
