@@ -14,7 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [tanoshi] tracker and notifier move to their own crates
 - [tanoshi] chapter update worker will revert to insert all chapter and replace on conflict, but still only notify new chapter
 - [tanoshi] docker image use bookworm-slim
-- 
+- [tanoshi] use rayon `.par_iter` when possible
+  
 ### Fixes
 - [tanoshi] archive with folder cannot be read
 - [tanoshi] special character in filename return error
