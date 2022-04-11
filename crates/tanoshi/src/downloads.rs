@@ -214,7 +214,9 @@ impl DownloadMutationRoot {
         for id in ids {
             let chapter = db.get_chapter_by_id(id).await?;
             if let Some(downloaded_path) = chapter.downloaded_path {
-                tokio::fs::remove_file(&downloaded_path).await?;
+                if let Err(e) = tokio::fs::remove_file(&downloaded_path).await {
+                    error!("error removing file: {e}");
+                }
             }
             db.update_chapter_downloaded_path(id, None).await?;
             len += 1;
