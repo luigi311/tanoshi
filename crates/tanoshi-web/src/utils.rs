@@ -193,13 +193,13 @@ pub fn apply_theme_color(status_bar_color: &str) -> Result<(), anyhow::Error> {
     if window()
         .match_media("(display-mode: standalone)")
         .map_err(|e| anyhow!("error mactch media: {:?}", e))?
-        .ok_or(anyhow!("no display-mode query"))?
+        .ok_or_else(|| anyhow!("no display-mode query"))?
         .matches()
     {
         document()
             .query_selector("meta[name=\"theme-color\"]")
             .map_err(|e| anyhow!("error query meta: {:?}", e))?
-            .ok_or(anyhow!("no theme-color meta"))?
+            .ok_or_else(|| anyhow!("no theme-color meta"))?
             .set_attribute("content", status_bar_color)
             .map_err(|e| anyhow!("error set content: {:?}", e))?;
     }

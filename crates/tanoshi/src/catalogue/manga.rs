@@ -288,7 +288,7 @@ impl Manga {
         let data = loader
             .load_one(UserTrackerMangaId(user.sub, self.id))
             .await?
-            .unwrap_or(vec![])
+            .unwrap_or_default()
             .into_par_iter()
             .map(|(tracker, tracker_manga_id)| Tracker {
                 tracker,

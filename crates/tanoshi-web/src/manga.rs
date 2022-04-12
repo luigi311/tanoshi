@@ -126,7 +126,7 @@ impl Manga {
                         }),
                         ..Default::default()
                     }));
-                    manga.is_tracker_available.set(result.trackers.len() > 0);
+                    manga.is_tracker_available.set(!result.trackers.is_empty());
                     manga.num_tracked.set(result.trackers.iter().map(|tracker| if tracker.tracker_manga_id.is_some() { 1 } else { 0 }).sum());
                     manga.trackers.lock_mut().replace_cloned(result.trackers.iter().map(|t| TrackerStatus{
                         tracker: t.tracker.clone(), 
@@ -180,7 +180,7 @@ impl Manga {
                         }),
                         ..Default::default()
                     }));
-                    manga.is_tracker_available.set(result.trackers.len() > 0);
+                    manga.is_tracker_available.set(!result.trackers.is_empty());
                     manga.num_tracked.set(result.trackers.iter().map(|tracker| if tracker.tracker_manga_id.is_some() { 1 } else { 0 }).sum());
                     manga.trackers.lock_mut().replace_cloned(result.trackers.iter().map(|t| TrackerStatus{
                         tracker: t.tracker.clone(), 

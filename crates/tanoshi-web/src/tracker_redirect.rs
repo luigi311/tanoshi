@@ -42,7 +42,7 @@ impl TrackerRedirect {
             state
         } else {
             self.authorization_state
-                .set_neq(AuthorizationState::Failed(format!("no state code")));
+                .set_neq(AuthorizationState::Failed("no state code".to_string()));
             return;
         };
 

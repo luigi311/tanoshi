@@ -81,6 +81,7 @@ pub trait Tracker: Sync + Send {
         tracker_manga_id: i64,
     ) -> Result<TrackerManga, Error>;
 
+    #[allow(clippy::too_many_arguments)]
     async fn update_tracker_status(
         &self,
         token: String,

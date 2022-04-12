@@ -74,8 +74,8 @@ impl SelectTrackMangaModal {
                         tracker_manga_id: Mutable::new(tracker.tracker_manga_id.clone()), 
                         tracker_manga_title: Mutable::new(tracker.tracker_manga_title.clone()), 
                         status: Mutable::new(tracker.status.clone()), 
-                        score: Mutable::new(tracker.score.clone()), 
-                        num_chapters_read: Mutable::new(tracker.num_chapters_read.clone()), 
+                        score: Mutable::new(tracker.score), 
+                        num_chapters_read: Mutable::new(tracker.num_chapters_read), 
                         start_date: Mutable::new(tracker.start_date.as_ref().and_then(|date| NaiveDateTime::parse_from_str(date, "%Y-%m-%dT%H:%M:%S%.f").ok())), 
                         finish_date: Mutable::new(tracker.finish_date.as_ref().and_then(|date| NaiveDateTime::parse_from_str(date, "%Y-%m-%dT%H:%M:%S%.f").ok()))
                     }).collect())
@@ -136,6 +136,7 @@ impl SelectTrackMangaModal {
         });
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn update_tracker_status(self: &Rc<Self>,
         tracker: String,
         tracker_manga_id: String,

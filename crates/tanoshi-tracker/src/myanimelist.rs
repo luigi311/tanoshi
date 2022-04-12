@@ -13,7 +13,7 @@ use crate::{Error, Tracker, TrackerManga, TrackerStatus};
 
 use super::{Session, Token};
 
-pub const NAME: &'static str = "myanimelist";
+pub const NAME: &str = "myanimelist";
 
 #[derive(Debug, Default, Clone, Deserialize)]
 #[serde(default)]
@@ -43,20 +43,20 @@ pub struct Manga {
     pub my_list_status: Option<MyListStatus>,
 }
 
-impl Into<TrackerManga> for Manga {
-    fn into(self) -> TrackerManga {
-        TrackerManga {
+impl From<Manga> for TrackerManga {
+    fn from(other: Manga) -> Self {
+        Self {
             tracker: NAME.to_string(),
-            tracker_manga_id: self.id.to_string(),
-            title: self.title.clone(),
-            synopsis: self.synopsis,
-            cover_url: self.main_picture.medium,
-            status: self.status,
-            tracker_status: if let Some(status) = self.my_list_status {
+            tracker_manga_id: other.id.to_string(),
+            title: other.title.clone(),
+            synopsis: other.synopsis,
+            cover_url: other.main_picture.medium,
+            status: other.status,
+            tracker_status: if let Some(status) = other.my_list_status {
                 Some(TrackerStatus {
                     tracker: NAME.to_string(),
-                    tracker_manga_id: Some(self.id.to_string()),
-                    tracker_manga_title: Some(self.title.clone()),
+                    tracker_manga_id: Some(other.id.to_string()),
+                    tracker_manga_title: Some(other.title.clone()),
                     status: status.status,
                     num_chapters_read: Some(status.num_chapters_read),
                     score: Some(status.score),
@@ -66,8 +66,8 @@ impl Into<TrackerManga> for Manga {
             } else {
                 Some(TrackerStatus {
                     tracker: NAME.to_string(),
-                    tracker_manga_id: Some(self.id.to_string()),
-                    tracker_manga_title: Some(self.title.clone()),
+                    tracker_manga_id: Some(other.id.to_string()),
+                    tracker_manga_title: Some(other.title.clone()),
                     ..Default::default()
                 })
             },

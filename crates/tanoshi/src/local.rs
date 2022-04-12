@@ -1,6 +1,5 @@
 use std::{
     collections::HashMap,
-    ffi::OsStr,
     fs::{DirEntry, ReadDir},
     path::{Path, PathBuf},
     time::UNIX_EPOCH,

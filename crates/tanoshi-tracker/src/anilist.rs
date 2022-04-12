@@ -15,7 +15,7 @@ use crate::{Error, Tracker, TrackerManga, TrackerStatus};
 
 use super::{Session, Token};
 
-pub const NAME: &'static str = "anilist";
+pub const NAME: &str = "anilist";
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "UPPERCASE")]
@@ -61,27 +61,27 @@ pub struct Media {
     pub media_list_entry: Option<MediaListEntry>,
 }
 
-impl Into<TrackerManga> for Media {
-    fn into(self) -> TrackerManga {
-        let title = self
+impl From<Media> for TrackerManga {
+    fn from(other: Media) -> Self {
+        let title = other
             .title
             .and_then(|t| t.romaji)
             .unwrap_or_else(|| "".to_string());
-        TrackerManga {
+        Self {
             tracker: NAME.to_string(),
-            tracker_manga_id: self.id.to_string(),
+            tracker_manga_id: other.id.to_string(),
             title: title.clone(),
-            synopsis: self.description.unwrap_or_else(|| "".to_string()),
-            cover_url: self
+            synopsis: other.description.unwrap_or_else(|| "".to_string()),
+            cover_url: other
                 .cover_image
                 .and_then(|c| c.medium)
                 .unwrap_or_else(|| "".to_string()),
-            status: self.status.unwrap_or_else(|| "".to_string()),
-            tracker_status: if let Some(status) = self.media_list_entry {
+            status: other.status.unwrap_or_else(|| "".to_string()),
+            tracker_status: if let Some(status) = other.media_list_entry {
                 Some(TrackerStatus {
                     tracker: NAME.to_string(),
-                    tracker_manga_id: Some(self.id.to_string()),
-                    tracker_manga_title: Some(title.clone()),
+                    tracker_manga_id: Some(other.id.to_string()),
+                    tracker_manga_title: Some(title),
                     status: status.status.and_then(|s| match s {
                         MediaListStatus::Current => Some("reading".to_string()),
                         MediaListStatus::Planning => Some("plan_to_read".to_string()),
@@ -102,8 +102,8 @@ impl Into<TrackerManga> for Media {
             } else {
                 Some(TrackerStatus {
                     tracker: NAME.to_string(),
-                    tracker_manga_id: Some(self.id.to_string()),
-                    tracker_manga_title: Some(title.clone()),
+                    tracker_manga_id: Some(other.id.to_string()),
+                    tracker_manga_title: Some(title),
                     ..Default::default()
                 })
             },
@@ -341,6 +341,7 @@ impl AniList {
         Ok(media)
     }
 
+    #[allow(clippy::too_many_arguments)]
     async fn save_entry(
         &self,
         token: String,

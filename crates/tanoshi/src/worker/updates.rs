@@ -169,7 +169,7 @@ impl UpdatesWorker {
         let url = GLOBAL_CONFIG
             .get()
             .map(|cfg| format!("{}/index.json", cfg.extension_repository))
-            .ok_or(anyhow!("no config set"))?;
+            .ok_or_else(|| anyhow!("no config set"))?;
         let available_sources_map = self
             .client
             .get(&url)

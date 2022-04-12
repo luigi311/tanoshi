@@ -136,10 +136,10 @@ impl App {
                         Some(Settings::new(server_version, category).render())
                     }
                     Route::TrackerLogin(tracker) => {
-                        Some(TrackerLogin::render(TrackerLogin::new(tracker.to_owned())))
+                        Some(TrackerLogin::render(TrackerLogin::new(tracker)))
                     }
                     Route::TrackerRedirect{tracker, code, state} => {
-                        Some(TrackerRedirect::render(TrackerRedirect::new(tracker.to_owned(), code.to_owned(), state.to_owned())))
+                        Some(TrackerRedirect::render(TrackerRedirect::new(tracker, code, state)))
                     }
                     Route::NotFound => Some(
                         html!("div", {

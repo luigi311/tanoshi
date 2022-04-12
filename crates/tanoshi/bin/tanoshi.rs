@@ -11,8 +11,8 @@ use tanoshi::{
     schema, server, worker,
 };
 use tanoshi_notifier::{pushover::Pushover, telegram::Telegram};
-use tanoshi_vm::{extension::SourceBus, prelude::Source};
 use tanoshi_tracker::{AniList, MyAnimeList};
+use tanoshi_vm::{extension::SourceBus, prelude::Source};
 
 #[derive(Parser)]
 struct Opts {
@@ -110,12 +110,7 @@ async fn main() -> Result<(), anyhow::Error> {
         .clone()
         .zip(config.myanimelist.clone())
         .and_then(|(base_url, mal_cfg)| {
-            MyAnimeList::new(
-                &base_url,
-                mal_cfg.client_id.clone(),
-                mal_cfg.client_secret.clone(),
-            )
-            .ok()
+            MyAnimeList::new(&base_url, mal_cfg.client_id.clone(), mal_cfg.client_secret).ok()
         });
 
     let al_client = config
@@ -123,12 +118,7 @@ async fn main() -> Result<(), anyhow::Error> {
         .clone()
         .zip(config.anilist.clone())
         .and_then(|(base_url, al_cfg)| {
-            AniList::new(
-                &base_url,
-                al_cfg.client_id.clone(),
-                al_cfg.client_secret.clone(),
-            )
-            .ok()
+            AniList::new(&base_url, al_cfg.client_id.clone(), al_cfg.client_secret).ok()
         });
 
     let schema = schema::build(

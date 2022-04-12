@@ -141,7 +141,7 @@ impl SourceBus {
         let source_name = source
             .extension
             .get()
-            .ok_or(anyhow!("not initiated"))?
+            .ok_or_else(|| anyhow!("not initiated"))?
             .get_source_info()
             .name
             .to_lowercase();
@@ -156,7 +156,7 @@ impl SourceBus {
             source
                 .extension
                 .get_mut()
-                .ok_or(anyhow!("not initiated"))?
+                .ok_or_else(|| anyhow!("not initiated"))?
                 .set_preferences(preferences)?;
         }
         self.insert(source).await
@@ -193,7 +193,9 @@ impl SourceBus {
 
     pub fn get_version(&self, source_id: i64) -> Result<(String, String)> {
         let lock = self.read()?;
-        let source = lock.get(&source_id).ok_or(anyhow!("no such source"))?;
+        let source = lock
+            .get(&source_id)
+            .ok_or_else(|| anyhow!("no such source"))?;
         Ok((source.rustc_version.clone(), source.lib_version.clone()))
     }
 
@@ -201,10 +203,10 @@ impl SourceBus {
         Ok(self
             .read()?
             .get(&source_id)
-            .ok_or(anyhow!("no such source"))?
+            .ok_or_else(|| anyhow!("no such source"))?
             .extension
             .get()
-            .ok_or(anyhow!("uninitiated"))?
+            .ok_or_else(|| anyhow!("uninitiated"))?
             .get_source_info())
     }
 
@@ -212,30 +214,30 @@ impl SourceBus {
         Ok(self
             .read()?
             .get(&source_id)
-            .ok_or(anyhow!("no such source"))?
+            .ok_or_else(|| anyhow!("no such source"))?
             .extension
             .get()
-            .ok_or(anyhow!("uninitiated"))?
+            .ok_or_else(|| anyhow!("uninitiated"))?
             .filter_list())
     }
 
     pub fn get_preferences(&self, source_id: i64) -> Result<Vec<Input>> {
         self.read()?
             .get(&source_id)
-            .ok_or(anyhow!("no such source"))?
+            .ok_or_else(|| anyhow!("no such source"))?
             .extension
             .get()
-            .ok_or(anyhow!("uninitiated"))?
+            .ok_or_else(|| anyhow!("uninitiated"))?
             .get_preferences()
     }
 
     pub async fn set_preferences(&self, source_id: i64, preferences: Vec<Input>) -> Result<()> {
         self.write()?
             .get_mut(&source_id)
-            .ok_or(anyhow!("no such source"))?
+            .ok_or_else(|| anyhow!("no such source"))?
             .extension
             .get_mut()
-            .ok_or(anyhow!("uninitiated"))?
+            .ok_or_else(|| anyhow!("uninitiated"))?
             .set_preferences(preferences.clone())?;
 
         let source_info = self.get_source_info(source_id)?;
@@ -261,10 +263,10 @@ impl SourceBus {
                 .read()
                 .map_err(|e| anyhow!("failed to lock read: {e}"))?
                 .get(&source_id)
-                .ok_or(anyhow!("no such source"))?
+                .ok_or_else(|| anyhow!("no such source"))?
                 .extension
                 .get()
-                .ok_or(anyhow!("uninitiated"))?
+                .ok_or_else(|| anyhow!("uninitiated"))?
                 .get_popular_manga(page)
         })
         .await?
@@ -281,10 +283,10 @@ impl SourceBus {
                 .read()
                 .map_err(|e| anyhow!("failed to lock read: {e}"))?
                 .get(&source_id)
-                .ok_or(anyhow!("no such source"))?
+                .ok_or_else(|| anyhow!("no such source"))?
                 .extension
                 .get()
-                .ok_or(anyhow!("uninitiated"))?
+                .ok_or_else(|| anyhow!("uninitiated"))?
                 .get_latest_manga(page)
         })
         .await?
@@ -303,10 +305,10 @@ impl SourceBus {
                 .read()
                 .map_err(|e| anyhow!("failed to lock read: {e}"))?
                 .get(&source_id)
-                .ok_or(anyhow!("no such source"))?
+                .ok_or_else(|| anyhow!("no such source"))?
                 .extension
                 .get()
-                .ok_or(anyhow!("uninitiated"))?
+                .ok_or_else(|| anyhow!("uninitiated"))?
                 .search_manga(page, query, filters)
         })
         .await?
@@ -323,10 +325,10 @@ impl SourceBus {
                 .read()
                 .map_err(|e| anyhow!("failed to lock read: {e}"))?
                 .get(&source_id)
-                .ok_or(anyhow!("no such source"))?
+                .ok_or_else(|| anyhow!("no such source"))?
                 .extension
                 .get()
-                .ok_or(anyhow!("uninitiated"))?
+                .ok_or_else(|| anyhow!("uninitiated"))?
                 .get_manga_detail(path)
         })
         .await?
@@ -343,10 +345,10 @@ impl SourceBus {
                 .read()
                 .map_err(|e| anyhow!("failed to lock read: {e}"))?
                 .get(&source_id)
-                .ok_or(anyhow!("no such source"))?
+                .ok_or_else(|| anyhow!("no such source"))?
                 .extension
                 .get()
-                .ok_or(anyhow!("uninitiated"))?
+                .ok_or_else(|| anyhow!("uninitiated"))?
                 .get_chapters(path)
         })
         .await?
@@ -359,10 +361,10 @@ impl SourceBus {
                 .read()
                 .map_err(|e| anyhow!("failed to lock read: {e}"))?
                 .get(&source_id)
-                .ok_or(anyhow!("no such source"))?
+                .ok_or_else(|| anyhow!("no such source"))?
                 .extension
                 .get()
-                .ok_or(anyhow!("uninitiated"))?
+                .ok_or_else(|| anyhow!("uninitiated"))?
                 .get_pages(path)
         })
         .await?

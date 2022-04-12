@@ -10,8 +10,7 @@ use tanoshi::{
   config::{self, GLOBAL_CONFIG},
   db, local, notifier,
   proxy::Proxy,
-  schema, server,
-  worker,
+  schema, server, worker,
 };
 use tanoshi_tracker::{AniList, MyAnimeList};
 
@@ -102,12 +101,7 @@ impl<R: Runtime> Plugin<R> for Server {
         .clone()
         .zip(config.myanimelist.clone())
         .and_then(|(base_url, mal_cfg)| {
-          MyAnimeList::new(
-            &base_url,
-            mal_cfg.client_id.clone(),
-            mal_cfg.client_secret.clone(),
-          )
-          .ok()
+          MyAnimeList::new(&base_url, mal_cfg.client_id.clone(), mal_cfg.client_secret).ok()
         });
 
       let al_client = config
@@ -115,12 +109,7 @@ impl<R: Runtime> Plugin<R> for Server {
         .clone()
         .zip(config.anilist.clone())
         .and_then(|(base_url, al_cfg)| {
-          AniList::new(
-            &base_url,
-            al_cfg.client_id.clone(),
-            al_cfg.client_secret.clone(),
-          )
-          .ok()
+          AniList::new(&base_url, al_cfg.client_id.clone(), al_cfg.client_secret).ok()
         });
 
       let schema = schema::build(
