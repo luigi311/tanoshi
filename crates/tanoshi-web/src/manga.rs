@@ -74,11 +74,17 @@ pub struct Manga {
     trackers: MutableVec<TrackerStatus>,
     chapter_settings: Rc<ChapterSettings>,
     select_state: Mutable<SelectState>,
-    loader: AsyncLoader,
+    loader: Rc<AsyncLoader>,
+    spinner: Rc<Spinner>,
 }
 
 impl Manga {
     pub fn new(id: i64, source_id: i64, path: String) -> Rc<Self> {
+        let loader = Rc::new(AsyncLoader::new());
+        let spinner = Spinner::new_with_fullscreen_and_callback(true, clone!(loader => move || {
+            loader.cancel();
+        }));
+
         Rc::new(Self {
             id: Mutable::new(id),
             source_id: Mutable::new(source_id),
@@ -100,7 +106,8 @@ impl Manga {
             trackers: MutableVec::new(),
             chapter_settings: ChapterSettings::new(false, true),
             select_state: Mutable::new(SelectState::None),
-            loader: AsyncLoader::new(),
+            loader,
+            spinner,
         })
     }
 
@@ -319,7 +326,7 @@ impl Manga {
         if manga.id.get() == 0 {
             return;
         }
-
+        
         manga.loader.load(clone!(manga => async move {
             match query::add_to_library(manga.id.get(), category_ids).await {
                 Ok(_) => {
@@ -336,6 +343,7 @@ impl Manga {
         if manga.id.get() == 0 {
             return;
         }
+
         manga.loader.load(clone!(manga => async move {
             match query::delete_from_library(manga.id.get()).await {
                 Ok(_) => {
@@ -1164,15 +1172,20 @@ impl Manga {
 
                 async {}
             })))
+            .future(manga_page.loader.is_loading().for_each(clone!(manga_page => move |is_loading| {
+                manga_page.spinner.set_active(is_loading);
+
+                async {}
+            })))
             .style("display", "flex")
             .style("flex-direction", "column")
-            .child_signal(manga_page.loader.is_loading().map(|is_loading| is_loading.then(|| Spinner::render_spinner(true))))
             .children(&mut [
                 Self::render_topbar(manga_page.clone()),
                 html!("div", {
                    .class("topbar-spacing")
                 }),
-                Self::render_main(manga_page),
+                Self::render_main(manga_page.clone()),
+                Spinner::render(manga_page.spinner.clone()),
             ])
         })
     }
