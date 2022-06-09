@@ -164,7 +164,7 @@ impl Reader {
                 }
             }
             
-            // this.spinner.set_active(false);
+            this.spinner.set_active(false);
         }));
     }
 
