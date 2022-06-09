@@ -185,7 +185,7 @@ impl Histories {
                 html!("div", {
                     .class("load-more-btn")
                     .child_signal(histories.spinner.signal().map(clone!(histories => move |x| if x {
-                        Some(Spinner::render(&histories.spinner))
+                        Some(Spinner::render(histories.spinner.clone()))
                     } else {
                         Some(html!("button", {
                             .class_signal("disabled", histories.is_entries_empty.signal())

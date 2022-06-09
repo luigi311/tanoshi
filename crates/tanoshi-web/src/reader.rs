@@ -53,13 +53,18 @@ pub struct Reader {
     reader_settings: Rc<ReaderSettings>,
     zoom: Mutable<f64>,
     is_bar_visible: Mutable<bool>,
-    loader: AsyncLoader,
+    loader: Rc<AsyncLoader>,
     spinner: Rc<Spinner>,
     timeout: Mutable<Option<Timeout>>
 }
 
 impl Reader {
     pub fn new(chapter_id: i64, page: i64) -> Rc<Self> {
+        let loader = Rc::new(AsyncLoader::new());
+        let spinner = Spinner::new_with_fullscreen_and_callback(true, clone!(loader => move || {
+            loader.cancel();
+        }));
+
         Rc::new(Self {
             chapter_id: Mutable::new(chapter_id),
             manga_id: Mutable::new(0),
@@ -76,8 +81,8 @@ impl Reader {
             reader_settings: ReaderSettings::new(false, true),
             zoom: Mutable::new(1.0),
             is_bar_visible: Mutable::new(true),
-            loader: AsyncLoader::new(),
-            spinner: Spinner::new_with_fullscreen(true),
+            loader,
+            spinner,
             timeout: Mutable::new(None),
         })
     }
@@ -159,7 +164,7 @@ impl Reader {
                 }
             }
             
-            this.spinner.set_active(false);
+            // this.spinner.set_active(false);
         }));
     }
 
@@ -1159,7 +1164,7 @@ impl Reader {
                 Self::render_page_indicator(this.clone()),
                 Self::render_bottombar(this.clone()),
                 ReaderSettings::render(this.reader_settings.clone()),
-                Spinner::render(&this.spinner)
+                Spinner::render(this.spinner.clone())
             ])
         })
     }

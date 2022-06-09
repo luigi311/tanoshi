@@ -15,8 +15,8 @@ $color-gray-850: darken($color-gray, $color--interval * 3.5);
 $color-gray-900: darken($color-gray, $color--interval * 4);
 
 $font-stack: Helvetica,
-Roboto,
-sans-serif;
+    Roboto,
+    sans-serif;
 $primary-color: rgba(91, 116, 155, 1);
 $primary-color-100: lighten($primary-color, $color--interval * 4);
 $primary-color-200: lighten($primary-color, $color--interval * 3);
@@ -30,7 +30,7 @@ $primary-color-850: darken($primary-color, $color--interval * 3.5);
 $primary-color-900: darken($primary-color, $color--interval * 4);
 
 $shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1),
-0 1px 2px 0 rgba(0, 0, 0, 0.06);
+    0 1px 2px 0 rgba(0, 0, 0, 0.06);
 
 $background-color-light: $color-gray-100;
 $background-color-dark: $color-gray-900;
@@ -496,7 +496,8 @@ input {
     padding: 0.5rem;
 }
 
-$manga-grid: ('0px': 3,
+$manga-grid: (
+    '0px': 3,
     '768px': 4,
     '1024px': 6,
     '1280px': 8,
@@ -886,7 +887,8 @@ $grid in $manga-grid {
 }
 
 
-$continuous-width: ('0px': '100vw',
+$continuous-width: (
+    '0px': '100vw',
     '768px': '768px'
 );
 
@@ -967,11 +969,16 @@ $width in $continuous-width {
     width: 100%;
 
     &.fullscreen {
+        flex-direction: column;
         position: fixed;
         top: 0;
         bottom: 0;
         left: 0;
         right: 0;
+
+        .loader {
+            margin-bottom: 1rem !important;
+        }
     }
 
     .loader {
@@ -980,7 +987,8 @@ $width in $continuous-width {
         border-radius: 50%;
         width: 1.5rem;
         height: 1.5rem;
-        margin: auto;
+        margin-left: auto;
+        margin-right: auto;
         animation: spin 2s linear infinite;
     }
 }

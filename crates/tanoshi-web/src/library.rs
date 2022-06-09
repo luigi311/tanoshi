@@ -300,7 +300,7 @@ impl Library {
                 html!("div", {
                     .class("topbar-spacing")
                 }),
-                Spinner::render(&library.spinner),
+                Spinner::render(library.spinner.clone()),
                 LibrarySettings::render(library.library_settings.clone()),
             ])
             .child_signal(

@@ -53,7 +53,6 @@ impl AsyncLoader {
         }
     }
 
-    #[allow(dead_code)]
     pub fn cancel(&self) {
         self.replace(None)
     }

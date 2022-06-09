@@ -363,7 +363,7 @@ impl Catalogue {
                 html!("div", {
                     .class("load-more-btn")
                     .child_signal(catalogue.spinner.signal().map(clone!(catalogue => move |x| if x {
-                        Some(Spinner::render(&catalogue.spinner))
+                        Some(Spinner::render(catalogue.spinner.clone()))
                     } else {
                         Some(html!("button", {
                             .text("Load More")

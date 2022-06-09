@@ -181,7 +181,7 @@ impl Updates {
                 html!("div", {
                     .class("load-more-btn")
                     .child_signal(updates.spinner.signal().map(clone!(updates => move |x| if x {
-                        Some(Spinner::render(&updates.spinner))
+                        Some(Spinner::render(updates.spinner.clone()))
                     } else {
                         Some(html!("button", {
                             .class_signal("disabled", updates.is_entries_empty.signal())

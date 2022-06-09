@@ -268,7 +268,7 @@ impl SettingsManageDownloads {
                 html!("div", {
                     .class("load-more-btn")
                     .child_signal(settings.spinner.signal().map(clone!(settings => move |x| if x {
-                        Some(Spinner::render(&settings.spinner))
+                        Some(Spinner::render(settings.spinner.clone()))
                     } else {
                         Some(html!("button", {
                             .class_signal("disabled", settings.is_entries_empty.signal())
