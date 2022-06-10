@@ -322,7 +322,7 @@ where
         let period = if self.period == 0 { 3600 } else { self.period };
         let mut chapter_update_interval = time::interval(time::Duration::from_secs(period));
         let mut server_update_interval = time::interval(time::Duration::from_secs(86400));
-        let mut clear_cache_interval = time::interval(time::Duration::from_secs(10 * 86400));
+        let mut clear_cache_interval = time::interval(time::Duration::from_secs(3 * 86400));
 
         loop {
             tokio::select! {
