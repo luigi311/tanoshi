@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use chrono::Utc;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use sqlx::{Row, SqlitePool};
 
@@ -62,10 +63,7 @@ impl ChapterRepository for ChapterRepositoryImpl {
                 .bind(chapter.number)
                 .bind(&chapter.scanlator)
                 .bind(chapter.uploaded)
-                .bind(chrono::NaiveDateTime::from_timestamp(
-                    chrono::Local::now().timestamp(),
-                    0,
-                ));
+                .bind(Utc::now().naive_utc());
         }
 
         query.execute(&self.pool as &SqlitePool).await?;

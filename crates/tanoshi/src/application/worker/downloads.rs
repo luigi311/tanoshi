@@ -8,6 +8,7 @@ use crate::{
     infrastructure::{domain::repositories::user::UserRepositoryImpl, notification::Notification},
 };
 use anyhow::{anyhow, Result};
+use chrono::Utc;
 use reqwest::Url;
 use std::{
     fs::File,
@@ -100,7 +101,7 @@ where
         let source = self.ext.get_source_info(manga.source_id)?;
 
         let mut queue = vec![];
-        let date_added = chrono::Utc::now().naive_utc();
+        let date_added = Utc::now().naive_utc();
         for (rank, page) in pages.iter().enumerate() {
             queue.push(DownloadQueue {
                 id: 0,

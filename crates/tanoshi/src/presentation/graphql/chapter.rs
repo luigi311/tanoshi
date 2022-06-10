@@ -17,7 +17,7 @@ use crate::{
     presentation::graphql::schema::DatabaseLoader,
 };
 use async_graphql::{dataloader::DataLoader, Context, Object, Result};
-use chrono::NaiveDateTime;
+use chrono::{NaiveDateTime, Utc};
 use rayon::iter::{IntoParallelRefMutIterator, ParallelIterator};
 
 /// A type represent chapter, normalized across source
@@ -49,7 +49,7 @@ impl From<tanoshi_lib::models::ChapterInfo> for Chapter {
             number: ch.number,
             scanlator: ch.scanlator.unwrap_or_default(),
             uploaded: chrono::NaiveDateTime::from_timestamp(ch.uploaded, 0),
-            date_added: chrono::NaiveDateTime::from_timestamp(chrono::Local::now().timestamp(), 0),
+            date_added: Utc::now().naive_utc(),
             read_progress: None,
             downloaded_path: None,
             next: None,

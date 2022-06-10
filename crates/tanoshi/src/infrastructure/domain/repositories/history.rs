@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use async_trait::async_trait;
+use chrono::Utc;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use sqlx::{Row, SqlitePool};
 
@@ -299,7 +300,7 @@ impl HistoryRepository for HistoryRepositoryImpl {
         .bind(user_id)
         .bind(chapter_id)
         .bind(page)
-        .bind(chrono::Local::now())
+        .bind(Utc::now().naive_utc())
         .bind(is_complete)
         .execute(&self.pool as &SqlitePool)
         .await?;
@@ -316,7 +317,6 @@ impl HistoryRepository for HistoryRepositoryImpl {
             return Ok(());
         }
 
-        let now = chrono::Local::now();
         let query_str = format!(
             r#"
             INSERT INTO user_history(user_id, chapter_id, last_page, read_at, is_complete)
@@ -331,6 +331,7 @@ impl HistoryRepository for HistoryRepositoryImpl {
 
         let mut query = sqlx::query(&query_str);
 
+        let now = Utc::now().naive_utc();
         for chapter_id in chapter_ids.iter() {
             query = query.bind(user_id).bind(chapter_id).bind(now);
         }

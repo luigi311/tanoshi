@@ -7,7 +7,7 @@ use async_graphql::{
     connection::{query, Connection, Edge, EmptyFields},
     Context, Error, Object, Result, SimpleObject,
 };
-use chrono::Local;
+use chrono::Utc;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 
 #[derive(Debug, SimpleObject)]
@@ -83,7 +83,7 @@ impl DownloadRoot {
             first,
             last,
             |after: Option<Cursor>, before: Option<Cursor>, first, last| async move {
-                let after_cursor = after.unwrap_or_else(|| Cursor(Local::now().timestamp(), 1));
+                let after_cursor = after.unwrap_or_else(|| Cursor(Utc::now().timestamp(), 1));
                 let before_cursor = before.unwrap_or(Cursor(0, 0));
 
                 let edges = download_svc
@@ -102,7 +102,7 @@ impl DownloadRoot {
                 if let Some(e) = edges.first() {
                     has_previous_page = !download_svc
                         .get_downloaded_chapters(
-                            Local::now().naive_local().timestamp(),
+                            Utc::now().timestamp(),
                             1,
                             e.date_added.timestamp(),
                             e.id,

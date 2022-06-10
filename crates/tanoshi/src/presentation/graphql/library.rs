@@ -21,7 +21,7 @@ use async_graphql::{
     Error,
 };
 use async_graphql::{Context, Object, Result};
-use chrono::Local;
+use chrono::Utc;
 
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 
@@ -71,7 +71,7 @@ impl LibraryRoot {
             first,
             last,
             |after: Option<Cursor>, before: Option<Cursor>, first, last| async move {
-                let after_cursor = after.unwrap_or_else(|| Cursor(Local::now().timestamp(), 1));
+                let after_cursor = after.unwrap_or_else(|| Cursor(Utc::now().timestamp(), 1));
                 let before_cursor = before.unwrap_or(Cursor(0, 0));
 
                 let edges = library_svc
@@ -91,7 +91,7 @@ impl LibraryRoot {
                     has_previous_page = !library_svc
                         .get_library_recent_updates(
                             claims.sub,
-                            Local::now().timestamp(),
+                            Utc::now().timestamp(),
                             1,
                             e.uploaded.timestamp(),
                             e.chapter_id,
@@ -152,7 +152,7 @@ impl LibraryRoot {
             first,
             last,
             |after: Option<Cursor>, before: Option<Cursor>, first, last| async move {
-                let after_cursor = after.unwrap_or_else(|| Cursor(Local::now().timestamp(), 1));
+                let after_cursor = after.unwrap_or_else(|| Cursor(Utc::now().timestamp(), 1));
                 let before_cursor = before.unwrap_or(Cursor(0, 0));
 
                 let edges = history_svc
@@ -164,7 +164,7 @@ impl LibraryRoot {
                     has_previous_page = !history_svc
                         .get_history_chapters(
                             claims.sub,
-                            Local::now().timestamp(),
+                            Utc::now().timestamp(),
                             e.read_at.timestamp(),
                             None,
                             Some(1),

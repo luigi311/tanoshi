@@ -6,6 +6,7 @@ use crate::{
     infrastructure::database::Pool,
 };
 use async_trait::async_trait;
+use chrono::Utc;
 use sqlx::{Row, SqlitePool};
 
 #[derive(Clone)]
@@ -132,10 +133,7 @@ impl MangaRepository for MangaRepositoryImpl {
         .bind(&manga.description)
         .bind(&manga.path)
         .bind(&manga.cover_url)
-        .bind(chrono::NaiveDateTime::from_timestamp(
-            chrono::Local::now().timestamp(),
-            0,
-        ))
+        .bind(Utc::now().naive_utc())
         .execute(&self.pool as &SqlitePool)
         .await?
         .last_insert_rowid();

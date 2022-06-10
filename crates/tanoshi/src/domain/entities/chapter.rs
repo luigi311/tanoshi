@@ -1,4 +1,4 @@
-use chrono::NaiveDateTime;
+use chrono::{NaiveDateTime, Utc};
 
 #[derive(Debug, Clone)]
 pub struct Chapter {
@@ -26,8 +26,8 @@ impl From<tanoshi_lib::models::ChapterInfo> for Chapter {
             path: ch.path,
             number: ch.number,
             scanlator: ch.scanlator.unwrap_or_default(),
-            uploaded: chrono::NaiveDateTime::from_timestamp(ch.uploaded, 0),
-            date_added: chrono::NaiveDateTime::from_timestamp(chrono::Local::now().timestamp(), 0),
+            uploaded: NaiveDateTime::from_timestamp(ch.uploaded, 0),
+            date_added: Utc::now().naive_utc(),
             downloaded_path: None,
             next: None,
             prev: None,
