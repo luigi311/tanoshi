@@ -11,7 +11,7 @@ use crate::{
         Source, 
         User, 
         events, 
-        snackbar
+        snackbar, Spinner
     }, 
     query, 
     settings_categories::SettingsCategories, 
@@ -35,11 +35,17 @@ pub struct Settings {
     chapter_settings: Rc<ChapterSettings>,
     library_settings: Rc<LibrarySettings>,
     category_settings: Rc<SettingsCategories>,
-    loader: AsyncLoader,
+    loader: Rc<AsyncLoader>,
+    spinner: Rc<Spinner>,
 }
 
 impl Settings {
     pub fn new(server_version: String, category: SettingCategory) -> Rc<Self> {
+        let loader = Rc::new(AsyncLoader::new());
+        let spinner = Spinner::new_with_fullscreen_and_callback(true, clone!(loader => move || {
+            loader.cancel();
+        }));
+
         Rc::new(Settings {
             server_version,
             page: Mutable::new(category),
@@ -52,7 +58,8 @@ impl Settings {
             chapter_settings: ChapterSettings::new(true, false),
             library_settings: LibrarySettings::new(true, false),
             category_settings: SettingsCategories::new(),
-            loader: AsyncLoader::new(),
+            loader,
+            spinner,
         })
     }
 
@@ -129,6 +136,7 @@ impl Settings {
         }));
     }
     fn install_source(settings: Rc<Self>, id: i64) {
+        settings.spinner.set_active(true);
         settings.loader.load(clone!(settings => async move {
             match query::install_source(id).await {
                 Ok(_) => {},
@@ -162,6 +170,8 @@ impl Settings {
                     snackbar::show(format!("{}", err));
                 }
             }
+
+            settings.spinner.set_active(false);
         }));
     }
 
@@ -617,6 +627,7 @@ impl Settings {
                 html!("div", {
                     .class("topbar-spacing")
                 }),
+                Spinner::render(self.spinner.clone()),
             ])
             .child_signal(self.page.signal().map({
                 let settings = self.clone();
