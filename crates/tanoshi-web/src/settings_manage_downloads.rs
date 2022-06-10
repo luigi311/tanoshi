@@ -11,7 +11,6 @@ use futures_signals::{
     signal_vec::SignalVecExt,
 };
 use std::rc::Rc;
-use wasm_bindgen::UnwrapThrowExt;
 use web_sys::HtmlInputElement;
 
 #[derive(Debug, Clone)]
@@ -54,8 +53,7 @@ impl SettingsManageDownloads {
                     .map(|entry| entry.cursor.clone());
                 match query::fetch_downloaded_chapters(cursor).await {
                     Ok(result) => {
-                        for edge in result.edges.unwrap_throw() {
-                            let edge = edge.as_ref().unwrap_throw();
+                        for edge in result.edges {
                             settings.entries.lock_mut().push_cloned(Entry {
                                 manga_title: edge.node.manga.title.clone(),
                                 chapter_id: edge.node.id,

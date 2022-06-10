@@ -25,6 +25,7 @@ pub struct User {
 pub struct ServerStatus {
     pub activated: bool,
     pub version: String,
+    pub loggedin: bool,
 }
 
 impl Default for ServerStatus {
@@ -32,6 +33,7 @@ impl Default for ServerStatus {
         Self {
             activated: false,
             version: "0.0.0".to_string(),
+            loggedin: false,
         }
     }
 }

@@ -42,11 +42,12 @@ impl App {
 
     pub fn fetch_server_status(app: Rc<Self>) {
         app.loader.load(clone!(app => async move {
-            match query::server_status().await {
+            match query::fetch_server_status().await {
                 Ok(server_status) => {
                     app.server_status.set_neq(Some(ServerStatus {
                         activated: server_status.activated,
                         version: server_status.version,
+                        loggedin: server_status.loggedin
                     }));
                 }
                 Err(e) => {
@@ -56,40 +57,23 @@ impl App {
         }));
     }
 
-    fn fetch_user(app: Rc<Self>) {
-        app.loader.load(async move {
-            match query::fetch_me().await {
-                Ok(_) => {}
-                Err(err) => {
-                    snackbar::show(format!("{}", err));
-                    error!("{}", err);
-                    local_storage().delete("token").unwrap_throw();
-                    routing::go_to_url(&Route::Login.url());
-                }
-            }
-        });
-    }
-
     pub fn render(app: Rc<Self>) -> Dom {
         Self::fetch_server_status(app.clone());
 
         html!("div", {
-            .future(app.server_status.signal_cloned().for_each(clone!(app => move |server_status| {
+            .future(app.server_status.signal_cloned().for_each(|server_status| {
                 if let Some(server_status) = server_status {
-                    let is_token_exist = local_storage().get("token").unwrap_throw().is_some();
                     if !server_status.activated {
                         info!("server inactivated, go to login");
                         local_storage().delete("token").unwrap_throw();
                         routing::go_to_url(&Route::Login.url());
-                    } else if !is_token_exist {
+                    } else if server_status.activated && !server_status.loggedin {
                         routing::go_to_url(&Route::Login.url());
-                    } else if server_status.activated && is_token_exist {
-                        Self::fetch_user(app.clone());
                     }
                 }
 
                 async move {}
-            })))
+            }))
             .child_signal(Route::signal().map(clone!(app => move |x| {
                 match x {
                     Route::Root => {

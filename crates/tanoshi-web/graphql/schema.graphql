@@ -37,16 +37,16 @@ type ChapterConnection {
   pageInfo: PageInfo!
 
   # A list of edges.
-  edges: [ChapterEdge]
+  edges: [ChapterEdge!]!
 }
 
 # An edge in a connection.
 type ChapterEdge {
-  # The item at the end of the edge
-  node: Chapter!
-
   # A cursor for use in pagination
   cursor: String!
+
+  # "The item at the end of the edge
+  node: Chapter!
 }
 
 type DownloadQueueEntry {
@@ -336,16 +336,16 @@ type RecentChapterConnection {
   pageInfo: PageInfo!
 
   # A list of edges.
-  edges: [RecentChapterEdge]
+  edges: [RecentChapterEdge!]!
 }
 
 # An edge in a connection.
 type RecentChapterEdge {
-  # The item at the end of the edge
-  node: RecentChapter!
-
   # A cursor for use in pagination
   cursor: String!
+
+  # "The item at the end of the edge
+  node: RecentChapter!
 }
 
 type RecentUpdate {
@@ -362,16 +362,16 @@ type RecentUpdateConnection {
   pageInfo: PageInfo!
 
   # A list of edges.
-  edges: [RecentUpdateEdge]
+  edges: [RecentUpdateEdge!]!
 }
 
 # An edge in a connection.
 type RecentUpdateEdge {
-  # The item at the end of the edge
-  node: RecentUpdate!
-
   # A cursor for use in pagination
   cursor: String!
+
+  # "The item at the end of the edge
+  node: RecentUpdate!
 }
 
 type Session {
@@ -394,6 +394,7 @@ type Source {
 type Status {
   activated: Boolean!
   version: String!
+  loggedin: Boolean!
 }
 
 type Tracker {

@@ -46,15 +46,15 @@ impl Updates {
             let cursor = updates.entries.lock_ref().last().map(|entry| entry.cursor.clone());
             match query::fetch_recent_updates(cursor).await {
                 Ok(result) => {
-                    for edge in result.edges.unwrap_throw() {
+                    for edge in result.edges {
                         updates.entries.lock_mut().push_cloned(Entry{
-                            manga_id: edge.as_ref().unwrap_throw().node.manga_id,
-                            manga_title: edge.as_ref().unwrap_throw().node.manga_title.clone(),
-                            cover_url: edge.as_ref().unwrap_throw().node.cover_url.clone(),
-                            chapter_id: edge.as_ref().unwrap_throw().node.chapter_id,
-                            chapter_title: edge.as_ref().unwrap_throw().node.chapter_title.clone(),
-                            uploaded: chrono::NaiveDateTime::parse_from_str(&edge.as_ref().unwrap_throw().node.uploaded, "%Y-%m-%dT%H:%M:%S%.f").unwrap_throw(),
-                            cursor: edge.as_ref().unwrap_throw().cursor.clone(),
+                            manga_id: edge.node.manga_id,
+                            manga_title: edge.node.manga_title.clone(),
+                            cover_url: edge.node.cover_url.clone(),
+                            chapter_id: edge.node.chapter_id,
+                            chapter_title: edge.node.chapter_title.clone(),
+                            uploaded: chrono::NaiveDateTime::parse_from_str(&edge.node.uploaded, "%Y-%m-%dT%H:%M:%S%.f").unwrap_throw(),
+                            cursor: edge.cursor.clone(),
                         })
                     }
                     updates.is_entries_empty.set(updates.entries.lock_ref().is_empty());

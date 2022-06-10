@@ -635,7 +635,7 @@ pub async fn update_profile(
 )]
 pub struct FetchServerStatus;
 
-pub async fn server_status(
+pub async fn fetch_server_status(
 ) -> Result<fetch_server_status::FetchServerStatusServerStatus, Box<dyn Error>> {
     let var = fetch_server_status::Variables {};
     let data = post_graphql::<FetchServerStatus>(var).await?;

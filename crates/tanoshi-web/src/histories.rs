@@ -47,16 +47,16 @@ impl Histories {
             let cursor = histories.entries.lock_ref().last().map(|entry| entry.cursor.clone());
             match query::fetch_histories(cursor).await {
                 Ok(result) => {
-                    for edge in result.edges.unwrap_throw() {
+                    for edge in result.edges {
                         histories.entries.lock_mut().push_cloned(Entry{
-                            manga_id: edge.as_ref().unwrap_throw().node.manga_id,
-                            manga_title: edge.as_ref().unwrap_throw().node.manga_title.clone(),
-                            cover_url: edge.as_ref().unwrap_throw().node.cover_url.clone(),
-                            chapter_id: edge.as_ref().unwrap_throw().node.chapter_id,
-                            chapter_title: edge.as_ref().unwrap_throw().node.chapter_title.clone(),
-                            read_at: chrono::NaiveDateTime::parse_from_str(&edge.as_ref().unwrap_throw().node.read_at, "%Y-%m-%dT%H:%M:%S%.f").unwrap_throw(),
-                            last_page_read: edge.as_ref().unwrap_throw().node.last_page_read,
-                            cursor: edge.as_ref().unwrap_throw().cursor.clone(),
+                            manga_id: edge.node.manga_id,
+                            manga_title: edge.node.manga_title.clone(),
+                            cover_url: edge.node.cover_url.clone(),
+                            chapter_id: edge.node.chapter_id,
+                            chapter_title: edge.node.chapter_title.clone(),
+                            read_at: chrono::NaiveDateTime::parse_from_str(&edge.node.read_at, "%Y-%m-%dT%H:%M:%S%.f").unwrap_throw(),
+                            last_page_read: edge.node.last_page_read,
+                            cursor: edge.cursor.clone(),
                         })
                     }
                     histories.is_entries_empty.set(histories.entries.lock_ref().is_empty());
