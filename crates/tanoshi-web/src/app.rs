@@ -1,28 +1,28 @@
 use std::rc::Rc;
 
-use dominator::routing;
-use dominator::{clone, html, Dom};
-use futures_signals::signal::{Mutable, SignalExt};
+use dominator::{clone, html, routing, Dom};
+use futures_signals::{
+    map_ref,
+    signal::{Mutable, Signal, SignalExt},
+};
 use wasm_bindgen::UnwrapThrowExt;
 
-use crate::catalogue::Catalogue;
-use crate::catalogue_list::CatalogueList;
-use crate::common::{snackbar, LibrarySettings, ServerStatus, SettingCategory};
-use crate::library::Library;
-use crate::library_list::LibraryList;
-use crate::login::Login;
-use crate::manga::Manga;
-use crate::query;
-use crate::reader::Reader;
-use crate::tracker_login::TrackerLogin;
-use crate::tracker_redirect::TrackerRedirect;
-use crate::utils::local_storage;
 use crate::{
-    common::{Bottombar, Route, Spinner},
+    catalogue::Catalogue,
+    catalogue_list::CatalogueList,
+    common::{snackbar, Bottombar, LibrarySettings, Route, ServerStatus, SettingCategory, Spinner},
     histories::Histories,
+    library::Library,
+    library_list::LibraryList,
+    login::Login,
+    manga::Manga,
+    query,
+    reader::Reader,
     settings::Settings,
+    tracker_login::TrackerLogin,
+    tracker_redirect::TrackerRedirect,
     updates::Updates,
-    utils::AsyncLoader,
+    utils::{local_storage, AsyncLoader},
 };
 
 pub struct App {
@@ -57,6 +57,15 @@ impl App {
         }));
     }
 
+    pub fn signal(&self) -> impl Signal<Item = (Route, Option<ServerStatus>)> {
+        map_ref! {
+            let route = Route::signal(),
+            let server_status = self.server_status.signal_cloned() =>
+
+            (route.clone(), server_status.clone())
+        }
+    }
+
     pub fn render(app: Rc<Self>) -> Dom {
         Self::fetch_server_status(app.clone());
 
@@ -74,8 +83,12 @@ impl App {
 
                 async move {}
             }))
-            .child_signal(Route::signal().map(clone!(app => move |x| {
-                match x {
+            .child_signal(app.signal().map(clone!(app => move |(route, server_status)| {
+                if server_status.is_none() {
+                    return None;
+                }
+
+                match route {
                     Route::Root => {
                         if let Some(default_category) = LibrarySettings::load(false, false).default_category.get_cloned() {
                             routing::go_to_url(&Route::Library(default_category.id).url());

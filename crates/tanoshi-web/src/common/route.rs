@@ -20,7 +20,7 @@ pub enum SettingCategory {
     DownloadQueue,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Route {
     Root,
     Login,
