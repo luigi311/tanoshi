@@ -60,7 +60,7 @@ impl SettingsSource {
         settings.loader.load(async move {
             match query::uninstall_source(id).await {
                 Ok(_) => {
-                    routing::go_to_url(&Route::Settings(SettingCategory::Source(0)).url());
+                    routing::go_to_url(&Route::Settings(SettingCategory::SourceList).url());
                 }
                 Err(err) => {
                     snackbar::show(format!("{}", err));
