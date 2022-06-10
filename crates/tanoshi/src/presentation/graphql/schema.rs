@@ -17,7 +17,9 @@ use super::{
     user::{UserMutationRoot, UserRoot},
 };
 
-use async_graphql::{dataloader::DataLoader, EmptySubscription, MergedObject, Schema};
+use async_graphql::{
+    dataloader::DataLoader, extensions::Logger, EmptySubscription, MergedObject, Schema,
+};
 
 pub type TanoshiSchema = Schema<QueryRoot, MutationRoot, EmptySubscription>;
 
@@ -59,7 +61,8 @@ impl Default for SchemaBuilder {
             QueryRoot::default(),
             MutationRoot::default(),
             EmptySubscription::default(),
-        );
+        )
+        .extension(Logger);
 
         Self(builder)
     }
