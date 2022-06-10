@@ -44,18 +44,22 @@ where
         if check_update {
             let available_sources: HashMap<i64, Source> = self
                 .repo
-                .available_sources(repo_url)
+                .available_sources(repo_url, false)
                 .await?
                 .into_iter()
                 .map(|s| (s.id, s))
                 .collect();
 
             for source in sources.iter_mut() {
-                if let Some(available_version) = available_sources
-                    .get(&source.id)
-                    .and_then(|s| Version::from_str(&s.version).ok())
-                {
-                    source.has_update = available_version > Version::from_str(&source.version)?;
+                if let Some(available_source) = available_sources.get(&source.id) {
+                    let available_version = Version::from_str(&available_source.version)?;
+                    let installed_version = Version::from_str(&source.version)?;
+
+                    source.has_update = available_version > installed_version;
+                    debug!(
+                        "source {} {available_version} > {installed_version}: {}",
+                        source.id, source.has_update
+                    );
                 }
             }
         }
@@ -64,7 +68,7 @@ where
     }
 
     pub async fn get_available_sources(&self, repo_url: &str) -> Result<Vec<Source>, SourceError> {
-        let sources = self.repo.available_sources(repo_url).await?;
+        let sources = self.repo.available_sources(repo_url, true).await?;
 
         Ok(sources)
     }

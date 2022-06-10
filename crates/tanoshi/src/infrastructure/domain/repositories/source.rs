@@ -53,6 +53,7 @@ impl SourceRepository for SourceRepositoryImpl {
     async fn available_sources(
         &self,
         repo_url: &str,
+        filter_installed: bool,
     ) -> Result<Vec<Source>, SourceRepositoryError> {
         let source_indexes: Vec<SourceDto> = reqwest::get(&format!("{repo_url}/index.json"))
             .await?
@@ -61,19 +62,22 @@ impl SourceRepository for SourceRepositoryImpl {
 
         let mut sources: Vec<Source> = vec![];
         for index in source_indexes {
-            if !self.extension_manager.exists(index.id).await? {
-                sources.push(Source {
-                    id: index.id,
-                    name: index.name,
-                    url: index.url,
-                    version: index.version,
-                    rustc_version: index.rustc_version,
-                    lib_version: index.lib_version,
-                    icon: index.icon,
-                    has_update: false,
-                });
+            if filter_installed && self.extension_manager.exists(index.id).await? {
+                continue;
             }
+
+            sources.push(Source {
+                id: index.id,
+                name: index.name,
+                url: index.url,
+                version: index.version,
+                rustc_version: index.rustc_version,
+                lib_version: index.lib_version,
+                icon: index.icon,
+                has_update: false,
+            });
         }
+
         Ok(sources)
     }
 

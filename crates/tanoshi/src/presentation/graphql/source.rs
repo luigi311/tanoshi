@@ -26,13 +26,13 @@ impl From<crate::domain::entities::source::Source> for Source {
     fn from(s: crate::domain::entities::source::Source) -> Self {
         Self {
             id: s.id,
-            name: s.name.to_string(),
-            url: s.url.to_string(),
-            version: s.version.to_string(),
-            rustc_version: "".to_string(),
-            lib_version: "".to_string(),
+            name: s.name,
+            url: s.url,
+            version: s.version,
+            rustc_version: s.rustc_version,
+            lib_version: s.lib_version,
             icon: s.icon,
-            has_update: false,
+            has_update: s.has_update,
         }
     }
 }

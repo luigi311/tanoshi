@@ -22,8 +22,11 @@ pub enum SourceRepositoryError {
 pub trait SourceRepository: Send + Sync {
     async fn installed_sources(&self) -> Result<Vec<Source>, SourceRepositoryError>;
 
-    async fn available_sources(&self, repo_url: &str)
-        -> Result<Vec<Source>, SourceRepositoryError>;
+    async fn available_sources(
+        &self,
+        repo_url: &str,
+        filter_installed: bool,
+    ) -> Result<Vec<Source>, SourceRepositoryError>;
     async fn get_source_by_id(&self, id: i64) -> Result<Source, SourceRepositoryError>;
 
     async fn install_source(&self, repo_url: &str, id: i64) -> Result<(), SourceRepositoryError>;
