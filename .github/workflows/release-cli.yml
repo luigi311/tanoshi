@@ -95,18 +95,18 @@ jobs:
       - name: Upload Release Asset
         uses: jakejarvis/s3-sync-action@master
         env:
-          AWS_S3_BUCKET: ${{ secrets.S3_BUCKET }}
+          AWS_S3_BUCKET: tanoshi
           AWS_ACCESS_KEY_ID: ${{ secrets.S3_ACCESS_KEY }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRET_KEY }}
-          AWS_REGION: ${{ secrets.S3_REGION }}
+          AWS_REGION: ap-singapore-1
           SOURCE_DIR: ${{ github.workspace }}/target/release/${{ matrix.filename }}
           DEST_DIR: tanoshi-cli/${{ env.RELEASE_VERSION }}
       - name: Upload Release Asset
         uses: jakejarvis/s3-sync-action@master
         env:
-          AWS_S3_BUCKET: ${{ secrets.S3_BUCKET }}
+          AWS_S3_BUCKET: tanoshi
           AWS_ACCESS_KEY_ID: ${{ secrets.S3_ACCESS_KEY }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRET_KEY }}
-          AWS_REGION: ${{ secrets.S3_REGION }}
+          AWS_REGION: ap-singapore-1
           SOURCE_DIR: ${{ github.workspace }}/target/release/${{ matrix.filename }}
           DEST_DIR: tanoshi-cli/latest
