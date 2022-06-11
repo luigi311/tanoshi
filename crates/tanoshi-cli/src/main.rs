@@ -10,7 +10,7 @@ use tanoshi_vm::{prelude::ExtensionManager, PLUGIN_EXTENSION};
 const TARGET: &str = env!("TARGET");
 
 #[derive(Parser)]
-#[clap(version = "0.1.1")]
+#[clap(version, about)]
 struct Opts {
     #[clap(short, long, default_value = "./")]
     path: String,
@@ -20,6 +20,7 @@ struct Opts {
 
 #[derive(Subcommand)]
 enum Command {
+    /// Generate index.json
     GenerateJson,
 }
 
