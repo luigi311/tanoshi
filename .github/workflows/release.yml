@@ -276,10 +276,14 @@ jobs:
         with:
           name: builds
           path: builds
+      - name: Prepare variables
+        run: |
+          echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
+          git tag -l --format='%(contents)' ${{ env.RELEASE_VERSION }} > CHANGELOG-${{ env.RELEASE_VERSION }}.txt
       - name: Create Release
         id: create_release
         uses: softprops/action-gh-release@v1
         with:
-          body: "${ git tag -l --format='%(contents)' $GITHUB_REF }"
-          name: "Tanoshi ${GITHUB_REF#refs/*/}"
+          body_path: CHANGELOG-${{ env.RELEASE_VERSION }}.txt
+          name: Tanoshi ${{ env.RELEASE_VERSION }}
           files: builds/**
