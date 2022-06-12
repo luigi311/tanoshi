@@ -45,9 +45,9 @@ impl HistoryRepository for HistoryRepositoryImpl {
             user_history.last_page,
             user_history.is_complete
         FROM user_history
-        JOIN 
-            chapter ON chapter.id = user_history.chapter_id AND
-            user_history.user_id = ?
+        JOIN chapter ON 
+            user_history.user_id = ? AND
+            chapter.id = user_history.chapter_id
         JOIN manga ON manga.id = chapter.manga_id
         GROUP BY manga.id
         HAVING
@@ -98,9 +98,9 @@ impl HistoryRepository for HistoryRepositoryImpl {
                 user_history.last_page,
                 user_history.is_complete
             FROM user_history
-            JOIN 
-                chapter ON chapter.id = user_history.chapter_id AND
-                user_history.user_id = ?
+            JOIN chapter ON 
+                user_history.user_id = ? AND
+                chapter.id = user_history.chapter_id
             JOIN manga ON manga.id = chapter.manga_id
             GROUP BY manga.id
             HAVING
@@ -149,9 +149,9 @@ impl HistoryRepository for HistoryRepositoryImpl {
             user_history.last_page,
             user_history.is_complete
         FROM user_history
-        JOIN 
-            chapter ON chapter.id = user_history.chapter_id AND
-            user_history.user_id = ?
+        JOIN chapter ON 
+            user_history.user_id = ? AND
+            chapter.id = user_history.chapter_id
         JOIN manga ON manga.id = chapter.manga_id
         GROUP BY manga.id
         HAVING
@@ -288,14 +288,13 @@ impl HistoryRepository for HistoryRepositoryImpl {
     ) -> Result<(), HistoryRepositoryError> {
         sqlx::query(
             r#"
-            INSERT INTO
-            user_history(user_id, chapter_id, last_page, read_at, is_complete)
+            INSERT INTO user_history(user_id, chapter_id, last_page, read_at, is_complete)
             VALUES(?, ?, ?, ?, ?)
             ON CONFLICT(user_id, chapter_id)
             DO UPDATE SET
-            last_page = excluded.last_page,
-            read_at = excluded.read_at,
-            is_complete = CASE is_complete WHEN 0 THEN excluded.is_complete ELSE is_complete END"#,
+                last_page = excluded.last_page,
+                read_at = excluded.read_at,
+                s_complete = CASE is_complete WHEN 0 THEN excluded.is_complete ELSE is_complete END"#,
         )
         .bind(user_id)
         .bind(chapter_id)
@@ -354,8 +353,7 @@ impl HistoryRepository for HistoryRepositoryImpl {
         values.resize(chapter_ids.len(), "?");
 
         let query_str = format!(
-            r#"DELETE FROM user_history
-            WHERE user_id = ? AND chapter_id IN ({})"#,
+            r#"DELETE FROM user_history WHERE user_id = ? AND chapter_id IN ({})"#,
             values.join(",")
         );
 
@@ -380,7 +378,12 @@ impl HistoryRepository for HistoryRepositoryImpl {
 
         let query_str = format!(
             r#"SELECT manga_id, COUNT(1) FROM (
-                SELECT manga_id, IFNULL(user_history.is_complete, false) AS is_complete FROM chapter c LEFT JOIN user_history ON user_history.user_id = ? AND user_history.chapter_id = c.id WHERE c.manga_id IN ({})
+                SELECT manga_id, IFNULL(user_history.is_complete, false) AS is_complete 
+                FROM chapter c 
+                LEFT JOIN user_history ON 
+                    user_history.user_id = ? AND 
+                    user_history.chapter_id = c.id 
+                WHERE c.manga_id IN ({})
             )
             WHERE is_complete = false
             GROUP BY manga_id"#,
