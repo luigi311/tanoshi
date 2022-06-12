@@ -294,7 +294,7 @@ impl HistoryRepository for HistoryRepositoryImpl {
             DO UPDATE SET
                 last_page = excluded.last_page,
                 read_at = excluded.read_at,
-                s_complete = CASE is_complete WHEN 0 THEN excluded.is_complete ELSE is_complete END"#,
+                is_complete = CASE is_complete WHEN 0 THEN excluded.is_complete ELSE is_complete END"#,
         )
         .bind(user_id)
         .bind(chapter_id)
