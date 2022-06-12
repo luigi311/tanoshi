@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.29.1]
+
+### Fixed
+
+- [tanoshi] fix query when update page read
+
 ## [0.29.0]
 
 ### Changed
@@ -17,7 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [tanoshi-web] redirected to source list after uninstall
 - [tanoshi-web] add cancel button to abort request of few pages
 
-## Added
+### Added
 
 - [tanoshi] support notification with Gotify
 - [tanoshi] support cb7 format
@@ -396,7 +402,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [tanoshi-web] add test telegram button on profile
 - [tanoshi-web] retry button if image failed to load
 
-## Fixed
+### Fixed
 
 - [tanoshi-web] page freeze when select fit option in paged mod
 
@@ -500,6 +506,7 @@ Nothing changes, this release to build for multiarch docker image
 
 - fix panic when using local source
 
+[0.29.1]: https://github.com/faldez/tanoshi/compare/v0.29.0...v0.29.1
 [0.29.0]: https://github.com/faldez/tanoshi/compare/v0.28.1...v0.29.0
 [0.28.1]: https://github.com/faldez/tanoshi/compare/v0.28.0...v0.28.1
 [0.28.0]: https://github.com/faldez/tanoshi/compare/v0.27.1...v0.28.0
