@@ -73,10 +73,6 @@ jobs:
           - macos-latest
           - windows-latest
         include:
-          - os: ubuntu-latest
-            asset_path: bundle/appimage/tanoshi_*.AppImage
-          - os: ubuntu-latest
-            asset_path: bundle/deb/*.deb
           - os: macos-latest
             asset_path: bundle/dmg/*.dmg
           - os: windows-latest
@@ -154,6 +150,13 @@ jobs:
         env:
           LIBCLANG_PATH: C:\Program Files\LLVM\bin
       - name: Copy build
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+        run: |
+          mkdir ${{ github.workspace }}/builds
+          cp target/release/bundle/**/*.deb target/release/bundle/**/*.AppImage builds/
+          rm builds/linuxdeploy-x86_64.AppImage
+      - name: Copy build
+        if: ${{ matrix.os != 'ubuntu-latest' }}
         run: |
           mkdir ${{ github.workspace }}/builds
           cp ${{ github.workspace }}/target/release/${{ matrix.asset_path }} ${{ github.workspace }}/builds
