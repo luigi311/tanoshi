@@ -43,8 +43,8 @@ jobs:
           tags: faldez/tanoshi:latest,faldez/tanoshi:${{ env.RELEASE_VERSION }}
           build-args: |
             BUILD_WEB=false
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=registry,ref=faldez/tanoshi:buildcache
+          cache-to: type=registry,ref=faldez/tanoshi:buildcache,mode=max
   build-web:
     runs-on: ubuntu-latest
     steps:
