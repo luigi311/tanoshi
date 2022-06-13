@@ -221,19 +221,20 @@ impl TrackerRepository for TrackerRepositoryImpl {
     ) -> Result<Vec<TrackedManga>, TrackerRepositoryError> {
         let query_str = format!(
             r#"SELECT m.id as manga_id, tc.tracker, tm.tracker_manga_id FROM tracker_credential tc 
-                LEFT JOIN manga m ON m.id = ?
+                LEFT JOIN manga m ON m.id IN ({})
                 LEFT JOIN tracker_manga tm ON tc.tracker = tm.tracker AND tm.manga_id = m.id
-                WHERE tc.user_id = ? AND m.id IN ({})"#,
+                WHERE tc.user_id = ?"#,
             vec!["?"; manga_ids.len()].join(",")
         );
 
-        let mut query = sqlx::query(&query_str).bind(user_id);
+        let mut query = sqlx::query(&query_str);
 
         for manga_id in manga_ids {
             query = query.bind(manga_id);
         }
 
         let rows = query
+            .bind(user_id)
             .fetch_all(&self.pool as &SqlitePool)
             .await?
             .iter()
