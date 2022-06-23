@@ -29,8 +29,7 @@ RUN apt update && apt upgrade -y && apt install --reinstall -y ca-certificates l
 ENV PORT=80
 ENV TANOSHI_LOG=info
 ENV TANOSHI_HOME=/tanoshi
-ENV CONFIG_PATH=${TANOSHI_HOME}/config.yml
 
 EXPOSE $PORT
 
-ENTRYPOINT ["/app/tanoshi", "--config", "${CONFIG_PATH}"]
+ENTRYPOINT ["/app/tanoshi"]
