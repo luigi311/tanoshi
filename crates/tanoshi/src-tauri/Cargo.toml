@@ -22,3 +22,7 @@ tanoshi-vm = { path = "../../tanoshi-vm", default-features = false }
 tanoshi-tracker = { path = "../../tanoshi-tracker" }
 tokio = { version = "1", features = ["full"] }
 portpicker = "0.1"
+
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]
