@@ -60,7 +60,7 @@ clap = { version = "3.0.0-rc.5", features = ["derive"] }
 bytes = "1"
 dirs = "4"
 base64 = "0.13"
-sqlx = { version = "^0.5.9", features = [
+sqlx = { version = "0.6.0", features = [
     "runtime-tokio-native-tls",
     "sqlite",
     "chrono",
@@ -81,7 +81,7 @@ aes = "0.8"
 cbc = "0.1"
 once_cell = "^1.8.0"
 async-trait = "^0.1.51"
-tauri = { version = "1.0.0-rc", default-features = false, features = [
+tauri = { version = "1", default-features = false, features = [
     "notification-all",
 ], optional = true }
 itertools = "0.10.2"
