@@ -97,7 +97,7 @@ impl Updates {
                                 .class("update-item-thumbnail")
                                 .children(&mut [
                                     html!("img", {
-                                        .attribute("src", &proxied_image_url(&entry.cover_url))
+                                        .attr("src", &proxied_image_url(&entry.cover_url))
                                     })
                                 ])
                             }),
@@ -127,17 +127,17 @@ impl Updates {
                         }))
                         .children(&mut [
                             svg!("svg", {
-                                .attribute("xmlns", "http://www.w3.org/2000/svg")
-                                .attribute("fill", "none")
-                                .attribute("viewBox", "0 0 24 24")
-                                .attribute("stroke", "currentColor")
+                                .attr("xmlns", "http://www.w3.org/2000/svg")
+                                .attr("fill", "none")
+                                .attr("viewBox", "0 0 24 24")
+                                .attr("stroke", "currentColor")
                                 .class("icon")
                                 .children(&mut [
                                     svg!("path", {
-                                        .attribute("stroke-linecap", "round")
-                                        .attribute("stroke-linejoin", "round")
-                                        .attribute("stroke-width", "2")
-                                        .attribute("d", "M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z")
+                                        .attr("stroke-linecap", "round")
+                                        .attr("stroke-linejoin", "round")
+                                        .attr("stroke-width", "2")
+                                        .attr("d", "M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z")
                                     })
                                 ])
                             }),

@@ -83,7 +83,7 @@ impl TrackerLogin {
                     .style("height", "8rem")
                     .style("border-radius", "0.5rem")
                     .style("margin", "auto")
-                    .attribute("src", "/icons/512.png")
+                    .attr("src", "/icons/512.png")
                 }),
                 html!("div", {
                     .style("padding", "0.5rem")

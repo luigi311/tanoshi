@@ -172,14 +172,14 @@ impl LibrarySettings {
                         html!("select" => HtmlSelectElement, {
                             .children(&mut [
                                 html!("option", {
-                                    .attribute("value", "")
-                                    .attribute_signal("selected", settings.default_category.signal_cloned().map(|dc| dc.is_none().then(|| "")))
+                                    .attr("value", "")
+                                    .attr_signal("selected", settings.default_category.signal_cloned().map(|dc| dc.is_none().then(|| "")))
                                     .text("")
                                 })
                             ])
                             .children_signal_vec(settings.categories.signal_vec_cloned().map(clone!(settings => move |cat| html!("option", {
-                                .attribute("value", &cat.name)
-                                .attribute_signal("selected", settings.default_category.signal_cloned().map(clone!(cat => move |dc| {
+                                .attr("value", &cat.name)
+                                .attr_signal("selected", settings.default_category.signal_cloned().map(clone!(cat => move |dc| {
                                     if let Some(selected) = dc.map(|dc|dc.name == cat.name) {
                                         selected.then(|| "")
                                     } else {

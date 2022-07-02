@@ -130,8 +130,8 @@ impl SettingsCategories {
                                                 .style_important("margin", "0")
                                                 .style_important("padding-bottom", "0")
                                                 .style_important("padding-top", "0")
-                                                .attribute("type", "text")
-                                                .attribute("value", &cat.name)
+                                                .attr("type", "text")
+                                                .attr("value", &cat.name)
                                                 .with_node!(input => {
                                                     .after_inserted(clone!(input, index => move |_| {
                                                         if index.get().map(|i| i == 0).unwrap_or(false) {
@@ -175,15 +175,15 @@ impl SettingsCategories {
                                     }))
                                     .children(&mut [
                                         svg!("svg", {
-                                            .attribute("xmlns", "http://www.w3.org/2000/svg")
-                                            .attribute("fill", "currentColor")
-                                            .attribute("viewBox", "0 0 20 20")
+                                            .attr("xmlns", "http://www.w3.org/2000/svg")
+                                            .attr("fill", "currentColor")
+                                            .attr("viewBox", "0 0 20 20")
                                             .class("icon-sm")
                                             .children(&mut [
                                                 svg!("path", {
-                                                    .attribute("fill-rule", "evenodd")
-                                                    .attribute("clip-rule", "evenodd")
-                                                    .attribute("d", "M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z")
+                                                    .attr("fill-rule", "evenodd")
+                                                    .attr("clip-rule", "evenodd")
+                                                    .attr("d", "M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z")
                                                 })
                                             ])
                                         }),
@@ -201,8 +201,8 @@ impl SettingsCategories {
                                 html!("input" => HtmlInputElement, {
                                     .style("width", "100%")
                                     .style_important("background-color", "initial")
-                                    .attribute("type", "text")
-                                    .attribute("placeholder", "New Category")
+                                    .attr("type", "text")
+                                    .attr("placeholder", "New Category")
                                     .with_node!(input => {
                                         .event(clone!(input, settings => move |_: events::Change| {
                                             settings.new_category.set(Some(input.value()));
@@ -224,13 +224,13 @@ impl SettingsCategories {
                                     }))
                                     .children(&mut [
                                         svg!("svg", {
-                                            .attribute("xmlns", "http://www.w3.org/2000/svg")
-                                            .attribute("fill", "currentColor")
-                                            .attribute("viewBox", "0 0 20 20")
+                                            .attr("xmlns", "http://www.w3.org/2000/svg")
+                                            .attr("fill", "currentColor")
+                                            .attr("viewBox", "0 0 20 20")
                                             .class("icon-sm")
                                             .children(&mut [
                                                 svg!("path", {
-                                                    .attribute("d", "M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM14 11a1 1 0 011 1v1h1a1 1 0 110 2h-1v1a1 1 0 11-2 0v-1h-1a1 1 0 110-2h1v-1a1 1 0 011-1z")
+                                                    .attr("d", "M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM14 11a1 1 0 011 1v1h1a1 1 0 110 2h-1v1a1 1 0 11-2 0v-1h-1a1 1 0 110-2h1v-1a1 1 0 011-1z")
                                                 })
                                             ])
                                         }),

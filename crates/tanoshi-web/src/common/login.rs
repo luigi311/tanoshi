@@ -56,8 +56,8 @@ impl Login {
                     .style("margin", "0.5rem")
                     .style("padding", "0.5rem")
                     .style("border-radius", "0.5rem")
-                    .attribute("type", "username")
-                    .attribute("placeholder", "Username")
+                    .attr("type", "username")
+                    .attr("placeholder", "Username")
                     .with_node!(input => {
                         .event(clone!(login => move |_: events::Input| {
                             login.username.set(input.value());
@@ -68,8 +68,8 @@ impl Login {
                     .style("margin", "0.5rem")
                     .style("padding", "0.5rem")
                     .style("border-radius", "0.5rem")
-                    .attribute("type", "password")
-                    .attribute("placeholder", "Password")
+                    .attr("type", "password")
+                    .attr("placeholder", "Password")
                     .with_node!(input => {
                         .event(clone!(login => move |_: events::Input| {
                             login.password.set_neq(input.value());
@@ -82,8 +82,8 @@ impl Login {
                     .style("padding", "0.5rem")
                     .children(&mut [
                         html!("input" => HtmlInputElement, {
-                            .attribute("type", "checkbox")
-                            .attribute_signal("checked", login.is_admin.signal_cloned().map(|x| if x {Some("checked")} else {None}))
+                            .attr("type", "checkbox")
+                            .attr_signal("checked", login.is_admin.signal_cloned().map(|x| if x {Some("checked")} else {None}))
                             .with_node!(element => {
                                 .event(clone!(login => move |_: events::Change| {
                                     login.is_admin.set_neq(element.checked());
@@ -99,7 +99,7 @@ impl Login {
                     .style("padding", "0.5rem")
                     .children(&mut [
                         html!("input" => HtmlInputElement, {
-                            .attribute("type", "submit")
+                            .attr("type", "submit")
                             .text("Create")
                             .event_with_options(&EventOptions::preventable(), clone!(login => move |e: events::Click| {
                                 e.prevent_default();

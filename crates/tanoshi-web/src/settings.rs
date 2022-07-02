@@ -237,16 +237,16 @@ impl Settings {
                                 .children(&mut [
                                     svg!("svg", {
                                         .class("icon")
-                                        .attribute("xmlns", "http://www.w3.org/2000/svg")
-                                        .attribute("fill", "none")
-                                        .attribute("viewBox", "0 0 24 24")
-                                        .attribute("stroke", "currentColor")
+                                        .attr("xmlns", "http://www.w3.org/2000/svg")
+                                        .attr("fill", "none")
+                                        .attr("viewBox", "0 0 24 24")
+                                        .attr("stroke", "currentColor")
                                         .children(&mut [
                                             svg!("path", {
-                                                .attribute("stroke-linecap", "round")
-                                                .attribute("stroke-linejoin", "round")
-                                                .attribute("stroke-width", "2")
-                                                .attribute("d", "M15 19l-7-7 7-7")
+                                                .attr("stroke-linecap", "round")
+                                                .attr("stroke-linejoin", "round")
+                                                .attr("stroke-width", "2")
+                                                .attr("d", "M15 19l-7-7 7-7")
                                             })
                                         ])
                                     }),
@@ -407,26 +407,26 @@ impl Settings {
             .children(&mut [
                 html!("a", {
                     .class("list-item")
-                    .attribute("href", "https://github.com/faldez/tanoshi/blob/master/CHANGELOG.md")
-                    .attribute("target", "_blank")
+                    .attr("href", "https://github.com/faldez/tanoshi/blob/master/CHANGELOG.md")
+                    .attr("target", "_blank")
                     .text("Changelog")
                 }),
                 html!("a", {
                     .class("list-item")
-                    .attribute("href", "https://github.com/faldez/tanoshi")
-                    .attribute("target", "_blank")
+                    .attr("href", "https://github.com/faldez/tanoshi")
+                    .attr("target", "_blank")
                     .text("Github")
                 }),
                 html!("a", {
                     .class("list-item")
-                    .attribute("href", "https://faldez.github.io/tanoshi")
-                    .attribute("target", "_blank")
+                    .attr("href", "https://faldez.github.io/tanoshi")
+                    .attr("target", "_blank")
                     .text("Website")
                 }),
                 html!("a", {
                     .class("list-item")
-                    .attribute("href", "https://discord.gg/wPSEftdDqB")
-                    .attribute("target", "_blank")
+                    .attr("href", "https://discord.gg/wPSEftdDqB")
+                    .attr("target", "_blank")
                     .text("Discord")
                 }),
             ])
@@ -461,17 +461,17 @@ impl Settings {
             .children(&mut [
                 svg!("svg", {
                     .class("me-icon")
-                    .attribute("xmlns", "http://www.w3.org/2000/svg")
-                    .attribute("viewBox", "0 0 24 24")
-                    .attribute("stroke", "currentColor")
-                    .attribute("fill", "none")
+                    .attr("xmlns", "http://www.w3.org/2000/svg")
+                    .attr("viewBox", "0 0 24 24")
+                    .attr("stroke", "currentColor")
+                    .attr("fill", "none")
                     .children(&mut [
                         svg!("path", {
-                            .attribute("stroke-linecap", "round")
-                            .attribute("stroke-linejoin", "round")
-                            .attribute("stroke-width", "1")
+                            .attr("stroke-linecap", "round")
+                            .attr("stroke-linejoin", "round")
+                            .attr("stroke-width", "1")
                             .class("heroicon-ui")
-                            .attribute("d", "M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z")
+                            .attr("d", "M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z")
                         })
                     ])
                 }),
@@ -498,16 +498,16 @@ impl Settings {
             .children(&mut [
                 svg!("svg", {
                     .class("icon")
-                    .attribute("xmlns", "http://www.w3.org/2000/svg")
-                    .attribute("fill", "none")
-                    .attribute("viewBox", "0 0 24 24")
-                    .attribute("stroke", "currentColor")
+                    .attr("xmlns", "http://www.w3.org/2000/svg")
+                    .attr("fill", "none")
+                    .attr("viewBox", "0 0 24 24")
+                    .attr("stroke", "currentColor")
                     .children(&mut [
                         svg!("path", {
-                            .attribute("stroke-linecap", "round")
-                            .attribute("stroke-linejoin", "round")
-                            .attribute("stroke-width", "2")
-                            .attribute("d", "M9 5l7 7-7 7")
+                            .attr("stroke-linecap", "round")
+                            .attr("stroke-linejoin", "round")
+                            .attr("stroke-width", "2")
+                            .attr("d", "M9 5l7 7-7 7")
                         })
                     ])
                 })
@@ -540,7 +540,7 @@ impl Settings {
                                                 .style("width", "2.5rem")
                                                 .style("height", "2.5rem")
                                                 .style("margin-right", "0.5rem")
-                                                .attribute("src", &x.icon)
+                                                .attr("src", &x.icon)
                                             }),
                                             html!("div", {
                                                 .style("display", "flex")
@@ -565,7 +565,7 @@ impl Settings {
                                                 .style("width", "2.5rem")
                                                 .style("height", "2.5rem")
                                                 .style("margin-right", "0.5rem")
-                                                .attribute("src", &x.icon)
+                                                .attr("src", &x.icon)
                                             }),
                                             html!("div", {
                                                 .style("display", "flex")

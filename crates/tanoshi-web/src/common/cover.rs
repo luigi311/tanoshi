@@ -67,8 +67,8 @@ impl Cover {
             .class_signal("favorite", self.is_favorite.signal())
             .children(&mut [
                 html!("img", {
-                    .attribute("src", &self.cover_url)
-                    .attribute("loading", "lazy")
+                    .attr("src", &self.cover_url)
+                    .attr("loading", "lazy")
                 }),
                 html!("div", {
                     .class("unread-badge")

@@ -152,9 +152,9 @@ impl CatalogueList {
                 if is_search {
                     Some(html!("input" => HtmlInputElement, {
                         .style("width", "100%")
-                        .attribute("placeholder", "Search")
-                        .attribute("type", "text")
-                        .attribute("value", &catalogue.keyword.get_cloned())
+                        .attr("placeholder", "Search")
+                        .attr("type", "text")
+                        .attr("value", &catalogue.keyword.get_cloned())
                         .with_node!(input => {
                             .event(clone!(catalogue => move |_: events::Input| {
                                 catalogue.keyword.set_neq(input.value());
@@ -176,7 +176,7 @@ impl CatalogueList {
             .child_signal(catalogue.is_search.signal().map(clone!(catalogue => move |is_search| {
                 if is_search {
                     Some(html!("button", {
-                        .attribute("id", "cancel")
+                        .attr("id", "cancel")
                         .event(clone!(catalogue => move |_: events::Click| {
                             catalogue.is_search.set_neq(false);
                             if catalogue.keyword.get_cloned() != "" {
@@ -188,17 +188,17 @@ impl CatalogueList {
                         }))
                         .children(&mut [
                             svg!("svg", {
-                                .attribute("xmlns", "http://www.w3.org/2000/svg")
-                                .attribute("fill", "none")
-                                .attribute("viewBox", "0 0 24 24")
-                                .attribute("stroke", "currentColor")
+                                .attr("xmlns", "http://www.w3.org/2000/svg")
+                                .attr("fill", "none")
+                                .attr("viewBox", "0 0 24 24")
+                                .attr("stroke", "currentColor")
                                 .class("icon")
                                 .children(&mut [
                                     svg!("path", {
-                                        .attribute("stroke-linecap", "round")
-                                        .attribute("stroke-linejoin", "round")
-                                        .attribute("stroke-width", "2")
-                                        .attribute("d", "M6 18L18 6M6 6l12 12")
+                                        .attr("stroke-linecap", "round")
+                                        .attr("stroke-linejoin", "round")
+                                        .attr("stroke-width", "2")
+                                        .attr("d", "M6 18L18 6M6 6l12 12")
                                     })
                                 ])
                             }),
@@ -206,23 +206,23 @@ impl CatalogueList {
                     }))
                 } else {
                     Some(html!("button", {
-                        .attribute("id", "search")
+                        .attr("id", "search")
                         .event(clone!(catalogue => move |_: events::Click| {
                             catalogue.is_search.set_neq(true);
                         }))
                         .children(&mut [
                             svg!("svg", {
-                                .attribute("xmlns", "http://www.w3.org/2000/svg")
-                                .attribute("fill", "none")
-                                .attribute("viewBox", "0 0 24 24")
-                                .attribute("stroke", "currentColor")
+                                .attr("xmlns", "http://www.w3.org/2000/svg")
+                                .attr("fill", "none")
+                                .attr("viewBox", "0 0 24 24")
+                                .attr("stroke", "currentColor")
                                 .class("icon")
                                 .children(&mut [
                                     svg!("path", {
-                                        .attribute("stroke-linecap", "round")
-                                        .attribute("stroke-linejoin", "round")
-                                        .attribute("stroke-width", "2")
-                                        .attribute("d", "M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z")
+                                        .attr("stroke-linecap", "round")
+                                        .attr("stroke-linejoin", "round")
+                                        .attr("stroke-width", "2")
+                                        .attr("d", "M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z")
                                     })
                                 ])
                             }),
@@ -242,7 +242,7 @@ impl CatalogueList {
                     .children(&mut [
                         html!("img", {
                             .class_signal("invisible", Mutable::new(source.icon.clone()).signal_cloned().map(|icon| icon.is_empty()))
-                            .attribute("src", &source.icon)
+                            .attr("src", &source.icon)
                         }),
                         html!("span", {
                             .text(&source.name)
@@ -320,7 +320,7 @@ impl CatalogueList {
                                 html!("img", {
                                     .style("height", "12rem")
                                     .style("border-radius", "0.375rem")
-                                    .attribute("src", &cover.cover_url)
+                                    .attr("src", &cover.cover_url)
                                 }),
                                 html!("div", {
                                     .style("position", "absolute")

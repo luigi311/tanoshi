@@ -104,20 +104,20 @@ impl SettingsManageDownloads {
                     .style("justify-content", "flex-end")
                     .children(&mut [
                         html!("button", {
-                            .attribute("id", "select-all")
+                            .attr("id", "select-all")
                             .style("display", "flex")
                             .style("align-items", "center")
                             .children(&mut [
                                 svg!("svg", {
-                                    .attribute("xmlns", "http://www.w3.org/2000/svg")
-                                    .attribute("viewBox", "0 0 20 20")
-                                    .attribute("fill", "currentColor")
+                                    .attr("xmlns", "http://www.w3.org/2000/svg")
+                                    .attr("viewBox", "0 0 20 20")
+                                    .attr("fill", "currentColor")
                                     .class("icon")
                                     .children(&mut [
                                         svg!("path", {
-                                            .attribute("fill-rule", "evenodd")
-                                            .attribute("d", "M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z")
-                                            .attribute("clip-rule", "evenodd")
+                                            .attr("fill-rule", "evenodd")
+                                            .attr("d", "M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z")
+                                            .attr("clip-rule", "evenodd")
                                         })
                                     ])
                                 }),
@@ -133,20 +133,20 @@ impl SettingsManageDownloads {
                             }))
                         }),
                         html!("button", {
-                            .attribute("id", "deselect-all")
+                            .attr("id", "deselect-all")
                             .style("display", "flex")
                             .style("align-items", "center")
                             .children(&mut [
                                 svg!("svg", {
-                                    .attribute("xmlns", "http://www.w3.org/2000/svg")
-                                    .attribute("viewBox", "0 0 20 20")
-                                    .attribute("fill", "currentColor")
+                                    .attr("xmlns", "http://www.w3.org/2000/svg")
+                                    .attr("viewBox", "0 0 20 20")
+                                    .attr("fill", "currentColor")
                                     .class("icon")
                                     .children(&mut [
                                         svg!("path", {
-                                            .attribute("fill-rule", "evenodd")
-                                            .attribute("d", "M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z")
-                                            .attribute("clip-rule", "evenodd")
+                                            .attr("fill-rule", "evenodd")
+                                            .attr("d", "M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z")
+                                            .attr("clip-rule", "evenodd")
                                         })
                                     ])
                                 }),
@@ -162,20 +162,20 @@ impl SettingsManageDownloads {
                             }))
                         }),
                         html!("button", {
-                            .attribute("id", "remove-download")
+                            .attr("id", "remove-download")
                             .style("display", "flex")
                             .style("align-items", "center")
                             .children(&mut [
                                 svg!("svg", {
-                                    .attribute("xmlns", "http://www.w3.org/2000/svg")
-                                    .attribute("viewBox", "0 0 20 20")
-                                    .attribute("fill", "currentColor")
+                                    .attr("xmlns", "http://www.w3.org/2000/svg")
+                                    .attr("viewBox", "0 0 20 20")
+                                    .attr("fill", "currentColor")
                                     .class("icon")
                                     .children(&mut [
                                         svg!("path", {
-                                            .attribute("fill-rule", "evenodd")
-                                            .attribute("d", "M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z")
-                                            .attribute("clip-rule", "evenodd")
+                                            .attr("fill-rule", "evenodd")
+                                            .attr("d", "M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z")
+                                            .attr("clip-rule", "evenodd")
                                         })
                                     ])
                                 }),
@@ -202,7 +202,7 @@ impl SettingsManageDownloads {
                         .class("list-item")
                         .children(&mut [
                             html!("input" => HtmlInputElement, {
-                                .attribute("type", "checkbox")
+                                .attr("type", "checkbox")
                                 .style("height", "0.5rem")
                                 .style("margin", "0.5rem")
                                 .style("margin-top", "auto")
@@ -244,17 +244,17 @@ impl SettingsManageDownloads {
                                 }))
                                 .children(&mut [
                                     svg!("svg", {
-                                        .attribute("xmlns", "http://www.w3.org/2000/svg")
-                                        .attribute("fill", "none")
-                                        .attribute("viewBox", "0 0 24 24")
-                                        .attribute("stroke", "currentColor")
+                                        .attr("xmlns", "http://www.w3.org/2000/svg")
+                                        .attr("fill", "none")
+                                        .attr("viewBox", "0 0 24 24")
+                                        .attr("stroke", "currentColor")
                                         .class("icon")
                                         .children(&mut [
                                             svg!("path", {
-                                                .attribute("stroke-linecap", "round")
-                                                .attribute("stroke-linejoin", "round")
-                                                .attribute("stroke-width", "2")
-                                                .attribute("d", "M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16")
+                                                .attr("stroke-linecap", "round")
+                                                .attr("stroke-linejoin", "round")
+                                                .attr("stroke-width", "2")
+                                                .attr("d", "M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16")
                                             })
                                         ])
                                     }),

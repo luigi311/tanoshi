@@ -61,18 +61,18 @@ impl Snackbar {
                             .event(clone!(snackbar => move |_: events::Click| snackbar.close()))
                             .children(&mut [
                                 svg!("svg", {
-                                    .attribute("xmlns", "http://www.w3.org/2000/svg")
-                                    .attribute("viewBox", "0 0 24 24")
-                                    .attribute("stroke", "currentColor")
-                                    .attribute("fill", "none")
+                                    .attr("xmlns", "http://www.w3.org/2000/svg")
+                                    .attr("viewBox", "0 0 24 24")
+                                    .attr("stroke", "currentColor")
+                                    .attr("fill", "none")
                                     .class("icon")
                                     .children(&mut [
                                         svg!("path", {
-                                            .attribute("stroke-linecap", "round")
-                                            .attribute("stroke-linejoin", "round")
-                                            .attribute("stroke-width", "2")
+                                            .attr("stroke-linecap", "round")
+                                            .attr("stroke-linejoin", "round")
+                                            .attr("stroke-width", "2")
                                             .class("heroicon-ui")
-                                            .attribute("d", "M6 18L18 6M6 6l12 12")
+                                            .attr("d", "M6 18L18 6M6 6l12 12")
                                         }),
                                     ])
                                 })

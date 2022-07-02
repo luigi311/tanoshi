@@ -85,7 +85,7 @@ impl SettingsSource {
                     html!("img", {
                         .style("width", "3rem")
                         .style("height", "3rem")
-                        .attribute("src", &source.icon)
+                        .attr("src", &source.icon)
                     }),
                     html!("span", {
                         .text(&source.name)

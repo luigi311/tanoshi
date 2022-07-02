@@ -223,17 +223,17 @@ impl Reader {
                 html!("button", {
                     .children(&mut [
                         svg!("svg", {
-                            .attribute("xmlns", "http://www.w3.org/2000/svg")
-                            .attribute("fill", "none")
-                            .attribute("viewBox", "0 0 24 24")
-                            .attribute("stroke", "currentColor")
+                            .attr("xmlns", "http://www.w3.org/2000/svg")
+                            .attr("fill", "none")
+                            .attr("viewBox", "0 0 24 24")
+                            .attr("stroke", "currentColor")
                             .class("icon")
                             .children(&mut [
                                 svg!("path", {
-                                    .attribute("stroke-linecap", "round")
-                                    .attribute("stroke-linejoin", "round")
-                                    .attribute("stroke-width", "2")
-                                    .attribute("d", "M15 19l-7-7 7-7")
+                                    .attr("stroke-linecap", "round")
+                                    .attr("stroke-linejoin", "round")
+                                    .attr("stroke-width", "2")
+                                    .attr("d", "M15 19l-7-7 7-7")
                                 })
                             ])
                         })
@@ -272,25 +272,25 @@ impl Reader {
                 html!("button", {
                     .children(&mut [
                         svg!("svg", {
-                            .attribute("xmlns", "http://www.w3.org/2000/svg")
-                            .attribute("viewBox", "0 0 24 24")
-                            .attribute("stroke", "currentColor")
-                            .attribute("fill", "none")
+                            .attr("xmlns", "http://www.w3.org/2000/svg")
+                            .attr("viewBox", "0 0 24 24")
+                            .attr("stroke", "currentColor")
+                            .attr("fill", "none")
                             .class("icon")
                             .children(&mut [
                                 svg!("path", {
-                                    .attribute("stroke-linecap", "round")
-                                    .attribute("stroke-linejoin", "round")
-                                    .attribute("stroke-width", "1")
+                                    .attr("stroke-linecap", "round")
+                                    .attr("stroke-linejoin", "round")
+                                    .attr("stroke-width", "1")
                                     .class("heroicon-ui")
-                                    .attribute("d", "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z")
+                                    .attr("d", "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z")
                                 }),
                                 svg!("path", {
-                                    .attribute("stroke-linecap", "round")
-                                    .attribute("stroke-linejoin", "round")
-                                    .attribute("stroke-width", "1")
+                                    .attr("stroke-linecap", "round")
+                                    .attr("stroke-linejoin", "round")
+                                    .attr("stroke-width", "1")
                                     .class("heroicon-ui")
-                                    .attribute("d", "M15 12a3 3 0 11-6 0 3 3 0 016 0z")
+                                    .attr("d", "M15 12a3 3 0 11-6 0 3 3 0 016 0z")
                                 })
                             ])
                         })
@@ -353,37 +353,37 @@ impl Reader {
                     .style_signal("direction", this.reader_settings.direction.signal().map(|direction| matches!(direction, Direction::RightToLeft).then(|| "rtl")))
                     .children(&mut [
                         html!("button", {
-                            .attribute("id", "prev-chapter-btn")
-                            .attribute_signal("disabled", this.prev_chapter.signal().map(|prev_chapter| if prev_chapter.is_none() {Some("true")} else {None}))
+                            .attr("id", "prev-chapter-btn")
+                            .attr_signal("disabled", this.prev_chapter.signal().map(|prev_chapter| if prev_chapter.is_none() {Some("true")} else {None}))
                             .child_signal(this.reader_settings.reader_direction_signal().map(|mode| {
                                 match mode {
                                     (ReaderMode::Paged, Direction::RightToLeft) => Some(svg!("svg", {
-                                        .attribute("xmlns", "http://www.w3.org/2000/svg")
-                                        .attribute("fill", "none")
-                                        .attribute("viewBox", "0 0 24 24")
-                                        .attribute("stroke", "currentColor")
+                                        .attr("xmlns", "http://www.w3.org/2000/svg")
+                                        .attr("fill", "none")
+                                        .attr("viewBox", "0 0 24 24")
+                                        .attr("stroke", "currentColor")
                                         .class("icon")
                                         .children(&mut [
                                             svg!("path", {
-                                                .attribute("stroke-linecap", "round")
-                                                .attribute("stroke-linejoin", "round")
-                                                .attribute("stroke-width", "2")
-                                                .attribute("d", "M13 7l5 5m0 0l-5 5m5-5H6")
+                                                .attr("stroke-linecap", "round")
+                                                .attr("stroke-linejoin", "round")
+                                                .attr("stroke-width", "2")
+                                                .attr("d", "M13 7l5 5m0 0l-5 5m5-5H6")
                                             })
                                         ])
                                     })),
                                     _ => Some(svg!("svg", {
-                                        .attribute("xmlns", "http://www.w3.org/2000/svg")
-                                        .attribute("fill", "none")
-                                        .attribute("viewBox", "0 0 24 24")
-                                        .attribute("stroke", "currentColor")
+                                        .attr("xmlns", "http://www.w3.org/2000/svg")
+                                        .attr("fill", "none")
+                                        .attr("viewBox", "0 0 24 24")
+                                        .attr("stroke", "currentColor")
                                         .class("icon")
                                         .children(&mut [
                                             svg!("path", {
-                                                .attribute("stroke-linecap", "round")
-                                                .attribute("stroke-linejoin", "round")
-                                                .attribute("stroke-width", "2")
-                                                .attribute("d", "M11 17l-5-5m0 0l5-5m-5 5h12")
+                                                .attr("stroke-linecap", "round")
+                                                .attr("stroke-linejoin", "round")
+                                                .attr("stroke-width", "2")
+                                                .attr("d", "M11 17l-5-5m0 0l5-5m-5 5h12")
                                             })
                                         ])
                                     }))
@@ -405,10 +405,10 @@ impl Reader {
                             .children(&mut [
                                 html!("input" => HtmlInputElement, {
                                     .style("width", "100%")
-                                    .attribute("type", "range")
-                                    .attribute("min", "0")
-                                    .attribute_signal("max", this.pages_len.signal().map(|len| (len.saturating_sub(1)).to_string()))
-                                    .attribute_signal("value", this.current_page.signal().map(|p| p.to_string()))
+                                    .attr("type", "range")
+                                    .attr("min", "0")
+                                    .attr_signal("max", this.pages_len.signal().map(|len| (len.saturating_sub(1)).to_string()))
+                                    .attr_signal("value", this.current_page.signal().map(|p| p.to_string()))
                                     .with_node!(input => {
                                         .event(clone!(this, input => move |_: events::Change| {
                                             let page = input.value().parse().unwrap_or(0);
@@ -433,38 +433,38 @@ impl Reader {
                             .text_signal(this.pages_len.signal().map(|len| len.to_string()))
                         }),
                         html!("button", {
-                            .attribute("id", "next-chapter-btn")
+                            .attr("id", "next-chapter-btn")
                             .style("border-radius", "100%")
-                            .attribute_signal("disabled", this.next_chapter.signal().map(|next_chapter| if next_chapter.is_none() {Some("true")} else {None}))
+                            .attr_signal("disabled", this.next_chapter.signal().map(|next_chapter| if next_chapter.is_none() {Some("true")} else {None}))
                             .child_signal(this.reader_settings.reader_direction_signal().map(|mode| {
                                 match mode {
                                     (ReaderMode::Paged, Direction::RightToLeft) => Some(svg!("svg", {
-                                        .attribute("xmlns", "http://www.w3.org/2000/svg")
-                                        .attribute("fill", "none")
-                                        .attribute("viewBox", "0 0 24 24")
-                                        .attribute("stroke", "currentColor")
+                                        .attr("xmlns", "http://www.w3.org/2000/svg")
+                                        .attr("fill", "none")
+                                        .attr("viewBox", "0 0 24 24")
+                                        .attr("stroke", "currentColor")
                                         .class("icon")
                                         .children(&mut [
                                             svg!("path", {
-                                                .attribute("stroke-linecap", "round")
-                                                .attribute("stroke-linejoin", "round")
-                                                .attribute("stroke-width", "2")
-                                                .attribute("d", "M11 17l-5-5m0 0l5-5m-5 5h12")
+                                                .attr("stroke-linecap", "round")
+                                                .attr("stroke-linejoin", "round")
+                                                .attr("stroke-width", "2")
+                                                .attr("d", "M11 17l-5-5m0 0l5-5m-5 5h12")
                                             })
                                         ])
                                     })),
                                     _ => Some(svg!("svg", {
-                                        .attribute("xmlns", "http://www.w3.org/2000/svg")
-                                        .attribute("fill", "none")
-                                        .attribute("viewBox", "0 0 24 24")
-                                        .attribute("stroke", "currentColor")
+                                        .attr("xmlns", "http://www.w3.org/2000/svg")
+                                        .attr("fill", "none")
+                                        .attr("viewBox", "0 0 24 24")
+                                        .attr("stroke", "currentColor")
                                         .class("icon")
                                         .children(&mut [
                                             svg!("path", {
-                                                .attribute("stroke-linecap", "round")
-                                                .attribute("stroke-linejoin", "round")
-                                                .attribute("stroke-width", "2")
-                                                .attribute("d", "M13 7l5 5m0 0l-5 5m5-5H6")
+                                                .attr("stroke-linecap", "round")
+                                                .attr("stroke-linejoin", "round")
+                                                .attr("stroke-width", "2")
+                                                .attr("d", "M13 7l5 5m0 0l-5 5m5-5H6")
                                             })
                                         ])
                                     }))
@@ -505,7 +505,7 @@ impl Reader {
             .style("padding-bottom", "calc(env(safe-area-inset-bottom) + 0.25rem)")
             .children(&mut [
                 html!("button", {
-                    .attribute("id", "zoom-in")
+                    .attr("id", "zoom-in")
                     .style("margin-top", "0.5rem")
                     .style("margin-bottom", "0.25rem")
                     .style("text-align", "center")
@@ -515,19 +515,19 @@ impl Reader {
                     }))
                     .children(&mut [
                         svg!("svg", {
-                            .attribute("xmlns", "http://www.w3.org/2000/svg")
-                            .attribute("width", "20px")
-                            .attribute("height", "20px")
-                            .attribute("viewBox", "0 0 20 20")
-                            .attribute("fill", "currentColor")
+                            .attr("xmlns", "http://www.w3.org/2000/svg")
+                            .attr("width", "20px")
+                            .attr("height", "20px")
+                            .attr("viewBox", "0 0 20 20")
+                            .attr("fill", "currentColor")
                             .children(&mut [
                                 svg!("path", {
-                                    .attribute("d", "M5 8a1 1 0 011-1h1V6a1 1 0 012 0v1h1a1 1 0 110 2H9v1a1 1 0 11-2 0V9H6a1 1 0 01-1-1z")
+                                    .attr("d", "M5 8a1 1 0 011-1h1V6a1 1 0 012 0v1h1a1 1 0 110 2H9v1a1 1 0 11-2 0V9H6a1 1 0 01-1-1z")
                                 }),
                                 svg!("path", {
-                                    .attribute("fill-rule", "evenodd")
-                                    .attribute("clip-rule", "evenodd")
-                                    .attribute("d", "M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z")
+                                    .attr("fill-rule", "evenodd")
+                                    .attr("clip-rule", "evenodd")
+                                    .attr("d", "M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z")
                                 })
                             ])
                         })
@@ -540,7 +540,7 @@ impl Reader {
                     .text_signal(this.zoom.signal().map(|zoom| format!("{}%", 100.0 * zoom)))
                 }),
                 html!("button", {
-                    .attribute("id", "zoom-out")
+                    .attr("id", "zoom-out")
                     .style("margin-top", "0.25rem")
                     .style("margin-bottom", "0.5rem")
                     .style("text-align", "center")
@@ -553,21 +553,21 @@ impl Reader {
                     }))
                     .children(&mut [
                         svg!("svg", {
-                            .attribute("xmlns", "http://www.w3.org/2000/svg")
-                            .attribute("width", "20px")
-                            .attribute("height", "20px")
-                            .attribute("viewBox", "0 0 20 20")
-                            .attribute("fill", "currentColor")
+                            .attr("xmlns", "http://www.w3.org/2000/svg")
+                            .attr("width", "20px")
+                            .attr("height", "20px")
+                            .attr("viewBox", "0 0 20 20")
+                            .attr("fill", "currentColor")
                             .children(&mut [
                                 svg!("path", {
-                                    .attribute("fill-rule", "evenodd")
-                                    .attribute("clip-rule", "evenodd")
-                                    .attribute("d", "M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z")
+                                    .attr("fill-rule", "evenodd")
+                                    .attr("clip-rule", "evenodd")
+                                    .attr("d", "M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z")
                                 }),
                                 svg!("path", {
-                                    .attribute("fill-rule", "evenodd")
-                                    .attribute("clip-rule", "evenodd")
-                                    .attribute("d", "M5 8a1 1 0 011-1h4a1 1 0 110 2H6a1 1 0 01-1-1z")
+                                    .attr("fill-rule", "evenodd")
+                                    .attr("clip-rule", "evenodd")
+                                    .attr("d", "M5 8a1 1 0 011-1h4a1 1 0 110 2H6a1 1 0 01-1-1z")
                                 })
                             ])
                         })
@@ -667,7 +667,7 @@ impl Reader {
                 html!("div", {
                     .style("height", "100%")
                     .style("width", "33.3333%")
-                    .attribute("id", "next")
+                    .attr("id", "next")
                     .event(clone!(this => move |_: events::Click| {
                         this.go_to_next_page();
                     }))
@@ -675,7 +675,7 @@ impl Reader {
                 html!("div", {
                     .style("height", "100%")
                     .style("width", "33.3333%")
-                    .attribute("id", "hide-bar")
+                    .attr("id", "hide-bar")
                     .event(clone!(this => move |_: events::Click| {
                         this.is_bar_visible.set_neq(!this.is_bar_visible.get());
                     }))
@@ -683,7 +683,7 @@ impl Reader {
                 html!("div", {
                     .style("height", "100%")
                     .style("width", "33.3333%")
-                    .attribute("id", "prev")
+                    .attr("id", "prev")
                     .event(clone!(this => move |_: events::Click| {
                         this.go_to_prev_page();
                     }))
@@ -723,7 +723,7 @@ impl Reader {
 
     fn render_vertical(this: Rc<Self>) -> Dom {
         html!("div", {
-            .attribute("id", "page-list")
+            .attr("id", "page-list")
             .style("display", "flex")
             .style("flex-direction", "column")
             .future(this.pages_loaded.signal_cloned().for_each(clone!(this => move |loaded| {
@@ -750,7 +750,7 @@ impl Reader {
                     .style("border-width", "2px")
                     .style("border-style", "dashed")
                     .style("margin-top", "env(safe-area-inset-top)")
-                    .attribute_signal("disabled", this.prev_chapter.signal().map(|prev_chapter| if prev_chapter.is_some() { None } else { Some("true") }))
+                    .attr_signal("disabled", this.prev_chapter.signal().map(|prev_chapter| if prev_chapter.is_some() { None } else { Some("true") }))
                     .text_signal(this.prev_chapter.signal().map(|prev_chapter| if prev_chapter.is_some() { "Prev Chapter" } else { "No Prev Chapter" }))
                     .event(clone!(this => move |_: events::Click| {
                         if let Some(prev_chapter) = this.prev_chapter.get() {
@@ -769,8 +769,8 @@ impl Reader {
                         .style("margin-right", "auto")
                         .style_signal("margin-top", this.reader_settings.padding.signal().map(|x| x.then(|| "0.25rem")))
                         .style_signal("margin-bottom", this.reader_settings.padding.signal().map(|x| x.then(|| "0.25rem")))
-                        .attribute("id", format!("{}", index).as_str())
-                        .attribute_signal("src", this.image_src_signal(index, 3, 4, page.clone(), status))
+                        .attr("id", format!("{}", index).as_str())
+                        .attr_signal("src", this.image_src_signal(index, 3, 4, page.clone(), status))
                         .style_signal("max-width", this.fit_signal().map(|(fit, zoom)| match fit {
                             crate::common::Fit::Height => "none".to_string(),
                             _ => format!("{}px", 768.0 * zoom),
@@ -807,7 +807,7 @@ impl Reader {
                     })
                 } else {
                     html!("div", {
-                        .attribute("id", index.to_string().as_str())
+                        .attr("id", index.to_string().as_str())
                         .style("display", "flex")
                         .style("height", "calc(100vw * 1.59)")
                         .children(&mut [
@@ -830,7 +830,7 @@ impl Reader {
                     .style("border-width", "2px")
                     .style("border-style", "dashed")
                     .style("margin-bottom", "env(safe-area-inset-bottom)")
-                    .attribute_signal("disabled", this.next_chapter.signal().map(|next_chapter| if next_chapter.is_some() { None } else { Some("true") }))
+                    .attr_signal("disabled", this.next_chapter.signal().map(|next_chapter| if next_chapter.is_some() { None } else { Some("true") }))
                     .text_signal(this.next_chapter.signal().map(|next_chapter| if next_chapter.is_some() { "Next Chapter" } else { "No Next Chapter" }))
                     .event(clone!(this => move |_: events::Click| {
                         if let Some(next_chapter) = this.next_chapter.get() {
@@ -878,7 +878,7 @@ impl Reader {
 
     fn render_single(this: Rc<Self>) -> Dom {
         html!("div", {
-            .attribute("id", "page-list")
+            .attr("id", "page-list")
             .style("display", "flex")
             .style("align-items", "center")
             .style("margin", "auto")
@@ -913,7 +913,7 @@ impl Reader {
 
                             x == index
                         })))
-                        .attribute_signal("src", this.image_src_signal(index, 2, 3, page.clone(), status))
+                        .attr_signal("src", this.image_src_signal(index, 2, 3, page.clone(), status))
                         .event(clone!(this, page => move |_: events::Error| {
                             log::error!("error loading image");
                             let mut lock = this.pages.lock_mut();
@@ -928,7 +928,7 @@ impl Reader {
                     })
                 } else {
                     html!("div", {
-                        .attribute("id", index.to_string().as_str())
+                        .attr("id", index.to_string().as_str())
                         .style("display", "flex")
                         .style("height", "100vh")
                         .style("width", "100vw")
@@ -959,7 +959,7 @@ impl Reader {
 
     fn render_double(this: Rc<Self>) -> Dom {
         html!("div", {
-            .attribute("id", "page-list")
+            .attr("id", "page-list")
             .style("display", "flex")
             .style("margin", "auto")
             .style_signal("width", this.zoom.signal().map(|zoom| format!("{}vw", 100.0 * zoom)))
@@ -974,7 +974,7 @@ impl Reader {
                     html!("img" => HtmlImageElement, {
                         .style("margin-left", "auto")
                         .style("margin-right", "auto")
-                        .attribute("id", format!("{}", index).as_str())
+                        .attr("id", format!("{}", index).as_str())
                         .style_signal("max-width", this.reader_settings.fit.signal().map(|x| match x {
                             crate::common::Fit::Height => "none",
                             _ => "100%",
@@ -987,7 +987,7 @@ impl Reader {
                             crate::common::Fit::Width => "initial",
                             _ => "100%"
                         }))
-                        .attribute_signal("src", this.image_src_signal(index, 2, 4, page.clone(), status))
+                        .attr_signal("src", this.image_src_signal(index, 2, 4, page.clone(), status))
                         .event(clone!(this, page => move |_: events::Error| {
                             log::error!("error loading image");
                             let mut lock = this.pages.lock_mut();
@@ -1058,7 +1058,7 @@ impl Reader {
                     })
                 } else {
                     html!("div", {
-                        .attribute("id", format!("{}", index).as_str())
+                        .attr("id", format!("{}", index).as_str())
                         .style("display", "flex")
                         .style_signal("width", this.reader_settings.fit.signal().map(|x| match x {
                             crate::common::Fit::Height => "none",
@@ -1110,7 +1110,7 @@ impl Reader {
 
     pub fn render(this: Rc<Self>) -> Dom {
         html!("div", {
-            .attribute("id", "this")
+            .attr("id", "this")
             .future(this.current_page.signal().for_each(clone!(this => move |page| {
                 Self::update_page_read(this.clone(), page);
 

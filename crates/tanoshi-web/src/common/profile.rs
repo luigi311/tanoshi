@@ -169,9 +169,9 @@ impl Profile {
                     .text("Change Password")
                 }),
                 html!("input" => HtmlInputElement, {
-                    .attribute("type", "password")
-                    .attribute("placeholder", "Current Password")
-                    .property_signal("value", profile.old_password.signal_cloned())
+                    .attr("type", "password")
+                    .attr("placeholder", "Current Password")
+                    .prop_signal("value", profile.old_password.signal_cloned())
                     .with_node!(input => {
                         .event(clone!(profile => move |_: events::Input| {
                             profile.old_password.set(input.value());
@@ -195,9 +195,9 @@ impl Profile {
                 }),
                 html!("input" => HtmlInputElement, {
                     .class_signal("error", profile.confirm_password.signal_cloned().map(clone!(profile => move |x| x != profile.new_password.get_cloned())))
-                    .attribute("type", "password")
-                    .attribute("placeholder", "New Password")
-                    .property_signal("value", profile.new_password.signal_cloned())
+                    .attr("type", "password")
+                    .attr("placeholder", "New Password")
+                    .prop_signal("value", profile.new_password.signal_cloned())
                     .with_node!(input => {
                         .event(clone!(profile => move |_: events::Input| {
                             profile.new_password.set(input.value());
@@ -206,9 +206,9 @@ impl Profile {
                 }),
                 html!("input" => HtmlInputElement, {
                     .class_signal("error", profile.confirm_password.signal_cloned().map(clone!(profile => move |x| x != profile.new_password.get_cloned())))
-                    .attribute("type", "password")
-                    .attribute("placeholder", "Confirm Password")
-                    .property_signal("value", profile.confirm_password.signal_cloned())
+                    .attr("type", "password")
+                    .attr("placeholder", "Confirm Password")
+                    .prop_signal("value", profile.confirm_password.signal_cloned())
                     .with_node!(input => {
                         .event(clone!(profile => move |_: events::Input| {
                             profile.confirm_password.set(input.value());
@@ -221,8 +221,8 @@ impl Profile {
                     .style("margin-top", "0.5rem")
                     .children(&mut [
                         html!("input", {
-                            .attribute("type", "submit")
-                            .attribute_signal("disabled", profile.confirm_password.signal_cloned().map(clone!(profile => move |x| {
+                            .attr("type", "submit")
+                            .attr_signal("disabled", profile.confirm_password.signal_cloned().map(clone!(profile => move |x| {
                                 if x != profile.new_password.get_cloned() || x.len() < 8 {
                                     Some("true")
                                 } else {
@@ -268,8 +268,8 @@ impl Profile {
                     .visible_signal(is_tauri_signal())
                     .children(&mut [
                         html!("input", {
-                            .attribute("type", "button")
-                            .attribute("value", "Test Desktop Notification")
+                            .attr("type", "button")
+                            .attr("value", "Test Desktop Notification")
                             .text("Test Desktop Notification")
                             .event_with_options(&EventOptions::preventable(), clone!(profile => move |e: events::Click| {
                                 e.prevent_default();
@@ -284,9 +284,9 @@ impl Profile {
                     .children(&mut [
                         html!("input" => HtmlInputElement, {
                             .style("width", "100%")
-                            .attribute("type", "text")
-                            .attribute("placeholder", "Telegram chat id, get from telegram bot")
-                            .property_signal("value", profile.telegram_chat_id.signal_cloned().map(|id| id.unwrap_or_else(|| "".to_string())))
+                            .attr("type", "text")
+                            .attr("placeholder", "Telegram chat id, get from telegram bot")
+                            .prop_signal("value", profile.telegram_chat_id.signal_cloned().map(|id| id.unwrap_or_else(|| "".to_string())))
                             .with_node!(input => {
                                 .event(clone!(profile => move |_: events::Input| {
                                     profile.telegram_chat_id.set(Some(input.value()));
@@ -294,8 +294,8 @@ impl Profile {
                             })
                         }),
                         html!("input", {
-                            .attribute("type", "button")
-                            .attribute("value", "Test")
+                            .attr("type", "button")
+                            .attr("value", "Test")
                             .text("Test Telegram")
                             .event_with_options(&EventOptions::preventable(), clone!(profile => move |e: events::Click| {
                                 e.prevent_default();
@@ -310,9 +310,9 @@ impl Profile {
                     .children(&mut [
                         html!("input" => HtmlInputElement, {
                             .style("width", "100%")
-                            .attribute("type", "text")
-                            .attribute("placeholder", "Pushover user key, get from pushover dashboard")
-                            .property_signal("value", profile.pushover_user_key.signal_cloned().map(|id| id.unwrap_or_else(|| "".to_string())))
+                            .attr("type", "text")
+                            .attr("placeholder", "Pushover user key, get from pushover dashboard")
+                            .prop_signal("value", profile.pushover_user_key.signal_cloned().map(|id| id.unwrap_or_else(|| "".to_string())))
                             .with_node!(input => {
                                 .event(clone!(profile => move |_: events::Input| {
                                     profile.pushover_user_key.set(Some(input.value()));
@@ -320,8 +320,8 @@ impl Profile {
                             })
                         }),
                         html!("input", {
-                            .attribute("type", "button")
-                            .attribute("value", "Test")
+                            .attr("type", "button")
+                            .attr("value", "Test")
                             .text("Test Pushover")
                             .event_with_options(&EventOptions::preventable(), clone!(profile => move |e: events::Click| {
                                 e.prevent_default();
@@ -336,9 +336,9 @@ impl Profile {
                     .children(&mut [
                         html!("input" => HtmlInputElement, {
                             .style("width", "100%")
-                            .attribute("type", "text")
-                            .attribute("placeholder", "Gotify token, get from Gotify dashboard")
-                            .property_signal("value", profile.gotify_token.signal_cloned().map(|id| id.unwrap_or_else(|| "".to_string())))
+                            .attr("type", "text")
+                            .attr("placeholder", "Gotify token, get from Gotify dashboard")
+                            .prop_signal("value", profile.gotify_token.signal_cloned().map(|id| id.unwrap_or_else(|| "".to_string())))
                             .with_node!(input => {
                                 .event(clone!(profile => move |_: events::Input| {
                                     profile.gotify_token.set(Some(input.value()));
@@ -346,8 +346,8 @@ impl Profile {
                             })
                         }),
                         html!("input", {
-                            .attribute("type", "button")
-                            .attribute("value", "Test")
+                            .attr("type", "button")
+                            .attr("value", "Test")
                             .text("Test Gotify")
                             .event_with_options(&EventOptions::preventable(), clone!(profile => move |e: events::Click| {
                                 e.prevent_default();
@@ -362,7 +362,7 @@ impl Profile {
                     .style("margin-top", "0.5rem")
                     .children(&mut [
                         html!("input", {
-                            .attribute("type", "submit")
+                            .attr("type", "submit")
                             .text("Submit")
                             .event_with_options(&EventOptions::preventable(), clone!(profile => move |e: events::Click| {
                                 e.prevent_default();
@@ -394,7 +394,7 @@ impl Profile {
                     .text("Tracker")
                 }),
                 html!("div", {
-                    .attribute("id", "myanimelist")
+                    .attr("id", "myanimelist")
                     .style("display", "flex")
                     .style("margin-bottom", "0.5rem")
                     .children(&mut [
@@ -407,7 +407,7 @@ impl Profile {
                                     .style("height", "20px")
                                     .style("width", "20px")
                                     .style("margin-right", "0.5rem")
-                                    .attribute("src", "https://myanimelist.net/img/common/pwa/launcher-icon-0-75x.png")
+                                    .attr("src", "https://myanimelist.net/img/common/pwa/launcher-icon-0-75x.png")
                                 }),
                                 html!("span", {
                                     .text("MyAnimeList")
@@ -427,14 +427,14 @@ impl Profile {
                     } else {
                         Some(html!("a", {
                             .class("button")
-                            .attribute("href", &Route::TrackerLogin("myanimelist".to_string()).url())
-                            .attribute("target", "_blank")
+                            .attr("href", &Route::TrackerLogin("myanimelist".to_string()).url())
+                            .attr("target", "_blank")
                             .text("Login")
                         }))
                     })))
                 }),
                 html!("div", {
-                    .attribute("id", "anilist")
+                    .attr("id", "anilist")
                     .style("display", "flex")
                     .style("margin-bottom", "0.5rem")
                     .children(&mut [
@@ -447,7 +447,7 @@ impl Profile {
                                     .style("height", "20px")
                                     .style("width", "20px")
                                     .style("margin-right", "0.5rem")
-                                    .attribute("src", "https://upload.wikimedia.org/wikipedia/commons/6/61/AniList_logo.svg")
+                                    .attr("src", "https://upload.wikimedia.org/wikipedia/commons/6/61/AniList_logo.svg")
                                 }),
                                 html!("span", {
                                     .text("AniList")
@@ -467,8 +467,8 @@ impl Profile {
                     } else {
                         Some(html!("a", {
                             .class("button")
-                            .attribute("href", &Route::TrackerLogin("anilist".to_string()).url())
-                            .attribute("target", "_blank")
+                            .attr("href", &Route::TrackerLogin("anilist".to_string()).url())
+                            .attr("target", "_blank")
                             .text("Login")
                         }))
                     })))

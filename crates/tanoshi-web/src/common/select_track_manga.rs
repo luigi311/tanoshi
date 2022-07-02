@@ -201,9 +201,9 @@ impl SelectTrackMangaModal {
             })))
             .children(&mut [
                 html!("input" => HtmlInputElement, {
-                    .attribute("type", "text")
-                    .attribute("placeholder", "Manga title")
-                    .property("value", &self.title.get_cloned())
+                    .attr("type", "text")
+                    .attr("placeholder", "Manga title")
+                    .prop("value", &self.title.get_cloned())
                     .with_node!(input => {
                         .event_with_options(&EventOptions::preventable(), clone!(select => move |e: events::KeyDown| {
                             if e.key() == "Enter" {
@@ -234,7 +234,7 @@ impl SelectTrackMangaModal {
                                             .style("border-width", "0.375rem")
                                             .style("width", "5rem")
                                             .style("height", "auto")
-                                            .attribute("src", &manga.cover_url)
+                                            .attr("src", &manga.cover_url)
                                         }),
                                     ])
                                 }),
@@ -287,7 +287,7 @@ impl SelectTrackMangaModal {
                                     html!("img", {
                                         .style("width", "20px")
                                         .style("height", "20px")
-                                        .attribute("src", match tracker.tracker.as_str() {
+                                        .attr("src", match tracker.tracker.as_str() {
                                              "myanimelist" => "https://myanimelist.net/img/common/pwa/launcher-icon-0-75x.png",
                                              "anilist" => "https://upload.wikimedia.org/wikipedia/commons/6/61/AniList_logo.svg",
                                              _ => ""
@@ -358,7 +358,7 @@ impl SelectTrackMangaModal {
                                 html!("tr", {
                                     .children(&mut [
                                         html!("td", {
-                                            .attribute("colspan", "2")
+                                            .attr("colspan", "2")
                                             .children(&mut [
                                                 html!("select" => HtmlSelectElement, {
                                                     .style_important("background-color", "var(--background-color-100)")
@@ -367,38 +367,38 @@ impl SelectTrackMangaModal {
                                                     .style_important("text-align", "center")
                                                     .style_important("border", "0px")
                                                     .style_important("color", "var(--color)")
-                                                    .attribute("type", "text")
-                                                    .attribute("placeholder", "Status")
+                                                    .attr("type", "text")
+                                                    .attr("placeholder", "Status")
                                                     .children(&mut [
                                                         html!("option", {
-                                                            .property("value", "")
-                                                            .attribute("disabled", "disabled")
-                                                            .attribute_signal("selected", tracker.status.signal_cloned().map(|status| status.is_none().then(|| "true")))
+                                                            .prop("value", "")
+                                                            .attr("disabled", "disabled")
+                                                            .attr_signal("selected", tracker.status.signal_cloned().map(|status| status.is_none().then(|| "true")))
                                                         }),
                                                         html!("option", {
-                                                            .property("value", "reading")
+                                                            .prop("value", "reading")
                                                             .text("Reading")
-                                                            .attribute_signal("selected", tracker.status.signal_cloned().map(|status| status.and_then(|s| (s == "reading").then(|| "true"))))
+                                                            .attr_signal("selected", tracker.status.signal_cloned().map(|status| status.and_then(|s| (s == "reading").then(|| "true"))))
                                                         }),
                                                         html!("option", {
-                                                            .property("value", "completed")
+                                                            .prop("value", "completed")
                                                             .text("Completed")
-                                                            .attribute_signal("selected", tracker.status.signal_cloned().map(|status| status.and_then(|s| (s == "completed").then(|| "true"))))
+                                                            .attr_signal("selected", tracker.status.signal_cloned().map(|status| status.and_then(|s| (s == "completed").then(|| "true"))))
                                                         }),
                                                         html!("option", {
-                                                            .property("value", "on_hold")
+                                                            .prop("value", "on_hold")
                                                             .text("On hold")
-                                                            .attribute_signal("selected", tracker.status.signal_cloned().map(|status| status.and_then(|s| (s == "on_hold").then(|| "true"))))
+                                                            .attr_signal("selected", tracker.status.signal_cloned().map(|status| status.and_then(|s| (s == "on_hold").then(|| "true"))))
                                                         }),
                                                         html!("option", {
-                                                            .property("value", "dropped")
+                                                            .prop("value", "dropped")
                                                             .text("Dropped")
-                                                            .attribute_signal("selected", tracker.status.signal_cloned().map(|status| status.and_then(|s| (s == "dropped").then(|| "true"))))
+                                                            .attr_signal("selected", tracker.status.signal_cloned().map(|status| status.and_then(|s| (s == "dropped").then(|| "true"))))
                                                         }),
                                                         html!("option", {
-                                                            .property("value", "plan_to_read")
+                                                            .prop("value", "plan_to_read")
                                                             .text("Plan to read")
-                                                            .attribute_signal("selected", tracker.status.signal_cloned().map(|status| status.and_then(|s| (s == "plan_to_read").then(|| "true"))))
+                                                            .attr_signal("selected", tracker.status.signal_cloned().map(|status| status.and_then(|s| (s == "plan_to_read").then(|| "true"))))
                                                         })
                                                     ])
                                                     .with_node!(el => {
@@ -420,16 +420,16 @@ impl SelectTrackMangaModal {
                                             ])
                                         }),
                                         html!("td", {
-                                            .attribute("colspan", "2")
+                                            .attr("colspan", "2")
                                             .children(&mut [
                                                 html!("input" => HtmlInputElement, {
                                                     .style_important("background-color", "var(--background-color-100)")
                                                     .style_important("width", "100%")
                                                     .style_important("padding", "initial")
                                                     .style_important("text-align", "center")
-                                                    .attribute("type", "number")
-                                                    .attribute("placeholder", "Chapter")
-                                                    .property_signal("value", tracker.num_chapters_read.signal_cloned().map(|num_chapters_read| num_chapters_read.map(|num_chapters_read| format!("{num_chapters_read}")).unwrap_or_else(|| "".to_string())))
+                                                    .attr("type", "number")
+                                                    .attr("placeholder", "Chapter")
+                                                    .prop_signal("value", tracker.num_chapters_read.signal_cloned().map(|num_chapters_read| num_chapters_read.map(|num_chapters_read| format!("{num_chapters_read}")).unwrap_or_else(|| "".to_string())))
                                                     .with_node!(input => {
                                                         .event(clone!(select, input, tracker, tracker_manga_id => move |_: events::Change| {
                                                             if let Ok(value) = input.value().parse::<i64>() {
@@ -451,16 +451,16 @@ impl SelectTrackMangaModal {
                                             ])
                                         }),
                                         html!("td", {
-                                            .attribute("colspan", "2")
+                                            .attr("colspan", "2")
                                             .children(&mut [
                                                 html!("input" => HtmlInputElement, {
                                                     .style_important("background-color", "var(--background-color-100)")
                                                     .style_important("width", "100%")
                                                     .style_important("padding", "initial")
                                                     .style_important("text-align", "center")
-                                                    .attribute("type", "number")
-                                                    .attribute("placeholder", "Score")
-                                                    .property_signal("value", tracker.score.signal_cloned().map(|score| score.map(|score| format!("{score}")).unwrap_or_else(|| "".to_string())))
+                                                    .attr("type", "number")
+                                                    .attr("placeholder", "Score")
+                                                    .prop_signal("value", tracker.score.signal_cloned().map(|score| score.map(|score| format!("{score}")).unwrap_or_else(|| "".to_string())))
                                                     .with_node!(input => {
                                                         .event(clone!(select, input, tracker, tracker_manga_id => move |_: events::Change| {
                                                             if let Ok(value) = input.value().parse::<i64>() {
@@ -486,30 +486,30 @@ impl SelectTrackMangaModal {
                                 // html!("tr", {
                                 //     .children(&mut [
                                 //         html!("td", {
-                                //             .attribute("colspan", "3")
+                                //             .attr("colspan", "3")
                                 //             .children(&mut [
                                 //                 html!("input" => HtmlInputElement, {
                                 //                     .style_important("background-color", "var(--background-color-100)")
                                 //                     .style_important("width", "100%")
                                 //                     .style_important("padding", "initial")
                                 //                     .style_important("text-align", "center")
-                                //                     .attribute("type", "date")
-                                //                     .attribute("placeholder", "Start Date")
-                                //                     .property_signal("value", tracker.start_date.signal_cloned().map(|start_date| start_date.map(|start_date| format!("{start_date}")).unwrap_or_else(|| "".to_string())))
+                                //                     .attr("type", "date")
+                                //                     .attr("placeholder", "Start Date")
+                                //                     .prop_signal("value", tracker.start_date.signal_cloned().map(|start_date| start_date.map(|start_date| format!("{start_date}")).unwrap_or_else(|| "".to_string())))
                                 //                 })
                                 //             ])
                                 //         }),
                                 //         html!("td", {
-                                //             .attribute("colspan", "3")
+                                //             .attr("colspan", "3")
                                 //             .children(&mut [
                                 //                 html!("input" => HtmlInputElement, {
                                 //                     .style_important("background-color", "var(--background-color-100)")
                                 //                     .style_important("width", "100%")
                                 //                     .style_important("padding", "initial")
                                 //                     .style_important("text-align", "center")
-                                //                     .attribute("type", "date")
-                                //                     .attribute("placeholder", "Finish Date")
-                                //                     .property_signal("value", tracker.finish_date.signal_cloned().map(|finish_date| finish_date.map(|finish_date| format!("{finish_date}")).unwrap_or_else(|| "".to_string())))
+                                //                     .attr("type", "date")
+                                //                     .attr("placeholder", "Finish Date")
+                                //                     .prop_signal("value", tracker.finish_date.signal_cloned().map(|finish_date| finish_date.map(|finish_date| format!("{finish_date}")).unwrap_or_else(|| "".to_string())))
                                 //                 })
                                 //             ])
                                 //         }),

@@ -83,7 +83,7 @@ impl SelectCategoryModal {
                 .style("padding", "0.5rem")
                 .children(&mut [
                     html!("input" => HtmlInputElement, {
-                        .attribute("type", "checkbox")
+                        .attr("type", "checkbox")
                         .style("height", "0.75rem")
                         .style("width", "0.75rem")
                         .style("margin-left", "0.5rem")

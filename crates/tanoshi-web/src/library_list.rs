@@ -80,17 +80,17 @@ impl LibraryList {
                                 }))
                                 .children(&mut [
                                     svg!("svg", {
-                                        .attribute("xmlns", "http://www.w3.org/2000/svg")
-                                        .attribute("fill", "none")
-                                        .attribute("viewBox", "0 0 24 24")
-                                        .attribute("stroke", "currentColor")
+                                        .attr("xmlns", "http://www.w3.org/2000/svg")
+                                        .attr("fill", "none")
+                                        .attr("viewBox", "0 0 24 24")
+                                        .attr("stroke", "currentColor")
                                         .class("icon")
                                         .children(&mut [
                                             svg!("path", {
-                                                .attribute("stroke-linecap", "round")
-                                                .attribute("stroke-linejoin", "round")
-                                                .attribute("stroke-width", "2")
-                                                .attribute("d", "M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z")
+                                                .attr("stroke-linecap", "round")
+                                                .attr("stroke-linejoin", "round")
+                                                .attr("stroke-width", "2")
+                                                .attr("d", "M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z")
                                             })
                                         ])
                                     }),

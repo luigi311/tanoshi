@@ -81,7 +81,7 @@ impl Login {
                     .style("height", "8rem")
                     .style("border-radius", "0.5rem")
                     .style("margin", "auto")
-                    .attribute("src", "/icons/512.png")
+                    .attr("src", "/icons/512.png")
                 }),
             ])
             .child_signal(app.server_status.signal_cloned().map(|status| {
@@ -113,9 +113,9 @@ impl Login {
                     })
                     .children(&mut [
                         html!("input" => HtmlInputElement, {
-                            .attribute("type", "username")
-                            .attribute("placeholder", "Username")
-                            .property_signal("value", login.username.signal_cloned())
+                            .attr("type", "username")
+                            .attr("placeholder", "Username")
+                            .prop_signal("value", login.username.signal_cloned())
                             .with_node!(input => {
                                 .event(clone!(login => move |_: events::Input| {
                                     login.username.set(input.value());
@@ -123,9 +123,9 @@ impl Login {
                             })
                         }),
                         html!("input" => HtmlInputElement, {
-                            .attribute("type", "password")
-                            .attribute("placeholder", "Password")
-                            .property_signal("value", login.password.signal_cloned())
+                            .attr("type", "password")
+                            .attr("placeholder", "Password")
+                            .prop_signal("value", login.password.signal_cloned())
                             .with_node!(input => {
                                 .event(clone!(login => move |_: events::Input| {
                                     login.password.set(input.value());

@@ -84,13 +84,13 @@ impl InputList {
                     .text(&name)
                 }),
                 svg!("svg", {
-                    .attribute("xmlns", "http://www.w3.org/2000/svg")
-                    .attribute("fill", "currentColor")
-                    .attribute("viewBox", "0 0 20 20")
+                    .attr("xmlns", "http://www.w3.org/2000/svg")
+                    .attr("fill", "currentColor")
+                    .attr("viewBox", "0 0 20 20")
                     .class("icon")
                     .children(&mut [
                         svg!("path", {
-                            .attribute_signal("d", input_list.collapse_signal(index.get().unwrap_throw()).map(|visible| {
+                            .attr_signal("d", input_list.collapse_signal(index.get().unwrap_throw()).map(|visible| {
                                 if visible {
                                     Some("M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z")
                                 } else {
@@ -233,7 +233,7 @@ impl InputList {
                                             .attr("name", &name)
                                             .attr("id", &value.to_string())
                                             .with_node!(input => {
-                                                .attribute_signal("checked", selection.signal_cloned().map(clone!(index => move |selection| {
+                                                .attr_signal("checked", selection.signal_cloned().map(clone!(index => move |selection| {
                                                     if let Some((i, _)) = selection {
                                                         if index.get().unwrap_throw() == (i as usize) {
                                                             Some("true")
@@ -252,13 +252,13 @@ impl InputList {
                                             })
                                         }),
                                         svg!("svg", {
-                                            .attribute("xmlns", "http://www.w3.org/2000/svg")
-                                            .attribute("fill", "currentColor")
-                                            .attribute("viewBox", "0 0 20 20")
+                                            .attr("xmlns", "http://www.w3.org/2000/svg")
+                                            .attr("fill", "currentColor")
+                                            .attr("viewBox", "0 0 20 20")
                                             .class("icon")
                                             .children(&mut [
                                                 svg!("path", {
-                                                    .attribute_signal("d", selection.signal_cloned().map(clone!(index => move |selection| {
+                                                    .attr_signal("d", selection.signal_cloned().map(clone!(index => move |selection| {
                                                         if let Some((i, asc)) = selection {
                                                             if index.get().unwrap_throw() == (i as usize) {
                                                                 if asc {
@@ -335,13 +335,13 @@ impl InputList {
                         .class("tri-state")
                         .style("margin-top", "0.25rem")
                         .style("margin-bottom", "0.25rem")
-                        .attribute("type", "checkbox")
+                        .attr("type", "checkbox")
                         .after_inserted(clone!(selected => move |input| {
                             if selected.get().is_none() {
                                 input.set_indeterminate(true);
                             }
                         }))
-                        .attribute_signal("checked", selected.signal().map(|selected| if matches!(selected.unwrap_or_default(), TriState::Included) { Some("true") } else { None }))
+                        .attr_signal("checked", selected.signal().map(|selected| if matches!(selected.unwrap_or_default(), TriState::Included) { Some("true") } else { None }))
                     }),
                     html!("label", {
                         .style_signal("text-decoration", selected.signal().map(|selected| if matches!(selected.unwrap_or_default(), TriState::Excluded) { Some("line-through") } else { None }))

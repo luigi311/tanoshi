@@ -365,17 +365,17 @@ impl Manga {
                     .style("align-items", "center")
                     .children(&mut [
                         svg!("svg", {
-                            .attribute("xmlns", "http://www.w3.org/2000/svg")
-                            .attribute("fill", "none")
-                            .attribute("viewBox", "0 0 24 24")
-                            .attribute("stroke", "currentColor")
+                            .attr("xmlns", "http://www.w3.org/2000/svg")
+                            .attr("fill", "none")
+                            .attr("viewBox", "0 0 24 24")
+                            .attr("stroke", "currentColor")
                             .class("icon")
                             .children(&mut [
                                 svg!("path", {
-                                    .attribute("stroke-linecap", "round")
-                                    .attribute("stroke-linejoin", "round")
-                                    .attribute("stroke-width", "2")
-                                    .attribute("d", "M15 19l-7-7 7-7")
+                                    .attr("stroke-linecap", "round")
+                                    .attr("stroke-linejoin", "round")
+                                    .attr("stroke-width", "2")
+                                    .attr("d", "M15 19l-7-7 7-7")
                                 })
                             ])
                         }),
@@ -404,17 +404,17 @@ impl Manga {
                             .style("padding", "0.25rem")
                             .children(&mut [
                                 svg!("svg", {
-                                    .attribute("xmlns", "http://www.w3.org/2000/svg")
-                                    .attribute("fill", "none")
-                                    .attribute("viewBox", "0 0 24 24")
-                                    .attribute("stroke", "currentColor")
+                                    .attr("xmlns", "http://www.w3.org/2000/svg")
+                                    .attr("fill", "none")
+                                    .attr("viewBox", "0 0 24 24")
+                                    .attr("stroke", "currentColor")
                                     .class("icon")
                                     .children(&mut [
                                         svg!("path", {
-                                            .attribute("stroke-linecap", "round")
-                                            .attribute("stroke-linejoin", "round")
-                                            .attribute("stroke-width", "2")
-                                            .attribute("d", "M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15")
+                                            .attr("stroke-linecap", "round")
+                                            .attr("stroke-linejoin", "round")
+                                            .attr("stroke-width", "2")
+                                            .attr("d", "M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15")
                                         })
                                     ])
                                 }),
@@ -436,22 +436,22 @@ impl Manga {
                         }),
                         html!("a", {
                             .class("button")
-                            .attribute_signal("href", manga.link.signal_cloned().map(|ext_link| ext_link.unwrap_or_else(|| "".to_string())))
-                            .attribute_signal("disabled", manga.link.signal_cloned().map(|ext_link| ext_link.map(|_| "")))
-                            .attribute("target", "_blank")
+                            .attr_signal("href", manga.link.signal_cloned().map(|ext_link| ext_link.unwrap_or_else(|| "".to_string())))
+                            .attr_signal("disabled", manga.link.signal_cloned().map(|ext_link| ext_link.map(|_| "")))
+                            .attr("target", "_blank")
                             .style("padding", "0.5rem")
                             .children(&mut [
                                 svg!("svg", {
-                                    .attribute("xmlns", "http://www.w3.org/2000/svg")
-                                    .attribute("fill", "currentColor")
-                                    .attribute("viewBox", "0 0 20 20")
+                                    .attr("xmlns", "http://www.w3.org/2000/svg")
+                                    .attr("fill", "currentColor")
+                                    .attr("viewBox", "0 0 20 20")
                                     .class("icon")
                                     .children(&mut [
                                         svg!("path", {
-                                            .attribute("d", "M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z")
+                                            .attr("d", "M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z")
                                         }),
                                         svg!("path", {
-                                            .attribute("d", "M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z")
+                                            .attr("d", "M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z")
                                         })
                                     ])
                                 })
@@ -466,7 +466,7 @@ impl Manga {
     pub fn render_header(manga: Rc<Self>) -> Dom {
         html!("div", {
             .class("manga-detail-header")
-            .attribute("id", "detail")
+            .attr("id", "detail")
             .style("margin-top", "0.5rem")
             .style("margin-left", "0.5rem")
             .children(&mut [
@@ -481,7 +481,7 @@ impl Manga {
                                         .style("border-radius", "0.375rem")
                                         .style("width", "8rem")
                                         .style("height", "auto")
-                                        .attribute("src", &proxied_image_url(&cover_url))
+                                        .attr("src", &proxied_image_url(&cover_url))
                                     }))
                                 } else {
                                     Some(html!("div", {
@@ -600,15 +600,15 @@ impl Manga {
                     .style_important_signal("color", manga.is_favorite.signal().map(|x| x.then(|| "white")))
                     .children(&mut [
                         svg!("svg", {
-                            .attribute("xmlns", "http://www.w3.org/2000/svg")
-                            .attribute("fill", "currentColor")
-                            .attribute("viewBox", "0 0 20 20")
+                            .attr("xmlns", "http://www.w3.org/2000/svg")
+                            .attr("fill", "currentColor")
+                            .attr("viewBox", "0 0 20 20")
                             .class("icon-sm")
                             .children(&mut [
                                 svg!("path", {
-                                    .attribute("fill-rule", "evenodd")
-                                    .attribute("d", "M3 5a2 2 0 012-2h10a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V5zm11 1H6v8l4-2 4 2V6z")
-                                    .attribute("clip-rule", "evenodd")
+                                    .attr("fill-rule", "evenodd")
+                                    .attr("d", "M3 5a2 2 0 012-2h10a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V5zm11 1H6v8l4-2 4 2V6z")
+                                    .attr("clip-rule", "evenodd")
                                 })
                             ])
                         }),
@@ -636,13 +636,13 @@ impl Manga {
                 .style("align-items", "center")
                 .children(&mut [
                     svg!("svg", {
-                        .attribute("xmlns", "http://www.w3.org/2000/svg")
-                        .attribute("fill", "currentColor")
-                        .attribute("viewBox", "0 0 20 20")
+                        .attr("xmlns", "http://www.w3.org/2000/svg")
+                        .attr("fill", "currentColor")
+                        .attr("viewBox", "0 0 20 20")
                         .class("icon-sm")
                         .children(&mut [
                             svg!("path", {
-                                .attribute("d", "M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z")
+                                .attr("d", "M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z")
                             })
                         ])
                     }),
@@ -666,13 +666,13 @@ impl Manga {
                     .style("align-items", "center")
                     .children(&mut [
                         svg!("svg", {
-                            .attribute("xmlns", "http://www.w3.org/2000/svg")
-                            .attribute("fill", "currentColor")
-                            .attribute("viewBox", "0 0 20 20")
+                            .attr("xmlns", "http://www.w3.org/2000/svg")
+                            .attr("fill", "currentColor")
+                            .attr("viewBox", "0 0 20 20")
                             .class("icon-sm")
                             .children(&mut [
                                 svg!("path", {
-                                    .attribute("d", "M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z")
+                                    .attr("d", "M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z")
                                 })
                             ])
                         }),
@@ -695,7 +695,7 @@ impl Manga {
 
     pub fn render_description(manga: Rc<Self>) -> Dom {
         html!("div", {
-            .attribute("id", "description")
+            .attr("id", "description")
             .style("display", "flex")
             .style("flex-direction", "column")
             .style("margin", "0.5rem")
@@ -749,7 +749,7 @@ impl Manga {
         let filter = manga.chapter_settings.filter.clone();
         html!("div", {
             .class("chapter-list")
-            .attribute("id", "chapters")
+            .attr("id", "chapters")
             .children(&mut [
                 html!("div", {
                     .style("display", "flex")
@@ -766,33 +766,33 @@ impl Manga {
                                     .style("margin", "0.25rem")
                                     .child_signal( manga.is_edit_chapter.signal().map(|is_edit| if is_edit {
                                         Some(svg!("svg", {
-                                            .attribute("xmlns", "http://www.w3.org/2000/svg")
-                                            .attribute("fill", "none")
-                                            .attribute("viewBox", "0 0 24 24")
-                                            .attribute("stroke", "currentColor")
+                                            .attr("xmlns", "http://www.w3.org/2000/svg")
+                                            .attr("fill", "none")
+                                            .attr("viewBox", "0 0 24 24")
+                                            .attr("stroke", "currentColor")
                                             .class("icon")
                                             .children(&mut [
                                                 svg!("path", {
-                                                    .attribute("stroke-linecap", "round")
-                                                    .attribute("stroke-linejoin", "round")
-                                                    .attribute("stroke-width", "2")
-                                                    .attribute("d", "M6 18L18 6M6 6l12 12")
+                                                    .attr("stroke-linecap", "round")
+                                                    .attr("stroke-linejoin", "round")
+                                                    .attr("stroke-width", "2")
+                                                    .attr("d", "M6 18L18 6M6 6l12 12")
                                                 })
                                             ])
                                         }))
                                     } else {
                                         Some(svg!("svg", {
-                                            .attribute("xmlns", "http://www.w3.org/2000/svg")
-                                            .attribute("fill", "none")
-                                            .attribute("viewBox", "0 0 24 24")
-                                            .attribute("stroke", "currentColor")
+                                            .attr("xmlns", "http://www.w3.org/2000/svg")
+                                            .attr("fill", "none")
+                                            .attr("viewBox", "0 0 24 24")
+                                            .attr("stroke", "currentColor")
                                             .class("icon")
                                             .children(&mut [
                                                 svg!("path", {
-                                                    .attribute("stroke-linecap", "round")
-                                                    .attribute("stroke-linejoin", "round")
-                                                    .attribute("stroke-width", "2")
-                                                    .attribute("d", "M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z")
+                                                    .attr("stroke-linecap", "round")
+                                                    .attr("stroke-linejoin", "round")
+                                                    .attr("stroke-width", "2")
+                                                    .attr("d", "M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z")
                                                 })
                                             ])
                                         }))
@@ -808,17 +808,17 @@ impl Manga {
                                     }))
                                     .children(&mut [
                                         svg!("svg", {
-                                            .attribute("xmlns", "http://www.w3.org/2000/svg")
-                                            .attribute("fill", "none")
-                                            .attribute("viewBox", "0 0 24 24")
-                                            .attribute("stroke", "currentColor")
+                                            .attr("xmlns", "http://www.w3.org/2000/svg")
+                                            .attr("fill", "none")
+                                            .attr("viewBox", "0 0 24 24")
+                                            .attr("stroke", "currentColor")
                                             .class("icon")
                                             .children(&mut [
                                                 svg!("path", {
-                                                    .attribute("stroke-linecap", "round")
-                                                    .attribute("stroke-linejoin", "round")
-                                                    .attribute("stroke-width", "2")
-                                                    .attribute("d", "M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z")
+                                                    .attr("stroke-linecap", "round")
+                                                    .attr("stroke-linejoin", "round")
+                                                    .attr("stroke-width", "2")
+                                                    .attr("d", "M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z")
                                                 })
                                             ])
                                         }),
@@ -839,7 +839,7 @@ impl Manga {
                         })))
                         .child_signal(is_edit_chapter.signal().map(clone!(chapter => move |is_edit_chapter| if is_edit_chapter {
                             Some(html!("input" => HtmlInputElement, {
-                                .attribute("type", "checkbox")
+                                .attr("type", "checkbox")
                                 .style("height", "0.75rem")
                                 .style("width", "0.75rem")
                                 .style("margin-left", "0.5rem")
@@ -926,15 +926,15 @@ impl Manga {
                             .style("padding", "0.25rem")
                             .children(&mut [
                                 svg!("svg", {
-                                    .attribute("xmlns", "http://www.w3.org/2000/svg")
-                                    .attribute("viewBox", "0 0 20 20")
-                                    .attribute("fill", "currentColor")
+                                    .attr("xmlns", "http://www.w3.org/2000/svg")
+                                    .attr("viewBox", "0 0 20 20")
+                                    .attr("fill", "currentColor")
                                     .class("icon")
                                     .children(&mut [
                                         svg!("path", {
-                                            .attribute("fill-rule", "evenodd")
-                                            .attribute("clip-rule", "evenodd")
-                                            .attribute("d", "M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z")
+                                            .attr("fill-rule", "evenodd")
+                                            .attr("clip-rule", "evenodd")
+                                            .attr("d", "M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z")
                                         })
                                     ])
                                 })
@@ -993,19 +993,19 @@ impl Manga {
                     .class("edit-action")
                     .children(&mut [
                         html!("button", {
-                            .attribute("id", "select-all")
+                            .attr("id", "select-all")
                             .style("margin", "auto")
                             .children(&mut [
                                 svg!("svg", {
-                                    .attribute("xmlns", "http://www.w3.org/2000/svg")
-                                    .attribute("fill", "currentColor")
-                                    .attribute("viewBox", "0 0 20 20")
+                                    .attr("xmlns", "http://www.w3.org/2000/svg")
+                                    .attr("fill", "currentColor")
+                                    .attr("viewBox", "0 0 20 20")
                                     .class("icon-sm")
                                     .children(&mut [
                                         svg!("path", {
-                                            .attribute("fill-rule", "evenodd")
-                                            .attribute("d", "M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z")
-                                            .attribute("clip-rule", "evenodd")
+                                            .attr("fill-rule", "evenodd")
+                                            .attr("d", "M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z")
+                                            .attr("clip-rule", "evenodd")
                                         })
                                     ])
                                 }),
@@ -1018,19 +1018,19 @@ impl Manga {
                             }))
                         }),
                         html!("button", {
-                            .attribute("id", "deselect-all")
+                            .attr("id", "deselect-all")
                             .style("margin", "auto")
                             .children(&mut [
                                 svg!("svg", {
-                                    .attribute("xmlns", "http://www.w3.org/2000/svg")
-                                    .attribute("fill", "currentColor")
-                                    .attribute("viewBox", "0 0 20 20")
+                                    .attr("xmlns", "http://www.w3.org/2000/svg")
+                                    .attr("fill", "currentColor")
+                                    .attr("viewBox", "0 0 20 20")
                                     .class("icon-sm")
                                     .children(&mut [
                                         svg!("path", {
-                                            .attribute("fill-rule", "evenodd")
-                                            .attribute("d", "M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z")
-                                            .attribute("clip-rule", "evenodd")
+                                            .attr("fill-rule", "evenodd")
+                                            .attr("d", "M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z")
+                                            .attr("clip-rule", "evenodd")
                                         })
                                     ])
                                 }),
@@ -1043,22 +1043,22 @@ impl Manga {
                             }))
                         }),
                         html!("button", {
-                            .attribute("id", "mark-as-read")
+                            .attr("id", "mark-as-read")
                             .style("margin", "auto")
                             .children(&mut [
                                 svg!("svg", {
-                                    .attribute("xmlns", "http://www.w3.org/2000/svg")
-                                    .attribute("fill", "currentColor")
-                                    .attribute("viewBox", "0 0 20 20")
+                                    .attr("xmlns", "http://www.w3.org/2000/svg")
+                                    .attr("fill", "currentColor")
+                                    .attr("viewBox", "0 0 20 20")
                                     .class("icon-sm")
                                     .children(&mut [
                                         svg!("path", {
-                                            .attribute("d", "M10 12a2 2 0 100-4 2 2 0 000 4z")
+                                            .attr("d", "M10 12a2 2 0 100-4 2 2 0 000 4z")
                                         }),
                                         svg!("path", {
-                                            .attribute("fill-rule", "evenodd")
-                                            .attribute("d", "M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z")
-                                            .attribute("clip-rule", "evenodd")
+                                            .attr("fill-rule", "evenodd")
+                                            .attr("d", "M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z")
+                                            .attr("clip-rule", "evenodd")
                                         })
                                     ])
                                 }),
@@ -1068,22 +1068,22 @@ impl Manga {
                             }))
                         }),
                         html!("button", {
-                            .attribute("id", "mark-as-unread")
+                            .attr("id", "mark-as-unread")
                             .style("margin", "auto")
                             .children(&mut [
                                 svg!("svg", {
-                                    .attribute("xmlns", "http://www.w3.org/2000/svg")
-                                    .attribute("fill", "currentColor")
-                                    .attribute("viewBox", "0 0 20 20")
+                                    .attr("xmlns", "http://www.w3.org/2000/svg")
+                                    .attr("fill", "currentColor")
+                                    .attr("viewBox", "0 0 20 20")
                                     .class("icon-sm")
                                     .children(&mut [
                                         svg!("path", {
-                                            .attribute("d", "M12.454 16.697L9.75 13.992a4 4 0 01-3.742-3.741L2.335 6.578A9.98 9.98 0 00.458 10c1.274 4.057 5.065 7 9.542 7 .847 0 1.669-.105 2.454-.303z")
+                                            .attr("d", "M12.454 16.697L9.75 13.992a4 4 0 01-3.742-3.741L2.335 6.578A9.98 9.98 0 00.458 10c1.274 4.057 5.065 7 9.542 7 .847 0 1.669-.105 2.454-.303z")
                                         }),
                                         svg!("path", {
-                                            .attribute("fill-rule", "evenodd")
-                                            .attribute("d", "M3.707 2.293a1 1 0 00-1.414 1.414l14 14a1 1 0 001.414-1.414l-1.473-1.473A10.014 10.014 0 0019.542 10C18.268 5.943 14.478 3 10 3a9.958 9.958 0 00-4.512 1.074l-1.78-1.781zm4.261 4.26l1.514 1.515a2.003 2.003 0 012.45 2.45l1.514 1.514a4 4 0 00-5.478-5.478z")
-                                            .attribute("clip-rule", "evenodd")
+                                            .attr("fill-rule", "evenodd")
+                                            .attr("d", "M3.707 2.293a1 1 0 00-1.414 1.414l14 14a1 1 0 001.414-1.414l-1.473-1.473A10.014 10.014 0 0019.542 10C18.268 5.943 14.478 3 10 3a9.958 9.958 0 00-4.512 1.074l-1.78-1.781zm4.261 4.26l1.514 1.515a2.003 2.003 0 012.45 2.45l1.514 1.514a4 4 0 00-5.478-5.478z")
+                                            .attr("clip-rule", "evenodd")
                                         })
                                     ])
                                 }),
@@ -1093,19 +1093,19 @@ impl Manga {
                             }))
                         }),
                         html!("button", {
-                            .attribute("id", "download")
+                            .attr("id", "download")
                             .style("margin", "auto")
                             .children(&mut [
                                 svg!("svg", {
-                                    .attribute("xmlns", "http://www.w3.org/2000/svg")
-                                    .attribute("fill", "currentColor")
-                                    .attribute("viewBox", "0 0 20 20")
+                                    .attr("xmlns", "http://www.w3.org/2000/svg")
+                                    .attr("fill", "currentColor")
+                                    .attr("viewBox", "0 0 20 20")
                                     .class("icon-sm")
                                     .children(&mut [
                                         svg!("path", {
-                                            .attribute("fill-rule", "evenodd")
-                                            .attribute("d", "M2 9.5A3.5 3.5 0 005.5 13H9v2.586l-1.293-1.293a1 1 0 00-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 15.586V13h2.5a4.5 4.5 0 10-.616-8.958 4.002 4.002 0 10-7.753 1.977A3.5 3.5 0 002 9.5zm9 3.5H9V8a1 1 0 012 0v5z")
-                                            .attribute("clip-rule", "evenodd")
+                                            .attr("fill-rule", "evenodd")
+                                            .attr("d", "M2 9.5A3.5 3.5 0 005.5 13H9v2.586l-1.293-1.293a1 1 0 00-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 15.586V13h2.5a4.5 4.5 0 10-.616-8.958 4.002 4.002 0 10-7.753 1.977A3.5 3.5 0 002 9.5zm9 3.5H9V8a1 1 0 012 0v5z")
+                                            .attr("clip-rule", "evenodd")
                                         })
                                     ])
                                 }),
@@ -1115,19 +1115,19 @@ impl Manga {
                             }))
                         }),
                         html!("button", {
-                            .attribute("id", "remove-download")
+                            .attr("id", "remove-download")
                             .style("margin", "auto")
                             .children(&mut [
                                 svg!("svg", {
-                                    .attribute("xmlns", "http://www.w3.org/2000/svg")
-                                    .attribute("fill", "currentColor")
-                                    .attribute("viewBox", "0 0 20 20")
+                                    .attr("xmlns", "http://www.w3.org/2000/svg")
+                                    .attr("fill", "currentColor")
+                                    .attr("viewBox", "0 0 20 20")
                                     .class("icon-sm")
                                     .children(&mut [
                                         svg!("path", {
-                                            .attribute("fill-rule", "evenodd")
-                                            .attribute("d", "M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z")
-                                            .attribute("clip-rule", "evenodd")
+                                            .attr("fill-rule", "evenodd")
+                                            .attr("d", "M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z")
+                                            .attr("clip-rule", "evenodd")
                                         })
                                     ])
                                 }),

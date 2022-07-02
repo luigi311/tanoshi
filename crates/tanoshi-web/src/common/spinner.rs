@@ -71,7 +71,7 @@ impl Spinner {
             ])
             .child_signal(signal::always(this.fullscreen).map(clone!(this => move |fullscreen| if fullscreen {
                 Some(html!("button", {
-                    .attribute("margin-top", "0.25rem")
+                    .attr("margin-top", "0.25rem")
                     .event(clone!(this => move |_: events::Click| {
                         if let Some(callback) = this.callback.as_ref() {
                             callback();
@@ -95,7 +95,7 @@ impl Spinner {
                         .class("loader")
                     }),
                     // html!("button", {
-                    //     .attribute("margin-top", "0.25rem")
+                    //     .attr("margin-top", "0.25rem")
                     //     .event(clone!(this => move |_: events::Click| {
                     //         this.set_active(false);
                     //     }))

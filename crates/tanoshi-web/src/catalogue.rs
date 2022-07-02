@@ -211,17 +211,17 @@ impl Catalogue {
                     })
                     .children(&mut [
                         svg!("svg", {
-                            .attribute("xmlns", "http://www.w3.org/2000/svg")
-                            .attribute("fill", "none")
-                            .attribute("viewBox", "0 0 24 24")
-                            .attribute("stroke", "currentColor")
+                            .attr("xmlns", "http://www.w3.org/2000/svg")
+                            .attr("fill", "none")
+                            .attr("viewBox", "0 0 24 24")
+                            .attr("stroke", "currentColor")
                             .class("icon")
                             .children(&mut [
                                 svg!("path", {
-                                    .attribute("stroke-linecap", "round")
-                                    .attribute("stroke-linejoin", "round")
-                                    .attribute("stroke-width", "2")
-                                    .attribute("d", "M15 19l-7-7 7-7")
+                                    .attr("stroke-linecap", "round")
+                                    .attr("stroke-linejoin", "round")
+                                    .attr("stroke-width", "2")
+                                    .attr("d", "M15 19l-7-7 7-7")
                                 })
                             ])
                         }),
@@ -235,9 +235,9 @@ impl Catalogue {
                 if is_search {
                     Some(html!("input" => HtmlInputElement, {
                         .style("width", "100%")
-                        .attribute("placeholder", "Search")
-                        .attribute("type", "text")
-                        .attribute("value", &catalogue.keyword.get_cloned().unwrap_or_else(|| "".to_string()))
+                        .attr("placeholder", "Search")
+                        .attr("type", "text")
+                        .attr("value", &catalogue.keyword.get_cloned().unwrap_or_else(|| "".to_string()))
                         .with_node!(input => {
                             .event_with_options(&EventOptions::preventable(), clone!(catalogue => move |e: events::KeyDown| {
                                 if e.key() == "Enter" {
@@ -261,7 +261,7 @@ impl Catalogue {
             .child_signal(catalogue.is_search.signal().map(clone!(catalogue => move |is_search| {
                 if is_search {
                     Some(html!("button", {
-                        .attribute("id", "cancel")
+                        .attr("id", "cancel")
                         .event(clone!(catalogue => move |_: events::Click| {
                             catalogue.is_search.set_neq(false);
                             if catalogue.keyword.get_cloned().is_some() {
@@ -273,17 +273,17 @@ impl Catalogue {
                         }))
                         .children(&mut [
                             svg!("svg", {
-                                .attribute("xmlns", "http://www.w3.org/2000/svg")
-                                .attribute("fill", "none")
-                                .attribute("viewBox", "0 0 24 24")
-                                .attribute("stroke", "currentColor")
+                                .attr("xmlns", "http://www.w3.org/2000/svg")
+                                .attr("fill", "none")
+                                .attr("viewBox", "0 0 24 24")
+                                .attr("stroke", "currentColor")
                                 .class("icon")
                                 .children(&mut [
                                     svg!("path", {
-                                        .attribute("stroke-linecap", "round")
-                                        .attribute("stroke-linejoin", "round")
-                                        .attribute("stroke-width", "2")
-                                        .attribute("d", "M6 18L18 6M6 6l12 12")
+                                        .attr("stroke-linecap", "round")
+                                        .attr("stroke-linejoin", "round")
+                                        .attr("stroke-width", "2")
+                                        .attr("d", "M6 18L18 6M6 6l12 12")
                                     })
                                 ])
                             }),
@@ -296,30 +296,30 @@ impl Catalogue {
                         .style("justify-content", "flex-end")
                         .children(&mut [
                             html!("button", {
-                                .attribute("id", "search")
+                                .attr("id", "search")
                                 .event(clone!(catalogue => move |_: events::Click| {
                                     catalogue.is_search.set_neq(true);
                                 }))
                                 .children(&mut [
                                     svg!("svg", {
-                                        .attribute("xmlns", "http://www.w3.org/2000/svg")
-                                        .attribute("fill", "none")
-                                        .attribute("viewBox", "0 0 24 24")
-                                        .attribute("stroke", "currentColor")
+                                        .attr("xmlns", "http://www.w3.org/2000/svg")
+                                        .attr("fill", "none")
+                                        .attr("viewBox", "0 0 24 24")
+                                        .attr("stroke", "currentColor")
                                         .class("icon")
                                         .children(&mut [
                                             svg!("path", {
-                                                .attribute("stroke-linecap", "round")
-                                                .attribute("stroke-linejoin", "round")
-                                                .attribute("stroke-width", "2")
-                                                .attribute("d", "M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z")
+                                                .attr("stroke-linecap", "round")
+                                                .attr("stroke-linejoin", "round")
+                                                .attr("stroke-width", "2")
+                                                .attr("d", "M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z")
                                             })
                                         ])
                                     }),
                                 ])
                             }),
                             html!("button", {
-                                .attribute("id", "filter")
+                                .attr("id", "filter")
                                 .style("margin-left", "0.5rem")
                                 .event(clone!(catalogue => move |_: events::Click| {
                                     if catalogue.input_list_modal.input_list.lock_ref().is_empty() {
@@ -329,17 +329,17 @@ impl Catalogue {
                                 }))
                                 .children(&mut [
                                     svg!("svg", {
-                                        .attribute("xmlns", "http://www.w3.org/2000/svg")
-                                        .attribute("fill", "none")
-                                        .attribute("viewBox", "0 0 24 24")
-                                        .attribute("stroke", "currentColor")
+                                        .attr("xmlns", "http://www.w3.org/2000/svg")
+                                        .attr("fill", "none")
+                                        .attr("viewBox", "0 0 24 24")
+                                        .attr("stroke", "currentColor")
                                         .class("icon")
                                         .children(&mut [
                                             svg!("path", {
-                                                .attribute("stroke-linecap", "round")
-                                                .attribute("stroke-linejoin", "round")
-                                                .attribute("stroke-width", "2")
-                                                .attribute("d", "M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z")
+                                                .attr("stroke-linecap", "round")
+                                                .attr("stroke-linejoin", "round")
+                                                .attr("stroke-width", "2")
+                                                .attr("d", "M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z")
                                             })
                                         ])
                                     }),

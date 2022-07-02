@@ -294,7 +294,7 @@ impl ReaderSettings {
                 ReaderMode::Continous => "1",
                 ReaderMode::Paged => "0.5",
             }))
-            .attribute_signal("disabled", settings.reader_mode.signal_cloned().map(|x| match x {
+            .attr_signal("disabled", settings.reader_mode.signal_cloned().map(|x| match x {
                 ReaderMode::Continous => None,
                 ReaderMode::Paged => Some("true"),
             }))
@@ -331,7 +331,7 @@ impl ReaderSettings {
                 ReaderMode::Continous => "0.5",
                 ReaderMode::Paged => "1",
             }))
-            .attribute_signal("disabled", settings.reader_mode.signal_cloned().map(|x| match x {
+            .attr_signal("disabled", settings.reader_mode.signal_cloned().map(|x| match x {
                 ReaderMode::Continous => Some("true"),
                 ReaderMode::Paged => None,
             }))
@@ -373,7 +373,7 @@ impl ReaderSettings {
                 ReaderMode::Continous => "0.5",
                 ReaderMode::Paged => "1",
             }))
-            .attribute_signal("disabled", settings.reader_mode.signal_cloned().map(|x| match x {
+            .attr_signal("disabled", settings.reader_mode.signal_cloned().map(|x| match x {
                 ReaderMode::Continous => Some("true"),
                 ReaderMode::Paged => None,
             }))
