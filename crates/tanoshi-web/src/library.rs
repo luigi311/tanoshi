@@ -81,7 +81,23 @@ impl Library {
         library.spinner.set_active(true);
         library.loader.load(clone!(library => async move {
             match query::fetch_manga_from_favorite(refresh, category_id).await {
-                Ok(covers) => {
+                Ok(mut covers) => {
+                    let sort = library.library_settings.sort.get();
+                    covers.sort_by(|a, b| match sort {
+                        LibrarySort { by: LibrarySortBy::Alphabetical, order: LibraryOrder::Asc } => a.title.partial_cmp(&b.title).unwrap_or(std::cmp::Ordering::Equal),
+                        LibrarySort { by: LibrarySortBy::Alphabetical, order: LibraryOrder::Desc } => b.title.partial_cmp(&a.title).unwrap_or(std::cmp::Ordering::Equal),
+                        LibrarySort { by: LibrarySortBy::RecentlyRead, order: LibraryOrder::Asc} => {
+                            let a = a.last_read_at.unwrap_or_else(|| NaiveDateTime::from_timestamp(0, 0));
+                            let b = b.last_read_at.unwrap_or_else(|| NaiveDateTime::from_timestamp(0, 0));
+                            a.cmp(&b)
+                        },
+                        LibrarySort { by: LibrarySortBy::RecentlyRead, order: LibraryOrder::Desc} => {
+                            let a = a.last_read_at.unwrap_or_else(|| NaiveDateTime::from_timestamp(0, 0));
+                            let b = b.last_read_at.unwrap_or_else(|| NaiveDateTime::from_timestamp(0, 0));
+                            b.cmp(&a)
+                        },
+                    });
+
                     library.cover_list.lock_mut().replace_cloned(covers);
                 }
                 Err(e) => {
