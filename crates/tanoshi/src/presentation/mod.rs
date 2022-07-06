@@ -5,6 +5,7 @@ pub mod rest;
 pub mod token;
 
 use anyhow::anyhow;
+use async_graphql_axum::GraphQLSubscription;
 use axum::{
     extract::Extension,
     routing::{get, post},
@@ -22,7 +23,7 @@ use self::{
     rest::{health::health_check, image::fetch_image},
 };
 use crate::{
-    application::worker::downloads::DownloadSender,
+    application::worker::{downloads::DownloadSender, updates::ChapterUpdateReceiver},
     domain::services::{
         chapter::ChapterService, download::DownloadService, history::HistoryService,
         image::ImageService, library::LibraryService, manga::MangaService, source::SourceService,
@@ -58,6 +59,7 @@ pub struct ServerBuilder {
     download_tx: Option<DownloadSender>,
     notifier: Option<Notification<UserRepositoryImpl>>,
     loader: Option<DatabaseLoader>,
+    chapter_update_receiver: Option<ChapterUpdateReceiver>,
     enable_playground: bool,
 }
 
@@ -170,6 +172,13 @@ impl ServerBuilder {
         }
     }
 
+    pub fn with_chapter_update_receiver(self, receiver: ChapterUpdateReceiver) -> Self {
+        Self {
+            chapter_update_receiver: Some(receiver),
+            ..self
+        }
+    }
+
     pub fn enable_playground(self) -> Self {
         Self {
             enable_playground: true,
@@ -207,6 +216,9 @@ impl ServerBuilder {
             .download_tx
             .ok_or_else(|| anyhow!("no download sender"))?;
         let notifier = self.notifier.ok_or_else(|| anyhow!("no notifier"))?;
+        let chapter_update_receiver = self
+            .chapter_update_receiver
+            .ok_or_else(|| anyhow!("no chapter update receiver"))?;
         let loader = self.loader.ok_or_else(|| anyhow!("no loader"))?;
 
         let schema = SchemaBuilder::new()
@@ -224,6 +236,7 @@ impl ServerBuilder {
             .data(extension_manager)
             .data(download_tx)
             .data(notifier)
+            .data(chapter_update_receiver)
             .build();
 
         Ok(Server::new(
@@ -253,15 +266,16 @@ impl Server {
             .route("/image/:url", get(fetch_image))
             .layer(Extension(image_svc));
 
-        if enable_playground {
-            router = router
-                .route("/graphql", get(graphql_playground).post(graphql_handler))
-                .route("/graphql/", post(graphql_handler));
+        let svc = if enable_playground {
+            get(graphql_playground).post(graphql_handler)
         } else {
-            router = router
-                .route("/graphql", post(graphql_handler))
-                .route("/graphql/", post(graphql_handler));
-        }
+            post(graphql_handler)
+        };
+
+        router = router
+            .route("/graphql", svc)
+            .route("/graphql/", post(graphql_handler))
+            .route("/ws", GraphQLSubscription::new(schema.clone()));
 
         router = router
             .layer(Extension(config))

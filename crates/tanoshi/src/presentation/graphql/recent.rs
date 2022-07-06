@@ -70,6 +70,7 @@ impl RecentChapter {
     }
 }
 
+#[derive(Debug)]
 pub struct RecentUpdate {
     pub manga_id: i64,
     pub chapter_id: i64,

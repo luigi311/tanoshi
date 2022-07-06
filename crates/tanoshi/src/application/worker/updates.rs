@@ -1,5 +1,5 @@
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     path::{Path, PathBuf},
     str::FromStr,
 };
@@ -13,9 +13,8 @@ use tanoshi_lib::prelude::Version;
 use tanoshi_vm::extension::ExtensionManager;
 
 use crate::{
-    application::worker::downloads::Command as DownloadCommand,
     domain::{
-        entities::chapter::Chapter,
+        entities::{chapter::Chapter, manga::Manga},
         repositories::{chapter::ChapterRepository, library::LibraryRepository},
     },
     infrastructure::{domain::repositories::user::UserRepositoryImpl, notification::Notification},
@@ -25,7 +24,15 @@ use tokio::{
     time::{self, Instant},
 };
 
-use super::downloads::DownloadSender;
+#[derive(Debug, Clone)]
+pub struct ChapterUpdate {
+    pub manga: Manga,
+    pub chapter: Chapter,
+    pub users: HashSet<i64>,
+}
+
+pub type ChapterUpdateReceiver = tokio::sync::broadcast::Receiver<ChapterUpdate>;
+pub type ChapterUpdateSender = tokio::sync::broadcast::Sender<ChapterUpdate>;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct SourceInfo {
@@ -47,11 +54,10 @@ where
     library_repo: L,
     chapter_repo: C,
     extensions: ExtensionManager,
-    auto_download_chapters: bool,
-    download_tx: DownloadSender,
     notifier: Notification<UserRepositoryImpl>,
     extension_repository: String,
     cache_path: PathBuf,
+    broadcast_tx: ChapterUpdateSender,
 }
 
 impl<C, L> UpdatesWorker<C, L>
@@ -64,10 +70,9 @@ where
         library_repo: L,
         chapter_repo: C,
         extensions: ExtensionManager,
-        download_tx: DownloadSender,
-        auto_download_chapters: bool,
         notifier: Notification<UserRepositoryImpl>,
         extension_repository: String,
+        broadcast_tx: ChapterUpdateSender,
         cache_path: P,
     ) -> Self {
         #[cfg(not(debug_assertions))]
@@ -84,11 +89,10 @@ where
             library_repo,
             chapter_repo,
             extensions,
-            auto_download_chapters,
-            download_tx,
             notifier,
             extension_repository,
             cache_path: PathBuf::new().join(cache_path),
+            broadcast_tx,
         }
     }
 
@@ -181,7 +185,7 @@ where
                     .await
                     .unwrap_or_default();
 
-                for user in users {
+                for user in &users {
                     self.notifier
                         .send_chapter_notification(
                             user.id,
@@ -192,14 +196,12 @@ where
                         .await?;
                 }
 
-                if self.auto_download_chapters {
-                    info!("add chapter to download queue");
-                    self.download_tx
-                        .send(DownloadCommand::InsertIntoQueueBySourcePath(
-                            chapter.source_id,
-                            chapter.path,
-                        ))
-                        .unwrap();
+                if let Err(e) = self.broadcast_tx.send(ChapterUpdate {
+                    manga: manga.clone(),
+                    chapter,
+                    users: users.iter().map(|user| user.id).collect(),
+                }) {
+                    error!("error broadcast new chapter: {e}");
                 }
             }
 
@@ -367,28 +369,28 @@ pub fn start<C, L, P>(
     library_repo: L,
     chapter_repo: C,
     extensions: ExtensionManager,
-    download_tx: DownloadSender,
-    auto_download_chapters: bool,
     notifier: Notification<UserRepositoryImpl>,
     extension_repository: String,
     cache_path: P,
-) -> JoinHandle<()>
+) -> (ChapterUpdateReceiver, JoinHandle<()>)
 where
     C: ChapterRepository + 'static,
     L: LibraryRepository + 'static,
     P: AsRef<Path>,
 {
+    let (broadcast_tx, broadcast_rx) = tokio::sync::broadcast::channel(10);
     let worker = UpdatesWorker::new(
         period,
         library_repo,
         chapter_repo,
         extensions,
-        download_tx,
-        auto_download_chapters,
         notifier,
         extension_repository,
+        broadcast_tx,
         cache_path,
     );
 
-    tokio::spawn(worker.run())
+    let handle = tokio::spawn(worker.run());
+
+    (broadcast_rx, handle)
 }

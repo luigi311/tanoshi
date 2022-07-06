@@ -29,7 +29,7 @@ tanoshi-vm = { path = "../tanoshi-vm" }
 tanoshi-tracker = { path = "../tanoshi-tracker" }
 tanoshi-notifier = { path = "../tanoshi-notifier" }
 tokio = { version = "1", features = ["full"] }
-tokio-stream = "^0.1.5"
+tokio-stream = { version = "0.1.9", features = ["sync"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 serde_yaml = "0.8"

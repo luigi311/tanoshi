@@ -23,6 +23,8 @@ use tokio::{
     task::JoinHandle,
 };
 
+use super::updates::ChapterUpdateReceiver;
+
 pub type DownloadSender = UnboundedSender<Command>;
 type DownloadReceiver = UnboundedReceiver<Command>;
 
@@ -48,6 +50,8 @@ where
     _notifier: Notification<UserRepositoryImpl>,
     tx: DownloadSender,
     rx: DownloadReceiver,
+    chapter_update_receiver: ChapterUpdateReceiver,
+    auto_download_chapter: bool,
 }
 
 impl<C, D, M> DownloadWorker<C, D, M>
@@ -65,6 +69,8 @@ where
         notifier: Notification<UserRepositoryImpl>,
         download_sender: DownloadSender,
         download_receiver: DownloadReceiver,
+        chapter_update_receiver: ChapterUpdateReceiver,
+        auto_download_chapter: bool,
     ) -> Self {
         Self {
             dir: PathBuf::new().join(dir),
@@ -76,6 +82,8 @@ where
             _notifier: notifier,
             tx: download_sender,
             rx: download_receiver,
+            chapter_update_receiver,
+            auto_download_chapter,
         }
     }
 
@@ -255,47 +263,59 @@ where
             self.tx.send(Command::Download).unwrap();
         }
 
-        while let Some(cmd) = self.rx.recv().await {
-            match cmd {
-                Command::InsertIntoQueue(chapter_id) => {
-                    match self.chapter_repo.get_chapter_by_id(chapter_id).await {
-                        Ok(chapter) => {
-                            if let Err(e) = self.insert_to_queue(&chapter).await {
-                                error!("failed to insert queue, reason {}", e);
-                                continue;
-                            }
-                            self.tx.send(Command::Download).unwrap();
-                        }
-                        Err(e) => {
-                            error!("chapter {} not found, {}", chapter_id, e);
-                        }
-                    }
-                }
-                Command::InsertIntoQueueBySourcePath(source_id, path) => {
-                    match self
-                        .chapter_repo
-                        .get_chapter_by_source_id_path(source_id, &path)
-                        .await
-                    {
-                        Ok(chapter) => {
-                            if let Err(e) = self.insert_to_queue(&chapter).await {
-                                error!("failed to insert queue, reason {e}");
-                                continue;
-                            }
+        loop {
+            tokio::select! {
+                Ok(chapter) = self.chapter_update_receiver.recv() => {
+                    debug!("update: {chapter:?}");
+                    if self.auto_download_chapter {
+                        if let Err(e) = self.insert_to_queue(&chapter.chapter).await {
+                            error!("failed to insert queue, reason {e}");
+                        } else {
                             let _ = self.tx.send(Command::Download);
                         }
-                        Err(e) => {
-                            error!("chapter {source_id} {path} not found: {e}");
-                        }
                     }
                 }
-                Command::Download => {
-                    if self.paused().await {
-                        continue;
-                    }
-
-                    if let Err(e) = self.download().await {
-                        error!("{e}")
+                Some(cmd) = self.rx.recv() => {
+                    match cmd {
+                        Command::InsertIntoQueue(chapter_id) => {
+                            match self.chapter_repo.get_chapter_by_id(chapter_id).await {
+                                Ok(chapter) => {
+                                    if let Err(e) = self.insert_to_queue(&chapter).await {
+                                        error!("failed to insert queue, reason {}", e);
+                                    } else {
+                                        self.tx.send(Command::Download).unwrap();
+                                    }
+                                }
+                                Err(e) => {
+                                    error!("chapter {} not found, {}", chapter_id, e);
+                                }
+                            }
+                        }
+                        Command::InsertIntoQueueBySourcePath(source_id, path) => {
+                            match self
+                                .chapter_repo
+                                .get_chapter_by_source_id_path(source_id, &path)
+                                .await
+                            {
+                                Ok(chapter) => {
+                                    if let Err(e) = self.insert_to_queue(&chapter).await {
+                                        error!("failed to insert queue, reason {e}");
+                                    } else {
+                                        let _ = self.tx.send(Command::Download);
+                                    }
+                                }
+                                Err(e) => {
+                                    error!("chapter {source_id} {path} not found: {e}");
+                                }
+                            }
+                        }
+                        Command::Download => {
+                            if !self.paused().await {
+                                if let Err(e) = self.download().await {
+                                    error!("{e}")
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -316,6 +336,8 @@ pub fn start<C, D, M, P>(
     notifier: Notification<UserRepositoryImpl>,
     download_sender: DownloadSender,
     download_receiver: DownloadReceiver,
+    chapter_update_receiver: ChapterUpdateReceiver,
+    auto_download_chapter: bool,
 ) -> JoinHandle<()>
 where
     C: ChapterRepository + 'static,
@@ -332,6 +354,8 @@ where
         notifier,
         download_sender,
         download_receiver,
+        chapter_update_receiver,
+        auto_download_chapter,
     );
 
     tokio::spawn(download_worker.run())

@@ -4,6 +4,7 @@ use super::{
     recent::{RecentChapter, RecentUpdate},
 };
 use crate::{
+    application::worker::updates::ChapterUpdateReceiver,
     domain::services::{
         chapter::ChapterService, history::HistoryService, library::LibraryService,
         tracker::TrackerService,
@@ -18,11 +19,12 @@ use crate::{
 };
 use async_graphql::{
     connection::{query, Connection, Edge, EmptyFields},
-    Error,
+    Error, Subscription,
 };
 use async_graphql::{Context, Object, Result};
 use chrono::Utc;
 
+use futures::{Stream, StreamExt};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 
 #[derive(Default)]
@@ -316,5 +318,48 @@ impl LibraryMutationRoot {
             .await?;
 
         Ok(1)
+    }
+}
+
+#[derive(Default)]
+pub struct LibrarySubscriptionRoot;
+
+#[Subscription]
+impl LibrarySubscriptionRoot {
+    async fn recent_updates_subscription(
+        &self,
+        ctx: &Context<'_>,
+    ) -> Result<impl Stream<Item = RecentUpdate>> {
+        // TODO: authorization header doesn't work with websocker. find another solution
+        let user_id = ctx
+            .data::<Claims>()
+            .map_err(|_| "token not exists, please login")?
+            .sub;
+
+        let receiver = ctx.data::<ChapterUpdateReceiver>()?.resubscribe();
+
+        let stream = tokio_stream::wrappers::BroadcastStream::new(receiver);
+
+        let stream = stream.filter_map(move |res| async move {
+            debug!("update: {res:?}");
+            if let Ok(update) = res {
+                if update.users.get(&user_id).is_some() {
+                    Some(RecentUpdate {
+                        manga_id: update.chapter.manga_id,
+                        chapter_id: update.chapter.id,
+                        manga_title: update.manga.title,
+                        cover_url: update.manga.cover_url,
+                        chapter_title: update.chapter.title,
+                        uploaded: update.chapter.uploaded,
+                    })
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        });
+
+        Ok(stream)
     }
 }

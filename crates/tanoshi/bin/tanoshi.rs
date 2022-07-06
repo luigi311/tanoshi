@@ -129,6 +129,16 @@ async fn main() -> Result<(), anyhow::Error> {
 
     let notifier = notifier_builder.finish();
 
+    let (chapter_update_receiver, update_worker_handle) = worker::updates::start(
+        config.update_interval,
+        library_repo.clone(),
+        chapter_repo.clone(),
+        extension_manager.clone(),
+        notifier.clone(),
+        config.extension_repository.clone(),
+        &config.cache_path,
+    );
+
     let (download_sender, download_receiver) = worker::downloads::channel();
 
     let download_repo = DownloadRepositoryImpl::new(pool.clone());
@@ -143,18 +153,8 @@ async fn main() -> Result<(), anyhow::Error> {
         notifier.clone(),
         download_sender.clone(),
         download_receiver,
-    );
-
-    let update_worker_handle = worker::updates::start(
-        config.update_interval,
-        library_repo.clone(),
-        chapter_repo.clone(),
-        extension_manager.clone(),
-        download_sender.clone(),
+        chapter_update_receiver.resubscribe(),
         config.auto_download_chapters,
-        notifier.clone(),
-        config.extension_repository.clone(),
-        &config.cache_path,
     );
 
     let mal_client = if let Some(mal_cfg) = config.myanimelist.as_ref() {
@@ -214,6 +214,7 @@ async fn main() -> Result<(), anyhow::Error> {
         .with_ext_manager(extension_manager)
         .with_download_tx(download_sender)
         .with_notifier(notifier)
+        .with_chapter_update_receiver(chapter_update_receiver)
         .with_loader(loader);
 
     if config.enable_playground {

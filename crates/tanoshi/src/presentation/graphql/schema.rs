@@ -9,7 +9,7 @@ use super::{
     catalogue::CatalogueRoot,
     categories::{CategoryMutationRoot, CategoryRoot},
     downloads::{DownloadMutationRoot, DownloadRoot},
-    library::{LibraryMutationRoot, LibraryRoot},
+    library::{LibraryMutationRoot, LibraryRoot, LibrarySubscriptionRoot},
     notification::NotificationRoot,
     source::{SourceMutationRoot, SourceRoot},
     status::StatusRoot,
@@ -18,10 +18,10 @@ use super::{
 };
 
 use async_graphql::{
-    dataloader::DataLoader, extensions::Logger, EmptySubscription, MergedObject, Schema,
+    dataloader::DataLoader, extensions::Logger, MergedObject, MergedSubscription, Schema,
 };
 
-pub type TanoshiSchema = Schema<QueryRoot, MutationRoot, EmptySubscription>;
+pub type TanoshiSchema = Schema<QueryRoot, MutationRoot, SubscriptionRoot>;
 
 #[derive(MergedObject, Default)]
 pub struct QueryRoot(
@@ -46,6 +46,9 @@ pub struct MutationRoot(
     TrackingMutationRoot,
 );
 
+#[derive(MergedSubscription, Default)]
+pub struct SubscriptionRoot(LibrarySubscriptionRoot);
+
 pub type DatabaseLoader = crate::presentation::graphql::loader::DatabaseLoader<
     HistoryRepositoryImpl,
     LibraryRepositoryImpl,
@@ -53,14 +56,14 @@ pub type DatabaseLoader = crate::presentation::graphql::loader::DatabaseLoader<
     TrackerRepositoryImpl,
 >;
 
-pub struct SchemaBuilder(async_graphql::SchemaBuilder<QueryRoot, MutationRoot, EmptySubscription>);
+pub struct SchemaBuilder(async_graphql::SchemaBuilder<QueryRoot, MutationRoot, SubscriptionRoot>);
 
 impl Default for SchemaBuilder {
     fn default() -> Self {
         let builder = Schema::build(
             QueryRoot::default(),
             MutationRoot::default(),
-            EmptySubscription::default(),
+            SubscriptionRoot::default(),
         )
         .extension(Logger);
 
