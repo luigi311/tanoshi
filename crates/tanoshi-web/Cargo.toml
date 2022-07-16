@@ -10,6 +10,7 @@ license = "MIT"
 crate-type = ["cdylib"]
 
 [dependencies]
+tanoshi-schema = { path = "../tanoshi-schema" }
 console_error_panic_hook = "^0.1"
 dominator = "^0.5"
 log = "0.4"

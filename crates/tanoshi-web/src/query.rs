@@ -9,6 +9,8 @@ use crate::{
     utils::{graphql_host, local_storage},
 };
 
+use tanoshi_schema::*;
+
 async fn post_graphql<Q>(var: Q::Variables) -> Result<Q::ResponseData, Box<dyn std::error::Error>>
 where
     Q: GraphQLQuery,
@@ -45,14 +47,6 @@ where
 
 pub type InputList = Vec<Input>;
 
-#[derive(GraphQLQuery)]
-#[graphql(
-    schema_path = "graphql/schema.graphql",
-    query_path = "graphql/browse_source.graphql",
-    response_derives = "Debug, Clone"
-)]
-pub struct BrowseSource;
-
 pub async fn fetch_manga_from_source(
     source_id: i64,
     page: i64,
@@ -69,14 +63,6 @@ pub async fn fetch_manga_from_source(
     Ok(data)
 }
 
-#[derive(GraphQLQuery)]
-#[graphql(
-    schema_path = "graphql/schema.graphql",
-    query_path = "graphql/get_latest_manga.graphql",
-    response_derives = "Debug, Clone, PartialEq, Eq"
-)]
-pub struct GetLatestManga;
-
 pub async fn get_latest_manga(
     source_id: i64,
     page: i64,
@@ -87,14 +73,6 @@ pub async fn get_latest_manga(
     Ok(data)
 }
 
-#[derive(GraphQLQuery)]
-#[graphql(
-    schema_path = "graphql/schema.graphql",
-    query_path = "graphql/get_popular_manga.graphql",
-    response_derives = "Debug, Clone"
-)]
-pub struct GetPopularManga;
-
 pub async fn get_popular_manga(
     source_id: i64,
     page: i64,
@@ -104,14 +82,6 @@ pub async fn get_popular_manga(
     Ok(data)
 }
 
-#[derive(GraphQLQuery)]
-#[graphql(
-    schema_path = "graphql/schema.graphql",
-    query_path = "graphql/fetch_source_filters.graphql",
-    response_derives = "Debug, Clone"
-)]
-pub struct FetchSourceFilters;
-
 pub async fn fetch_source_filters(
     source_id: i64,
 ) -> Result<fetch_source_filters::ResponseData, Box<dyn Error>> {
@@ -119,14 +89,6 @@ pub async fn fetch_source_filters(
     let data: fetch_source_filters::ResponseData = post_graphql::<FetchSourceFilters>(var).await?;
     Ok(data)
 }
-
-#[derive(GraphQLQuery)]
-#[graphql(
-    schema_path = "graphql/schema.graphql",
-    query_path = "graphql/browse_favorites.graphql",
-    response_derives = "Debug"
-)]
-pub struct BrowseFavorites;
 
 pub async fn fetch_manga_from_favorite(
     category_id: Option<i64>,
@@ -154,14 +116,6 @@ pub async fn fetch_manga_from_favorite(
         .collect())
 }
 
-#[derive(GraphQLQuery)]
-#[graphql(
-    schema_path = "graphql/schema.graphql",
-    query_path = "graphql/fetch_manga_by_source_path.graphql",
-    response_derives = "Debug"
-)]
-pub struct FetchMangaBySourcePath;
-
 pub async fn fetch_manga_by_source_path(
     source_id: i64,
     path: String,
@@ -174,14 +128,6 @@ pub async fn fetch_manga_by_source_path(
 
     Ok(data.manga_by_source_path)
 }
-
-#[derive(GraphQLQuery)]
-#[graphql(
-    schema_path = "graphql/schema.graphql",
-    query_path = "graphql/fetch_manga_detail.graphql",
-    response_derives = "Debug"
-)]
-pub struct FetchMangaDetail;
 
 pub async fn fetch_manga_detail(
     id: i64,
@@ -196,14 +142,6 @@ pub async fn fetch_manga_detail(
     Ok(data.manga)
 }
 
-#[derive(GraphQLQuery)]
-#[graphql(
-    schema_path = "graphql/schema.graphql",
-    query_path = "graphql/fetch_chapter.graphql",
-    response_derives = "Debug"
-)]
-pub struct FetchChapter;
-
 pub async fn fetch_chapter(
     chapter_id: i64,
 ) -> Result<fetch_chapter::FetchChapterChapter, Box<dyn Error>> {
@@ -215,14 +153,6 @@ pub async fn fetch_chapter(
     Ok(data.chapter)
 }
 
-#[derive(GraphQLQuery)]
-#[graphql(
-    schema_path = "graphql/schema.graphql",
-    query_path = "graphql/add_to_library.graphql",
-    response_derives = "Debug"
-)]
-pub struct AddToLibrary;
-
 pub async fn add_to_library(manga_id: i64, category_ids: Vec<i64>) -> Result<(), Box<dyn Error>> {
     let var = add_to_library::Variables {
         manga_id: Some(manga_id),
@@ -233,14 +163,6 @@ pub async fn add_to_library(manga_id: i64, category_ids: Vec<i64>) -> Result<(),
     Ok(())
 }
 
-#[derive(GraphQLQuery)]
-#[graphql(
-    schema_path = "graphql/schema.graphql",
-    query_path = "graphql/delete_from_library.graphql",
-    response_derives = "Debug"
-)]
-pub struct DeleteFromLibrary;
-
 pub async fn delete_from_library(manga_id: i64) -> Result<(), Box<dyn Error>> {
     let var = delete_from_library::Variables {
         manga_id: Some(manga_id),
@@ -249,14 +171,6 @@ pub async fn delete_from_library(manga_id: i64) -> Result<(), Box<dyn Error>> {
 
     Ok(())
 }
-
-#[derive(GraphQLQuery)]
-#[graphql(
-    schema_path = "graphql/schema.graphql",
-    query_path = "graphql/fetch_category_detail.graphql",
-    response_derives = "Debug"
-)]
-pub struct FetchCategoryDetail;
 
 pub async fn fetch_category_detail(
     id: i64,
@@ -267,14 +181,6 @@ pub async fn fetch_category_detail(
     Ok(data.get_category)
 }
 
-#[derive(GraphQLQuery)]
-#[graphql(
-    schema_path = "graphql/schema.graphql",
-    query_path = "graphql/fetch_categories.graphql",
-    response_derives = "Debug"
-)]
-pub struct FetchCategories;
-
 pub async fn fetch_categories(
 ) -> Result<Vec<fetch_categories::FetchCategoriesGetCategories>, Box<dyn Error>> {
     let var = fetch_categories::Variables {};
@@ -282,14 +188,6 @@ pub async fn fetch_categories(
 
     Ok(data.get_categories)
 }
-
-#[derive(GraphQLQuery)]
-#[graphql(
-    schema_path = "graphql/schema.graphql",
-    query_path = "graphql/create_category.graphql",
-    response_derives = "Debug"
-)]
-pub struct CreateCategory;
 
 pub async fn create_category(name: &str) -> Result<(), Box<dyn Error>> {
     let var = create_category::Variables {
@@ -299,14 +197,6 @@ pub async fn create_category(name: &str) -> Result<(), Box<dyn Error>> {
 
     Ok(())
 }
-
-#[derive(GraphQLQuery)]
-#[graphql(
-    schema_path = "graphql/schema.graphql",
-    query_path = "graphql/update_category.graphql",
-    response_derives = "Debug"
-)]
-pub struct UpdateCategory;
 
 pub async fn update_category(id: i64, name: &str) -> Result<(), Box<dyn Error>> {
     let var = update_category::Variables {
@@ -318,28 +208,12 @@ pub async fn update_category(id: i64, name: &str) -> Result<(), Box<dyn Error>> 
     Ok(())
 }
 
-#[derive(GraphQLQuery)]
-#[graphql(
-    schema_path = "graphql/schema.graphql",
-    query_path = "graphql/delete_category.graphql",
-    response_derives = "Debug"
-)]
-pub struct DeleteCategory;
-
 pub async fn delete_category(id: i64) -> Result<(), Box<dyn Error>> {
     let var = delete_category::Variables { id: Some(id) };
     let _ = post_graphql::<DeleteCategory>(var).await?;
 
     Ok(())
 }
-
-#[derive(GraphQLQuery)]
-#[graphql(
-    schema_path = "graphql/schema.graphql",
-    query_path = "graphql/update_page_read_at.graphql",
-    response_derives = "Debug"
-)]
-pub struct UpdatePageReadAt;
 
 pub async fn update_page_read_at(
     chapter_id: i64,
@@ -356,14 +230,6 @@ pub async fn update_page_read_at(
     Ok(())
 }
 
-#[derive(GraphQLQuery)]
-#[graphql(
-    schema_path = "graphql/schema.graphql",
-    query_path = "graphql/fetch_recent_updates.graphql",
-    response_derives = "Debug"
-)]
-pub struct FetchRecentUpdates;
-
 pub async fn fetch_recent_updates(
     cursor: Option<String>,
 ) -> Result<fetch_recent_updates::FetchRecentUpdatesRecentUpdates, Box<dyn Error>> {
@@ -374,14 +240,6 @@ pub async fn fetch_recent_updates(
     let data = post_graphql::<FetchRecentUpdates>(var).await?;
     Ok(data.recent_updates)
 }
-
-#[derive(GraphQLQuery)]
-#[graphql(
-    schema_path = "graphql/schema.graphql",
-    query_path = "graphql/fetch_histories.graphql",
-    response_derives = "Debug"
-)]
-pub struct FetchHistories;
 
 pub async fn fetch_histories(
     cursor: Option<String>,
@@ -394,14 +252,6 @@ pub async fn fetch_histories(
     Ok(data.recent_chapters)
 }
 
-#[derive(GraphQLQuery)]
-#[graphql(
-    schema_path = "graphql/schema.graphql",
-    query_path = "graphql/fetch_sources.graphql",
-    response_derives = "Debug"
-)]
-pub struct FetchSources;
-
 pub async fn fetch_sources(
 ) -> Result<std::vec::Vec<fetch_sources::FetchSourcesInstalledSources>, Box<dyn Error>> {
     let var = fetch_sources::Variables {};
@@ -409,27 +259,11 @@ pub async fn fetch_sources(
     Ok(data.installed_sources)
 }
 
-#[derive(GraphQLQuery)]
-#[graphql(
-    schema_path = "graphql/schema.graphql",
-    query_path = "graphql/fetch_all_sources.graphql",
-    response_derives = "Debug"
-)]
-pub struct FetchAllSources;
-
 pub async fn fetch_all_sources() -> Result<fetch_all_sources::ResponseData, Box<dyn Error>> {
     let var = fetch_all_sources::Variables {};
     let data = post_graphql::<FetchAllSources>(var).await?;
     Ok(data)
 }
-
-#[derive(GraphQLQuery)]
-#[graphql(
-    schema_path = "graphql/schema.graphql",
-    query_path = "graphql/fetch_source.graphql",
-    response_derives = "Debug"
-)]
-pub struct FetchSourceDetail;
 
 pub async fn fetch_source(
     source_id: i64,
@@ -441,14 +275,6 @@ pub async fn fetch_source(
     Ok(data.source)
 }
 
-#[derive(GraphQLQuery)]
-#[graphql(
-    schema_path = "graphql/schema.graphql",
-    query_path = "graphql/set_preferences.graphql",
-    response_derives = "Debug"
-)]
-pub struct SetPreferences;
-
 pub async fn set_preferences(source_id: i64, preferences: InputList) -> Result<(), Box<dyn Error>> {
     let var = set_preferences::Variables {
         source_id,
@@ -458,14 +284,6 @@ pub async fn set_preferences(source_id: i64, preferences: InputList) -> Result<(
     Ok(())
 }
 
-#[derive(GraphQLQuery)]
-#[graphql(
-    schema_path = "graphql/schema.graphql",
-    query_path = "graphql/install_source.graphql",
-    response_derives = "Debug"
-)]
-pub struct InstallSource;
-
 pub async fn install_source(source_id: i64) -> Result<i64, Box<dyn Error>> {
     let var = install_source::Variables {
         source_id: Some(source_id),
@@ -473,14 +291,6 @@ pub async fn install_source(source_id: i64) -> Result<i64, Box<dyn Error>> {
     let data = post_graphql::<InstallSource>(var).await?;
     Ok(data.install_source)
 }
-
-#[derive(GraphQLQuery)]
-#[graphql(
-    schema_path = "graphql/schema.graphql",
-    query_path = "graphql/update_source.graphql",
-    response_derives = "Debug"
-)]
-pub struct UpdateSource;
 
 pub async fn update_source(source_id: i64) -> Result<i64, Box<dyn Error>> {
     let var = update_source::Variables {
@@ -490,14 +300,6 @@ pub async fn update_source(source_id: i64) -> Result<i64, Box<dyn Error>> {
     Ok(data.update_source)
 }
 
-#[derive(GraphQLQuery)]
-#[graphql(
-    schema_path = "graphql/schema.graphql",
-    query_path = "graphql/uninstall_source.graphql",
-    response_derives = "Debug"
-)]
-pub struct UninstallSource;
-
 pub async fn uninstall_source(source_id: i64) -> Result<i64, Box<dyn Error>> {
     let var = uninstall_source::Variables {
         source_id: Some(source_id),
@@ -505,14 +307,6 @@ pub async fn uninstall_source(source_id: i64) -> Result<i64, Box<dyn Error>> {
     let data = post_graphql::<UninstallSource>(var).await?;
     Ok(data.uninstall_source)
 }
-
-#[derive(GraphQLQuery)]
-#[graphql(
-    schema_path = "graphql/schema.graphql",
-    query_path = "graphql/login.graphql",
-    response_derives = "Debug"
-)]
-pub struct UserLogin;
 
 pub async fn user_login(username: String, password: String) -> Result<String, Box<dyn Error>> {
     let var = user_login::Variables {
@@ -522,14 +316,6 @@ pub async fn user_login(username: String, password: String) -> Result<String, Bo
     let data = post_graphql::<UserLogin>(var).await?;
     Ok(data.login)
 }
-
-#[derive(GraphQLQuery)]
-#[graphql(
-    schema_path = "graphql/schema.graphql",
-    query_path = "graphql/fetch_users.graphql",
-    response_derives = "Debug"
-)]
-pub struct FetchUserList;
 
 pub async fn fetch_users() -> Result<
     (
@@ -543,27 +329,11 @@ pub async fn fetch_users() -> Result<
     Ok((data.me, data.users))
 }
 
-#[derive(GraphQLQuery)]
-#[graphql(
-    schema_path = "graphql/schema.graphql",
-    query_path = "graphql/fetch_me.graphql",
-    response_derives = "Debug"
-)]
-pub struct FetchMe;
-
 pub async fn fetch_me() -> Result<fetch_me::FetchMeMe, Box<dyn Error>> {
     let var = fetch_me::Variables {};
     let data = post_graphql::<FetchMe>(var).await?;
     Ok(data.me)
 }
-
-#[derive(GraphQLQuery)]
-#[graphql(
-    schema_path = "graphql/schema.graphql",
-    query_path = "graphql/register.graphql",
-    response_derives = "Debug"
-)]
-pub struct UserRegister;
 
 pub async fn user_register(
     username: String,
@@ -579,14 +349,6 @@ pub async fn user_register(
     Ok(())
 }
 
-#[derive(GraphQLQuery)]
-#[graphql(
-    schema_path = "graphql/schema.graphql",
-    query_path = "graphql/change_password.graphql",
-    response_derives = "Debug"
-)]
-pub struct ChangeUserPassword;
-
 pub async fn change_password(
     old_password: String,
     new_password: String,
@@ -598,14 +360,6 @@ pub async fn change_password(
     let _ = post_graphql::<ChangeUserPassword>(var).await?;
     Ok(())
 }
-
-#[derive(GraphQLQuery)]
-#[graphql(
-    schema_path = "graphql/schema.graphql",
-    query_path = "graphql/update_profile.graphql",
-    response_derives = "Debug"
-)]
-pub struct UpdateProfile;
 
 pub async fn update_profile(
     telegram_chat_id: Option<i64>,
@@ -623,28 +377,12 @@ pub async fn update_profile(
     Ok(())
 }
 
-#[derive(GraphQLQuery)]
-#[graphql(
-    schema_path = "graphql/schema.graphql",
-    query_path = "graphql/fetch_server_status.graphql",
-    response_derives = "Debug"
-)]
-pub struct FetchServerStatus;
-
 pub async fn fetch_server_status(
 ) -> Result<fetch_server_status::FetchServerStatusServerStatus, Box<dyn Error>> {
     let var = fetch_server_status::Variables {};
     let data = post_graphql::<FetchServerStatus>(var).await?;
     Ok(data.server_status)
 }
-
-#[derive(GraphQLQuery)]
-#[graphql(
-    schema_path = "graphql/schema.graphql",
-    query_path = "graphql/test_telegram.graphql",
-    response_derives = "Debug"
-)]
-pub struct TestTelegram;
 
 pub async fn test_telegram(chat_id: i64) -> Result<(), Box<dyn Error>> {
     let var = test_telegram::Variables {
@@ -654,14 +392,6 @@ pub async fn test_telegram(chat_id: i64) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-#[derive(GraphQLQuery)]
-#[graphql(
-    schema_path = "graphql/schema.graphql",
-    query_path = "graphql/test_pushover.graphql",
-    response_derives = "Debug"
-)]
-pub struct TestPushover;
-
 pub async fn test_pushover(user_key: &str) -> Result<(), Box<dyn Error>> {
     let var = test_pushover::Variables {
         user_key: Some(user_key.to_string()),
@@ -669,14 +399,6 @@ pub async fn test_pushover(user_key: &str) -> Result<(), Box<dyn Error>> {
     let _ = post_graphql::<TestPushover>(var).await?;
     Ok(())
 }
-
-#[derive(GraphQLQuery)]
-#[graphql(
-    schema_path = "graphql/schema.graphql",
-    query_path = "graphql/test_gotify.graphql",
-    response_derives = "Debug"
-)]
-pub struct TestGotify;
 
 pub async fn test_gotify(token: &str) -> Result<(), Box<dyn Error>> {
     let var = test_gotify::Variables {
@@ -686,27 +408,11 @@ pub async fn test_gotify(token: &str) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-#[derive(GraphQLQuery)]
-#[graphql(
-    schema_path = "graphql/schema.graphql",
-    query_path = "graphql/test_desktop_notification.graphql",
-    response_derives = "Debug"
-)]
-pub struct TestDesktopNotification;
-
 pub async fn test_desktop_notification() -> Result<(), Box<dyn Error>> {
     let var = test_desktop_notification::Variables {};
     let _ = post_graphql::<TestDesktopNotification>(var).await?;
     Ok(())
 }
-
-#[derive(GraphQLQuery)]
-#[graphql(
-    schema_path = "graphql/schema.graphql",
-    query_path = "graphql/mark_chapter_as_read.graphql",
-    response_derives = "Debug"
-)]
-pub struct MarkChapterAsRead;
 
 pub async fn mark_chapter_as_read(chapter_ids: &[i64]) -> Result<(), Box<dyn Error>> {
     let var = mark_chapter_as_read::Variables {
@@ -717,14 +423,6 @@ pub async fn mark_chapter_as_read(chapter_ids: &[i64]) -> Result<(), Box<dyn Err
     Ok(())
 }
 
-#[derive(GraphQLQuery)]
-#[graphql(
-    schema_path = "graphql/schema.graphql",
-    query_path = "graphql/mark_chapter_as_unread.graphql",
-    response_derives = "Debug"
-)]
-pub struct MarkChapterAsUnread;
-
 pub async fn mark_chapter_as_unread(chapter_ids: &[i64]) -> Result<(), Box<dyn Error>> {
     let var = mark_chapter_as_unread::Variables {
         chapter_ids: Some(chapter_ids.iter().map(|id| Some(*id)).collect()),
@@ -733,14 +431,6 @@ pub async fn mark_chapter_as_unread(chapter_ids: &[i64]) -> Result<(), Box<dyn E
     let _ = post_graphql::<MarkChapterAsUnread>(var).await?;
     Ok(())
 }
-
-#[derive(GraphQLQuery)]
-#[graphql(
-    schema_path = "graphql/schema.graphql",
-    query_path = "graphql/download_chapters.graphql",
-    response_derives = "Debug"
-)]
-pub struct DownloadChapters;
 
 pub async fn download_chapters(chapter_ids: &[i64]) -> Result<(), Box<dyn Error>> {
     let var = download_chapters::Variables {
@@ -751,14 +441,6 @@ pub async fn download_chapters(chapter_ids: &[i64]) -> Result<(), Box<dyn Error>
     Ok(())
 }
 
-#[derive(GraphQLQuery)]
-#[graphql(
-    schema_path = "graphql/schema.graphql",
-    query_path = "graphql/remove_downloaded_chapters.graphql",
-    response_derives = "Debug"
-)]
-pub struct RemoveDownloadedChapters;
-
 pub async fn remove_downloaded_chapters(chapter_ids: &[i64]) -> Result<(), Box<dyn Error>> {
     let var = remove_downloaded_chapters::Variables {
         ids: Some(chapter_ids.iter().map(|id| Some(*id)).collect()),
@@ -768,14 +450,6 @@ pub async fn remove_downloaded_chapters(chapter_ids: &[i64]) -> Result<(), Box<d
     Ok(())
 }
 
-#[derive(GraphQLQuery)]
-#[graphql(
-    schema_path = "graphql/schema.graphql",
-    query_path = "graphql/fetch_download_queue.graphql",
-    response_derives = "Debug"
-)]
-pub struct FetchDownloadQueue;
-
 pub async fn fetch_download_queue(
 ) -> Result<Vec<fetch_download_queue::FetchDownloadQueueDownloadQueue>, Box<dyn Error>> {
     let var = fetch_download_queue::Variables {};
@@ -784,14 +458,6 @@ pub async fn fetch_download_queue(
         .await?
         .download_queue)
 }
-
-#[derive(GraphQLQuery)]
-#[graphql(
-    schema_path = "graphql/schema.graphql",
-    query_path = "graphql/fetch_downloaded_chapters.graphql",
-    response_derives = "Debug"
-)]
-pub struct FetchDownloadedChapters;
 
 pub async fn fetch_downloaded_chapters(
     cursor: Option<String>,
@@ -805,14 +471,6 @@ pub async fn fetch_downloaded_chapters(
     Ok(data.get_downloaded_chapters)
 }
 
-#[derive(GraphQLQuery)]
-#[graphql(
-    schema_path = "graphql/schema.graphql",
-    query_path = "graphql/update_chapter_priority.graphql",
-    response_derives = "Debug"
-)]
-pub struct UpdateChapterPriority;
-
 pub async fn update_chapter_priority(chapter_id: i64, priority: i64) -> Result<(), Box<dyn Error>> {
     let var = update_chapter_priority::Variables {
         id: Some(chapter_id),
@@ -822,14 +480,6 @@ pub async fn update_chapter_priority(chapter_id: i64, priority: i64) -> Result<(
     Ok(())
 }
 
-#[derive(GraphQLQuery)]
-#[graphql(
-    schema_path = "graphql/schema.graphql",
-    query_path = "graphql/remove_chapter_from_queue.graphql",
-    response_derives = "Debug"
-)]
-pub struct RemoveChapterFromQueue;
-
 pub async fn remove_chapter_from_queue(ids: &[i64]) -> Result<(), Box<dyn Error>> {
     let var = remove_chapter_from_queue::Variables {
         ids: Some(ids.iter().map(|id| Some(*id)).collect()),
@@ -838,27 +488,11 @@ pub async fn remove_chapter_from_queue(ids: &[i64]) -> Result<(), Box<dyn Error>
     Ok(())
 }
 
-#[derive(GraphQLQuery)]
-#[graphql(
-    schema_path = "graphql/schema.graphql",
-    query_path = "graphql/pause_download.graphql",
-    response_derives = "Debug"
-)]
-pub struct PauseDownload;
-
 pub async fn pause_download() -> Result<bool, Box<dyn Error>> {
     let var = pause_download::Variables {};
     let data = post_graphql::<PauseDownload>(var).await?;
     Ok(data.pause_download)
 }
-
-#[derive(GraphQLQuery)]
-#[graphql(
-    schema_path = "graphql/schema.graphql",
-    query_path = "graphql/resume_download.graphql",
-    response_derives = "Debug"
-)]
-pub struct ResumeDownload;
 
 pub async fn resume_download() -> Result<bool, Box<dyn Error>> {
     let var = resume_download::Variables {};
@@ -866,27 +500,11 @@ pub async fn resume_download() -> Result<bool, Box<dyn Error>> {
     Ok(data.resume_download)
 }
 
-#[derive(GraphQLQuery)]
-#[graphql(
-    schema_path = "graphql/schema.graphql",
-    query_path = "graphql/download_status.graphql",
-    response_derives = "Debug"
-)]
-pub struct DownloadStatus;
-
 pub async fn download_status() -> Result<bool, Box<dyn Error>> {
     let var = download_status::Variables {};
     let data = post_graphql::<DownloadStatus>(var).await?;
     Ok(data.download_status)
 }
-
-#[derive(GraphQLQuery)]
-#[graphql(
-    schema_path = "graphql/schema.graphql",
-    query_path = "graphql/myanimelist_login_start.graphql",
-    response_derives = "Debug"
-)]
-pub struct MyanimelistLoginStart;
 
 pub async fn myanimelist_login_start(
 ) -> Result<myanimelist_login_start::MyanimelistLoginStartMyanimelistLoginStart, Box<dyn Error>> {
@@ -894,14 +512,6 @@ pub async fn myanimelist_login_start(
     let data = post_graphql::<MyanimelistLoginStart>(var).await?;
     Ok(data.myanimelist_login_start)
 }
-
-#[derive(GraphQLQuery)]
-#[graphql(
-    schema_path = "graphql/schema.graphql",
-    query_path = "graphql/myanimelist_login_end.graphql",
-    response_derives = "Debug"
-)]
-pub struct MyanimelistLoginEnd;
 
 pub async fn myanimelist_login_end(
     code: String,
@@ -919,27 +529,11 @@ pub async fn myanimelist_login_end(
     Ok(())
 }
 
-#[derive(GraphQLQuery)]
-#[graphql(
-    schema_path = "graphql/schema.graphql",
-    query_path = "graphql/tracker_logout.graphql",
-    response_derives = "Debug"
-)]
-pub struct TrackerLogout;
-
 pub async fn tracker_logout(tracker: String) -> Result<(), Box<dyn Error>> {
     let var = tracker_logout::Variables { tracker };
     let _ = post_graphql::<TrackerLogout>(var).await?;
     Ok(())
 }
-
-#[derive(GraphQLQuery)]
-#[graphql(
-    schema_path = "graphql/schema.graphql",
-    query_path = "graphql/anilist_login_start.graphql",
-    response_derives = "Debug"
-)]
-pub struct AnilistLoginStart;
 
 pub async fn anilist_login_start(
 ) -> Result<anilist_login_start::AnilistLoginStartAnilistLoginStart, Box<dyn Error>> {
@@ -948,27 +542,11 @@ pub async fn anilist_login_start(
     Ok(data.anilist_login_start)
 }
 
-#[derive(GraphQLQuery)]
-#[graphql(
-    schema_path = "graphql/schema.graphql",
-    query_path = "graphql/anilist_login_end.graphql",
-    response_derives = "Debug"
-)]
-pub struct AnilistLoginEnd;
-
 pub async fn anilist_login_end(code: String) -> Result<(), Box<dyn Error>> {
     let var = anilist_login_end::Variables { code };
     let _ = post_graphql::<AnilistLoginEnd>(var).await?;
     Ok(())
 }
-
-#[derive(GraphQLQuery)]
-#[graphql(
-    schema_path = "graphql/schema.graphql",
-    query_path = "graphql/search_tracker_manga.graphql",
-    response_derives = "Debug"
-)]
-pub struct SearchTrackerManga;
 
 pub async fn search_tracker_manga(
     tracker: String,
@@ -979,14 +557,6 @@ pub async fn search_tracker_manga(
 
     Ok(data.search_tracker_manga)
 }
-
-#[derive(GraphQLQuery)]
-#[graphql(
-    schema_path = "graphql/schema.graphql",
-    query_path = "graphql/track_manga.graphql",
-    response_derives = "Debug"
-)]
-pub struct TrackManga;
 
 pub async fn track_manga(
     manga_id: i64,
@@ -1003,28 +573,12 @@ pub async fn track_manga(
     Ok(())
 }
 
-#[derive(GraphQLQuery)]
-#[graphql(
-    schema_path = "graphql/schema.graphql",
-    query_path = "graphql/untrack_manga.graphql",
-    response_derives = "Debug"
-)]
-pub struct UntrackManga;
-
 pub async fn untrack_manga(manga_id: i64, tracker: String) -> Result<(), Box<dyn Error>> {
     let var = untrack_manga::Variables { manga_id, tracker };
     let _ = post_graphql::<UntrackManga>(var).await?;
 
     Ok(())
 }
-
-#[derive(GraphQLQuery)]
-#[graphql(
-    schema_path = "graphql/schema.graphql",
-    query_path = "graphql/fetch_manga_tracker_status.graphql",
-    response_derives = "Debug"
-)]
-pub struct FetchMangaTrackerStatus;
 
 pub async fn fetch_manga_tracker_status(
     manga_id: i64,
@@ -1037,14 +591,6 @@ pub async fn fetch_manga_tracker_status(
 
     Ok(data.manga_tracker_status)
 }
-
-#[derive(GraphQLQuery)]
-#[graphql(
-    schema_path = "graphql/schema.graphql",
-    query_path = "graphql/update_tracker_status.graphql",
-    response_derives = "Debug"
-)]
-pub struct UpdateTrackerStatus;
 
 pub async fn update_tracker_status(
     tracker: String,
@@ -1070,14 +616,6 @@ pub async fn update_tracker_status(
 
     Ok(())
 }
-
-#[derive(GraphQLQuery)]
-#[graphql(
-    schema_path = "graphql/schema.graphql",
-    query_path = "graphql/refresh_chapters.graphql",
-    response_derives = "Debug"
-)]
-pub struct RefreshChapters;
 
 pub async fn refresh_chapters(manga_id: Option<i64>, wait: bool) -> Result<(), Box<dyn Error>> {
     let var = refresh_chapters::Variables { manga_id, wait };

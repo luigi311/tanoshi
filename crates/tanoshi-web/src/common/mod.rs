@@ -21,8 +21,7 @@ pub mod events;
 mod login;
 pub use login::Login;
 
-mod model;
-pub use model::*;
+pub use tanoshi_schema::model::*;
 
 mod profile;
 pub use profile::Profile;
