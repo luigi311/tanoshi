@@ -4,8 +4,10 @@ use dominator::{clone, html, routing, Dom};
 use dominator::{with_node, EventOptions};
 use futures_signals::signal::Mutable;
 use futures_signals::signal::SignalExt;
-use wasm_bindgen::UnwrapThrowExt;
-use web_sys::HtmlInputElement;
+use wasm_bindgen::prelude::Closure;
+use wasm_bindgen::{JsValue, UnwrapThrowExt};
+use wasm_bindgen_futures::JsFuture;
+use web_sys::{HtmlInputElement, Notification, NotificationPermission};
 
 use crate::common::{events, snackbar, Route};
 use crate::query;
@@ -20,6 +22,7 @@ pub struct Profile {
     gotify_token: Mutable<Option<String>>,
     myanimelist_status: Mutable<bool>,
     anilist_status: Mutable<bool>,
+    notification_cb: Closure<dyn FnMut(JsValue) -> ()>,
     pub loader: AsyncLoader,
 }
 
@@ -34,6 +37,16 @@ impl Profile {
             gotify_token: Mutable::new(None),
             myanimelist_status: Mutable::new(false),
             anilist_status: Mutable::new(false),
+            notification_cb: Closure::new(|value| {
+                let permission = NotificationPermission::from_js_value(&value)
+                    .unwrap_or(NotificationPermission::Default);
+
+                debug!("notification: {permission:?}");
+
+                if matches!(permission, NotificationPermission::Granted) {
+                    let _notification = Notification::new("Notification enabled");
+                }
+            }),
             loader: AsyncLoader::new(),
         })
     }
@@ -104,6 +117,29 @@ impl Profile {
                 Ok(_) => {}
                 Err(err) => {
                     snackbar::show(format!("{}", err));
+                }
+            }
+        });
+    }
+
+    fn test_browser_notification(profile: Rc<Self>) {
+        profile.loader.load({
+            let profile = profile.clone();
+            async move {
+                match Notification::permission() {
+                    NotificationPermission::Denied => {
+                        snackbar::show("Notification perimission is not granted".to_string());
+                    }
+                    NotificationPermission::Granted => {
+                        let _notification = Notification::new("Notification enabled");
+                    }
+                    _ => {
+                        let promise = Notification::request_permission()
+                            .unwrap_throw()
+                            .then(&profile.notification_cb);
+
+                        JsFuture::from(promise).await.unwrap_throw();
+                    }
                 }
             }
         });
@@ -274,6 +310,24 @@ impl Profile {
                             .event_with_options(&EventOptions::preventable(), clone!(profile => move |e: events::Click| {
                                 e.prevent_default();
                                 Self::test_dekstop_notification(profile.clone());
+                            }))
+                        }),
+                    ])
+                }),
+                // Browser
+                html!("div", {
+                    .style("display", "flex")
+                    .style("justify-content", "flex-end")
+                    .style("margin-right", "0.5rem")
+                    .style("margin-top", "0.5rem")
+                    .children(&mut [
+                        html!("input", {
+                            .attr("type", "button")
+                            .attr("value", "Test Browser Notification")
+                            .text("Test Browser Notification")
+                            .event_with_options(&EventOptions::preventable(), clone!(profile => move |e: events::Click| {
+                                e.prevent_default();
+                                Self::test_browser_notification(profile.clone());
                             }))
                         }),
                     ])
