@@ -207,6 +207,7 @@ impl Profile {
                 html!("input" => HtmlInputElement, {
                     .attr("type", "password")
                     .attr("placeholder", "Current Password")
+                    .attr("autocomplete", "current-password")
                     .prop_signal("value", profile.old_password.signal_cloned())
                     .with_node!(input => {
                         .event(clone!(profile => move |_: events::Input| {
@@ -233,6 +234,7 @@ impl Profile {
                     .class_signal("error", profile.confirm_password.signal_cloned().map(clone!(profile => move |x| x != profile.new_password.get_cloned())))
                     .attr("type", "password")
                     .attr("placeholder", "New Password")
+                    .attr("autocomplete", "new-password")
                     .prop_signal("value", profile.new_password.signal_cloned())
                     .with_node!(input => {
                         .event(clone!(profile => move |_: events::Input| {
@@ -244,6 +246,7 @@ impl Profile {
                     .class_signal("error", profile.confirm_password.signal_cloned().map(clone!(profile => move |x| x != profile.new_password.get_cloned())))
                     .attr("type", "password")
                     .attr("placeholder", "Confirm Password")
+                    .attr("autocomplete", "new-password")
                     .prop_signal("value", profile.confirm_password.signal_cloned())
                     .with_node!(input => {
                         .event(clone!(profile => move |_: events::Input| {
