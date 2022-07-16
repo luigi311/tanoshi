@@ -15,7 +15,10 @@ use tanoshi_vm::extension::ExtensionManager;
 use crate::{
     domain::{
         entities::{chapter::Chapter, manga::Manga},
-        repositories::{chapter::ChapterRepository, library::LibraryRepository},
+        repositories::{
+            chapter::ChapterRepository,
+            library::{LibraryRepository, LibraryRepositoryError},
+        },
     },
     infrastructure::{domain::repositories::user::UserRepositoryImpl, notification::Notification},
 };
@@ -33,6 +36,15 @@ pub struct ChapterUpdate {
 
 pub type ChapterUpdateReceiver = tokio::sync::broadcast::Receiver<ChapterUpdate>;
 pub type ChapterUpdateSender = tokio::sync::broadcast::Sender<ChapterUpdate>;
+
+pub enum ChapterUpdateCommand {
+    All(tokio::sync::oneshot::Sender<Result<(), anyhow::Error>>),
+    Manga(i64, tokio::sync::oneshot::Sender<Result<(), anyhow::Error>>),
+    Library(i64, tokio::sync::oneshot::Sender<Result<(), anyhow::Error>>),
+}
+
+pub type ChapterUpdateCommandReceiver = flume::Receiver<ChapterUpdateCommand>;
+pub type ChapterUpdateCommandSender = flume::Sender<ChapterUpdateCommand>;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct SourceInfo {
@@ -58,6 +70,7 @@ where
     extension_repository: String,
     cache_path: PathBuf,
     broadcast_tx: ChapterUpdateSender,
+    command_rx: ChapterUpdateCommandReceiver,
 }
 
 impl<C, L> UpdatesWorker<C, L>
@@ -74,7 +87,7 @@ where
         extension_repository: String,
         broadcast_tx: ChapterUpdateSender,
         cache_path: P,
-    ) -> Self {
+    ) -> (Self, ChapterUpdateCommandSender) {
         #[cfg(not(debug_assertions))]
         let period = if period > 0 && period < 3600 {
             3600
@@ -83,29 +96,37 @@ where
         };
         info!("periodic updates every {} seconds", period);
 
-        Self {
-            period,
-            client: reqwest::Client::new(),
-            library_repo,
-            chapter_repo,
-            extensions,
-            notifier,
-            extension_repository,
-            cache_path: PathBuf::new().join(cache_path),
-            broadcast_tx,
-        }
+        let (command_tx, command_rx) = flume::bounded(0);
+
+        (
+            Self {
+                period,
+                client: reqwest::Client::new(),
+                library_repo,
+                chapter_repo,
+                extensions,
+                notifier,
+                extension_repository,
+                cache_path: PathBuf::new().join(cache_path),
+                broadcast_tx,
+                command_rx,
+            },
+            command_tx,
+        )
     }
 
-    async fn check_chapter_update(&self) -> Result<(), anyhow::Error> {
+    fn start_chapter_update_queue_all(
+        &self,
+        tx: tokio::sync::mpsc::Sender<Result<Manga, LibraryRepositoryError>>,
+    ) {
         let library_repo = self.library_repo.clone();
-        let (tx, mut rx) = tokio::sync::mpsc::channel(10);
 
         let rt = tokio::runtime::Handle::current();
         std::thread::spawn(move || {
             rt.block_on(async move {
-                let mut manga_in_library = library_repo.get_manga_from_all_users_library().await;
+                let mut manga_stream = library_repo.get_manga_from_all_users_library_stream().await;
 
-                while let Some(manga) = manga_in_library.next().await {
+                while let Some(manga) = manga_stream.next().await {
                     if let Err(e) = tx.send(manga).await {
                         error!("error send update: {e:?}");
                         break;
@@ -113,7 +134,60 @@ where
                 }
             });
         });
+    }
 
+    fn start_chapter_update_queue_by_manga_id(
+        &self,
+        tx: tokio::sync::mpsc::Sender<Result<Manga, LibraryRepositoryError>>,
+        manga_id: i64,
+    ) {
+        let library_repo = self.library_repo.clone();
+
+        let rt = tokio::runtime::Handle::current();
+        std::thread::spawn(move || {
+            rt.block_on(async move {
+                let mut manga_stream = library_repo
+                    .get_manga_from_all_users_library_by_manga_id_stream(manga_id)
+                    .await;
+
+                while let Some(manga) = manga_stream.next().await {
+                    if let Err(e) = tx.send(manga).await {
+                        error!("error send update: {e:?}");
+                        break;
+                    }
+                }
+            });
+        });
+    }
+
+    fn start_chapter_update_queue_by_user_id(
+        &self,
+        tx: tokio::sync::mpsc::Sender<Result<Manga, LibraryRepositoryError>>,
+        user_id: i64,
+    ) {
+        let library_repo = self.library_repo.clone();
+
+        let rt = tokio::runtime::Handle::current();
+        std::thread::spawn(move || {
+            rt.block_on(async move {
+                let mut manga_stream = library_repo
+                    .get_manga_from_user_library_stream(user_id)
+                    .await;
+
+                while let Some(manga) = manga_stream.next().await {
+                    if let Err(e) = tx.send(manga).await {
+                        error!("error send update: {e:?}");
+                        break;
+                    }
+                }
+            });
+        });
+    }
+
+    async fn check_chapter_update(
+        &self,
+        mut rx: tokio::sync::mpsc::Receiver<Result<Manga, LibraryRepositoryError>>,
+    ) -> Result<(), anyhow::Error> {
         while let Some(Ok(manga)) = rx.recv().await {
             debug!("Checking updates: {}", manga.title);
 
@@ -328,6 +402,32 @@ where
 
         loop {
             tokio::select! {
+                Ok(cmd) = self.command_rx.recv_async() => {
+                    let (manga_tx, manga_rx) = tokio::sync::mpsc::channel(1);
+                    match cmd {
+                        ChapterUpdateCommand::All(tx) => {
+                            self.start_chapter_update_queue_all(manga_tx);
+                            let res = self.check_chapter_update(manga_rx).await;
+                            if let Err(_) = tx.send(res) {
+                                info!("failed to send chapter update result");
+                            }
+                        },
+                        ChapterUpdateCommand::Manga(manga_id, tx) => {
+                            self.start_chapter_update_queue_by_manga_id(manga_tx, manga_id);
+                            let res = self.check_chapter_update(manga_rx).await;
+                            if let Err(_) = tx.send(res) {
+                                info!("failed to send chapter update result");
+                            }
+                        },
+                        ChapterUpdateCommand::Library(user_id, tx) => {
+                            self.start_chapter_update_queue_by_user_id(manga_tx, user_id);
+                            let res = self.check_chapter_update(manga_rx).await;
+                            if let Err(_) = tx.send(res) {
+                                info!("failed to send chapter update result");
+                            }
+                        }
+                    }
+                }
                 start = chapter_update_interval.tick() => {
                     if self.period == 0 {
                         continue;
@@ -335,7 +435,9 @@ where
 
                     info!("start periodic updates");
 
-                    if let Err(e) = self.check_chapter_update().await {
+                    let (manga_tx, manga_rx) = tokio::sync::mpsc::channel(1);
+                    self.start_chapter_update_queue_all(manga_tx);
+                    if let Err(e) = self.check_chapter_update(manga_rx).await {
                         error!("failed check chapter update: {e}")
                     }
 
@@ -372,14 +474,18 @@ pub fn start<C, L, P>(
     notifier: Notification<UserRepositoryImpl>,
     extension_repository: String,
     cache_path: P,
-) -> (ChapterUpdateReceiver, JoinHandle<()>)
+) -> (
+    ChapterUpdateReceiver,
+    ChapterUpdateCommandSender,
+    JoinHandle<()>,
+)
 where
     C: ChapterRepository + 'static,
     L: LibraryRepository + 'static,
     P: AsRef<Path>,
 {
     let (broadcast_tx, broadcast_rx) = tokio::sync::broadcast::channel(10);
-    let worker = UpdatesWorker::new(
+    let (worker, command_tx) = UpdatesWorker::new(
         period,
         library_repo,
         chapter_repo,
@@ -392,5 +498,5 @@ where
 
     let handle = tokio::spawn(worker.run());
 
-    (broadcast_rx, handle)
+    (broadcast_rx, command_tx, handle)
 }

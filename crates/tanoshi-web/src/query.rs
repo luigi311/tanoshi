@@ -129,13 +129,9 @@ pub async fn fetch_source_filters(
 pub struct BrowseFavorites;
 
 pub async fn fetch_manga_from_favorite(
-    refresh: bool,
     category_id: Option<i64>,
 ) -> Result<Vec<Cover>, Box<dyn Error>> {
-    let var = browse_favorites::Variables {
-        refresh: Some(refresh),
-        category_id,
-    };
+    let var = browse_favorites::Variables { category_id };
     let data = post_graphql::<BrowseFavorites>(var).await?;
 
     Ok(data
@@ -1071,6 +1067,21 @@ pub async fn update_tracker_status(
         },
     };
     let _ = post_graphql::<UpdateTrackerStatus>(var).await?;
+
+    Ok(())
+}
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/schema.graphql",
+    query_path = "graphql/refresh_chapters.graphql",
+    response_derives = "Debug"
+)]
+pub struct RefreshChapters;
+
+pub async fn refresh_chapters(manga_id: Option<i64>, wait: bool) -> Result<(), Box<dyn Error>> {
+    let var = refresh_chapters::Variables { manga_id, wait };
+    let _ = post_graphql::<RefreshChapters>(var).await?;
 
     Ok(())
 }

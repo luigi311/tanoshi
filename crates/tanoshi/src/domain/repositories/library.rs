@@ -50,8 +50,18 @@ pub trait LibraryRepository: Clone + Send + Sync {
         manga_id: i64,
     ) -> Result<Vec<User>, LibraryRepositoryError>;
 
-    async fn get_manga_from_all_users_library(
+    async fn get_manga_from_all_users_library_stream(
         &self,
+    ) -> Pin<Box<dyn Stream<Item = Result<Manga, LibraryRepositoryError>>>>;
+
+    async fn get_manga_from_all_users_library_by_manga_id_stream(
+        &self,
+        id: i64,
+    ) -> Pin<Box<dyn Stream<Item = Result<Manga, LibraryRepositoryError>>>>;
+
+    async fn get_manga_from_user_library_stream(
+        &self,
+        user_id: i64,
     ) -> Pin<Box<dyn Stream<Item = Result<Manga, LibraryRepositoryError>>>>;
 
     async fn get_manga_from_library_by_category_id(

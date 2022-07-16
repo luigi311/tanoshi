@@ -124,6 +124,13 @@ type MutationRoot {
     # chapter ids
     chapterIds: [Int!]!
   ): Int!
+  refreshChapters(
+    # manga id
+    mangaId: Int
+
+    # wait for updates
+    wait: Boolean! = false
+  ): Boolean!
   createCategory(
     # category name
     name: String!
@@ -255,9 +262,6 @@ type QueryRoot {
     id: Int!
   ): Chapter!
   library(
-    # refresh data from source
-    refresh: Boolean! = false
-
     # category id
     categoryId: Int
   ): [Manga!]!

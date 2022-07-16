@@ -168,14 +168,14 @@ impl LibraryRepository for LibraryRepositoryImpl {
         Ok(users)
     }
 
-    async fn get_manga_from_all_users_library(
+    async fn get_manga_from_all_users_library_stream(
         &self,
     ) -> Pin<Box<dyn Stream<Item = Result<Manga, LibraryRepositoryError>>>> {
-        let stream = sqlx::query(
-            r#"SELECT DISTINCT manga.*, MAX(chapter.uploaded) as last_uploaded FROM manga
-                    JOIN user_library ON manga.id = user_library.manga_id
-                    JOIN chapter ON manga.id = chapter.manga_id
-                    GROUP by manga.id"#,
+        sqlx::query(
+            "SELECT DISTINCT manga.*, MAX(chapter.uploaded) as last_uploaded FROM manga \
+                JOIN user_library ON manga.id = user_library.manga_id \
+                JOIN chapter ON manga.id = chapter.manga_id \
+                GROUP by manga.id",
         )
         .fetch(&self.pool as &SqlitePool)
         .map(|row| {
@@ -194,9 +194,71 @@ impl LibraryRepository for LibraryRepositoryImpl {
             })
             .map_err(LibraryRepositoryError::DbError)
         })
-        .boxed();
+        .boxed()
+    }
 
-        stream
+    async fn get_manga_from_all_users_library_by_manga_id_stream(
+        &self,
+        id: i64,
+    ) -> Pin<Box<dyn Stream<Item = Result<Manga, LibraryRepositoryError>>>> {
+        sqlx::query(
+            "SELECT DISTINCT manga.*, MAX(chapter.uploaded) as last_uploaded FROM manga \
+                JOIN user_library ON manga.id = user_library.manga_id \
+                JOIN chapter ON manga.id = chapter.manga_id \
+                WHERE manga.id = ?
+                GROUP by manga.id",
+        )
+        .bind(id)
+        .fetch(&self.pool as &SqlitePool)
+        .map(|row| {
+            row.map(|row| Manga {
+                id: row.get(0),
+                source_id: row.get(1),
+                title: row.get(2),
+                author: serde_json::from_str(row.get::<String, _>(3).as_str()).unwrap_or_default(),
+                genre: serde_json::from_str(row.get::<String, _>(4).as_str()).unwrap_or_default(),
+                status: row.get(5),
+                description: row.get(6),
+                path: row.get(7),
+                cover_url: row.get(8),
+                date_added: row.get(9),
+                last_uploaded_at: row.get(10),
+            })
+            .map_err(LibraryRepositoryError::DbError)
+        })
+        .boxed()
+    }
+
+    async fn get_manga_from_user_library_stream(
+        &self,
+        user_id: i64,
+    ) -> Pin<Box<dyn Stream<Item = Result<Manga, LibraryRepositoryError>>>> {
+        sqlx::query(
+            "SELECT DISTINCT manga.*, MAX(chapter.uploaded) as last_uploaded FROM manga \
+                JOIN user_library ON manga.id = user_library.manga_id \
+                JOIN chapter ON manga.id = chapter.manga_id \
+                WHERE user_library.user_id = ?
+                GROUP by manga.id",
+        )
+        .bind(user_id)
+        .fetch(&self.pool as &SqlitePool)
+        .map(|row| {
+            row.map(|row| Manga {
+                id: row.get(0),
+                source_id: row.get(1),
+                title: row.get(2),
+                author: serde_json::from_str(row.get::<String, _>(3).as_str()).unwrap_or_default(),
+                genre: serde_json::from_str(row.get::<String, _>(4).as_str()).unwrap_or_default(),
+                status: row.get(5),
+                description: row.get(6),
+                path: row.get(7),
+                cover_url: row.get(8),
+                date_added: row.get(9),
+                last_uploaded_at: row.get(10),
+            })
+            .map_err(LibraryRepositoryError::DbError)
+        })
+        .boxed()
     }
 
     async fn get_manga_from_library(

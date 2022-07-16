@@ -40,6 +40,16 @@ impl Updates {
         })
     }
 
+    fn refresh_chapters(updates: Rc<Self>) {
+        updates.loader.load(async move {
+            snackbar::show(format!("Updating chapters..."));
+            if let Err(e) = query::refresh_chapters(None, false).await {
+                snackbar::show(format!("failed to refresh chapters: {e}"));
+            }
+        });
+        
+    }
+
     pub fn fetch_recent_chapters(updates: Rc<Self>) {
         updates.spinner.set_active(true);
         updates.loader.load(clone!(updates => async move {
@@ -63,11 +73,12 @@ impl Updates {
                     snackbar::show(format!("{}", err));
                 }
             }
+            
             updates.spinner.set_active(false);
         }));
     }
 
-    pub fn render_topbar() -> Dom {
+    pub fn render_topbar(updates: Rc<Self>) -> Dom {
         html!("div", {
             .class("topbar")
             .class_signal("tauri", is_tauri_signal())
@@ -78,6 +89,33 @@ impl Updates {
                     .text("Updates")
                 }),
                 html!("div", {
+                    .style("min-width", "2.25rem")
+                    .children(&mut [
+                        html!("button", {
+                            .attr("id", "refresh-btn")
+                            .style("padding", "0.25rem")
+                            .children(&mut [
+                                svg!("svg", {
+                                    .attr("xmlns", "http://www.w3.org/2000/svg")
+                                    .attr("fill", "none")
+                                    .attr("viewBox", "0 0 24 24")
+                                    .attr("stroke", "currentColor")
+                                    .class("icon")
+                                    .children(&mut [
+                                        svg!("path", {
+                                            .attr("stroke-linecap", "round")
+                                            .attr("stroke-linejoin", "round")
+                                            .attr("stroke-width", "2")
+                                            .attr("d", "M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15")
+                                        })
+                                    ])
+                                }),
+                            ])
+                            .event(clone!(updates => move |_: events::Click| {
+                                Self::refresh_chapters(updates.clone());
+                            }))
+                        }),
+                    ])
                 })
             ])
         })
@@ -173,7 +211,7 @@ impl Updates {
         html! {"div", {
             .class("main")
             .children(&mut [
-                Self::render_topbar(),
+                Self::render_topbar(updates.clone()),
                 html!("div", {
                     .class("topbar-spacing")
                 }),

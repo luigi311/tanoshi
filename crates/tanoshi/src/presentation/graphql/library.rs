@@ -4,7 +4,9 @@ use super::{
     recent::{RecentChapter, RecentUpdate},
 };
 use crate::{
-    application::worker::updates::ChapterUpdateReceiver,
+    application::worker::updates::{
+        ChapterUpdateCommand, ChapterUpdateCommandSender, ChapterUpdateReceiver,
+    },
     domain::services::{
         chapter::ChapterService, history::HistoryService, library::LibraryService,
         tracker::TrackerService,
@@ -24,6 +26,7 @@ use async_graphql::{
 use async_graphql::{Context, Object, Result};
 use chrono::Utc;
 
+use flume::TrySendError;
 use futures::{Stream, StreamExt};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 
@@ -35,7 +38,6 @@ impl LibraryRoot {
     async fn library(
         &self,
         ctx: &Context<'_>,
-        #[graphql(desc = "refresh data from source", default = false)] _refresh: bool,
         #[graphql(desc = "category id")] category_id: Option<i64>,
     ) -> Result<Vec<Manga>> {
         let claims = ctx
@@ -319,6 +321,41 @@ impl LibraryMutationRoot {
 
         Ok(1)
     }
+
+    async fn refresh_chapters(
+        &self,
+        ctx: &Context<'_>,
+        #[graphql(desc = "manga id")] manga_id: Option<i64>,
+        #[graphql(desc = "wait for updates", default = false)] wait: bool,
+    ) -> Result<bool> {
+        let claims = ctx
+            .data::<Claims>()
+            .map_err(|_| "token not exists, please login")?;
+
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        let command = if let Some(manga_id) = manga_id {
+            ChapterUpdateCommand::Manga(manga_id, tx)
+        } else {
+            ChapterUpdateCommand::Library(claims.sub, tx)
+        };
+
+        if let Err(e) = ctx.data::<ChapterUpdateCommandSender>()?.try_send(command) {
+            match e {
+                TrySendError::Full(_) => {
+                    return Err("chapter updates is ongoing, try again later".into());
+                }
+                TrySendError::Disconnected(_) => {
+                    return Err("chapter updates thread is closed".into());
+                }
+            }
+        }
+
+        if wait {
+            rx.await??;
+        }
+
+        Ok(true)
+    }
 }
 
 #[derive(Default)]
@@ -330,7 +367,7 @@ impl LibrarySubscriptionRoot {
         &self,
         ctx: &Context<'_>,
     ) -> Result<impl Stream<Item = RecentUpdate>> {
-        // TODO: authorization header doesn't work with websocker. find another solution
+        // TODO: authorization header doesn't work with websocket. find another solution
         let user_id = ctx
             .data::<Claims>()
             .map_err(|_| "token not exists, please login")?

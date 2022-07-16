@@ -129,15 +129,16 @@ async fn main() -> Result<(), anyhow::Error> {
 
     let notifier = notifier_builder.finish();
 
-    let (chapter_update_receiver, update_worker_handle) = worker::updates::start(
-        config.update_interval,
-        library_repo.clone(),
-        chapter_repo.clone(),
-        extension_manager.clone(),
-        notifier.clone(),
-        config.extension_repository.clone(),
-        &config.cache_path,
-    );
+    let (chapter_update_receiver, chapter_update_command_tx, update_worker_handle) =
+        worker::updates::start(
+            config.update_interval,
+            library_repo.clone(),
+            chapter_repo.clone(),
+            extension_manager.clone(),
+            notifier.clone(),
+            config.extension_repository.clone(),
+            &config.cache_path,
+        );
 
     let (download_sender, download_receiver) = worker::downloads::channel();
 
@@ -215,6 +216,7 @@ async fn main() -> Result<(), anyhow::Error> {
         .with_download_tx(download_sender)
         .with_notifier(notifier)
         .with_chapter_update_receiver(chapter_update_receiver)
+        .with_chapter_update_command_tx(chapter_update_command_tx)
         .with_loader(loader);
 
     if config.enable_playground {

@@ -937,8 +937,11 @@ $width in $continuous-width {
     bottom: 0;
     padding-left: 0.5rem;
     padding-right: 0.5rem;
+    margin-left: auto;
+    margin-right: auto;
     margin-bottom: 4.75rem;
     z-index: 50;
+    max-width: 1024px;
 
     div {
         padding: 0.5rem;

@@ -113,7 +113,13 @@ impl Manga {
 
     fn fetch_detail(manga: Rc<Self>, refresh: bool) {
         manga.loader.load(clone!(manga => async move {
-            match query::fetch_manga_detail(manga.id.get(), refresh).await {
+            if refresh {
+                if let Err(e) = query::refresh_chapters(Some(manga.id.get()), true).await {
+                    snackbar::show(format!("failed to refresh chapter: {e}"));
+                }
+            }
+
+            match query::fetch_manga_detail(manga.id.get(), false).await {
                 Ok(result) => {
                     manga.source_name.set(result.source.name);
                     manga.title.set_neq(Some(result.title));
@@ -401,6 +407,7 @@ impl Manga {
                     .style("min-width", "4.5rem")
                     .children(&mut [
                         html!("button", {
+                            .attr("id", "refresh-btn")
                             .style("padding", "0.25rem")
                             .children(&mut [
                                 svg!("svg", {

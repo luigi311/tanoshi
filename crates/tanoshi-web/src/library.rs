@@ -52,7 +52,7 @@ impl Library {
                 match query::fetch_category_detail(category_id).await {
                     Ok(res) => {
                         library.category_name.set(res.name);
-                        Self::fetch_libraries(library.clone(), false);
+                        Self::fetch_libraries(library.clone());
                     }
                     Err(e) => {
                         snackbar::show(format!("failed to fetch library {}", e));
@@ -65,7 +65,7 @@ impl Library {
                 match query::fetch_categories().await {
                     Ok(res) => {
                         library.categories_available.set(res.len() > 1);
-                        Self::fetch_libraries(library.clone(), false);
+                        Self::fetch_libraries(library.clone());
                     }
                     Err(e) => {
                         snackbar::show(format!("failed to fetch categories {}", e));
@@ -76,11 +76,11 @@ impl Library {
         }
     }
 
-    pub fn fetch_libraries(library: Rc<Self>, refresh: bool) {
+    pub fn fetch_libraries(library: Rc<Self>) {
         let category_id = library.category_id;
         library.spinner.set_active(true);
         library.loader.load(clone!(library => async move {
-            match query::fetch_manga_from_favorite(refresh, category_id).await {
+            match query::fetch_manga_from_favorite(category_id).await {
                 Ok(mut covers) => {
                     let sort = library.library_settings.sort.get();
                     covers.sort_by(|a, b| match sort {

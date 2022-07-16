@@ -75,7 +75,7 @@ compress-tools = { git = "https://github.com/faldez/compress-tools-rs", features
     "static",
 ] }
 zip = { version = "0.6", default-features = false }
-phf = { version = "^0.10", features = ["macros"] }
+phf = { version = "0.11.0", features = ["macros"] }
 human-sort = "^0.2.2"
 aes = "0.8"
 cbc = "0.1"
@@ -86,3 +86,4 @@ tauri = { version = "1", default-features = false, features = [
 ], optional = true }
 itertools = "0.10.2"
 rayon = "1.5"
+flume = "0.10.13"
