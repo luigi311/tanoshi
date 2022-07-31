@@ -37,7 +37,7 @@ impl Profile {
             gotify_token: Mutable::new(None),
             myanimelist_status: Mutable::new(false),
             anilist_status: Mutable::new(false),
-            notification_cb: Closure::new(|value| {
+            notification_cb: Closure::wrap(Box::new(|value| {
                 let permission = NotificationPermission::from_js_value(&value)
                     .unwrap_or(NotificationPermission::Default);
 
@@ -46,7 +46,7 @@ impl Profile {
                 if matches!(permission, NotificationPermission::Granted) {
                     let _notification = Notification::new("Notification enabled");
                 }
-            }),
+            })),
             loader: AsyncLoader::new(),
         })
     }
