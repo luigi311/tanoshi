@@ -67,6 +67,10 @@ where
         Ok(self.repo.insert_user(user).await?)
     }
 
+    pub async fn delete_user(&self, user_id: i64) -> Result<(), UserError> {
+        Ok(self.repo.delete_user(user_id).await?)
+    }
+
     pub async fn verify_password(&self, username: &str, password: &str) -> Result<(), UserError> {
         let user = self.repo.get_user_by_username(username.to_owned()).await?;
 

@@ -156,6 +156,10 @@ type MutationRoot {
     # role
     isAdmin: Boolean! = false
   ): Int!
+  deleteUser(
+    # user id
+    userId: Int!
+  ): Int!
   changePassword(
     # old password
     oldPassword: String!

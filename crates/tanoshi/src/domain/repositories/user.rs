@@ -36,4 +36,6 @@ pub trait UserRepository: Send + Sync {
     async fn get_user_by_username(&self, username: String) -> Result<User, UserRepositoryError>;
 
     async fn update_user_setting(&self, user: &User) -> Result<u64, UserRepositoryError>;
+
+    async fn delete_user(&self, id: i64) -> Result<(), UserRepositoryError>;
 }

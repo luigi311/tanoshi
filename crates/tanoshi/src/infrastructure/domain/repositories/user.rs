@@ -24,34 +24,25 @@ impl UserRepositoryImpl {
 #[async_trait]
 impl UserRepository for UserRepositoryImpl {
     async fn insert_user(&self, user: User) -> Result<i64, UserRepositoryError> {
-        let row_id = sqlx::query(
-            r#"INSERT INTO user(
-                username,
-                password,
-                is_admin
-            ) VALUES (?, ?, ?)"#,
-        )
-        .bind(&user.username)
-        .bind(&user.password)
-        .bind(user.is_admin)
-        .execute(&self.pool as &SqlitePool)
-        .await?
-        .last_insert_rowid();
+        let row_id =
+            sqlx::query(r#"INSERT INTO user(username, password,is_admin) VALUES (?, ?, ?)"#)
+                .bind(&user.username)
+                .bind(&user.password)
+                .bind(user.is_admin)
+                .execute(&self.pool as &SqlitePool)
+                .await?
+                .last_insert_rowid();
 
         Ok(row_id)
     }
 
     async fn update_password(&self, id: i64, password: String) -> Result<u64, UserRepositoryError> {
-        let row_id = sqlx::query(
-            r#"UPDATE user
-                SET password = ?
-                WHERE id = ?"#,
-        )
-        .bind(&password)
-        .bind(id)
-        .execute(&self.pool as &SqlitePool)
-        .await?
-        .rows_affected();
+        let row_id = sqlx::query(r#"UPDATE user SET password = ? WHERE id = ?"#)
+            .bind(&password)
+            .bind(id)
+            .execute(&self.pool as &SqlitePool)
+            .await?
+            .rows_affected();
 
         Ok(row_id)
     }
@@ -62,16 +53,12 @@ impl UserRepository for UserRepositoryImpl {
         id: i64,
         is_admin: bool,
     ) -> Result<u64, UserRepositoryError> {
-        let row_id = sqlx::query(
-            r#"UPDATE user
-                SET is_admin = ?
-                WHERE id = ?"#,
-        )
-        .bind(&is_admin)
-        .bind(id)
-        .execute(&self.pool as &SqlitePool)
-        .await?
-        .rows_affected();
+        let row_id = sqlx::query(r#"UPDATE user SET is_admin = ? WHERE id = ?"#)
+            .bind(&is_admin)
+            .bind(id)
+            .execute(&self.pool as &SqlitePool)
+            .await?
+            .rows_affected();
 
         Ok(row_id)
     }
@@ -181,9 +168,7 @@ impl UserRepository for UserRepositoryImpl {
         }
 
         let query = format!(
-            r#"UPDATE user SET
-                {}
-                WHERE id = ?"#,
+            r#"UPDATE user SET {} WHERE id = ?"#,
             column_to_update.join(",")
         );
 
@@ -193,5 +178,14 @@ impl UserRepository for UserRepositoryImpl {
             .rows_affected();
 
         Ok(rows_affected)
+    }
+
+    async fn delete_user(&self, id: i64) -> Result<(), UserRepositoryError> {
+        sqlx::query(r#"DELETE FROM user WHERE id = ?"#)
+            .bind(id)
+            .execute(&self.pool as &SqlitePool)
+            .await?;
+
+        Ok(())
     }
 }

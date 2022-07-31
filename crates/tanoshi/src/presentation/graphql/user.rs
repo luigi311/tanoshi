@@ -184,6 +184,19 @@ impl UserMutationRoot {
         Ok(user_svc.create_user(&username, &password, is_admin).await?)
     }
 
+    #[graphql(guard = "AdminGuard::new()")]
+    async fn delete_user(
+        &self,
+        ctx: &Context<'_>,
+        #[graphql(desc = "user id")] user_id: i64,
+    ) -> Result<i64> {
+        ctx.data::<UserService<UserRepositoryImpl>>()?
+            .delete_user(user_id)
+            .await?;
+
+        Ok(1)
+    }
+
     async fn change_password(
         &self,
         ctx: &Context<'_>,

@@ -242,6 +242,14 @@ pub struct UserRegister;
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "graphql/schema.graphql",
+    query_path = "graphql/delete_user.graphql",
+    response_derives = "Debug"
+)]
+pub struct DeleteUser;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/schema.graphql",
     query_path = "graphql/change_password.graphql",
     response_derives = "Debug"
 )]

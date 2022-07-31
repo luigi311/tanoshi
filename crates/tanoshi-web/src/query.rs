@@ -349,6 +349,12 @@ pub async fn user_register(
     Ok(())
 }
 
+pub async fn delete_user(user_id: i64) -> Result<(), Box<dyn Error>> {
+    let var = delete_user::Variables { user_id };
+    let _ = post_graphql::<DeleteUser>(var).await?;
+    Ok(())
+}
+
 pub async fn change_password(
     old_password: String,
     new_password: String,

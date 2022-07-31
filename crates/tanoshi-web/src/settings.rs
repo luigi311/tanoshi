@@ -20,8 +20,15 @@ use crate::{
 };
 use dominator::svg;
 use dominator::{clone, html, link, routing, Dom};
-use futures_signals::{signal::{Mutable, SignalExt}, signal_vec::{MutableSignalVec, MutableVec}, signal_vec::SignalVecExt};
+use futures_signals::{signal::{Mutable, SignalExt, self}, signal_vec::{MutableSignalVec, MutableVec}, signal_vec::SignalVecExt};
 use std::rc::Rc;
+
+
+#[derive(Debug, Clone, Copy)]
+enum State {
+    Null,
+    DeleteUserConfirm(i64)
+}
 
 pub struct Settings {
     server_version: String,
@@ -37,6 +44,7 @@ pub struct Settings {
     category_settings: Rc<SettingsCategories>,
     loader: Rc<AsyncLoader>,
     spinner: Rc<Spinner>,
+    state: Mutable<State>
 }
 
 impl Settings {
@@ -60,6 +68,7 @@ impl Settings {
             category_settings: SettingsCategories::new(),
             loader,
             spinner,
+            state: Mutable::new(State::Null)
         })
     }
 
@@ -118,6 +127,21 @@ impl Settings {
         }));
     }
 
+    fn delete_user(settings: Rc<Self>, user_id: i64) {
+        settings.loader.load(clone!(settings => async move {
+            match query::delete_user(user_id).await {
+                Ok(_) => {
+                    Self::fetch_user_list(settings.clone());
+                },
+                Err(err) => {
+                    snackbar::show(format!("{}", err));
+                }
+            }
+
+            settings.state.set(State::Null);
+        }));
+    }
+
     fn fetch_me(settings: Rc<Self>) {
         settings.loader.load(clone!(settings => async move {
             match query::fetch_me().await {
@@ -135,6 +159,7 @@ impl Settings {
             }
         }));
     }
+
     fn install_source(settings: Rc<Self>, id: i64) {
         settings.spinner.set_active(true);
         settings.loader.load(clone!(settings => async move {
@@ -267,9 +292,9 @@ impl Settings {
                     })
                 }),
                 html!("span", {
+                    .class("title")
                     .style("overflow", "hidden")
                     .style("text-overflow", "ellipsis")
-                    .class("title")
                     .text_signal(settings.page.signal_cloned().map(|x|
                         match x {
                             SettingCategory::None => "More",
@@ -288,13 +313,30 @@ impl Settings {
                     ))
                 }),
                 html!("button", {
-                    .style("justify-self", "end")
-                    .style("min-width", "5.5rem")
                     .child_signal(settings.page.signal_cloned().map(move |page| {
                         match page {
                             SettingCategory::Users => {
-                                Some(link!(Route::Settings(SettingCategory::CreateUser).url(), {
-                                    .text("Create User")
+                                Some(html!("buttom", {
+                                    .event(|_:events::Click| {
+                                        routing::go_to_url(&Route::Settings(SettingCategory::CreateUser).url());
+                                    })
+                                    .children(&mut [
+                                        svg!("svg", {
+                                            .class("icon")
+                                            .attr("xmlns", "http://www.w3.org/2000/svg")
+                                            .attr("fill", "none")
+                                            .attr("viewBox", "0 0 24 24")
+                                            .attr("stroke", "currentColor")
+                                            .children(&mut [
+                                                svg!("path", {
+                                                    .attr("stroke-linecap", "round")
+                                                    .attr("stroke-linejoin", "round")
+                                                    .attr("stroke-width", "2")
+                                                    .attr("d", "M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z")
+                                                })
+                                            ])
+                                        })
+                                    ])
                                 }))
                             }
                             SettingCategory::Category => {
@@ -438,21 +480,112 @@ impl Settings {
         html!("ul", {
             .class(["list", "group"])
             .visible_signal(settings.me.signal_cloned().map(|me| me.map(|me| me.is_admin).unwrap_or(false)))
-            .children_signal_vec(settings.users.signal_vec_cloned().map(|x|
+            .children_signal_vec(settings.users.signal_vec_cloned().map(clone!(settings => move |user|
                 html!("li", {
                     .class("list-item")
                     .style("display", "flex")
                     .style("justify-content", "space-between")
                     .children(&mut [
-                        html!("span", {
-                            .text(&x.username)
+                        html!("div", {
+                            .style("display", "flex")
+                            .style("align-items", "center")
+                            .style("margin-right", "0.5rem")
+                            .children(&mut [
+                                html!("span", {
+                                    .style("margin", "0.5rem")
+                                    .text(&user.username)
+                                }),
+                            ])
+                            .child_signal(signal::always(user.is_admin).map(|is_admin| is_admin.then(|| html!("div", {
+                                .style("display", "flex")
+                                .style("align-items", "center")
+                                .style("margin-right", "0.5rem")
+                                .children(&mut [
+                                    svg!("svg", {
+                                        .attr("xmlns", "http://www.w3.org/2000/svg")
+                                        .attr("fill", "currentColor")
+                                        .attr("viewBox", "0 0 20 20")
+                                        .class("icon-sm")
+                                        .children(&mut [
+                                            svg!("path", {
+                                                .attr("fill-rule", "evenodd")
+                                                .attr("d", "M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z")
+                                                .attr("clip-rule", "evenodd")
+                                            })
+                                        ])
+                                    })
+                                ])
+                            }))))
+                            .child_signal(signal::always(user.is_admin).map(|is_admin| is_admin.then(|| html!("div", {
+                                .style("display", "flex")
+                                .style("align-items", "center")
+                                .style("margin-right", "0.5rem")
+                                .children(&mut [
+                                    svg!("svg", {
+                                        .attr("xmlns", "http://www.w3.org/2000/svg")
+                                        .attr("fill", "currentColor")
+                                        .attr("viewBox", "0 0 20 20")
+                                        .class("icon-sm")
+                                        .children(&mut [
+                                            svg!("path", {
+                                                .attr("fill-rule", "evenodd")
+                                                .attr("d", "M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z")
+                                                .attr("clip-rule", "evenodd")
+                                            })
+                                        ])
+                                    })
+                                ])
+                            }))))
                         }),
-                        html!("span", {
-                            .text(if x.is_admin { "Admin" } else { "" })
-                        })
                     ])
+                    .child_signal(settings.state.signal().map(clone!(settings, user => move |state| match state {
+                        State::DeleteUserConfirm(user_id) if user_id == user.id  => Some(html!("div", {
+                            .style("display", "flex")
+                            .style("align-items", "center")
+                            .children(&mut [
+                                html!("button", {
+                                    .event(clone!(settings, user => move |_:events::Click| {
+                                        Self::delete_user(settings.clone(), user.id);
+                                    }))
+                                    .text("Confirm")
+                                }),
+                                html!("span", {
+                                    .text("/")
+                                }),
+                                html!("button", {
+                                    .event(clone!(settings => move |_:events::Click| {
+                                        settings.state.set(State::Null);
+                                    }))
+                                    .text("Cancel")
+                                }),
+                            ])
+                        })),
+                        _ if settings.me.get_cloned().map(|me| me.id != user.id).unwrap_or(true) => Some(html!("button", {
+                                .attr("id", "remove-user")
+                                .children(&mut [
+                                    svg!("svg", {
+                                        .attr("xmlns", "http://www.w3.org/2000/svg")
+                                        .attr("fill", "currentColor")
+                                        .attr("viewBox", "0 0 20 20")
+                                        .class("icon-sm")
+                                        .children(&mut [
+                                            svg!("path", {
+                                                .attr("fill-rule", "evenodd")
+                                                .attr("d", "M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z")
+                                                .attr("clip-rule", "evenodd")
+                                            })
+                                        ])
+                                    }),
+                                ])
+                                .event(clone!(settings, user => move |_:events::Click| {
+                                    settings.state.set(State::DeleteUserConfirm(user.id));
+                                }))
+                            })
+                        ),
+                        _ => None
+                    })))
                 })
-            ))
+            )))
         })
     }
 
