@@ -1,11 +1,14 @@
 use crate::{
     domain::{
-        entities::{chapter::Chapter, download::DownloadQueue},
+        entities::{chapter::Chapter, download::DownloadQueue, manga::Manga},
         repositories::{
             chapter::ChapterRepository, download::DownloadRepository, manga::MangaRepository,
         },
     },
-    infrastructure::{domain::repositories::user::UserRepositoryImpl, notification::Notification},
+    infrastructure::{
+        domain::repositories::user::UserRepositoryImpl, local::LocalMangaInfo,
+        notification::Notification,
+    },
 };
 use anyhow::{anyhow, Result};
 use chrono::Utc;
@@ -41,7 +44,7 @@ where
     D: DownloadRepository + 'static,
     M: MangaRepository + 'static,
 {
-    dir: PathBuf,
+    download_dir: PathBuf,
     client: reqwest::Client,
     chapter_repo: C,
     manga_repo: M,
@@ -73,7 +76,7 @@ where
         auto_download_chapter: bool,
     ) -> Self {
         Self {
-            dir: PathBuf::new().join(dir),
+            download_dir: PathBuf::new().join(dir),
             client: reqwest::ClientBuilder::new().build().unwrap(),
             chapter_repo,
             manga_repo,
@@ -107,6 +110,18 @@ where
             .await?;
 
         let source = self.ext.get_source_info(manga.source_id)?;
+        let source_name = source
+            .name
+            .replace(&['\\', '/', ':', '*', '?', '\"', '<', '>', '|'][..], "");
+        let manga_title = manga
+            .title
+            .replace(&['\\', '/', ':', '*', '?', '\"', '<', '>', '|'][..], "");
+        let chapter_title = format!("{} - {}", chapter.number, chapter.title)
+            .replace(&['\\', '/', ':', '*', '?', '\"', '<', '>', '|'][..], "");
+
+        let manga_path = self.download_dir.join(&source_name).join(&manga_title);
+
+        self.save_manga_info_if_not_exists(&manga_path, &manga)?;
 
         let mut queue = vec![];
         let date_added = Utc::now().naive_utc();
@@ -114,11 +129,11 @@ where
             queue.push(DownloadQueue {
                 id: 0,
                 source_id: source.id,
-                source_name: source.name.to_string(),
+                source_name: source_name.clone(),
                 manga_id: manga.id,
-                manga_title: manga.title.clone(),
+                manga_title: manga_title.clone(),
                 chapter_id: chapter.id,
-                chapter_title: format!("{} - {}", chapter.number, chapter.title.clone()),
+                chapter_title: chapter_title.clone(),
                 rank: rank as _,
                 url: page.clone(),
                 priority,
@@ -132,7 +147,7 @@ where
     }
 
     async fn paused(&self) -> bool {
-        self.dir.join(".pause").exists()
+        self.download_dir.join(".pause").exists()
     }
 
     fn open_readable_zip_file<P: AsRef<Path>>(&self, archive_path: P) -> Result<ZipArchive<File>> {
@@ -160,8 +175,36 @@ where
         Err(anyhow!("cannot open or create new zip file"))
     }
 
+    fn save_manga_info_if_not_exists(&self, manga_path: &PathBuf, manga: &Manga) -> Result<()> {
+        let path = manga_path.join("details.json");
+        if path.exists() {
+            return Ok(());
+        }
+
+        info!("creating directory: {}", path.display());
+        std::fs::create_dir_all(&manga_path)?;
+
+        let manga_info = LocalMangaInfo {
+            title: Some(manga.title.clone()),
+            author: if manga.author.is_empty() {
+                None
+            } else {
+                Some(manga.author.clone())
+            },
+            genre: Some(manga.genre.clone()),
+            status: manga.status.clone(),
+            description: manga.description.clone(),
+            cover_path: None,
+        };
+
+        let mut file = std::fs::File::create(&path)?;
+        serde_json::to_writer_pretty(&mut file, &manga_info)?;
+
+        Ok(())
+    }
+
     async fn download(&mut self) -> Result<()> {
-        let mut queue = self
+        let queue = self
             .download_repo
             .get_single_download_queue()
             .await?
@@ -177,17 +220,10 @@ where
             .map(|s| s.to_string())
             .ok_or_else(|| anyhow!("no filename"))?;
 
-        queue.source_name = queue
-            .source_name
-            .replace(&['\\', '/', ':', '*', '?', '\"', '<', '>', '|'][..], "");
-        queue.manga_title = queue
-            .manga_title
-            .replace(&['\\', '/', ':', '*', '?', '\"', '<', '>', '|'][..], "");
-        queue.chapter_title = queue
-            .chapter_title
-            .replace(&['\\', '/', ':', '*', '?', '\"', '<', '>', '|'][..], "");
-
-        let manga_path = self.dir.join(&queue.source_name).join(&queue.manga_title);
+        let manga_path = self
+            .download_dir
+            .join(&queue.source_name)
+            .join(&queue.manga_title);
 
         let archive_path = manga_path.join(format!("{}.cbz", queue.chapter_title));
 
