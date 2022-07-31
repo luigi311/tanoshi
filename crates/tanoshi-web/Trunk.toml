@@ -7,4 +7,4 @@ backend = "http://localhost:3030/image"
 [tools]
 sass = "1.50.0"
 wasm_bindgen = "0.2.80"
-wasm_opt = "version_105"
+wasm_opt = "version_108"
