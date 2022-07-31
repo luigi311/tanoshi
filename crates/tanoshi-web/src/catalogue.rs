@@ -254,6 +254,7 @@ impl Catalogue {
                     }))
                 } else {
                     Some(html!("span", {
+                        .class("title")
                         .text_signal(catalogue.source_name.signal_cloned())
                     }))
                 }

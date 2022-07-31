@@ -55,7 +55,7 @@ impl LibraryList {
             .class_signal("tauri", is_tauri_signal())
             .children(&mut [
                 html!("span", {
-                    .style("margin", "auto")
+                    .class("title")
                     .text("Library")
                 })
             ])

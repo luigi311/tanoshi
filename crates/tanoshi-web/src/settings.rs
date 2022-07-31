@@ -269,6 +269,7 @@ impl Settings {
                 html!("span", {
                     .style("overflow", "hidden")
                     .style("text-overflow", "ellipsis")
+                    .class("title")
                     .text_signal(settings.page.signal_cloned().map(|x|
                         match x {
                             SettingCategory::None => "More",

@@ -301,6 +301,12 @@ input {
         color: var(--topbar-text-color);
     }
 
+    .title {
+        position: absolute;
+        left: 50%;
+        transform: translate(-50%);
+    }
+
     button,
     .button {
         background-color: inherit;

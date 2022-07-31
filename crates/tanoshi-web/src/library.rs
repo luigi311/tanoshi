@@ -121,38 +121,38 @@ impl Library {
             .class("topbar")
             .class_signal("tauri", is_tauri_signal())
             .child_signal(categories_link_signal.map(|(is_search, categories_available)|
-            (!is_search).then(|| if categories_available {
-                link!(Route::LibraryList.url(), {
-                    .class("button")
-                    .style("display", "flex")
-                    .style("align-items", "center")
-                    .children(&mut [
-                        svg!("svg", {
-                            .attr("xmlns", "http://www.w3.org/2000/svg")
-                            .attr("fill", "none")
-                            .attr("viewBox", "0 0 24 24")
-                            .attr("stroke", "currentColor")
-                            .class("icon")
-                            .children(&mut [
-                                svg!("path", {
-                                    .attr("stroke-linecap", "round")
-                                    .attr("stroke-linejoin", "round")
-                                    .attr("stroke-width", "2")
-                                    .attr("d", "M15 19l-7-7 7-7")
-                                })
-                            ])
-                        }),
-                        html!("span", {
-                            .text("Categories")
-                        })
-                    ])
+                (!is_search).then(|| if categories_available {
+                    link!(Route::LibraryList.url(), {
+                        .class("button")
+                        .style("display", "flex")
+                        .style("align-items", "center")
+                        .children(&mut [
+                            svg!("svg", {
+                                .attr("xmlns", "http://www.w3.org/2000/svg")
+                                .attr("fill", "none")
+                                .attr("viewBox", "0 0 24 24")
+                                .attr("stroke", "currentColor")
+                                .class("icon")
+                                .children(&mut [
+                                    svg!("path", {
+                                        .attr("stroke-linecap", "round")
+                                        .attr("stroke-linejoin", "round")
+                                        .attr("stroke-width", "2")
+                                        .attr("d", "M15 19l-7-7 7-7")
+                                    })
+                                ])
+                            }),
+                            html!("span", {
+                                .text("Categories")
+                            })
+                        ])
+                    })
+                } else {
+                    html!("div", {
+                        .style("min-width", "5rem")
+                    })
                 })
-            } else {
-                html!("div", {
-                    .style("min-width", "5rem")
-                })
-            })
-        ))
+            ))
             .child_signal(library.is_search.signal().map(clone!(library => move |is_search| {
                 if is_search {
                     Some(html!("input" => HtmlInputElement, {
@@ -172,6 +172,7 @@ impl Library {
                     }))
                 } else {
                     Some(html!("span", {
+                        .class("title")
                         .text_signal(library.category_name.signal_cloned())
                     }))
                 }

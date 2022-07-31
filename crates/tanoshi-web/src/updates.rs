@@ -86,6 +86,7 @@ impl Updates {
                 html!("div", {
                 }),
                 html!("span", {
+                    .class("title")
                     .text("Updates")
                 }),
                 html!("div", {

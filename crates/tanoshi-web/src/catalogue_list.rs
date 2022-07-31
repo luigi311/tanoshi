@@ -169,6 +169,7 @@ impl CatalogueList {
                     }))
                 } else {
                     Some(html!("span", {
+                        .class("title")
                         .text("Catalogue")
                     }))
                 }

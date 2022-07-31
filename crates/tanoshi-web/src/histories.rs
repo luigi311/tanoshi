@@ -77,6 +77,7 @@ impl Histories {
                 html!("div", {
                 }),
                 html!("span", {
+                    .class("title")
                     .text("History")
                 }),
                 html!("div", {
