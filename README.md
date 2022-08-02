@@ -11,7 +11,7 @@ Selfhosted web manga reader.
 - Web reader is PWA and optimized for standalone mode on mobile
 - Multi-user with admin and non admin role
 - Periodic chapter updates
-- Notification via Telegram and Pushover
+- Notification via Telegram, Pushover, and Gotify
 - Desktop version built with tauri
 - Advanced search for supported source
 - Auto download chapter on updates
