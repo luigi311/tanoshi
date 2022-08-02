@@ -450,7 +450,7 @@ impl Settings {
             .children(&mut [
                 html!("a", {
                     .class("list-item")
-                    .attr("href", "https://github.com/faldez/tanoshi/blob/master/CHANGELOG.md")
+                    .attr("href", "https://github.com/faldez/tanoshi/blob/main/CHANGELOG.md")
                     .attr("target", "_blank")
                     .text("Changelog")
                 }),

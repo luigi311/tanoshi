@@ -2,7 +2,7 @@ name: description
 on:
   push:
     branches:
-      - master
+      - main
     paths:
       - README.md
       - .github/workflows/description.yml

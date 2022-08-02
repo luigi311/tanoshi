@@ -8,9 +8,9 @@ on:
       - "!.github/screenshots/**"
   push:
     branches:
-      - master
+      - main
     paths:
-      - .github/workflows/master.yml
+      - .github/workflows/main.yml
       - Dockerfile
       - crates/**
       - "!**/*.md"
@@ -18,7 +18,7 @@ on:
 
 jobs:
   build-docker:
-    if: ${{ github.ref == 'refs/heads/master' }}
+    if: ${{ github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     environment: default
     steps:

@@ -1,4 +1,4 @@
-# ![icon](https://raw.githubusercontent.com/faldez/tanoshi/master/crates/tanoshi-web/static/icons/tanoshi.png) Tanoshi
+# ![icon](https://raw.githubusercontent.com/faldez/tanoshi/main/crates/tanoshi-web/static/icons/tanoshi.png) Tanoshi
 Selfhosted web manga reader.
 
 
