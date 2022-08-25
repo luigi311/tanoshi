@@ -119,7 +119,7 @@ impl Manga {
                 }
             }
 
-            match query::fetch_manga_detail(manga.id.get(), false).await {
+            match query::fetch_manga_detail(manga.id.get(), refresh).await {
                 Ok(result) => {
                     manga.source_name.set(result.source.name);
                     manga.title.set_neq(Some(result.title));
