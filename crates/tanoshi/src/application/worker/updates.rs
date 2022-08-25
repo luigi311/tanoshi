@@ -1,5 +1,6 @@
 use std::{
     collections::{HashMap, HashSet},
+    fmt::Display,
     path::{Path, PathBuf},
     str::FromStr,
 };
@@ -16,8 +17,7 @@ use crate::{
     domain::{
         entities::{chapter::Chapter, manga::Manga},
         repositories::{
-            chapter::ChapterRepository,
-            library::{LibraryRepository, LibraryRepositoryError},
+            chapter::ChapterRepository, library::LibraryRepository, manga::MangaRepository,
         },
     },
     infrastructure::{domain::repositories::user::UserRepositoryImpl, notification::Notification},
@@ -43,6 +43,18 @@ pub enum ChapterUpdateCommand {
     Library(i64, tokio::sync::oneshot::Sender<Result<(), anyhow::Error>>),
 }
 
+impl Display for ChapterUpdateCommand {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ChapterUpdateCommand::All(_) => write!(f, "ChapterUpdateCommand::All"),
+            ChapterUpdateCommand::Manga(id, _) => write!(f, "ChapterUpdateCommand::Manga({id})"),
+            ChapterUpdateCommand::Library(id, _) => {
+                write!(f, "ChapterUpdateCommand::Library({id})")
+            }
+        }
+    }
+}
+
 pub type ChapterUpdateCommandReceiver = flume::Receiver<ChapterUpdateCommand>;
 pub type ChapterUpdateCommandSender = flume::Sender<ChapterUpdateCommand>;
 
@@ -56,14 +68,16 @@ pub struct SourceInfo {
     pub nsfw: bool,
 }
 
-struct UpdatesWorker<C, L>
+struct UpdatesWorker<C, M, L>
 where
     C: ChapterRepository + 'static,
+    M: MangaRepository + 'static,
     L: LibraryRepository + 'static,
 {
     period: u64,
     client: reqwest::Client,
     library_repo: L,
+    manga_repo: M,
     chapter_repo: C,
     extensions: ExtensionManager,
     notifier: Notification<UserRepositoryImpl>,
@@ -73,14 +87,16 @@ where
     command_rx: ChapterUpdateCommandReceiver,
 }
 
-impl<C, L> UpdatesWorker<C, L>
+impl<C, M, L> UpdatesWorker<C, M, L>
 where
     C: ChapterRepository + 'static,
+    M: MangaRepository + 'static,
     L: LibraryRepository + 'static,
 {
     fn new<P: AsRef<Path>>(
         period: u64,
         library_repo: L,
+        manga_repo: M,
         chapter_repo: C,
         extensions: ExtensionManager,
         notifier: Notification<UserRepositoryImpl>,
@@ -103,6 +119,7 @@ where
                 period,
                 client: reqwest::Client::new(),
                 library_repo,
+                manga_repo,
                 chapter_repo,
                 extensions,
                 notifier,
@@ -115,80 +132,77 @@ where
         )
     }
 
-    fn start_chapter_update_queue_all(
-        &self,
-        tx: tokio::sync::mpsc::Sender<Result<Manga, LibraryRepositoryError>>,
-    ) {
+    fn start_chapter_update_queue_all(&self, tx: tokio::sync::mpsc::Sender<Manga>) {
         let library_repo = self.library_repo.clone();
 
-        let rt = tokio::runtime::Handle::current();
-        std::thread::spawn(move || {
-            rt.block_on(async move {
-                let mut manga_stream = library_repo.get_manga_from_all_users_library_stream().await;
+        tokio::spawn(async move {
+            let mut manga_stream = library_repo.get_manga_from_all_users_library_stream();
 
-                while let Some(manga) = manga_stream.next().await {
-                    if let Err(e) = tx.send(manga).await {
-                        error!("error send update: {e:?}");
-                        break;
+            while let Some(manga) = manga_stream.next().await {
+                match manga {
+                    Ok(manga) => {
+                        if let Err(e) = tx.send(manga).await {
+                            error!("error send update: {e:?}");
+                            break;
+                        }
+                    }
+                    Err(e) => {
+                        error!("error: {e:?}");
                     }
                 }
-            });
+            }
         });
     }
 
-    fn start_chapter_update_queue_by_manga_id(
+    async fn start_chapter_update_queue_by_manga_id(
         &self,
-        tx: tokio::sync::mpsc::Sender<Result<Manga, LibraryRepositoryError>>,
+        tx: tokio::sync::mpsc::Sender<Manga>,
         manga_id: i64,
     ) {
-        let library_repo = self.library_repo.clone();
-
-        let rt = tokio::runtime::Handle::current();
-        std::thread::spawn(move || {
-            rt.block_on(async move {
-                let mut manga_stream = library_repo
-                    .get_manga_from_all_users_library_by_manga_id_stream(manga_id)
-                    .await;
-
-                while let Some(manga) = manga_stream.next().await {
-                    if let Err(e) = tx.send(manga).await {
-                        error!("error send update: {e:?}");
-                        break;
-                    }
+        let manga = self.manga_repo.get_manga_by_id(manga_id).await;
+        match manga {
+            Ok(manga) => {
+                if let Err(e) = tx.send(manga).await {
+                    error!("error send update: {e:?}");
                 }
-            });
-        });
+            }
+            Err(e) => {
+                error!("error: {e:?}");
+            }
+        }
     }
 
     fn start_chapter_update_queue_by_user_id(
         &self,
-        tx: tokio::sync::mpsc::Sender<Result<Manga, LibraryRepositoryError>>,
+        tx: tokio::sync::mpsc::Sender<Manga>,
         user_id: i64,
     ) {
         let library_repo = self.library_repo.clone();
 
-        let rt = tokio::runtime::Handle::current();
-        std::thread::spawn(move || {
-            rt.block_on(async move {
-                let mut manga_stream = library_repo
-                    .get_manga_from_user_library_stream(user_id)
-                    .await;
+        tokio::spawn(async move {
+            let mut manga_stream = library_repo.get_manga_from_user_library_stream(user_id);
 
-                while let Some(manga) = manga_stream.next().await {
-                    if let Err(e) = tx.send(manga).await {
-                        error!("error send update: {e:?}");
-                        break;
+            while let Some(manga) = manga_stream.next().await {
+                match manga {
+                    Ok(manga) => {
+                        if let Err(e) = tx.send(manga).await {
+                            error!("error send update: {e:?}");
+                            break;
+                        }
+                    }
+                    Err(e) => {
+                        error!("error: {e:?}");
                     }
                 }
-            });
+            }
         });
     }
 
     async fn check_chapter_update(
         &self,
-        mut rx: tokio::sync::mpsc::Receiver<Result<Manga, LibraryRepositoryError>>,
+        mut rx: tokio::sync::mpsc::Receiver<Manga>,
     ) -> Result<(), anyhow::Error> {
-        while let Some(Ok(manga)) = rx.recv().await {
+        while let Some(manga) = rx.recv().await {
             debug!("Checking updates: {}", manga.title);
 
             let chapters: Vec<Chapter> = match self
@@ -403,6 +417,7 @@ where
         loop {
             tokio::select! {
                 Ok(cmd) = self.command_rx.recv_async() => {
+                    info!("received command: {cmd}");
                     let (manga_tx, manga_rx) = tokio::sync::mpsc::channel(1);
                     match cmd {
                         ChapterUpdateCommand::All(tx) => {
@@ -413,7 +428,7 @@ where
                             }
                         },
                         ChapterUpdateCommand::Manga(manga_id, tx) => {
-                            self.start_chapter_update_queue_by_manga_id(manga_tx, manga_id);
+                            self.start_chapter_update_queue_by_manga_id(manga_tx, manga_id).await;
                             let res = self.check_chapter_update(manga_rx).await;
                             if let Err(_) = tx.send(res) {
                                 info!("failed to send chapter update result");
@@ -466,9 +481,10 @@ where
     }
 }
 
-pub fn start<C, L, P>(
+pub fn start<C, M, L, P>(
     period: u64,
     library_repo: L,
+    manga_repo: M,
     chapter_repo: C,
     extensions: ExtensionManager,
     notifier: Notification<UserRepositoryImpl>,
@@ -481,6 +497,7 @@ pub fn start<C, L, P>(
 )
 where
     C: ChapterRepository + 'static,
+    M: MangaRepository + 'static,
     L: LibraryRepository + 'static,
     P: AsRef<Path>,
 {
@@ -488,6 +505,7 @@ where
     let (worker, command_tx) = UpdatesWorker::new(
         period,
         library_repo,
+        manga_repo,
         chapter_repo,
         extensions,
         notifier,

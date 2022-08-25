@@ -133,6 +133,7 @@ async fn main() -> Result<(), anyhow::Error> {
         worker::updates::start(
             config.update_interval,
             library_repo.clone(),
+            manga_repo.clone(),
             chapter_repo.clone(),
             extension_manager.clone(),
             notifier.clone(),

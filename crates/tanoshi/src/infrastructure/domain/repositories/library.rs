@@ -1,7 +1,7 @@
-use std::{collections::HashMap, pin::Pin};
+use std::collections::HashMap;
 
 use async_trait::async_trait;
-use futures::{Stream, StreamExt};
+use futures::{stream::BoxStream, StreamExt};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use sqlx::{Row, SqlitePool};
 
@@ -168,9 +168,9 @@ impl LibraryRepository for LibraryRepositoryImpl {
         Ok(users)
     }
 
-    async fn get_manga_from_all_users_library_stream(
+    fn get_manga_from_all_users_library_stream(
         &self,
-    ) -> Pin<Box<dyn Stream<Item = Result<Manga, LibraryRepositoryError>>>> {
+    ) -> BoxStream<Result<Manga, LibraryRepositoryError>> {
         sqlx::query(
             "SELECT DISTINCT manga.*, MAX(chapter.uploaded) as last_uploaded FROM manga \
                 JOIN user_library ON manga.id = user_library.manga_id \
@@ -197,10 +197,10 @@ impl LibraryRepository for LibraryRepositoryImpl {
         .boxed()
     }
 
-    async fn get_manga_from_all_users_library_by_manga_id_stream(
+    fn get_manga_from_all_users_library_by_manga_id_stream(
         &self,
         id: i64,
-    ) -> Pin<Box<dyn Stream<Item = Result<Manga, LibraryRepositoryError>>>> {
+    ) -> BoxStream<Result<Manga, LibraryRepositoryError>> {
         sqlx::query(
             "SELECT DISTINCT manga.*, MAX(chapter.uploaded) as last_uploaded FROM manga \
                 JOIN user_library ON manga.id = user_library.manga_id \
@@ -229,10 +229,10 @@ impl LibraryRepository for LibraryRepositoryImpl {
         .boxed()
     }
 
-    async fn get_manga_from_user_library_stream(
+    fn get_manga_from_user_library_stream(
         &self,
         user_id: i64,
-    ) -> Pin<Box<dyn Stream<Item = Result<Manga, LibraryRepositoryError>>>> {
+    ) -> BoxStream<Result<Manga, LibraryRepositoryError>> {
         sqlx::query(
             "SELECT DISTINCT manga.*, MAX(chapter.uploaded) as last_uploaded FROM manga \
                 JOIN user_library ON manga.id = user_library.manga_id \

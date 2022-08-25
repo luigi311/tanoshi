@@ -1,8 +1,8 @@
-use std::{collections::HashMap, pin::Pin};
+use std::collections::HashMap;
 
 use async_trait::async_trait;
 
-use futures::Stream;
+use futures::stream::BoxStream;
 use thiserror::Error;
 
 use crate::domain::entities::{
@@ -50,19 +50,19 @@ pub trait LibraryRepository: Clone + Send + Sync {
         manga_id: i64,
     ) -> Result<Vec<User>, LibraryRepositoryError>;
 
-    async fn get_manga_from_all_users_library_stream(
+    fn get_manga_from_all_users_library_stream(
         &self,
-    ) -> Pin<Box<dyn Stream<Item = Result<Manga, LibraryRepositoryError>>>>;
+    ) -> BoxStream<Result<Manga, LibraryRepositoryError>>;
 
-    async fn get_manga_from_all_users_library_by_manga_id_stream(
+    fn get_manga_from_all_users_library_by_manga_id_stream(
         &self,
         id: i64,
-    ) -> Pin<Box<dyn Stream<Item = Result<Manga, LibraryRepositoryError>>>>;
+    ) -> BoxStream<Result<Manga, LibraryRepositoryError>>;
 
-    async fn get_manga_from_user_library_stream(
+    fn get_manga_from_user_library_stream(
         &self,
         user_id: i64,
-    ) -> Pin<Box<dyn Stream<Item = Result<Manga, LibraryRepositoryError>>>>;
+    ) -> BoxStream<Result<Manga, LibraryRepositoryError>>;
 
     async fn get_manga_from_library_by_category_id(
         &self,
