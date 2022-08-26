@@ -114,6 +114,7 @@ impl<R: Runtime> Plugin<R> for Server {
       let (chapter_update_receiver, _, update_worker_handle) = worker::updates::start(
         config.update_interval,
         library_repo.clone(),
+        manga_repo.clone(),
         chapter_repo.clone(),
         extension_manager.clone(),
         notifier.clone(),
