@@ -404,7 +404,7 @@ impl Manga {
                     .text_signal(manga.title.signal_cloned().map(|x| x.unwrap_or_else(|| "".to_string())))
                 }),
                 html!("div", {
-                    .style("min-width", "4.5rem")
+                    .style("min-width", "5rem")
                     .children(&mut [
                         html!("button", {
                             .attr("id", "refresh-btn")
@@ -483,18 +483,12 @@ impl Manga {
                     .children(&mut [
                         html!("div", {
                             .child_signal(manga.cover_url.signal_cloned().map(|x| {
-                                if let Some(cover_url) = x {
-                                    Some(html!("img", {
-                                        .style("border-radius", "0.375rem")
-                                        .style("width", "8rem")
-                                        .style("height", "auto")
-                                        .attr("src", &proxied_image_url(&cover_url))
-                                    }))
-                                } else {
-                                    Some(html!("div", {
-                                        // .class(["w-32", "h-44", "rounded", "bg-gray-200", "dark:bg-gray-800"])
-                                    }))
-                                }
+                                x.map(|cover_url| html!("img", {
+                                    .style("border-radius", "0.375rem")
+                                    .style("width", "8rem")
+                                    .style("height", "auto")
+                                    .attr("src", &proxied_image_url(&cover_url))
+                                }))
                             }))
                         }),
                         html!("div", {
@@ -507,35 +501,14 @@ impl Manga {
                                     .style("font-size", "larger")
                                     .style("font-weight", "bold")
                                     .text_signal(manga.title.signal_cloned().map(|x| {
-                                        if let Some(title) = x {
-                                            // Some(html!("span", {
-                                            //     .class(["md:text-xl", "sm:text-md", "text-gray-900", "dark:text-gray-300", "mr-2"])
-                                            //     .text(title.as_str())
-                                            // }))
-                                            title
-                                        } else {
-                                            // Some(html!("div", {
-                                                // .class(["w-32", "md:w-48", "lg:w-64", "xl:w-72", "h-6", "mb-2", "rounded", "bg-gray-200", "dark:bg-gray-800"])
-                                            // }))
-                                            "".to_string()
-                                        }
+                                        x.unwrap_or_else(|| "".to_string())
                                     }))
                                 }),
                                 html!("div", {
                                     .style("margin-left", "0.5rem")
                                     .style("margin-bottom", "0.5rem")
-                                    .child_signal(manga.loader.is_loading().map(|x| {
-                                        if x {
-                                            Some(html!("div", {
-                                                // .class(["w-32", "md:w-48", "lg:w-64", "xl:w-72", "h-6", "mb-2", "rounded", "bg-gray-200", "dark:bg-gray-800"])
-                                            }))
-                                        } else {
-                                            None
-                                        }
-                                    }))
                                     .children_signal_vec(manga.author.signal_vec_cloned().map(|x| {
                                         html!("span", {
-                                            // .class(["md:text-lg", "sm:text-sm", "text-gray-900", "dark:text-gray-300", "mr-2"])
                                             .style("margin-right", "0.5rem")
                                             .text(&x)
                                         })
@@ -550,37 +523,12 @@ impl Manga {
                                         "".to_string()
                                     }))
                                     .class_signal("skeleton", manga.status.signal_cloned().map(|x| x.is_none()))
-                                    // .child_signal(manga.status.signal_cloned().map(|x|
-                                    //     if let Some(status) = x {
-                                    //         Some(html!("span", {
-                                    //             .class(["md:text-lg", "sm:text-sm", "text-gray-900", "dark:text-gray-300", "mr-2"])
-                                    //             .text(&status)
-                                    //         }))
-                                    //     } else {
-                                    //         Some(html!("div", {
-                                    //             .class(["w-32", "md:w-48", "lg:w-64", "xl:w-72", "h-6", "mb-2", "rounded", "bg-gray-200", "dark:bg-gray-800"])
-                                    //         }))
-                                    //     }
-                                    // ))
                                 }),
-
                                 html!("div", {
                                     .style("margin-left", "0.5rem")
                                     .style("margin-top", "0.5rem")
                                     .text_signal(manga.source_name.signal_cloned())
                                     .class_signal("skeleton", manga.source_name.signal_cloned().map(|x| x.is_empty()))
-                                    // .child_signal(manga.status.signal_cloned().map(|x|
-                                    //     if let Some(status) = x {
-                                    //         Some(html!("span", {
-                                    //             .class(["md:text-lg", "sm:text-sm", "text-gray-900", "dark:text-gray-300", "mr-2"])
-                                    //             .text(&status)
-                                    //         }))
-                                    //     } else {
-                                    //         Some(html!("div", {
-                                    //             .class(["w-32", "md:w-48", "lg:w-64", "xl:w-72", "h-6", "mb-2", "rounded", "bg-gray-200", "dark:bg-gray-800"])
-                                    //         }))
-                                    //     }
-                                    // ))
                                 }),
                             ])
                         })
@@ -706,7 +654,6 @@ impl Manga {
             .style("display", "flex")
             .style("flex-direction", "column")
             .style("margin", "0.5rem")
-            // .class_signal("animate-pulse", manga.loader.is_loading())
             .children(&mut [
                 html!("span", {
                     .class("header")
