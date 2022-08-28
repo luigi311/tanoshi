@@ -302,7 +302,6 @@ where
         loop {
             tokio::select! {
                 Ok(chapter) = self.chapter_update_receiver.recv() => {
-                    debug!("update: {chapter:?}");
                     if self.auto_download_chapter {
                         if let Err(e) = self.insert_to_queue(&chapter.chapter).await {
                             error!("failed to insert queue, reason {e}");

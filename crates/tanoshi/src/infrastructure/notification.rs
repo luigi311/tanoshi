@@ -244,20 +244,4 @@ where
 
         Ok(())
     }
-
-    #[cfg(feature = "desktop")]
-    pub fn send_desktop_notification(
-        &self,
-        title: Option<String>,
-        body: &str,
-    ) -> Result<(), anyhow::Error> {
-        use tauri::api::notification::Notification;
-
-        Notification::new("com.faldez.tanoshi")
-            .title(title.unwrap_or_else(|| "Notification".to_string()))
-            .body(body)
-            .show()?;
-
-        Ok(())
-    }
 }

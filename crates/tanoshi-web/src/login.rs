@@ -28,14 +28,15 @@ impl Login {
         })
     }
 
-    pub fn login(login: Rc<Self>) {
+    pub fn login(login: Rc<Self>, app: Rc<App>) {
         let username = login.username.get_cloned();
         let password = login.password.get_cloned();
         login.loader.load(async move {
             match query::user_login(username, password).await {
                 Ok(token) => {
                     local_storage().set("token", &token).unwrap_throw();
-                    routing::go_to_url(&Route::LibraryList.url());
+                    routing::go_to_url(&Route::Root.url());
+                    App::fetch_server_status(app);
                 }
                 Err(e) => {
                     snackbar::show(format!("Login failed: {}", e));
@@ -140,9 +141,9 @@ impl Login {
                                     if x.activated {
                                         Some(html!("button", {
                                             .text("Login")
-                                            .event_with_options(&EventOptions::preventable(), clone!(login => move |e: events::Click| {
+                                            .event_with_options(&EventOptions::preventable(), clone!(login, app => move |e: events::Click| {
                                                 e.prevent_default();
-                                                Self::login(login.clone());
+                                                Self::login(login.clone(), app.clone());
                                             }))
                                         }))
                                     } else {

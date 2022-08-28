@@ -5,7 +5,6 @@ pub mod rest;
 pub mod token;
 
 use anyhow::anyhow;
-use async_graphql_axum::GraphQLSubscription;
 use axum::{
     extract::Extension,
     routing::{get, post},
@@ -17,7 +16,7 @@ use tower_http::cors::{Any, CorsLayer};
 
 use self::{
     graphql::{
-        graphql_handler, graphql_playground,
+        graphql_handler, graphql_playground, graphql_ws_handler,
         schema::{DatabaseLoader, SchemaBuilder},
     },
     rest::{health::health_check, image::fetch_image},
@@ -290,7 +289,7 @@ impl Server {
         router = router
             .route("/graphql", svc)
             .route("/graphql/", post(graphql_handler))
-            .route("/ws", GraphQLSubscription::new(schema.clone()));
+            .route("/ws", get(graphql_ws_handler));
 
         router = router
             .layer(Extension(config))

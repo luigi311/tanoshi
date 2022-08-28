@@ -5,7 +5,9 @@ use futures_signals::{
     map_ref,
     signal::{Mutable, Signal, SignalExt},
 };
+use gloo_timers::future::TimeoutFuture;
 use wasm_bindgen::UnwrapThrowExt;
+use wasm_bindgen_futures::spawn_local;
 
 use crate::{
     catalogue::Catalogue,
@@ -71,6 +73,7 @@ impl App {
 
         html!("div", {
             .future(app.server_status.signal_cloned().for_each(|server_status| {
+                info!("server_status: {server_status:?}");
                 if let Some(server_status) = server_status {
                     if !server_status.activated {
                         info!("server inactivated, go to login");
@@ -78,6 +81,16 @@ impl App {
                         routing::go_to_url(&Route::Login.url());
                     } else if server_status.activated && !server_status.loggedin {
                         routing::go_to_url(&Route::Login.url());
+                    } else if server_status.loggedin {
+                        spawn_local(async {
+                            loop {
+                                info!("subscribing recent updates");
+                                let _ = query::subscribe_recent_updates().await;
+
+                                info!("reconnecting in 30s..");
+                                TimeoutFuture::new(30_000).await;
+                            }
+                        });
                     }
                 }
 

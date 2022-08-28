@@ -2,6 +2,10 @@
 backend = "http://localhost:3030/graphql"
 
 [[proxy]]
+backend = "ws://localhost:3030/ws"
+ws = true
+
+[[proxy]]
 backend = "http://localhost:3030/image"
 
 [tools]

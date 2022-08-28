@@ -146,6 +146,14 @@ pub struct FetchRecentUpdates;
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "graphql/schema.graphql",
+    query_path = "graphql/subscribe_chapter_updates.graphql",
+    response_derives = "Debug"
+)]
+pub struct SubscribeChapterUpdates;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/schema.graphql",
     query_path = "graphql/fetch_histories.graphql",
     response_derives = "Debug"
 )]

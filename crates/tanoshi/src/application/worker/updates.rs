@@ -367,14 +367,6 @@ where
             if let Err(e) = self.notifier.send_all_to_admins(None, &message).await {
                 error!("failed to send extension update to admin, {}", e);
             }
-
-            #[cfg(feature = "desktop")]
-            if let Err(e) = self
-                .notifier
-                .send_desktop_notification(Some("Update Available".to_string()), &message)
-            {
-                error!("failed to send notification, reason {}", e);
-            }
         } else {
             info!("no tanoshi update found");
         }

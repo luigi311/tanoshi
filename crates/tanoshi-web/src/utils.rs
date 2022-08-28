@@ -19,6 +19,7 @@ thread_local! {
     static HISTORY: History = WINDOW.with(|w| w.history().unwrap_throw());
     static IMAGE_PROXY_HOST: std::cell::RefCell<String> = std::cell::RefCell::new("/image".to_string());
     static GRAPHQL_HOST: std::cell::RefCell<String> = std::cell::RefCell::new("/graphql".to_string());
+    static GRAPHQL_WS_HOST: std::cell::RefCell<String> = std::cell::RefCell::new("/ws".to_string());
     static IS_TAURI: std::cell::RefCell<bool> = std::cell::RefCell::new(false);
 }
 
@@ -142,6 +143,8 @@ pub fn initialize_urls() {
     };
 
     GRAPHQL_HOST.with(|s| *s.borrow_mut() = format!("{}/graphql", graphql_host));
+    GRAPHQL_WS_HOST
+        .with(|s| *s.borrow_mut() = format!("{}/ws", graphql_host.replace("http", "ws")));
 }
 
 pub fn is_tauri() -> bool {
@@ -158,6 +161,10 @@ pub fn image_proxy_host() -> String {
 
 pub fn graphql_host() -> String {
     GRAPHQL_HOST.with(|v| v.borrow().clone())
+}
+
+pub fn graphql_ws_host() -> String {
+    GRAPHQL_WS_HOST.with(|v| v.borrow().clone())
 }
 
 pub fn apply_theme(theme: Option<String>) {

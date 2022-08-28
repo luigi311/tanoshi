@@ -21,7 +21,6 @@ bench = false
 default = ["embed", "server"]
 embed = ["rust-embed"]
 server = ["axum", "headers", "http", "async-graphql-axum", "tower-http"]
-desktop = ["tauri"]
 
 [dependencies]
 tanoshi-lib = { path = "../tanoshi-lib" }
@@ -81,9 +80,6 @@ aes = "0.8"
 cbc = "0.1"
 once_cell = "^1.8.0"
 async-trait = "^0.1.51"
-tauri = { version = "1", default-features = false, features = [
-    "notification-all",
-], optional = true }
 itertools = "0.10.2"
 rayon = "1.5"
 flume = "0.10.13"

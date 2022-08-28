@@ -111,16 +111,17 @@ impl<R: Runtime> Plugin<R> for Server {
 
       let notifier = notification::Builder::new(user_repo.clone()).finish();
 
-      let (chapter_update_receiver, _, update_worker_handle) = worker::updates::start(
-        config.update_interval,
-        library_repo.clone(),
-        manga_repo.clone(),
-        chapter_repo.clone(),
-        extension_manager.clone(),
-        notifier.clone(),
-        config.extension_repository.clone(),
-        &config.cache_path,
-      );
+      let (chapter_update_receiver, chapter_update_command_tx, update_worker_handle) =
+        worker::updates::start(
+          config.update_interval,
+          library_repo.clone(),
+          manga_repo.clone(),
+          chapter_repo.clone(),
+          extension_manager.clone(),
+          notifier.clone(),
+          config.extension_repository.clone(),
+          &config.cache_path,
+        );
 
       let (download_sender, download_receiver) = worker::downloads::channel();
 
@@ -180,6 +181,7 @@ impl<R: Runtime> Plugin<R> for Server {
         .with_download_tx(download_sender)
         .with_notifier(notifier)
         .with_chapter_update_receiver(chapter_update_receiver)
+        .with_chapter_update_command_tx(chapter_update_command_tx)
         .with_loader(loader);
 
       if config.enable_playground {
@@ -187,8 +189,12 @@ impl<R: Runtime> Plugin<R> for Server {
       }
 
       let server_fut = match server_builder.build() {
-        Ok(server) => server.serve(([127, 0, 0, 1], port)),
-        Err(_) => {
+        Ok(server) => {
+          info!("server listening on 127.0.0.1:{port}");
+          server.serve(([127, 0, 0, 1], port))
+        }
+        Err(e) => {
+          error!("failed to start server: {e:?}");
           return;
         }
       };

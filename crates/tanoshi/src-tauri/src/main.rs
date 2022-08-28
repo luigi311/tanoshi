@@ -3,11 +3,16 @@
   windows_subsystem = "windows"
 )]
 
-use crate::server::Server;
+#[macro_use]
+extern crate log;
 
 mod server;
 
+use crate::server::Server;
+
 fn main() {
+  env_logger::init();
+
   tauri::Builder::default()
     .plugin(Server::new())
     .run(tauri::generate_context!())

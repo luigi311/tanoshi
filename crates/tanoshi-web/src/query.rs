@@ -6,7 +6,7 @@ type NaiveDateTime = String;
 
 use crate::{
     common::{Cover, Input},
-    utils::{graphql_host, local_storage},
+    utils::{graphql_host, graphql_ws_host, local_storage},
 };
 
 use tanoshi_schema::*;
@@ -239,6 +239,50 @@ pub async fn fetch_recent_updates(
     };
     let data = post_graphql::<FetchRecentUpdates>(var).await?;
     Ok(data.recent_updates)
+}
+
+pub async fn subscribe_recent_updates() -> Result<(), Box<dyn Error>> {
+    use futures::StreamExt;
+    use graphql_ws_client::{graphql::StreamingOperation, GraphQLClientClientBuilder};
+    use serde::Serialize;
+    use web_sys::{Notification, NotificationOptions};
+
+    #[derive(Serialize)]
+    struct Payload {
+        #[serde(rename = "Authorization")]
+        token: String,
+    }
+
+    let (ws, wsio) =
+        ws_stream_wasm::WsMeta::connect(graphql_ws_host(), Some(vec!["graphql-transport-ws"]))
+            .await?;
+    let (sink, stream) = graphql_ws_client::wasm_websocket_combined_split(ws, wsio).await;
+
+    let token = local_storage()
+        .get("token")
+        .unwrap_throw()
+        .unwrap_or_else(|| "".to_string());
+    let mut client = GraphQLClientClientBuilder::new()
+        .payload(Payload {
+            token: format!("Bearer {token}"),
+        })
+        .build(stream, sink, async_executors::AsyncStd)
+        .await?;
+
+    let op: StreamingOperation<SubscribeChapterUpdates> =
+        StreamingOperation::new(subscribe_chapter_updates::Variables {});
+    let mut stream = client.streaming_operation(op).await?;
+    while let Some(Ok(item)) = stream.next().await {
+        if let Some(data) = item.data.map(|data| data.recent_updates_subscription) {
+            let mut opts = NotificationOptions::new();
+            opts.body(&data.chapter_title);
+
+            let _notification = Notification::new_with_options(&data.manga_title, &opts);
+        }
+    }
+
+    info!("subscribe_recent_updates");
+    Ok(())
 }
 
 pub async fn fetch_histories(

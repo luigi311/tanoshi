@@ -28,6 +28,13 @@ reqwest = { version = "^0.11", features = ["json"] }
 base64 = "0.13"
 gloo-timers = "^0.2.1"
 anyhow = "1"
+ws_stream_wasm = "0.7.3"
+async_executors = { version = "0.6", features = ["async_std"] }
+
+[dependencies.graphql-ws-client]
+rev = "7fc2522936a88d68571a62b6ef945d07798851ee"
+git = "https://github.com/obmarg/graphql-ws-client"
+features = ["client-graphql-client", "ws_stream_wasm"]
 
 [dependencies.web-sys]
 version = "^0.3"
