@@ -24,7 +24,7 @@ WORKDIR /app
 COPY --from=builder /app/target/release/tanoshi .
 RUN chmod +x tanoshi
 
-RUN apt update && apt upgrade -y && apt install --reinstall -y ca-certificates libssl1.1
+RUN apt update && apt upgrade -y && apt install --reinstall -y ca-certificates libssl3
 
 ENV PORT=80
 ENV TANOSHI_LOG=info
