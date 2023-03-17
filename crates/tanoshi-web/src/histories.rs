@@ -157,7 +157,7 @@ impl Histories {
         let timestamp = js_sys::Date::now();
         let secs: i64 = (timestamp / 1000.0).floor() as i64;
         let nanoes: u32 = (timestamp as u32 % 1000) * 1_000_000;
-        let today = chrono::NaiveDateTime::from_timestamp(secs, nanoes);
+        let today = chrono::NaiveDateTime::from_timestamp_opt(secs, nanoes).unwrap_or_default();
         let days = today.date().signed_duration_since(at.date()).num_days();
 
         if days == 0 {

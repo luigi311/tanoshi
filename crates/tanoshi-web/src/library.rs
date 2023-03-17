@@ -1,6 +1,5 @@
 use std::rc::Rc;
 
-use chrono::NaiveDateTime;
 use dominator::{clone, html, link, svg, with_node, Dom, EventOptions};
 use futures_signals::{
     map_ref,
@@ -87,13 +86,13 @@ impl Library {
                         LibrarySort { by: LibrarySortBy::Alphabetical, order: LibraryOrder::Asc } => a.title.partial_cmp(&b.title).unwrap_or(std::cmp::Ordering::Equal),
                         LibrarySort { by: LibrarySortBy::Alphabetical, order: LibraryOrder::Desc } => b.title.partial_cmp(&a.title).unwrap_or(std::cmp::Ordering::Equal),
                         LibrarySort { by: LibrarySortBy::RecentlyRead, order: LibraryOrder::Asc} => {
-                            let a = a.last_read_at.unwrap_or_else(|| NaiveDateTime::from_timestamp(0, 0));
-                            let b = b.last_read_at.unwrap_or_else(|| NaiveDateTime::from_timestamp(0, 0));
+                            let a = a.last_read_at.unwrap_or_default();
+                            let b = b.last_read_at.unwrap_or_default();
                             a.cmp(&b)
                         },
                         LibrarySort { by: LibrarySortBy::RecentlyRead, order: LibraryOrder::Desc} => {
-                            let a = a.last_read_at.unwrap_or_else(|| NaiveDateTime::from_timestamp(0, 0));
-                            let b = b.last_read_at.unwrap_or_else(|| NaiveDateTime::from_timestamp(0, 0));
+                            let a = a.last_read_at.unwrap_or_default();
+                            let b = b.last_read_at.unwrap_or_default();
                             b.cmp(&a)
                         },
                     });
@@ -298,13 +297,13 @@ impl Library {
                     LibrarySort { by: LibrarySortBy::Alphabetical, order: LibraryOrder::Asc } => a.title.partial_cmp(&b.title).unwrap_or(std::cmp::Ordering::Equal),
                     LibrarySort { by: LibrarySortBy::Alphabetical, order: LibraryOrder::Desc } => b.title.partial_cmp(&a.title).unwrap_or(std::cmp::Ordering::Equal),
                     LibrarySort { by: LibrarySortBy::RecentlyRead, order: LibraryOrder::Asc} => {
-                        let a = a.last_read_at.unwrap_or_else(|| NaiveDateTime::from_timestamp(0, 0));
-                        let b = b.last_read_at.unwrap_or_else(|| NaiveDateTime::from_timestamp(0, 0));
+                        let a = a.last_read_at.unwrap_or_default();
+                        let b = b.last_read_at.unwrap_or_default();
                         a.cmp(&b)
                     },
                     LibrarySort { by: LibrarySortBy::RecentlyRead, order: LibraryOrder::Desc} => {
-                        let a = a.last_read_at.unwrap_or_else(|| NaiveDateTime::from_timestamp(0, 0));
-                        let b = b.last_read_at.unwrap_or_else(|| NaiveDateTime::from_timestamp(0, 0));
+                        let a = a.last_read_at.unwrap_or_default();
+                        let b = b.last_read_at.unwrap_or_default();
                         b.cmp(&a)
                     },
                 });

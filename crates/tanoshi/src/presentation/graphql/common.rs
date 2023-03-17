@@ -1,4 +1,5 @@
 use async_graphql::{connection::CursorType, scalar, SimpleObject};
+use base64::{engine::general_purpose, Engine};
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 use tanoshi_lib::prelude::Input;
@@ -9,7 +10,7 @@ impl CursorType for Cursor {
     type Error = anyhow::Error;
 
     fn decode_cursor(s: &str) -> Result<Self, Self::Error> {
-        let cursor = String::from_utf8(base64::decode(s)?)?;
+        let cursor = String::from_utf8(general_purpose::STANDARD.decode(s)?)?;
         let decoded = cursor.split('#').collect::<Vec<&str>>();
         let timestamp = decoded[0].parse()?;
         let id = decoded[1].parse()?;
@@ -17,7 +18,7 @@ impl CursorType for Cursor {
     }
 
     fn encode_cursor(&self) -> String {
-        base64::encode(format!("{}#{}", self.0, self.1))
+        general_purpose::STANDARD.encode(format!("{}#{}", self.0, self.1))
     }
 }
 

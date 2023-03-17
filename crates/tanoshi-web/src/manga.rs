@@ -38,7 +38,7 @@ impl Default for Chapter {
             title: Default::default(),
             number: Default::default(),
             scanlator: Default::default(),
-            uploaded: NaiveDateTime::from_timestamp(0, 0),
+            uploaded: NaiveDateTime::default(),
             read_progress: Default::default(),
             selected: Default::default(),
             downloaded_path: Default::default(),
@@ -1112,13 +1112,13 @@ impl Manga {
                     ChapterSort { by: Sort::Number, order: Order::Asc} => a.number.partial_cmp(&b.number).unwrap_or(std::cmp::Ordering::Equal),
                     ChapterSort { by: Sort::Number, order: Order::Desc} => b.number.partial_cmp(&a.number).unwrap_or(std::cmp::Ordering::Equal),
                     ChapterSort { by: Sort::ReadAt, order: Order::Asc} => {
-                        let a = a.read_progress.as_ref().map(|progress| progress.at).unwrap_or_else(|| NaiveDateTime::from_timestamp(0, 0));
-                        let b = b.read_progress.as_ref().map(|progress| progress.at).unwrap_or_else(|| NaiveDateTime::from_timestamp(0, 0));
+                        let a = a.read_progress.as_ref().map(|progress| progress.at).unwrap_or_default();
+                        let b = b.read_progress.as_ref().map(|progress| progress.at).unwrap_or_default();
                         a.cmp(&b)
                     },
                     ChapterSort { by: Sort::ReadAt, order: Order::Desc} => {
-                        let a = a.read_progress.as_ref().map(|progress| progress.at).unwrap_or_else(|| NaiveDateTime::from_timestamp(0, 0));
-                        let b = b.read_progress.as_ref().map(|progress| progress.at).unwrap_or_else(|| NaiveDateTime::from_timestamp(0, 0));
+                        let a = a.read_progress.as_ref().map(|progress| progress.at).unwrap_or_default();
+                        let b = b.read_progress.as_ref().map(|progress| progress.at).unwrap_or_default();
                         b.cmp(&a)
                     }
                 });

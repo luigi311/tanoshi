@@ -5,13 +5,11 @@ use teloxide::{adaptors::DefaultParseMode, prelude::*, utils::command::BotComman
 use crate::Notifier;
 
 #[derive(Debug, Clone)]
-pub struct Telegram(DefaultParseMode<AutoSend<Bot>>);
+pub struct Telegram(DefaultParseMode<Bot>);
 
 impl Telegram {
     pub fn new(token: String) -> Self {
-        let bot = teloxide::Bot::new(token)
-            .auto_send()
-            .parse_mode(teloxide::types::ParseMode::Html);
+        let bot = teloxide::Bot::new(token).parse_mode(teloxide::types::ParseMode::Html);
         Self(bot)
     }
 
@@ -66,7 +64,10 @@ impl Notifier for Telegram {
 }
 
 #[derive(BotCommands, Clone)]
-#[command(rename = "lowercase", description = "These commands are supported:")]
+#[command(
+    rename_rule = "lowercase",
+    description = "These commands are supported:"
+)]
 enum TelegramCommand {
     #[command(description = "display this text.")]
     Help,
@@ -75,10 +76,10 @@ enum TelegramCommand {
 }
 
 async fn answer(
-    bot: DefaultParseMode<AutoSend<Bot>>,
+    bot: DefaultParseMode<Bot>,
     message: Message,
     command: TelegramCommand,
-) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+) -> ResponseResult<()> {
     match command {
         TelegramCommand::Help => {
             bot.send_message(message.chat.id, TelegramCommand::descriptions().to_string())
@@ -101,5 +102,5 @@ async fn answer(
 
 pub async fn run(bot: Telegram) {
     info!("start telegram bot");
-    teloxide::commands_repl(bot.0, answer, TelegramCommand::ty()).await;
+    TelegramCommand::repl(bot.0, answer).await;
 }

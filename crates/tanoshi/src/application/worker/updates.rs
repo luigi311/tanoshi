@@ -5,7 +5,6 @@ use std::{
     str::FromStr,
 };
 
-use chrono::NaiveDateTime;
 use futures::StreamExt;
 use rayon::prelude::*;
 use serde::Deserialize;
@@ -244,9 +243,7 @@ where
                 }
             }
 
-            let last_uploaded_chapter = manga
-                .last_uploaded_at
-                .unwrap_or_else(|| NaiveDateTime::from_timestamp(0, 0));
+            let last_uploaded_chapter = manga.last_uploaded_at.unwrap_or_default();
 
             let chapters: Vec<Chapter> = self
                 .chapter_repo

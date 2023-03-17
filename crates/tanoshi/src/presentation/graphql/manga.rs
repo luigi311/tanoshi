@@ -59,7 +59,7 @@ impl Default for Manga {
             description: Default::default(),
             path: Default::default(),
             cover_url: Default::default(),
-            date_added: NaiveDateTime::from_timestamp(0, 0),
+            date_added: NaiveDateTime::default(),
         }
     }
 }
@@ -76,7 +76,7 @@ impl From<tanoshi_lib::models::MangaInfo> for Manga {
             description: m.description,
             path: m.path,
             cover_url: m.cover_url,
-            date_added: chrono::NaiveDateTime::from_timestamp(0, 0),
+            date_added: NaiveDateTime::default(),
         }
     }
 }

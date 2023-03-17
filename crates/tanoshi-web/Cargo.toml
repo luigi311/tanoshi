@@ -1,7 +1,7 @@
 [package]
 name = "tanoshi-web"
 version = "0.0.0"
-edition = "2018"
+edition = "2021"
 description = "Tanoshi Web"
 repository = "https://github.com/faldez/tanoshi"
 license = "MIT"
@@ -11,33 +11,32 @@ crate-type = ["cdylib"]
 
 [dependencies]
 tanoshi-schema = { path = "../tanoshi-schema" }
-console_error_panic_hook = "^0.1"
-dominator = "^0.5"
+console_error_panic_hook = "0.1"
+dominator = "0.5"
 log = "0.4"
 wasm-logger = "0.2"
 chrono = { version = "0.4", features = ["serde"] }
-graphql_client = "0.11"
+graphql_client = "0.12"
 wasm-bindgen = "=0.2.80"
-wasm-bindgen-futures = "^0.4"
-serde = { version = "^1.0", features = ["derive", "rc"] }
+wasm-bindgen-futures = "0.4"
+serde = { version = "1.0", features = ["derive", "rc"] }
 serde_json = "1.0"
-futures-signals = "^0.3"
-futures = "^0.3"
-js-sys = "^0.3"
-reqwest = { version = "^0.11", features = ["json"] }
-base64 = "0.13"
-gloo-timers = "^0.2.1"
+futures-signals = "0.3"
+futures = "0.3"
+js-sys = "0.3"
+reqwest = { version = "0.11", features = ["json"] }
+base64 = "0.21"
+gloo-timers = "0.2"
 anyhow = "1"
-ws_stream_wasm = "0.7.3"
+ws_stream_wasm = "0.7"
 async_executors = { version = "0.6", features = ["async_std"] }
-
-[dependencies.graphql-ws-client]
-rev = "7fc2522936a88d68571a62b6ef945d07798851ee"
-git = "https://github.com/obmarg/graphql-ws-client"
-features = ["client-graphql-client", "ws_stream_wasm"]
+graphql-ws-client = { version = "0.3", features = [
+  "client-graphql-client",
+  "ws_stream_wasm",
+] }
 
 [dependencies.web-sys]
-version = "^0.3"
+version = "0.3"
 features = [
   'Document',
   'Element',

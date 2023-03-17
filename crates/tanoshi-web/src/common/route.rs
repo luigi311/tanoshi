@@ -1,4 +1,4 @@
-use base64::{decode_config, encode_config, URL_SAFE_NO_PAD};
+use base64::{engine::general_purpose, Engine};
 use dominator::routing;
 use futures_signals::signal::{Signal, SignalExt};
 use wasm_bindgen::prelude::*;
@@ -100,7 +100,7 @@ impl Route {
                     }
                     ["manga", source_id, path] => {
                         if let Ok(id) = source_id.parse() {
-                            if let Ok(decoded) = decode_config(path, URL_SAFE_NO_PAD) {
+                            if let Ok(decoded) = general_purpose::URL_SAFE_NO_PAD.decode(path) {
                                 if let Ok(path) = String::from_utf8(decoded) {
                                     Route::MangaBySourcePath(id, path)
                                 } else {
@@ -204,7 +204,7 @@ impl Route {
             Route::MangaBySourcePath(source_id, path) => [
                 "/manga".to_string(),
                 source_id.to_string(),
-                encode_config(path, URL_SAFE_NO_PAD),
+                general_purpose::URL_SAFE_NO_PAD.encode(path),
             ]
             .join("/"),
             Route::Chapter(chapter_id, page) => {

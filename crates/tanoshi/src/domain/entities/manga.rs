@@ -28,7 +28,7 @@ impl Default for Manga {
             description: None,
             path: "".to_string(),
             cover_url: "".to_string(),
-            date_added: NaiveDateTime::from_timestamp(0, 0),
+            date_added: NaiveDateTime::default(),
             last_uploaded_at: None,
         }
     }
@@ -46,7 +46,7 @@ impl From<tanoshi_lib::models::MangaInfo> for Manga {
             description: m.description,
             path: m.path,
             cover_url: m.cover_url,
-            date_added: NaiveDateTime::from_timestamp(0, 0),
+            date_added: NaiveDateTime::default(),
             last_uploaded_at: None,
         }
     }

@@ -188,16 +188,7 @@ impl<R: Runtime> Plugin<R> for Server {
         server_builder = server_builder.enable_playground();
       }
 
-      let server_fut = match server_builder.build() {
-        Ok(server) => {
-          info!("server listening on 127.0.0.1:{port}");
-          server.serve(([127, 0, 0, 1], port))
-        }
-        Err(e) => {
-          error!("failed to start server: {e:?}");
-          return;
-        }
-      };
+      let server_fut = server_builder.serve(([127, 0, 0, 1], port));
 
       tokio::select! {
           _ = server_fut => {

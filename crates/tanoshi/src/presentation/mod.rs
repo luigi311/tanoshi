@@ -10,7 +10,6 @@ use axum::{
     routing::{get, post},
     Router,
 };
-use graphql::schema::TanoshiSchema;
 use std::net::SocketAddr;
 use tower_http::cors::{Any, CorsLayer};
 
@@ -196,7 +195,7 @@ impl ServerBuilder {
         }
     }
 
-    pub fn build(self) -> Result<Server, anyhow::Error> {
+    pub async fn serve<A: Into<SocketAddr>>(self, addr: A) -> Result<(), anyhow::Error> {
         let config = self.config.ok_or_else(|| anyhow!("no config"))?;
         let user_svc = self.user_svc.ok_or_else(|| anyhow!("no user service"))?;
         let tracker_svc = self
@@ -253,26 +252,6 @@ impl ServerBuilder {
             .data(chapter_update_command_tx)
             .build();
 
-        Ok(Server::new(
-            self.enable_playground,
-            config,
-            schema,
-            image_svc,
-        ))
-    }
-}
-
-pub struct Server {
-    router: Router<axum::body::Body>,
-}
-
-impl Server {
-    pub fn new(
-        enable_playground: bool,
-        config: Config,
-        schema: TanoshiSchema,
-        image_svc: ImageService<ImageCacheRepositoryImpl, ImageRepositoryImpl>,
-    ) -> Self {
         let mut router = Router::new();
 
         router = router
@@ -280,7 +259,7 @@ impl Server {
             .route("/image/:url", get(fetch_image))
             .layer(Extension(image_svc));
 
-        let svc = if enable_playground {
+        let svc = if self.enable_playground {
             get(graphql_playground).post(graphql_handler)
         } else {
             post(graphql_handler)
@@ -306,12 +285,8 @@ impl Server {
             router = router.fallback(get(assets::static_handler));
         }
 
-        Self { router }
-    }
-
-    pub async fn serve<A: Into<SocketAddr>>(self, addr: A) -> Result<(), anyhow::Error> {
         axum::Server::bind(&addr.into())
-            .serve(self.router.into_make_service())
+            .serve(router.into_make_service())
             .await?;
 
         Ok(())

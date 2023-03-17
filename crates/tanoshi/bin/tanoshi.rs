@@ -224,7 +224,7 @@ async fn main() -> Result<(), anyhow::Error> {
         server_builder = server_builder.enable_playground();
     }
 
-    let server_fut = server_builder.build()?.serve(([0, 0, 0, 0], config.port));
+    let server_fut = server_builder.serve(([0, 0, 0, 0], config.port));
 
     tokio::select! {
         _ = server_fut => {

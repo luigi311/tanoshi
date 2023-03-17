@@ -1,5 +1,6 @@
 use aes::cipher::{block_padding::Pkcs7, BlockDecryptMut, BlockEncryptMut, KeyIvInit};
 use anyhow::anyhow;
+use base64::{engine::general_purpose, Engine};
 use bytes::Bytes;
 use fancy_regex::Regex;
 use itertools::Itertools;
@@ -51,7 +52,7 @@ impl TryFrom<&str> for ImageUri {
 
 impl ImageUri {
     pub fn from_encrypted(secret: &str, encrypted: &str) -> Result<Self, anyhow::Error> {
-        let mut decoded = base64::decode_config(encrypted, base64::URL_SAFE_NO_PAD)?;
+        let mut decoded = general_purpose::URL_SAFE_NO_PAD.decode(encrypted)?;
         trace!("decoded: {:?}", decoded);
 
         let iv = [0_u8; 16];
@@ -79,7 +80,7 @@ impl ImageUri {
             .encrypt_padded_mut::<Pkcs7>(&mut buffer, pos)
             .map_err(|e| anyhow!("error encrypt url {e}"))?;
 
-        let encoded = base64::encode_config(chipertext, base64::URL_SAFE_NO_PAD);
+        let encoded = general_purpose::URL_SAFE_NO_PAD.encode(chipertext);
 
         Ok(encoded)
     }

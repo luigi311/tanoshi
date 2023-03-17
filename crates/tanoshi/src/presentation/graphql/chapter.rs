@@ -48,7 +48,7 @@ impl From<tanoshi_lib::models::ChapterInfo> for Chapter {
             path: ch.path,
             number: ch.number,
             scanlator: ch.scanlator.unwrap_or_default(),
-            uploaded: chrono::NaiveDateTime::from_timestamp(ch.uploaded, 0),
+            uploaded: chrono::NaiveDateTime::from_timestamp_opt(ch.uploaded, 0).unwrap_or_default(),
             date_added: Utc::now().naive_utc(),
             read_progress: None,
             downloaded_path: None,

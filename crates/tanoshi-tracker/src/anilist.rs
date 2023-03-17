@@ -92,12 +92,12 @@ impl From<Media> for TrackerManga {
                     }),
                     num_chapters_read: status.progress,
                     score: status.score,
-                    start_date: status
-                        .started_at
-                        .map(|at| NaiveDateTime::new(at, NaiveTime::from_hms(0, 0, 0))),
-                    finish_date: status
-                        .completed_at
-                        .map(|at| NaiveDateTime::new(at, NaiveTime::from_hms(0, 0, 0))),
+                    start_date: status.started_at.map(|at| {
+                        NaiveDateTime::new(at, NaiveTime::from_hms_opt(0, 0, 0).unwrap_or_default())
+                    }),
+                    finish_date: status.completed_at.map(|at| {
+                        NaiveDateTime::new(at, NaiveTime::from_hms_opt(0, 0, 0).unwrap_or_default())
+                    }),
                 })
             } else {
                 Some(TrackerStatus {
