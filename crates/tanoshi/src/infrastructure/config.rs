@@ -120,7 +120,10 @@ fn default_port() -> u16 {
 }
 
 fn default_extension_repository() -> String {
-    "https://raw.githubusercontent.com/faldez/tanoshi-extensions/repository".to_string()
+    format!(
+        "https://raw.githubusercontent.com/faldez/tanoshi-extensions/{}",
+        tanoshi_lib::RUSTC_VERSION
+    )
 }
 
 fn default_update_interval() -> u64 {
