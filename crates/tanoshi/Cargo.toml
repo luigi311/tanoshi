@@ -57,7 +57,7 @@ rust-embed = { version = "6.0", features = [
 mime_guess = "2"
 clap = { version = "4", features = ["derive"] }
 bytes = "1"
-dirs = "4"
+dirs = "5"
 base64 = "0.21"
 sqlx = { version = "0.6", features = [
     "runtime-tokio-native-tls",
