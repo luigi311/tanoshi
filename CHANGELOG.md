@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - [tanoshi] update rust version to 1.69.0
 - [tanoshi] use notification from web instead of backend
+- [tanoshi] chapters now update via worker
+- [tanoshi-web] graphql schema move to its own crate
+- [tanoshi-web] autocomplete attribute to change password input field
 
 ### Added
 
@@ -18,9 +21,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [tanoshi-web] subscribe to recent chapter update and notify from browser
 - [tanoshi] refresh chapters in manga page now notify users
 - [tanoshi] save manga info on download manga
+- [tanoshi] delete user mutation
 
 ## Fixed
 
+- [tanoshi] fix refresh manga details for non favorited manga
 - [tanoshi-web] Fix saved library sort setting not applied
 
 ## [0.29.2]
