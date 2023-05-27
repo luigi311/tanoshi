@@ -1,5 +1,7 @@
+use futures::future::{select, Either};
+use gloo_timers::future::TimeoutFuture;
 use graphql_client::GraphQLQuery;
-use std::error::Error;
+use std::{collections::HashMap, error::Error};
 use wasm_bindgen::prelude::*;
 
 type NaiveDateTime = String;
@@ -252,11 +254,9 @@ pub async fn subscribe_recent_updates() -> Result<(), Box<dyn Error>> {
         token: String,
     }
 
-    let (ws, wsio) = ws_stream_wasm::WsMeta::connect(
-        "ws://localhost:3030/ws".to_string(),
-        Some(vec!["graphql-transport-ws"]),
-    )
-    .await?;
+    let (ws, wsio) =
+        ws_stream_wasm::WsMeta::connect(graphql_ws_host(), Some(vec!["graphql-transport-ws"]))
+            .await?;
     let (sink, stream) = graphql_ws_client::wasm_websocket_combined_split(ws, wsio).await;
 
     let token = local_storage()
@@ -271,16 +271,42 @@ pub async fn subscribe_recent_updates() -> Result<(), Box<dyn Error>> {
     let op: StreamingOperation<SubscribeChapterUpdates> =
         StreamingOperation::new(subscribe_chapter_updates::Variables {});
     let mut stream = client.streaming_operation(op).await?;
-    while let Some(Ok(item)) = stream.next().await {
-        if let Some(data) = item.data.map(|data| data.recent_updates_subscription) {
-            let mut opts = NotificationOptions::new();
-            opts.body(&data.chapter_title);
 
-            let _notification = Notification::new_with_options(&data.manga_title, &opts);
+    let mut updates = HashMap::<String, Vec<String>>::new();
+    loop {
+        match select(stream.next(), TimeoutFuture::new(1_000)).await {
+            Either::Left((val, timeout)) => {
+                drop(timeout);
+                if let Some(Ok(item)) = val {
+                    if let Some(data) = item.data.map(|data| data.recent_updates_subscription) {
+                        updates
+                            .entry(data.manga_title.clone())
+                            .and_modify(|chapters| chapters.push(data.chapter_title.clone()))
+                            .or_insert(vec![data.chapter_title.clone()]);
+                    }
+                } else {
+                    break;
+                }
+            }
+            Either::Right((_, _)) => {
+                for (manga_title, chapters) in updates.iter() {
+                    let mut opts = NotificationOptions::new();
+                    if chapters.len() > 1 {
+                        opts.body(&format!("{} chapter updates", chapters.len()));
+                    } else if chapters.len() == 1 {
+                        opts.body(&chapters[0]);
+                    } else {
+                        opts.body("no chapter updates");
+                    }
+
+                    let _ = Notification::new_with_options(&manga_title, &opts).unwrap_throw();
+                }
+                updates.clear();
+            }
         }
     }
 
-    info!("subscribe_recent_updates");
+    debug!("subscribe_recent_updates");
     Ok(())
 }
 
