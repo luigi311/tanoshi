@@ -1034,8 +1034,8 @@ dependencies = [
 
 [[package]]
 name = "compress-tools"
-version = "0.12.2"
-source = "git+https://github.com/faldez/compress-tools-rs#1c660e31f5f84542c4182e72ec2fa8e50fa1dc84"
+version = "0.14.3"
+source = "git+https://github.com/faldez/compress-tools-rs#5f2d6044cea8d3f0c2459ba22eece76f09be8ab6"
 dependencies = [
  "derive_more",
  "libc",
@@ -5819,9 +5819,9 @@ checksum = "1f3ccbac311fea05f86f61904b462b55fb3df8837a366dfc601a0161d0532f20"
 
 [[package]]
 name = "tokio"
-version = "1.28.1"
+version = "1.28.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0aa32867d44e6f2ce3385e89dceb990188b8bb0fb25b0cf576647a6f98ac5105"
+checksum = "94d7b1cfd2aa4011f2de74c2c4c63665e27a71006b0a192dcd2710272e73dfa2"
 dependencies = [
  "autocfg 1.1.0",
  "bytes",
