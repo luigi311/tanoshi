@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- [tanoshi] update rust version to 1.63.0
+- [tanoshi] update rust version to 1.69.0
 - [tanoshi] use notification from web instead of backend
 
 ### Added

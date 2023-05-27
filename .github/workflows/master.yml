@@ -93,7 +93,7 @@ jobs:
           path: crates/tanoshi-web/dist
       - uses: actions-rs/toolchain@v1
         with:
-          toolchain: 1.63.0
+          toolchain: 1.69.0
           override: true
       - uses: Swatinem/rust-cache@v1
       - uses: actions-rs/cargo@v1
@@ -220,7 +220,7 @@ jobs:
           vcpkg install libarchive:x64-windows-static-md
       - uses: actions-rs/toolchain@v1
         with:
-          toolchain: 1.63.0
+          toolchain: 1.69.0
           override: true
       - uses: Swatinem/rust-cache@v1
       - name: Test
