@@ -2,7 +2,7 @@
 Selfhosted web manga reader.
 
 
-![Build](https://github.com/faldez/tanoshi/workflows/Build/badge.svg) [![Release Stats](https://img.shields.io/github/downloads/faldez/tanoshi/total)](https://somsubhra.github.io/github-release-stats/?username=faldez&repository=tanoshi&page=1&per_page=5) [![Release](https://img.shields.io/github/v/release/faldez/tanoshi)](https://github.com/faldez/tanoshi/releases/latest) [![Docker Pulls](https://img.shields.io/docker/pulls/faldez/tanoshi)](https://hub.docker.com/repository/docker/faldez/tanoshi) [![Discord](https://img.shields.io/discord/872093374281285682?color=7289DA&logo=discord&logoColor=FFFFFF)](https://discord.gg/wPSEftdDqB)
+![master](https://github.com/faldez/tanoshi/workflows/master/badge.svg) [![Release Stats](https://img.shields.io/github/downloads/faldez/tanoshi/total)](https://somsubhra.github.io/github-release-stats/?username=faldez&repository=tanoshi&page=1&per_page=5) [![Release](https://img.shields.io/github/v/release/faldez/tanoshi)](https://github.com/faldez/tanoshi/releases/latest) [![Docker Pulls](https://img.shields.io/docker/pulls/faldez/tanoshi)](https://hub.docker.com/repository/docker/faldez/tanoshi) [![Discord](https://img.shields.io/discord/872093374281285682?color=7289DA&logo=discord&logoColor=FFFFFF)](https://discord.gg/wPSEftdDqB)
 
 ## Features
 - Browse, search, and read manga
