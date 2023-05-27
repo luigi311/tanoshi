@@ -30,7 +30,7 @@ gloo-timers = "0.2"
 anyhow = "1"
 ws_stream_wasm = "0.7"
 async_executors = { version = "0.6", features = ["async_std"] }
-graphql-ws-client = { version = "0.3", features = [
+graphql-ws-client = { version = "0.4", features = [
   "client-graphql-client",
   "ws_stream_wasm",
 ] }

@@ -249,13 +249,14 @@ pub async fn subscribe_recent_updates() -> Result<(), Box<dyn Error>> {
 
     #[derive(Serialize)]
     struct Payload {
-        #[serde(rename = "Authorization")]
         token: String,
     }
 
-    let (ws, wsio) =
-        ws_stream_wasm::WsMeta::connect(graphql_ws_host(), Some(vec!["graphql-transport-ws"]))
-            .await?;
+    let (ws, wsio) = ws_stream_wasm::WsMeta::connect(
+        "ws://localhost:3030/ws".to_string(),
+        Some(vec!["graphql-transport-ws"]),
+    )
+    .await?;
     let (sink, stream) = graphql_ws_client::wasm_websocket_combined_split(ws, wsio).await;
 
     let token = local_storage()
@@ -263,9 +264,7 @@ pub async fn subscribe_recent_updates() -> Result<(), Box<dyn Error>> {
         .unwrap_throw()
         .unwrap_or_else(|| "".to_string());
     let mut client = GraphQLClientClientBuilder::new()
-        .payload(Payload {
-            token: format!("Bearer {token}"),
-        })
+        .payload(Payload { token })
         .build(stream, sink, async_executors::AsyncStd)
         .await?;
 

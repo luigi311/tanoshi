@@ -367,7 +367,6 @@ impl LibrarySubscriptionRoot {
         &self,
         ctx: &Context<'_>,
     ) -> Result<impl Stream<Item = RecentUpdate>> {
-        // TODO: authorization header doesn't work with websocket. find another solution
         let user_id = ctx
             .data::<Claims>()
             .map_err(|_| "token not exists, please login")?

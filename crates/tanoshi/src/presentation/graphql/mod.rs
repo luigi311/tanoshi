@@ -22,10 +22,11 @@ use axum::{
     extract::{Extension, WebSocketUpgrade},
     response::{Html, IntoResponse, Response},
 };
+use serde::Deserialize;
 
 use self::schema::TanoshiSchema;
 
-use super::token::{on_connection_init, Token};
+use super::token::Token;
 
 pub async fn graphql_handler(
     token: Token,
@@ -49,6 +50,7 @@ pub async fn graphql_playground() -> impl IntoResponse {
 }
 
 pub async fn graphql_ws_handler(
+    Extension(config): Extension<Config>,
     Extension(schema): Extension<TanoshiSchema>,
     protocol: GraphQLProtocol,
     websocket: WebSocketUpgrade,
@@ -57,7 +59,22 @@ pub async fn graphql_ws_handler(
         .protocols(ALL_WEBSOCKET_PROTOCOLS)
         .on_upgrade(move |stream| {
             GraphQLWebSocket::new(stream, schema.clone(), protocol)
-                .on_connection_init(on_connection_init)
+                .on_connection_init(|value| async move {
+                    #[derive(Deserialize)]
+                    struct Payload {
+                        token: String,
+                    }
+
+                    if let Ok(payload) = serde_json::from_value::<Payload>(value) {
+                        let mut data = async_graphql::Data::default();
+                        if let Ok(claims) = auth::decode_jwt(&config.secret, &payload.token) {
+                            data.insert(claims);
+                        }
+                        Ok(data)
+                    } else {
+                        Err("Token is required".into())
+                    }
+                })
                 .serve()
         })
 }

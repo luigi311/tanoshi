@@ -5,7 +5,6 @@ use axum::{
     RequestPartsExt,
 };
 use headers::{authorization::Bearer, Authorization};
-use serde::Deserialize;
 
 pub struct Token(pub String);
 
@@ -25,22 +24,5 @@ where
             .unwrap_or_else(|_| Token("".to_string()));
 
         Ok(token)
-    }
-}
-
-pub async fn on_connection_init(
-    value: serde_json::Value,
-) -> async_graphql::Result<async_graphql::Data> {
-    #[derive(Deserialize)]
-    struct Payload {
-        token: String,
-    }
-
-    if let Ok(payload) = serde_json::from_value::<Payload>(value) {
-        let mut data = async_graphql::Data::default();
-        data.insert(Token(payload.token));
-        Ok(data)
-    } else {
-        Err("Token is required".into())
     }
 }
