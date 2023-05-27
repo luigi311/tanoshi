@@ -258,32 +258,29 @@ impl LibraryMutationRoot {
             .fetch_chapter_by_id(chapter_id)
             .await?;
 
-        // TODO: nepnep source have weird number, don't update tracker status for them for now
-        if !is_complete || (chapter.source_id == 3 || chapter.source_id == 4) {
-            return Ok(1);
-        }
+        if is_complete {
+            let tracker_svc = ctx.data::<TrackerService<TrackerRepositoryImpl>>()?;
 
-        let tracker_svc = ctx.data::<TrackerService<TrackerRepositoryImpl>>()?;
+            let tracked_manga = tracker_svc
+                .get_tracked_manga_id(claims.sub, chapter.manga_id)
+                .await?;
 
-        let tracked_manga = tracker_svc
-            .get_tracked_manga_id(claims.sub, chapter.manga_id)
-            .await?;
-
-        for manga in tracked_manga {
-            if let Some(tracker_manga_id) = manga.tracker_manga_id {
-                // TODO: Only update if chapter > then read
-                tracker_svc
-                    .update_manga_tracking_status(
-                        claims.sub,
-                        &manga.tracker,
-                        tracker_manga_id,
-                        None,
-                        None,
-                        Some(chapter.number as i64),
-                        None,
-                        None,
-                    )
-                    .await?;
+            for manga in tracked_manga {
+                if let Some(tracker_manga_id) = manga.tracker_manga_id {
+                    // TODO: Only update if chapter > then read
+                    tracker_svc
+                        .update_manga_tracking_status(
+                            claims.sub,
+                            &manga.tracker,
+                            tracker_manga_id,
+                            None,
+                            None,
+                            Some(chapter.number as i64),
+                            None,
+                            None,
+                        )
+                        .await?;
+                }
             }
         }
 
