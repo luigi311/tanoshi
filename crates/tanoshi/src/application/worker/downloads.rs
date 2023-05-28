@@ -204,11 +204,13 @@ where
     }
 
     async fn download(&mut self) -> Result<()> {
-        let queue = self
-            .download_repo
-            .get_single_download_queue()
-            .await?
-            .ok_or_else(|| anyhow!("no queue"))?;
+        let queue = match self.download_repo.get_single_download_queue().await? {
+            Some(queue) => queue,
+            None => {
+                info!("no queue");
+                return Ok(());
+            }
+        };
 
         debug!("got {}", queue.url);
 
