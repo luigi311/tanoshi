@@ -259,16 +259,16 @@ where
                 info!("{} has {} new chapters", manga.title, chapters.len());
             }
 
+            let users = self
+                .library_repo
+                .get_users_by_manga_id(manga.id)
+                .await
+                .unwrap_or_default();
+
             for chapter in chapters {
                 #[cfg(feature = "desktop")]
                 self.notifier
                     .send_desktop_notification(Some(manga.title.clone()), &chapter.title)?;
-
-                let users = self
-                    .library_repo
-                    .get_users_by_manga_id(manga.id)
-                    .await
-                    .unwrap_or_default();
 
                 for user in &users {
                     self.notifier
