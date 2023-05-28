@@ -101,8 +101,11 @@ where
         Ok(())
     }
 
-    pub async fn get_download_queue(&self) -> Result<Vec<DownloadQueueEntry>, DownloadError> {
-        let queue = self.repo.get_download_queue().await?;
+    pub async fn get_download_queue(
+        &self,
+        chapter_ids: Vec<i64>,
+    ) -> Result<Vec<DownloadQueueEntry>, DownloadError> {
+        let queue = self.repo.get_download_queue(&chapter_ids).await?;
 
         Ok(queue)
     }

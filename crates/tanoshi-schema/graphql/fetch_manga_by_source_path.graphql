@@ -36,6 +36,10 @@ query FetchMangaBySourcePath($sourceId: Int, $path: String) {
         isComplete
       }
       downloadedPath
+      downloadStatus {
+        downloaded
+        total
+      }
     }
   }
 }

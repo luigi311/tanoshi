@@ -58,7 +58,7 @@ impl DownloadRoot {
     async fn download_queue(&self, ctx: &Context<'_>) -> Result<Vec<DownloadQueueEntry>> {
         let queue = ctx
             .data::<DownloadService<DownloadRepositoryImpl>>()?
-            .get_download_queue()
+            .get_download_queue(vec![])
             .await?
             .into_par_iter()
             .map(|q| q.into())

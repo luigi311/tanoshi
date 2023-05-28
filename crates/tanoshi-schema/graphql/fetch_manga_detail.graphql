@@ -36,6 +36,10 @@ query FetchMangaDetail($id: Int, $refresh: Boolean) {
         isComplete
       }
       downloadedPath
+      downloadStatus {
+        downloaded
+        total
+      }
     }
   }
 }

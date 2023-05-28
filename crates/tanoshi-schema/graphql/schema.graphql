@@ -31,6 +31,7 @@ type Chapter {
     encrypt: Boolean! = true
   ): [String!]!
   downloadedPath: String
+  downloadStatus: DownloadQueueEntry
 }
 
 type ChapterConnection {

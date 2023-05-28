@@ -1,6 +1,7 @@
 use super::{
     common::ReadProgress,
-    loader::{MangaId, UserHistoryId},
+    downloads::DownloadQueueEntry,
+    loader::{ChapterDownloadQueueId, MangaId, UserHistoryId},
     manga::Manga,
     source::Source,
 };
@@ -19,6 +20,11 @@ use crate::{
 use async_graphql::{dataloader::DataLoader, Context, Object, Result};
 use chrono::{NaiveDateTime, Utc};
 use rayon::iter::{IntoParallelRefMutIterator, ParallelIterator};
+
+pub enum DownloadStatus {
+    Downloading,
+    Downloaded,
+}
 
 /// A type represent chapter, normalized across source
 #[derive(Debug, Clone)]
@@ -188,5 +194,15 @@ impl Chapter {
 
     async fn downloaded_path(&self) -> Option<String> {
         self.downloaded_path.clone()
+    }
+
+    async fn download_status(&self, ctx: &Context<'_>) -> Result<Option<DownloadQueueEntry>> {
+        let queue = ctx
+            .data::<DataLoader<DatabaseLoader>>()?
+            .load_one(ChapterDownloadQueueId(self.id))
+            .await?
+            .map(|q| q.into());
+
+        Ok(queue)
     }
 }

@@ -1,8 +1,8 @@
 use std::any::Any;
 
 use crate::infrastructure::domain::repositories::{
-    history::HistoryRepositoryImpl, library::LibraryRepositoryImpl, manga::MangaRepositoryImpl,
-    tracker::TrackerRepositoryImpl,
+    download::DownloadRepositoryImpl, history::HistoryRepositoryImpl,
+    library::LibraryRepositoryImpl, manga::MangaRepositoryImpl, tracker::TrackerRepositoryImpl,
 };
 
 use super::{
@@ -54,6 +54,7 @@ pub type DatabaseLoader = crate::presentation::graphql::loader::DatabaseLoader<
     LibraryRepositoryImpl,
     MangaRepositoryImpl,
     TrackerRepositoryImpl,
+    DownloadRepositoryImpl,
 >;
 
 pub struct SchemaBuilder(async_graphql::SchemaBuilder<QueryRoot, MutationRoot, SubscriptionRoot>);

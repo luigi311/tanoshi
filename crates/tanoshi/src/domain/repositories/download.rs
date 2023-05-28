@@ -72,7 +72,10 @@ pub trait DownloadRepository: Send + Sync {
         &self,
     ) -> Result<Option<i64>, DownloadRepositoryError>;
 
-    async fn get_download_queue(&self) -> Result<Vec<DownloadQueueEntry>, DownloadRepositoryError>;
+    async fn get_download_queue(
+        &self,
+        chapter_ids: &[i64],
+    ) -> Result<Vec<DownloadQueueEntry>, DownloadRepositoryError>;
 
     async fn delete_single_chapter_download_queue(
         &self,

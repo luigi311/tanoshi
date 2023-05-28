@@ -200,7 +200,13 @@ async fn main() -> Result<(), anyhow::Error> {
     let image_cache_repo = ImageCacheRepositoryImpl::new(&config.cache_path);
     let image_svc = ImageService::new(image_repo, image_cache_repo);
 
-    let loader = DatabaseLoader::new(history_repo, library_repo, manga_repo, tracker_repo);
+    let loader = DatabaseLoader::new(
+        history_repo,
+        library_repo,
+        manga_repo,
+        tracker_repo,
+        download_repo,
+    );
 
     let mut server_builder = ServerBuilder::new()
         .with_config(config.clone())

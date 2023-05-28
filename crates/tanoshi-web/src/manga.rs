@@ -19,7 +19,7 @@ struct ReadProgress {
     pub is_complete: bool,
 }
 
-#[derive(Clone)]
+#[derive(Default, Clone)]
 struct Chapter {
     pub id: i64,
     pub title: String,
@@ -28,22 +28,8 @@ struct Chapter {
     pub uploaded: NaiveDateTime,
     pub read_progress: Option<ReadProgress>,
     pub selected: Mutable<bool>,
-    pub downloaded_path: Option<String>
-}
-
-impl Default for Chapter {
-    fn default() -> Self {
-        Self {
-            id: Default::default(),
-            title: Default::default(),
-            number: Default::default(),
-            scanlator: Default::default(),
-            uploaded: NaiveDateTime::default(),
-            read_progress: Default::default(),
-            selected: Default::default(),
-            downloaded_path: Default::default(),
-        }
-    }
+    pub downloaded_path: Option<String>,
+    pub download_status: Option<(i64, i64)>
 }
 
 #[derive(Debug, Clone)]
@@ -159,6 +145,7 @@ impl Manga {
                         }),
                         selected: Mutable::new(false),
                         downloaded_path: chapter.downloaded_path.clone(),
+                        download_status: chapter.download_status.as_ref().map(|queue| (queue.downloaded, queue.total))
                     })).collect());
 
                     manga.chapter_settings.load_by_manga_id(manga.id.get());                    
@@ -213,6 +200,7 @@ impl Manga {
                         }),
                         selected: Mutable::new(false),
                         downloaded_path: chapter.downloaded_path.clone(),
+                        download_status: chapter.download_status.as_ref().map(|queue| (queue.downloaded, queue.total))
                     })).collect());
 
                     manga.chapter_settings.load_by_manga_id(manga.id.get());

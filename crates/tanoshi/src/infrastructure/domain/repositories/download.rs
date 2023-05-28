@@ -308,38 +308,59 @@ impl DownloadRepository for DownloadRepositoryImpl {
         Ok(data)
     }
 
-    async fn get_download_queue(&self) -> Result<Vec<DownloadQueueEntry>, DownloadRepositoryError> {
-        let data = sqlx::query(
-            r#"
-            SELECT
-                dq.source_id,
-                dq.source_name,
-                dq.manga_id,
-                dq.manga_title, 
-                dq.chapter_id,
-                dq.chapter_title, 
-                SUM(dq.downloaded),
-                COUNT(1),
-                dq.priority
-            FROM download_queue dq
+    async fn get_download_queue(
+        &self,
+        chapter_ids: &[i64],
+    ) -> Result<Vec<DownloadQueueEntry>, DownloadRepositoryError> {
+        let mut query = r#"
+        SELECT
+            dq.source_id,
+            dq.source_name,
+            dq.manga_id,
+            dq.manga_title, 
+            dq.chapter_id,
+            dq.chapter_title, 
+            SUM(dq.downloaded),
+            COUNT(1),
+            dq.priority
+        FROM download_queue dq"#
+            .to_string();
+
+        if !chapter_ids.is_empty() {
+            query = format!(
+                r#"{query}
+                WHERE dq.chapter_id IN ({})"#,
+                vec!["?"; chapter_ids.len()].join(",")
+            )
+        }
+
+        query = format!(
+            r#"{query}
             GROUP BY dq.chapter_id
-            ORDER BY dq.priority ASC, dq.date_added ASC, dq.chapter_id ASC"#,
-        )
-        .fetch_all(&self.pool as &SqlitePool)
-        .await?
-        .iter()
-        .map(|row| DownloadQueueEntry {
-            source_id: row.get(0),
-            source_name: row.get(1),
-            manga_id: row.get(2),
-            manga_title: row.get(3),
-            chapter_id: row.get(4),
-            chapter_title: row.get(5),
-            downloaded: row.get(6),
-            total: row.get(7),
-            priority: row.get(8),
-        })
-        .collect();
+            ORDER BY dq.priority ASC, dq.date_added ASC, dq.chapter_id ASC"#
+        );
+
+        let mut query = sqlx::query(&query);
+        for chapter_id in chapter_ids {
+            query = query.bind(chapter_id);
+        }
+
+        let data = query
+            .fetch_all(&self.pool as &SqlitePool)
+            .await?
+            .iter()
+            .map(|row| DownloadQueueEntry {
+                source_id: row.get(0),
+                source_name: row.get(1),
+                manga_id: row.get(2),
+                manga_title: row.get(3),
+                chapter_id: row.get(4),
+                chapter_title: row.get(5),
+                downloaded: row.get(6),
+                total: row.get(7),
+                priority: row.get(8),
+            })
+            .collect();
 
         Ok(data)
     }
