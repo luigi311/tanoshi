@@ -105,22 +105,34 @@ struct ProfileInput {
     pub gotify_token: Option<String>,
 }
 
+#[derive(InputObject)]
+struct LoginInput {
+    username: String,
+    #[graphql(secret)]
+    password: String,
+}
+
+#[derive(InputObject)]
+struct ChangePasswordInput {
+    #[graphql(secret)]
+    old_password: String,
+    #[graphql(secret)]
+    new_password: String,
+}
+
 #[derive(Default)]
 pub struct UserRoot;
 
 #[Object]
 impl UserRoot {
-    async fn login(
-        &self,
-        ctx: &Context<'_>,
-        #[graphql(desc = "username")] username: String,
-        #[graphql(desc = "password")] password: String,
-    ) -> Result<String> {
+    async fn login(&self, ctx: &Context<'_>, login: LoginInput) -> Result<String> {
         let user_svc = ctx.data::<UserService<UserRepositoryImpl>>()?;
 
-        user_svc.verify_password(&username, &password).await?;
+        user_svc
+            .verify_password(&login.username, &login.password)
+            .await?;
 
-        let user = user_svc.fetch_user_by_username(&username).await?;
+        let user = user_svc.fetch_user_by_username(&login.username).await?;
 
         let secret = &ctx.data::<Config>()?.secret;
         let current_time = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH)?;
@@ -168,8 +180,7 @@ impl UserMutationRoot {
     async fn register(
         &self,
         ctx: &Context<'_>,
-        #[graphql(desc = "username")] username: String,
-        #[graphql(desc = "password")] password: String,
+        login: LoginInput,
         #[graphql(desc = "role", default = false)] is_admin: bool,
     ) -> Result<i64> {
         let user_svc = ctx.data::<UserService<UserRepositoryImpl>>()?;
@@ -181,7 +192,9 @@ impl UserMutationRoot {
             }
         }
 
-        Ok(user_svc.create_user(&username, &password, is_admin).await?)
+        Ok(user_svc
+            .create_user(&login.username, &login.password, is_admin)
+            .await?)
     }
 
     #[graphql(guard = "AdminGuard::new()")]
@@ -197,18 +210,13 @@ impl UserMutationRoot {
         Ok(1)
     }
 
-    async fn change_password(
-        &self,
-        ctx: &Context<'_>,
-        #[graphql(desc = "old password")] old_password: String,
-        #[graphql(desc = "new password")] new_password: String,
-    ) -> Result<u64> {
+    async fn change_password(&self, ctx: &Context<'_>, input: ChangePasswordInput) -> Result<u64> {
         let claims = ctx
             .data::<Claims>()
             .map_err(|_| "token not exists, please login")?;
 
         ctx.data::<UserService<UserRepositoryImpl>>()?
-            .change_password(claims.sub, &old_password, &new_password)
+            .change_password(claims.sub, &input.old_password, &input.new_password)
             .await?;
 
         Ok(1)

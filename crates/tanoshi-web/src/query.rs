@@ -379,8 +379,7 @@ pub async fn uninstall_source(source_id: i64) -> Result<i64, Box<dyn Error>> {
 
 pub async fn user_login(username: String, password: String) -> Result<String, Box<dyn Error>> {
     let var = user_login::Variables {
-        username: Some(username),
-        password: Some(password),
+        login: user_login::LoginInput { username, password },
     };
     let data = post_graphql::<UserLogin>(var).await?;
     Ok(data.login)
@@ -410,9 +409,8 @@ pub async fn user_register(
     is_admin: bool,
 ) -> Result<(), Box<dyn Error>> {
     let var = user_register::Variables {
-        username: Some(username),
-        password: Some(password),
-        is_admin: Some(is_admin),
+        login: user_register::LoginInput { username, password },
+        is_admin,
     };
     let _ = post_graphql::<UserRegister>(var).await?;
     Ok(())
@@ -429,8 +427,10 @@ pub async fn change_password(
     new_password: String,
 ) -> Result<(), Box<dyn Error>> {
     let var = change_user_password::Variables {
-        old_password: Some(old_password),
-        new_password: Some(new_password),
+        input: change_user_password::ChangePasswordInput {
+            old_password,
+            new_password,
+        },
     };
     let _ = post_graphql::<ChangeUserPassword>(var).await?;
     Ok(())

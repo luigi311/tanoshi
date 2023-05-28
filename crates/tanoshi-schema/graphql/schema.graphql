@@ -10,6 +10,11 @@ type Category {
   count: Int!
 }
 
+input ChangePasswordInput {
+  oldPassword: String!
+  newPassword: String!
+}
+
 type Chapter {
   id: Int!
   title: String!
@@ -67,6 +72,11 @@ type DownloadQueueEntry {
 }
 
 scalar InputList
+
+input LoginInput {
+  username: String!
+  password: String!
+}
 
 type Manga {
   id: Int!
@@ -148,11 +158,7 @@ type MutationRoot {
     id: Int!
   ): Int!
   register(
-    # username
-    username: String!
-
-    # password
-    password: String!
+    login: LoginInput!
 
     # role
     isAdmin: Boolean! = false
@@ -161,13 +167,7 @@ type MutationRoot {
     # user id
     userId: Int!
   ): Int!
-  changePassword(
-    # old password
-    oldPassword: String!
-
-    # new password
-    newPassword: String!
-  ): Int!
+  changePassword(input: ChangePasswordInput!): Int!
   updateProfile(input: ProfileInput!): Int!
   trackerLogout(tracker: String!): Int!
   installSource(sourceId: Int!): Int!
@@ -284,13 +284,7 @@ type QueryRoot {
   ): RecentChapterConnection!
   getCategories: [Category!]!
   getCategory(id: Int): Category!
-  login(
-    # username
-    username: String!
-
-    # password
-    password: String!
-  ): String!
+  login(login: LoginInput!): String!
   users: [User!]!
   me: User!
   serverStatus: Status!
