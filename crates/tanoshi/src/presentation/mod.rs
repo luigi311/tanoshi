@@ -11,7 +11,10 @@ use axum::{
     Router,
 };
 use std::net::SocketAddr;
-use tower_http::cors::{Any, CorsLayer};
+use tower_http::{
+    compression::CompressionLayer,
+    cors::{Any, CorsLayer},
+};
 
 use self::{
     graphql::{
@@ -278,7 +281,8 @@ impl ServerBuilder {
                     .allow_origin(Any)
                     .allow_methods(Any)
                     .allow_headers(Any),
-            );
+            )
+            .layer(CompressionLayer::new());
 
         #[cfg(feature = "embed")]
         {

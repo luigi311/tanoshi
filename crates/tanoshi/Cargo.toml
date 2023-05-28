@@ -43,7 +43,13 @@ async-graphql-axum = { version = "5", optional = true }
 axum = { version = "0.6", features = ["headers"], optional = true }
 headers = { version = "0.3", optional = true }
 http = { version = "0.2.5", optional = true }
-tower-http = { version = "0.4", features = ["cors"], optional = true }
+tower-http = { version = "0.4", features = [
+    "cors",
+    "compression-br",
+    "compression-deflate",
+    "compression-gzip",
+    "compression-zstd",
+], optional = true }
 rand = { version = "^0.8" }
 log = { version = "*" }
 env_logger = "0.10"
