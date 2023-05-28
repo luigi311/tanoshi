@@ -98,7 +98,7 @@ jobs:
         run: sudo apt update && sudo apt upgrade -y && sudo apt install -y libssl-dev libarchive-dev build-essential cmake llvm clang libicu-dev nettle-dev libacl1-dev liblzma-dev libzstd-dev liblz4-dev libbz2-dev zlib1g-dev libxml2-dev lsb-release wget software-properties-common libwebkit2gtk-4.0-dev curl libgtk-3-dev libappindicator3-dev patchelf librsvg2-dev libpango1.0-dev
       - name: Install deps
         if: ${{ matrix.os == 'macos-latest' }}
-        run: brew install icu4c libarchive bzip2 lz4 zlib expat llvm@11
+        run: brew install icu4c libarchive bzip2 lz4 zlib expat llvm@13 libiconv
       - name: Install LLVM and Clang
         if: ${{ matrix.os == 'ubuntu-latest' }}
         uses: KyleMayes/install-llvm-action@v1
@@ -198,7 +198,7 @@ jobs:
         run: sudo apt update && sudo apt upgrade -y && sudo apt install -y libssl-dev libarchive-dev build-essential cmake llvm clang libicu-dev nettle-dev libacl1-dev liblzma-dev libzstd-dev liblz4-dev libbz2-dev zlib1g-dev libxml2-dev lsb-release wget software-properties-common libwebkit2gtk-4.0-dev curl libgtk-3-dev libappindicator3-dev patchelf librsvg2-dev libpango1.0-dev
       - name: Install deps
         if: ${{ matrix.os == 'macos-latest' }}
-        run: brew install icu4c libarchive bzip2 lz4 zlib expat llvm@11
+        run: brew install icu4c libarchive bzip2 lz4 zlib expat llvm@13 libiconv
       - name: Install LLVM and Clang
         if: ${{ matrix.os == 'ubuntu-latest' }}
         uses: KyleMayes/install-llvm-action@v1
