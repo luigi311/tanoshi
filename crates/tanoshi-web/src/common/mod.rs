@@ -45,3 +45,5 @@ pub use select_category::SelectCategoryModal;
 
 mod select_track_manga;
 pub use select_track_manga::{SelectTrackMangaModal, TrackerStatus};
+
+pub mod icons;
