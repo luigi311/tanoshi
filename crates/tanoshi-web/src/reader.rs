@@ -48,7 +48,6 @@ pub struct Reader {
     current_page: Mutable<usize>,
     next_page: Mutable<Option<usize>>,
     pages: MutableVec<(String, PageStatus)>,
-    pages_len: Mutable<usize>,
     pages_loaded: Mutable<ContinousLoaded>,
     reader_settings: Rc<ReaderSettings>,
     zoom: Mutable<f64>,
@@ -76,7 +75,6 @@ impl Reader {
             current_page: Mutable::new(page as usize),
             next_page: Mutable::new(None),
             pages: MutableVec::new(),
-            pages_len: Mutable::new(0),
             pages_loaded: Mutable::new(ContinousLoaded::Initial),
             reader_settings: ReaderSettings::new(false, true),
             zoom: Mutable::new(1.0),
@@ -98,9 +96,6 @@ impl Reader {
                     this.chapter_title.set_neq(result.title);
                     this.next_chapter.set_neq(result.next);
                     this.prev_chapter.set_neq(result.prev);
-
-                    let len = result.pages.len();
-                    this.pages_len.set_neq(len);
 
                     this.reader_settings.load_by_manga_id(result.manga.id);
 
@@ -126,6 +121,7 @@ impl Reader {
                             };
                         },
                         Nav::Prev => {
+                            let len = this.pages.lock_ref().len();
                             page = match this.reader_settings.reader_mode.get() {
                                 ReaderMode::Continous => len - 1,
                                 ReaderMode::Paged => {
@@ -187,13 +183,14 @@ impl Reader {
     fn update_page_read(this: Rc<Self>, page: usize) {
         let chapter_id = this.chapter_id.get();
         
-        let page = if matches!(this.reader_settings.reader_mode.get(), ReaderMode::Paged) && matches!(this.reader_settings.display_mode.get().get(), DisplayMode::Double) && page + 2 == this.pages_len.get() {
+        let pages_len = this.pages.lock_ref().len();
+        let page = if matches!(this.reader_settings.reader_mode.get(), ReaderMode::Paged) && matches!(this.reader_settings.display_mode.get().get(), DisplayMode::Double) && page + 2 == pages_len {
             page + 1
         } else {
             page
         };
         
-        let is_complete = page + 1 == this.pages_len.get();
+        let is_complete = page + 1 == pages_len;
 
         Self::replace_state_with_url(chapter_id, page + 1);
         
@@ -407,7 +404,7 @@ impl Reader {
                                     .style("width", "100%")
                                     .attr("type", "range")
                                     .attr("min", "0")
-                                    .attr_signal("max", this.pages_len.signal().map(|len| (len.saturating_sub(1)).to_string()))
+                                    .attr_signal("max", this.pages.signal_vec_cloned().len().map(|len| (len.saturating_sub(1)).to_string()))
                                     .attr_signal("value", this.current_page.signal().map(|p| p.to_string()))
                                     .with_node!(input => {
                                         .event(clone!(this, input => move |_: events::Change| {
@@ -430,7 +427,7 @@ impl Reader {
                             ])
                         }),
                         html!("span", {
-                            .text_signal(this.pages_len.signal().map(|len| len.to_string()))
+                            .text_signal(this.pages.signal_vec_cloned().len().map(|len| len.to_string()))
                         }),
                         html!("button", {
                             .attr("id", "next-chapter-btn")
@@ -607,7 +604,7 @@ impl Reader {
                             .text("/")
                         }),
                         html!("span", {
-                            .text_signal(this.pages_len.signal().map(|len| len.to_string()))
+                            .text_signal(this.pages.signal_vec_cloned().len().map(|len| len.to_string()))
                         }),
                     ])
                 }),
@@ -853,7 +850,8 @@ impl Reader {
                 let window_height = body().offset_height();
                 let client_height = document().document_element().unwrap_throw().client_height();
                 let body_top = window().scroll_y().unwrap_throw().round() as i32;
-                for i in 0..this.pages_len.get() {
+                let pages_len = this.pages.lock_ref().len() ;
+                for i in 0..pages_len {
                     let page_top = document()
                         .get_element_by_id(format!("{}", i).as_str())
                         .and_then(|el| el.dyn_into::<web_sys::HtmlElement>().ok())
@@ -866,9 +864,9 @@ impl Reader {
                 }
                 if  body_top + client_height > window_height - 10 {
                     info!("window_height: {} body_top: {}", window_height, body_top + client_height);
-                    page_no = this.pages_len.get() - 1;
+                    page_no = pages_len - 1;
                 }
-                let is_last_page = this.pages_len.get() == this.current_page.get() + 1;
+                let is_last_page = pages_len == this.current_page.get() + 1;
                 if !(is_last_page && page_no == 0) {
                     this.current_page.set_neq(page_no as usize);
                 }
@@ -907,7 +905,7 @@ impl Reader {
                         }))
                         .visible_signal(this.current_page.signal_cloned().map(clone!(this => move |x| {
                             this.prev_page.set_neq(x.checked_sub(1));
-                            if x + 1 < this.pages_len.get() {
+                            if x + 1 < this.pages.lock_ref().len() {
                                 this.next_page.set_neq(Some(x + 1));
                             }
 
@@ -934,7 +932,7 @@ impl Reader {
                         .style("width", "100vw")
                         .visible_signal(this.current_page.signal_cloned().map(clone!(this => move |x| {
                             this.prev_page.set_neq(x.checked_sub(1));
-                            if x + 1 < this.pages_len.get() {
+                            if x + 1 < this.pages.lock_ref().len() {
                                 this.next_page.set_neq(Some(x + 1));
                             }
 
@@ -1032,14 +1030,15 @@ impl Reader {
                                         true
                                     };
 
+                                    let pages_len = this.pages.lock_ref().len();
                                     if img.natural_width() < img.natural_height() && is_prev_img_portrait {
                                         hidden = false;
-                                        if current_page + 2 < this.pages_len.get() {
+                                        if current_page + 2 < pages_len {
                                             this.next_page.set_neq(Some(current_page + 2));
                                         } else {
                                             this.next_page.set_neq(None);
                                         }
-                                    } else if current_page + 1 < this.pages_len.get() {
+                                    } else if current_page + 1 < pages_len {
                                         this.next_page.set_neq(Some(current_page + 1));
                                     } else {
                                         this.next_page.set_neq(None);
@@ -1082,7 +1081,7 @@ impl Reader {
                                 }
                             } else if index == current_page + 1 {
                                 hidden = false;
-                                if current_page + 2 < this.pages_len.get() {
+                                if current_page + 2 < this.pages.lock_ref().len() {
                                     this.next_page.set_neq(Some(current_page + 2));
                                 } else {
                                     this.next_page.set_neq(None);
@@ -1118,7 +1117,7 @@ impl Reader {
 
                 if page == 0 {
                     this.prev_page.set(None);
-                } else if page + 1 == this.pages_len.get() {
+                } else if page + 1 == this.pages.lock_ref().len() {
                     this.next_page.set(None);
                 }
 
