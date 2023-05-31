@@ -1,6 +1,9 @@
 use std::ops::{Deref, DerefMut};
 
-use sqlx::sqlite::{SqliteConnectOptions, SqlitePool, SqlitePoolOptions};
+use sqlx::{
+    migrate::MigrateError,
+    sqlite::{SqliteConnectOptions, SqlitePool, SqlitePoolOptions},
+};
 
 #[derive(Clone)]
 pub struct Pool(SqlitePool);
@@ -40,7 +43,15 @@ pub async fn establish_connection(
         .connect_with(opts)
         .await?;
 
-    sqlx::migrate!("./migrations").run(&pool).await?;
+    match sqlx::migrate!("./migrations").run(&pool).await {
+        Err(MigrateError::VersionMismatch(version)) => {
+            warn!("migration {version} was previously applied but has been modified")
+        }
+        Err(e) => {
+            return Err(e.into());
+        }
+        _ => {}
+    }
 
     Ok(Pool(pool))
 }
