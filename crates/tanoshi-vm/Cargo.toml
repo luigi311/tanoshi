@@ -3,7 +3,7 @@ name = "tanoshi-vm"
 version = "0.7.2"
 edition = "2021"
 description = "Tanoshi VM"
-repository = "https://github.com/faldez/tanoshi"
+repository = "https://github.com/luigi311/tanoshi"
 license = "MIT"
 
 [dependencies]

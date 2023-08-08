@@ -3,7 +3,7 @@ name = "tanoshi"
 version = "0.30.0"
 edition = "2021"
 description = "Tanoshi"
-repository = "https://github.com/faldez/tanoshi"
+repository = "https://github.com/luigi311/tanoshi"
 license = "MIT"
 
 
@@ -76,7 +76,7 @@ reqwest = { version = "^0.11.4", features = ["json"] }
 futures = "^0.3"
 rust-argon2 = "1"
 fancy-regex = "0.11"
-compress-tools = { git = "https://github.com/faldez/compress-tools-rs", features = [
+compress-tools = { git = "https://github.com/luigi311/compress-tools-rs", features = [
     "static",
 ] }
 zip = { version = "0.6", default-features = false }

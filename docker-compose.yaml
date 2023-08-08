@@ -1,7 +1,7 @@
 version: "2"
 services:
   tanoshi:
-    image: faldez/tanoshi:latest
+    image: luigi311/tanoshi:latest
     container_name: tanoshi
     volumes:
       - ./tanoshi:/tanoshi

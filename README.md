@@ -1,8 +1,8 @@
-# ![icon](https://raw.githubusercontent.com/faldez/tanoshi/main/crates/tanoshi-web/static/icons/tanoshi.png) Tanoshi
+# ![icon](https://raw.githubusercontent.com/luigi311/tanoshi/main/crates/tanoshi-web/static/icons/tanoshi.png) Tanoshi
 Selfhosted web manga reader.
 
 
-![master](https://github.com/faldez/tanoshi/workflows/master/badge.svg) [![Release Stats](https://img.shields.io/github/downloads/faldez/tanoshi/total)](https://somsubhra.github.io/github-release-stats/?username=faldez&repository=tanoshi&page=1&per_page=5) [![Release](https://img.shields.io/github/v/release/faldez/tanoshi)](https://github.com/faldez/tanoshi/releases/latest) [![Docker Pulls](https://img.shields.io/docker/pulls/faldez/tanoshi)](https://hub.docker.com/repository/docker/faldez/tanoshi) [![Discord](https://img.shields.io/discord/872093374281285682?color=7289DA&logo=discord&logoColor=FFFFFF)](https://discord.gg/wPSEftdDqB)
+![master](https://github.com/luigi311/tanoshi/workflows/master/badge.svg) [![Release Stats](https://img.shields.io/github/downloads/luigi311/tanoshi/total)](https://somsubhra.github.io/github-release-stats/?username=luigi311&repository=tanoshi&page=1&per_page=5) [![Release](https://img.shields.io/github/v/release/luigi311/tanoshi)](https://github.com/luigi311/tanoshi/releases/latest) [![Docker Pulls](https://img.shields.io/docker/pulls/luigi311/tanoshi)](https://hub.docker.com/repository/docker/luigi311/tanoshi) [![Discord](https://img.shields.io/discord/872093374281285682?color=7289DA&logo=discord&logoColor=FFFFFF)](https://discord.gg/wPSEftdDqB)
 
 ## Features
 - Browse, search, and read manga
@@ -18,7 +18,7 @@ Selfhosted web manga reader.
 - MyAnimeList and AniList tracker support
 
 ## Download
-Download from [release page](https://github.com/faldez/tanoshi/releases) or [docker](https://hub.docker.com/r/faldez/tanoshi).
+Download from [release page](https://github.com/luigi311/tanoshi/releases) or [docker](https://hub.docker.com/r/luigi311/tanoshi).
 
 ### Desktop
 If you don't plan to host Tanoshi and use from single device you can download desktop version. Download `.msi` for windows, `.deb` or `.AppImage` for linux, `.dmg` for mac.
@@ -27,7 +27,7 @@ If you don't plan to host Tanoshi and use from single device you can download de
 Go to [website](https://faldez.github.io/tanoshi) for documentation.
 
 ### Screenshot
-Head over to [screenshots](https://faldez.github.io/tanoshi/screenshots/) section on website to see screenshot.
+Head over to [screenshots](https://luigi311.github.io/tanoshi/screenshots/) section on website to see screenshot.
 
 ## Question
-Create github issue or ask in [Discord](https://discord.gg/wPSEftdDqB) server
+Create github issue or ask in Discussions.

@@ -346,7 +346,7 @@ where
 
         let release: Release = self
             .client
-            .get("https://api.github.com/repos/faldez/tanoshi/releases/latest")
+            .get("https://api.github.com/repos/luigi311/tanoshi/releases/latest")
             .header(
                 "User-Agent",
                 format!("Tanoshi/{}", env!("CARGO_PKG_VERSION")).as_str(),

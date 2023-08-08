@@ -450,19 +450,19 @@ impl Settings {
             .children(&mut [
                 html!("a", {
                     .class("list-item")
-                    .attr("href", "https://github.com/faldez/tanoshi/blob/main/CHANGELOG.md")
+                    .attr("href", "https://github.com/luigi311/tanoshi/blob/main/CHANGELOG.md")
                     .attr("target", "_blank")
                     .text("Changelog")
                 }),
                 html!("a", {
                     .class("list-item")
-                    .attr("href", "https://github.com/faldez/tanoshi")
+                    .attr("href", "https://github.com/luigi311/tanoshi")
                     .attr("target", "_blank")
                     .text("Github")
                 }),
                 html!("a", {
                     .class("list-item")
-                    .attr("href", "https://faldez.github.io/tanoshi")
+                    .attr("href", "https://luigi311.github.io/tanoshi")
                     .attr("target", "_blank")
                     .text("Website")
                 }),
