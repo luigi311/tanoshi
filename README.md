@@ -2,7 +2,7 @@
 Selfhosted web manga reader.
 
 
-![master](https://github.com/luigi311/tanoshi/workflows/master/badge.svg) [![Release Stats](https://img.shields.io/github/downloads/luigi311/tanoshi/total)](https://somsubhra.github.io/github-release-stats/?username=luigi311&repository=tanoshi&page=1&per_page=5) [![Release](https://img.shields.io/github/v/release/luigi311/tanoshi)](https://github.com/luigi311/tanoshi/releases/latest) [![Docker Pulls](https://img.shields.io/docker/pulls/luigi311/tanoshi)](https://hub.docker.com/repository/docker/luigi311/tanoshi) [![Discord](https://img.shields.io/discord/872093374281285682?color=7289DA&logo=discord&logoColor=FFFFFF)](https://discord.gg/wPSEftdDqB)
+[![Main](https://github.com/luigi311/tanoshi/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/luigi311/tanoshi/actions/workflows/ci.yml) [![Release Stats](https://img.shields.io/github/downloads/luigi311/tanoshi/total)](https://somsubhra.github.io/github-release-stats/?username=luigi311&repository=tanoshi&page=1&per_page=5) [![Release](https://img.shields.io/github/v/release/luigi311/tanoshi)](https://github.com/luigi311/tanoshi/releases/latest) [![Docker Pulls](https://img.shields.io/docker/pulls/luigi311/tanoshi)](https://hub.docker.com/repository/docker/luigi311/tanoshi)
 
 ## Features
 - Browse, search, and read manga
