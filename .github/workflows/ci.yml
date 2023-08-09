@@ -233,6 +233,7 @@ jobs:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: target/release/bundle/**/*
           tag: ${{ github.ref }}
+          file_glob: true
 
   build-cli:
     runs-on: ubuntu-latest
