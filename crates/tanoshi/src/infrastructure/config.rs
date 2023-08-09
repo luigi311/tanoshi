@@ -121,7 +121,7 @@ fn default_port() -> u16 {
 
 fn default_extension_repository() -> String {
     format!(
-        "https://raw.githubusercontent.com/faldez/tanoshi-extensions/{}",
+        "https://raw.githubusercontent.com/luigi311/tanoshi-extensions/{}",
         tanoshi_lib::RUSTC_VERSION
     )
 }

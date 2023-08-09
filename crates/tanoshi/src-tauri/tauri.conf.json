@@ -13,7 +13,7 @@
     "bundle": {
       "active": true,
       "targets": "all",
-      "identifier": "com.faldez.tanoshi",
+      "identifier": "com.luigi311.tanoshi",
       "icon": [
         "icons/512x512.png",
         "icons/icon.icns",
