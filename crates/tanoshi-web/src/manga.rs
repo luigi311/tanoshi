@@ -3,7 +3,7 @@ use crate::{
         ChapterSettings, ChapterSort, Filter,  Order, Route, Sort, Spinner, snackbar, SelectCategoryModal, SelectTrackMangaModal, TrackerStatus, icons
     }, 
     query, 
-    utils::{AsyncLoader, proxied_image_url, window}
+    utils::{AsyncLoader, proxied_image_url, window, format_number_title}
 };
 use chrono::NaiveDateTime;
 use dominator::{Dom, EventOptions, clone, events, html, routing, svg, with_node, text_signal};
@@ -715,6 +715,7 @@ impl Manga {
         let is_edit_chapter = manga.is_edit_chapter.clone();
         let filter = manga.chapter_settings.filter.clone();
         let touchmoved = Mutable::new(false);
+        
         html!("div", {
             .class("chapter-list")
             .attr("id", "chapters")
@@ -823,7 +824,7 @@ impl Manga {
                                                     html!("span", {
                                                         .style("font-weight", "500")
                                                         .style("margin-bottom", "0.5rem")
-                                                        .text(&chapter.title)
+                                                        .text(&format_number_title(chapter.number, &chapter.title))
                                                     }),
                                                     html!("div", {
                                                         .style("margin-bottom", "0.5rem")

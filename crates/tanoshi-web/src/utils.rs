@@ -147,6 +147,38 @@ pub fn initialize_urls() {
         .with(|s| *s.borrow_mut() = format!("{}/ws", graphql_host.replace("http", "ws")));
 }
 
+pub fn format_number_title(number: f64, title: &str) -> String {
+    let check_formats_prefixes = ["Chapter "];
+    
+    let mut cleaned_title = title.to_string();
+    // remove format from title
+    for format in check_formats_prefixes.iter() {
+        if title.starts_with(format) {
+            cleaned_title = title.replacen(format, "", 1);
+            cleaned_title = cleaned_title.trim().to_string(); // Trim
+        }
+        break;
+    }
+
+    if cleaned_title.starts_with(&format!("{}", number)) {
+        cleaned_title = cleaned_title.replacen(&format!("{}", number), "", 1);
+        cleaned_title = cleaned_title.trim().to_string(); // Trim
+    }   
+   
+    // remove characters from title ":" "-" 
+    let check_format_characters = [":", "-"];
+   
+    for format in check_format_characters.iter() {
+        if cleaned_title.starts_with(format) {
+            cleaned_title = cleaned_title.replacen(format, "", 1);
+            cleaned_title = cleaned_title.trim().to_string(); // Trim
+        }
+        break;
+    }
+
+    format!("Ch {}{}", number, if cleaned_title.is_empty() { "".to_string() } else { format!(": {}", cleaned_title) })
+}
+
 pub fn is_tauri() -> bool {
     IS_TAURI.with(|v| *v.borrow())
 }
