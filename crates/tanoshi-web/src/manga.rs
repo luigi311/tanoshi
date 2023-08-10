@@ -258,7 +258,9 @@ impl Manga {
     }
 
     fn download_chapters(manga: Rc<Self>) {
-        let selected_chapter_id: Vec<i64> = manga.selected_chapters.lock_ref().keys().cloned().collect();
+        let mut selected_chapter_id: Vec<i64> = manga.selected_chapters.lock_ref().keys().cloned().collect();
+        // Reverse sort the chapters so that the oldest chapter is downloaded first
+        selected_chapter_id.sort_by(|a, b| b.cmp(a));
 
         manga.loader.load(clone!(manga => async move {
             match query::download_chapters(&selected_chapter_id).await {
