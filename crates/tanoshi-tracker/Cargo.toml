@@ -8,10 +8,10 @@ edition = "2021"
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-oauth2 = { version = "4.1.0", features = ["pkce-plain"] }
+oauth2 = { version = "4", features = ["pkce-plain"] }
 chrono = { version = "0.4", features = ["serde"] }
 anyhow = "1"
 reqwest = { version = "0.11", features = ["json"] }
-log = "0.4"
+log = { version = "*" }
 async-trait = "0.1"
 thiserror = "1"

@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.31.0]
+- [tanoshi] update rust version to 1.71.1
+- [tanoshi] Update to use new maintainer repos
+- [tanoshi] Always show chapter number in manga page
+- [tanoshi] Reverse sort chapter downloads so oldest is first
+- [tanoshi-web] Update wasm to 0.2.87, sass to 1.62.1, dart to 3.0.7
+- [general] Update versions of most dependencies
+
 ## [0.30.0]
 
 ### Changed

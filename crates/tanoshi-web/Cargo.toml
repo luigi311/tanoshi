@@ -13,7 +13,7 @@ crate-type = ["cdylib"]
 tanoshi-schema = { path = "../tanoshi-schema" }
 console_error_panic_hook = "0.1"
 dominator = "0.5"
-log = "0.4"
+log = { version = "*" }
 wasm-logger = "0.2"
 chrono = { version = "0.4", features = ["serde"] }
 graphql_client = "0.12"
@@ -29,7 +29,7 @@ base64 = "0.21"
 gloo-timers = "0.2"
 anyhow = "1"
 ws_stream_wasm = "0.7"
-async_executors = { version = "0.6", features = ["async_std"] }
+async_executors = { version = "0.7", features = ["async_std"] }
 graphql-ws-client = { version = "0.4", features = [
   "client-graphql-client",
   "ws_stream_wasm",
