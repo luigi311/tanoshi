@@ -218,7 +218,7 @@ where
                     })
                     .collect(),
                 Err(e) => {
-                    error!("error fetch new chapters, reason: {}", e);
+                    error!("error fetch new chapters for {}, source {}, reason: {}", manga.title, manga.source_id, e);
                     continue;
                 }
             };

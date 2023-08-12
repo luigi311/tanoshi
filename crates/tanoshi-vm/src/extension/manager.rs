@@ -6,7 +6,7 @@ use std::{
 use anyhow::{anyhow, bail, Result};
 use fnv::FnvHashMap;
 use libloading::Library;
-use tanoshi_lib::prelude::{Input, PluginDeclaration, SourceInfo};
+use tanoshi_lib::prelude::{Input, PluginDeclaration, SourceInfo, Lang};
 
 use crate::{prelude::Source, PLUGIN_EXTENSION};
 
@@ -14,6 +14,18 @@ use crate::{prelude::Source, PLUGIN_EXTENSION};
 pub struct ExtensionManager {
     dir: PathBuf,
     extensions: Arc<RwLock<FnvHashMap<i64, Source>>>,
+}
+
+pub fn dummy_source_info(id: i64) -> SourceInfo {
+    SourceInfo {
+        id: id,
+        name: format!("Missing source {}", id),
+        url: "".to_string(),
+        version: "",
+        icon: "",
+        languages: Lang::All,
+        nsfw: false,
+    }
 }
 
 impl ExtensionManager {
@@ -200,14 +212,17 @@ impl ExtensionManager {
     }
 
     pub fn get_source_info(&self, source_id: i64) -> Result<SourceInfo> {
-        Ok(self
-            .read()?
-            .get(&source_id)
-            .ok_or_else(|| anyhow!("no such source"))?
-            .extension
-            .get()
-            .ok_or_else(|| anyhow!("uninitiated"))?
-            .get_source_info())
+        let  binding = self.read()?;
+        // Do not error if source_entry doesnt work
+        let source_entry: Result<&Source> = binding.get(&source_id).ok_or_else(|| anyhow!("no such source"));
+
+        if let Some(entry) = source_entry.ok().and_then(|s| s.extension.get()) {
+            let extension =  entry.get_source_info();
+            Ok(extension)
+        } else {
+            println!("Returning dummy source info");
+            Ok(dummy_source_info(source_id))
+        }
     }
 
     pub fn filter_list(&self, source_id: i64) -> Result<Vec<Input>> {
