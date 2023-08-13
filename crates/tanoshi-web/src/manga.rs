@@ -394,6 +394,21 @@ impl Manga {
                         }
                     }))
                 }),
+                html!("button", {
+                    .style("display", "flex")
+                    .style("align-items", "center")
+                    .text("Select unread")
+                    .event(clone!(manga => move |_: events::Click| {
+                        let chapters = manga.chapters.lock_ref();
+                        let mut selected_chapters = manga.selected_chapters.lock_mut();
+                        selected_chapters.clear();
+                        for chapter in chapters.iter() {
+                            if chapter.read_progress.is_none() {
+                                selected_chapters.insert(chapter.id, ());
+                            }
+                        }
+                    }))
+                }), 
                 html!("div", {
                     .style("display", "flex")
                     .style("align-items", "center")
