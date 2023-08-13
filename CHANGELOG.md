@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.32.0]
+- [tanoshi-vm] Output dummy source if no source found
+- [tanoshi-web] Add Select unread button to manga page
+- [tanoshi-web] Prevent popup in reader asking to save images
+- [tanoshi] Improve update errors to show manga title and source id
+
 ## [0.31.0]
 - [tanoshi] update rust version to 1.71.1
 - [tanoshi] Update to use new maintainer repos
@@ -543,6 +549,7 @@ Nothing changes, this release to build for multiarch docker image
 
 - fix panic when using local source
 
+[0.32.0]: https://github.com/luigi311/tanoshi/compare/v0.31.0...v0.32.0
 [0.30.0]: https://github.com/faldez/tanoshi/compare/v0.29.2...v0.30.0
 [0.29.2]: https://github.com/faldez/tanoshi/compare/v0.29.1...v0.29.2
 [0.29.1]: https://github.com/faldez/tanoshi/compare/v0.29.0...v0.29.1
