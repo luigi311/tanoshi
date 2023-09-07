@@ -18,11 +18,13 @@ env:
   RUST_TOOLCHAIN: 1.71.1
   DART_SDK_VERSION: 3.0.7
   DART_SASS_VERSION: 1.62.1
+  LLVM_VERSION: 13.0.0
 
 jobs:
   test:
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         os:
           - ubuntu-latest
@@ -33,13 +35,19 @@ jobs:
 
       - run: mkdir crates/tanoshi-web/dist
 
-      - name: Install deps (ubuntu)
-        if: ${{ matrix.os == 'ubuntu-latest' }}
-        run: sudo apt update && sudo apt upgrade -y && sudo apt install -y libssl-dev libarchive-dev build-essential cmake llvm clang libicu-dev nettle-dev libacl1-dev liblzma-dev libzstd-dev liblz4-dev libbz2-dev zlib1g-dev libxml2-dev lsb-release wget software-properties-common libwebkit2gtk-4.0-dev curl libgtk-3-dev libappindicator3-dev patchelf librsvg2-dev libpango1.0-dev
-      
-      - name: Install deps (macos)
-        if: ${{ matrix.os == 'macos-latest' }}
-        run: brew install icu4c libarchive bzip2 lz4 zlib expat llvm@13 libiconv
+      - name: Install deps (ubuntu/MacOS)
+        if: ${{ matrix.os != 'windows-latest' }}
+        run: |
+          if [ "${{ matrix.os }}" == "ubuntu-latest" ]; then
+            sudo apt-get update && sudo apt-get install -y \
+              libssl-dev libarchive-dev build-essential cmake llvm clang libicu-dev \
+              nettle-dev libacl1-dev liblzma-dev libzstd-dev liblz4-dev libbz2-dev \
+              zlib1g-dev libxml2-dev lsb-release wget software-properties-common \
+              libwebkit2gtk-4.0-dev curl libgtk-3-dev libappindicator3-dev patchelf \
+              librsvg2-dev libpango1.0-dev
+          elif [ "${{ matrix.os }}" == "macos-latest" ]; then
+            brew install icu4c libarchive bzip2 lz4 zlib expat libiconv
+          fi
 
       - id: cache-vcpkg
         name: Cache vcpkg (windows)
@@ -58,41 +66,23 @@ jobs:
           vcpkg install --only-downloads libarchive:x64-windows-static-md
           vcpkg install libarchive:x64-windows-static-md
 
-      - name: Install LLVM and Clang (ubuntu)
-        if: ${{ matrix.os == 'ubuntu-latest' }}
+      - name: Install LLVM and Clang
         uses: KyleMayes/install-llvm-action@v1
         with:
-          version: 13.0
-
-      - name: Install LLVM and Clang (windows)
-        if: ${{ matrix.os == 'windows-latest' }}
-        run: |
-          Invoke-WebRequest -Uri https://github.com/llvm/llvm-project/releases/download/llvmorg-13.0.0/LLVM-13.0.0-win64.exe -OutFile LLVM-13.0.0-win64.exe
-          7z x .\LLVM-13.0.0-win64.exe -aoa -o'C:\Program Files\LLVM'
+          version: ${{ env.LLVM_VERSION }}
 
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
 
       - uses: Swatinem/rust-cache@v2
-
-      - name: Test (ubuntu)
-        if: ${{ matrix.os == 'ubuntu-latest' }}
+      
+      - name: Run cargo test
         env:
-          RUSTFLAGS: "-Clink-arg=-Wl,--allow-multiple-definition"
-        run: cargo test
-
-      - name: Test (macos)
-        if: ${{ matrix.os == 'macos-latest' }}
-        env:
+          # Fix for macos
           PKG_CONFIG_PATH: /usr/local/opt/icu4c/lib/pkgconfig:/usr/local/opt/libarchive/lib/pkgconfig:/usr/local/opt/zlib/lib/pkgconfig:/usr/local/opt/expat/lib/pkgconfig
-        run: cargo test
-
-      - name: Test (windows)
-        if: ${{ matrix.os == 'windows-latest' }}
-        env:
-          LIBCLANG_PATH: C:\Program Files\LLVM\bin
-        run: cargo test
+        run: |
+          cargo test
 
   build-web:
     runs-on: ubuntu-latest
@@ -166,19 +156,12 @@ jobs:
       
       - name: Install deps
         if: ${{ matrix.os == 'macos-latest' }}
-        run: brew install icu4c libarchive bzip2 lz4 zlib expat llvm@13 libiconv
+        run: brew install icu4c libarchive bzip2 lz4 zlib expat libiconv
 
       - name: Install LLVM and Clang
-        if: ${{ matrix.os == 'ubuntu-latest' }}
         uses: KyleMayes/install-llvm-action@v1
         with:
-          version: 13.0
-
-      - name: Install LLVM and Clang
-        if: ${{ matrix.os == 'windows-latest' }}
-        run: |
-          Invoke-WebRequest -Uri https://github.com/llvm/llvm-project/releases/download/llvmorg-13.0.0/LLVM-13.0.0-win64.exe -OutFile LLVM-13.0.0-win64.exe
-          7z x .\LLVM-13.0.0-win64.exe -aoa -o'C:\Program Files\LLVM'
+          version: ${{ env.LLVM_VERSION }}
 
       - name: Cache vcpkg
         uses: actions/cache@v3
@@ -260,7 +243,7 @@ jobs:
       - name: Install LLVM and Clang
         uses: KyleMayes/install-llvm-action@v1
         with:
-          version: "13.0"
+          version: ${{ env.LLVM_VERSION }}
           
       - name: Install rust
         uses: dtolnay/rust-toolchain@stable
@@ -270,7 +253,6 @@ jobs:
       - name: Build tanoshi-cli
         env:
           RUSTFLAGS: "-Clink-arg=-Wl,--allow-multiple-definition"
-          LLVM_SYS_130_PREFIX: ${{ env.LLVM_PATH }}
         run: |
           cargo build -p tanoshi-cli --release
 
@@ -294,11 +276,8 @@ jobs:
           asset_name: tanoshi-cli
           tag: ${{ github.ref }}
 
-  build-docker:
+  build-docker-amd64:
     runs-on: ubuntu-latest
-    needs:
-      - test
-      - build-web
     strategy:
       fail-fast: false
       matrix:
@@ -309,12 +288,23 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Login to ghcr.io
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Docker meta
-        id: docker_meta
+        id: docker_meta_amd64
         uses: docker/metadata-action@v4
         with:
           images: |
-            ${{ secrets.DOCKER_USERNAME }}/tanoshi,enable=${{ secrets.DOCKER_USERNAME != '' }}
+            ghcr.io/${{ github.actor }}/tanoshi
           tags: |
             type=raw,value=latest,enable=${{ matrix.variant == 'slim' && github.ref_name == github.event.repository.default_branch }}
             type=raw,value=dev,enable=${{ matrix.variant == 'slim' && github.ref_name == 'dev' }}
@@ -324,44 +314,128 @@ jobs:
             type=semver,pattern={{ version }},suffix=-${{ matrix.variant }}
             type=semver,pattern={{ major }}.{{ minor }},suffix=-${{ matrix.variant }}
             type=sha,suffix=-${{ matrix.variant }}
-       
+
+      - name: Build Push
+        id: build_push
+        if: "${{ steps.docker_meta_amd64.outputs.tags != '' }}"
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.docker_meta_amd64.outputs.tags }}
+          labels: ${{ steps.docker_meta_amd64.outputs.labels }}
+          build-args: |
+            BUILD_WEB=false
+          cache-from: type=registry,ref=ghcr.io/${{ github.actor }}/tanoshi:buildcache
+          cache-to: type=registry,ref=ghcr.io/${{ github.actor }}/tanoshi:buildcache,mode=max
+
+  build-docker-aarch64:
+    runs-on: [self-hosted, arm64]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - dockerfile: Dockerfile
+            variant: slim
+      
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
       - name: Set up Docker Buildx
         id: buildx
         uses: docker/setup-buildx-action@v2
 
-      - name: Append arm64 node to buildx
-        id: arm64
-        env: 
-          SSH_ARM64_HOST: ${{ secrets.SSH_ARM64_HOST }}
-          SSH_ARM64_PORT: ${{ secrets.SSH_ARM64_PORT }}
-        if: "${{ env.SSH_ARM64_HOST != '' }}"
-        run: |
-          mkdir -p ~/.ssh
-          chmod 700 ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          if [ -z "$SSH_ARM64_PORT" ]; then
-            ssh-keyscan ${{ secrets.SSH_ARM64_HOST }} >> ~/.ssh/known_hosts
-          else
-            ssh-keyscan -p ${{ secrets.SSH_ARM64_PORT }} ${{ secrets.SSH_ARM64_HOST }} >> ~/.ssh/known_hosts
-          fi
-          chmod 644 ~/.ssh/known_hosts
-          
-          if [ -z "$SSH_ARM64_PORT" ]; then
-            docker context create node-arm64 --docker "host=ssh://${{ secrets.SSH_ARM64_USER }}@${{ secrets.SSH_ARM64_HOST }}"
-          else
-            docker context create node-arm64 --docker "host=ssh://${{ secrets.SSH_ARM64_USER }}@${{ secrets.SSH_ARM64_HOST }}:${{ secrets.SSH_ARM64_PORT }}"
-          fi
-          docker buildx create --append --name ${{ steps.buildx.outputs.name }} --platform linux/arm64 node-arm64
+      - name: Login to ghcr.io
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build platforms
+      - name: Docker meta
+        id: docker_meta_aarch64
+        env: 
+          ARCH: aarch64
+        uses: docker/metadata-action@v4
+        with:
+          images: |
+            ghcr.io/${{ github.actor }}/tanoshi
+          tags: |
+            type=raw,value=latest,suffix=-${{ env.ARCH }},enable=${{ matrix.variant == 'slim' && github.ref_name == github.event.repository.default_branch }}
+            type=raw,value=dev,suffix=-${{ env.ARCH }},enable=${{ matrix.variant == 'slim' && github.ref_name == 'dev' }}
+            type=raw,value=latest,suffix=-${{ matrix.variant }}-${{ env.ARCH }},enable={{ is_default_branch }}
+            type=ref,event=branch,suffix=-${{ matrix.variant }}-${{ env.ARCH }}
+            type=ref,event=pr,suffix=-${{ matrix.variant }}-${{ env.ARCH }}
+            type=semver,pattern={{ version }},suffix=-${{ matrix.variant }}-${{ env.ARCH }}
+            type=semver,pattern={{ major }}.{{ minor }},suffix=-${{ matrix.variant }}-${{ env.ARCH }}
+            type=sha,suffix=-${{ matrix.variant }}-${{ env.ARCH }}
+
+      - name: Build Push
+        id: build_push
+        env:
+          ARCH: aarch64
+        if: "${{ steps.docker_meta_aarch64.outputs.tags != '' }}"
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          platforms: linux/aarch64
+          push: true
+          tags: ${{ steps.docker_meta_aarch64.outputs.tags }}
+          labels: ${{ steps.docker_meta_aarch64.outputs.labels }}
+          build-args: |
+            BUILD_WEB=false
+          cache-from: type=registry,ref=ghcr.io/${{ github.actor }}/tanoshi:buildcache-${{ env.ARCH }}
+          cache-to: type=registry,ref=ghcr.io/${{ github.actor }}/tanoshi:buildcache-${{ env.ARCH }},mode=max
+  
+  docker-build-merge:
+    runs-on: ubuntu-latest
+    needs:
+      - build-docker-amd64
+      - build-docker-aarch64
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - dockerfile: Dockerfile
+            variant: slim
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Login to ghcr.io
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Docker meta
+        id: docker_meta
+        uses: docker/metadata-action@v4
+        with:
+          images: |
+            ghcr.io/${{ github.actor }}/tanoshi
+          tags: |
+            type=raw,value=latest,enable=${{ matrix.variant == 'slim' && github.ref_name == github.event.repository.default_branch }}
+            type=raw,value=dev,enable=${{ matrix.variant == 'slim' && github.ref_name == 'dev' }}
+            type=raw,value=latest,suffix=-${{ matrix.variant }},enable={{ is_default_branch }}
+            type=ref,event=branch,suffix=-${{ matrix.variant }}
+            type=ref,event=pr,suffix=-${{ matrix.variant }}
+            type=semver,pattern={{ version }},suffix=-${{ matrix.variant }}
+            type=semver,pattern={{ major }}.{{ minor }},suffix=-${{ matrix.variant }}
+            type=sha,suffix=-${{ matrix.variant }}
+  
+      - name: Install deps
         run: |
-          # If arm64 was successfully appended, then we build for amd64 and arm64
-          if [ -z "$SSH_ARM64_HOST" ]; then
-            echo "PLATFORMS=linux/amd64,linux/arm64" >> $GITHUB_ENV
-          else
-            echo "PLATFORMS=linux/amd64" >> $GITHUB_ENV
-          fi
+          sudo apt-get update && sudo apt-get install -y jq
 
       - name: Login to DockerHub
         env:
@@ -372,33 +446,20 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
 
-      - name: Build
-        id: build
-        if: "${{ steps.docker_meta.outputs.tags == '' }}"
-        uses: docker/build-push-action@v4
-        with:
-          context: .
-          file: ${{ matrix.dockerfile }}
-          platforms: ${{ env.PLATFORMS }}
-          push: false
-          tags: tanoshi:action
-          build-args: |
-            BUILD_WEB=false
-          cache-from: type=registry,ref=luigi311/tanoshi:buildcache
-          cache-to: type=registry,ref=luigi311/tanoshi:buildcache,mode=max
-
-      - name: Build Push
-        id: build_push
-        if: "${{ steps.docker_meta.outputs.tags != '' }}"
-        uses: docker/build-push-action@v4
-        with:
-          context: .
-          file: ${{ matrix.dockerfile }}
-          platforms: ${{ env.PLATFORMS }}
-          push: true
-          tags: ${{ steps.docker_meta.outputs.tags }}
-          labels: ${{ steps.docker_meta.outputs.labels }}
-          build-args: |
-            BUILD_WEB=false
-          cache-from: type=registry,ref=luigi311/tanoshi:buildcache
-          cache-to: type=registry,ref=luigi311/tanoshi:buildcache,mode=max  
+      # Use the merged tags to create a single manifest tag
+      - name: Create Combined Manifest Tag
+        id: create_combined_manifest
+        env:
+          DOCKER_CLI_ACI: "1"
+        run: |
+          for TAG in $(jq -r '.tags[]' <<< "$DOCKER_METADATA_OUTPUT_JSON"); do
+            echo "Creating manifest tag $TAG"
+            # Replace ghcr.io/${{ github.actor }} with docker.io/${{ secrets.DOCKER_USERNAME }} if DOCKER_USERNAME is set
+            if [ "${{ secrets.DOCKER_USERNAME }}" != "" ]; then
+              DOCKERHUB_TAG=$(echo "--tag $TAG" | sed "s/ghcr.io\/${{ github.actor }}/${{ secrets.DOCKER_USERNAME }}/")
+            else
+              DOCKERHUB_TAG=""
+            fi
+            
+            docker buildx imagetools create --append "${TAG}-aarch64" --tag "${TAG}" ${DOCKERHUB_TAG}
+          done
