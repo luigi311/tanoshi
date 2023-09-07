@@ -293,6 +293,8 @@ jobs:
         uses: docker/setup-buildx-action@v2
 
       - name: Login to ghcr.io
+        id: docker_login
+        continue-on-error: true
         uses: docker/login-action@v2
         with:
           registry: ghcr.io
@@ -315,9 +317,23 @@ jobs:
             type=semver,pattern={{ major }}.{{ minor }},suffix=-${{ matrix.variant }}
             type=sha,suffix=-${{ matrix.variant }}
 
+      - name: Build
+        if: "${{ steps.docker_login.outcome != 'success' }}"
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          platforms: linux/amd64
+          push: false
+          tags: ${{ steps.docker_meta_amd64.outputs.tags }}
+          labels: ${{ steps.docker_meta_amd64.outputs.labels }}
+          build-args: |
+            BUILD_WEB=false
+          cache-from: type=registry,ref=ghcr.io/${{ github.actor }}/tanoshi:buildcache
+          cache-to: type=registry,ref=ghcr.io/${{ github.actor }}/tanoshi:buildcache,mode=max
+
       - name: Build Push
-        id: build_push
-        if: "${{ steps.docker_meta_amd64.outputs.tags != '' }}"
+        if: "${{ steps.docker_login.outcome == 'success' && steps.docker_meta_amd64.outputs.tags != '' }}"
         uses: docker/build-push-action@v4
         with:
           context: .
@@ -333,6 +349,7 @@ jobs:
 
   build-docker-aarch64:
     runs-on: [self-hosted, arm64]
+    if: ${{ github.event_name == 'push' }}
     strategy:
       fail-fast: false
       matrix:
@@ -393,6 +410,7 @@ jobs:
   
   docker-build-merge:
     runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'push' }}
     needs:
       - build-docker-amd64
       - build-docker-aarch64
