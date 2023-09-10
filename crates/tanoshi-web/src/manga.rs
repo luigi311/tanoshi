@@ -30,7 +30,8 @@ struct Chapter {
     pub read_progress: Option<ReadProgress>,
     pub downloaded_path: Option<String>,
     #[allow(unused)]
-    pub download_status: Option<(i64, i64)>
+    pub download_status: Option<(i64, i64)>,
+    pub is_visible: Mutable<bool>
 }
 
 #[derive(Debug, Clone)]
@@ -149,7 +150,8 @@ impl Manga {
                             is_complete: progress.is_complete,
                         }),
                         downloaded_path: chapter.downloaded_path.clone(),
-                        download_status: chapter.download_status.as_ref().map(|queue| (queue.downloaded, queue.total))
+                        download_status: chapter.download_status.as_ref().map(|queue| (queue.downloaded, queue.total)),
+                        is_visible: Mutable::new(true)
                     })).collect());
 
                     manga.chapter_settings.load_by_manga_id(manga.id.get());                    
@@ -203,7 +205,8 @@ impl Manga {
                             is_complete: progress.is_complete,
                         }),
                         downloaded_path: chapter.downloaded_path.clone(),
-                        download_status: chapter.download_status.as_ref().map(|queue| (queue.downloaded, queue.total))
+                        download_status: chapter.download_status.as_ref().map(|queue| (queue.downloaded, queue.total)),
+                        is_visible: Mutable::new(true)
                     })).collect());
 
                     manga.chapter_settings.load_by_manga_id(manga.id.get());
@@ -389,7 +392,10 @@ impl Manga {
                         if selected_chapters.len() == chapters.len() {
                             selected_chapters.clear();
                         } else {
-                            let chapter_ids = chapters.iter().map(|ch| (ch.id, ())).collect();
+                            // Only select visible chapters
+                            let chapter_ids = chapters.iter()
+                                .filter(|ch| ch.is_visible.get())
+                                .map(|ch| (ch.id, ())).collect();
                             selected_chapters.replace(chapter_ids);
                         }
                     }))
@@ -777,10 +783,14 @@ impl Manga {
                     .class("list")
                     .children_signal_vec(manga.chapters.signal_vec_cloned().map(clone!(filter, is_edit_chapter => move |chapter| html!("li", {
                         .class("list-item")
-                        .visible_signal(filter.signal_cloned().map(clone!(chapter => move |filter| match filter {
-                            Filter::None => true,
-                            Filter::Read => chapter.read_progress.as_ref().map(|progress| progress.is_complete).unwrap_or(false),
-                            Filter::Unread => chapter.read_progress.as_ref().map(|progress| !progress.is_complete).unwrap_or(true),
+                        .visible_signal(filter.signal_cloned().map(clone!(chapter => move |filter| {
+                            let is_visible = match filter {
+                                Filter::None => true,
+                                Filter::Read => chapter.read_progress.as_ref().map(|progress| progress.is_complete).unwrap_or(false),
+                                Filter::Unread => chapter.read_progress.as_ref().map(|progress| !progress.is_complete).unwrap_or(true),
+                            };
+                            chapter.is_visible.set(is_visible);
+                            is_visible
                         })))
                         .child_signal(is_edit_chapter.signal().map(clone!(manga, chapter => move |is_edit_chapter| if is_edit_chapter {
                             Some(html!("input" => HtmlInputElement, {
