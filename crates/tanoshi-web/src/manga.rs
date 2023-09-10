@@ -380,7 +380,7 @@ impl Manga {
                     .style("display", "flex")
                     .style("align-items", "center")
                     .text_signal(manga.selected_chapters.signal_vec_keys().len().map(clone!(manga => move |selected_len| {
-                        if selected_len == manga.chapters.lock_mut().len() {
+                        if selected_len > 0 {
                             "Deselect all"
                         } else {
                             "Select all"
@@ -389,7 +389,7 @@ impl Manga {
                     .event(clone!(manga => move |_: events::Click| {
                         let chapters = manga.chapters.lock_ref();
                         let mut selected_chapters = manga.selected_chapters.lock_mut();
-                        if selected_chapters.len() == chapters.len() {
+                        if selected_chapters.len() > 0 {
                             selected_chapters.clear();
                         } else {
                             // Only select visible chapters
