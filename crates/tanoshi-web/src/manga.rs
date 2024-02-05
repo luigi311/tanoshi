@@ -403,15 +403,28 @@ impl Manga {
                 html!("button", {
                     .style("display", "flex")
                     .style("align-items", "center")
-                    .text("Select unread")
+                    // Show Select previous only if 1 chapter is selected and remove when its not 1
+                    .text_signal(manga.selected_chapters.signal_vec_keys().len().map(clone!(manga => move |selected_len| {
+                        if selected_len == 1 {
+                            "Select previous"
+                        } else {
+                            " "
+                        }
+                    })))
                     .event(clone!(manga => move |_: events::Click| {
                         let chapters = manga.chapters.lock_ref();
                         let mut selected_chapters = manga.selected_chapters.lock_mut();
-                        selected_chapters.clear();
-                        for chapter in chapters.iter() {
-                            if chapter.read_progress.is_none() {
-                                selected_chapters.insert(chapter.id, ());
-                            }
+
+                        if selected_chapters.len() == 1 {
+                            // Select all previous chapters based on chapter number
+                            let original_chapter = chapters.iter()
+                                .find(|ch| ch.id == *selected_chapters.keys().next().unwrap())
+                                .unwrap();
+                            let chapter_ids = chapters.iter()
+                                .filter(|ch| ch.is_visible.get())
+                                .filter(|ch| ch.number <= original_chapter.number)
+                                .map(|ch| (ch.id, ())).collect();
+                            selected_chapters.replace(chapter_ids);
                         }
                     }))
                 }), 
