@@ -753,6 +753,10 @@ impl Manga {
         html!("div", {
             .class("chapter-list")
             .attr("id", "chapters")
+            // Prevent context menu so mobile users dont get a popup
+            .event_with_options(&EventOptions::preventable(), clone!(manga => move |e: events::ContextMenu| {
+                e.prevent_default();
+            }))
             .children(&mut [
                 html!("div", {
                     .style("display", "flex")
