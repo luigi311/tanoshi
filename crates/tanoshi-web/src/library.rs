@@ -291,6 +291,10 @@ impl Library {
         Self::fetch_category_detail(library.clone());
 
         html!("div", {
+            // Prevent context menu so mobile users dont get a popup
+            .event_with_options(&EventOptions::preventable(), clone!(library => move |e: events::ContextMenu| {
+                e.prevent_default();
+            }))
             .future(library.library_settings.sort.signal_cloned().for_each(clone!(library => move |sort| {
                 let mut covers = library.cover_list.lock_ref().to_vec();
                 covers.sort_by(|a, b| match sort {
