@@ -40,6 +40,9 @@ impl ImageRepository for ImageRepositoryImpl {
             headers.insert("Referer", referer);
         }
 
+        // Insert tanoshi user-agent
+        headers.insert("User-Agent", "Tanoshi".parse().unwrap());
+
         let source_res = self.client.get(url).headers(headers).send().await?;
 
         let content_type = source_res

@@ -255,7 +255,8 @@ where
         let contents = self
             .client
             .request(reqwest::Method::GET, url.clone())
-            .header("referer", referrer)
+            .header("Referer", referrer)
+            .header("User-Agent", "Tanoshi")
             .send()
             .await?
             .bytes()
