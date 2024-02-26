@@ -244,23 +244,27 @@ where
 
         let mut zip = self.open_or_create_writeble_zip_file(&manga_path, &archive_path)?;
 
-        tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
-
         let referrer = self
             .ext
             .get_source_info(queue.source_id)
             .map(|s| s.url)
             .unwrap_or_default();
 
-        let contents = self
+        let response = self
             .client
             .request(reqwest::Method::GET, url.clone())
             .header("Referer", referrer)
-            .header("User-Agent", "Tanoshi")
+            .header("User-Agent", format!("Tanoshi/{}", env!("CARGO_PKG_VERSION")).as_str(),)
             .send()
-            .await?
-            .bytes()
             .await?;
+        
+        // Check if the response is successful
+        if !response.status().is_success() {
+            return Err(anyhow!("failed to download {}, status: {}, body: {}", url, response.status(), response.text().await?));
+        }
+
+        let contents = response.bytes().await?;
+
 
         zip.start_file(&filename, Default::default())?;
 
@@ -303,6 +307,7 @@ where
         }
 
         loop {
+            tokio::time::sleep(tokio::time::Duration::from_micros(1_000_000)).await;
             tokio::select! {
                 Ok(chapter) = self.chapter_update_receiver.recv() => {
                     if self.auto_download_chapter {
