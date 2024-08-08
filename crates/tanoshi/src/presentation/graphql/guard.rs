@@ -11,7 +11,6 @@ impl AdminGuard {
     }
 }
 
-#[async_trait::async_trait]
 impl Guard for AdminGuard {
     async fn check(&self, ctx: &Context<'_>) -> Result<()> {
         let claims = ctx

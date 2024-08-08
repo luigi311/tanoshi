@@ -1,9 +1,8 @@
-use std::collections::HashMap;
-
 use async_trait::async_trait;
 use futures::{stream::BoxStream, StreamExt};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use sqlx::{Row, SqlitePool};
+use std::{collections::HashMap, ops::DerefMut};
 
 use crate::{
     domain::{
@@ -339,7 +338,7 @@ impl LibraryRepository for LibraryRepositoryImpl {
         let library_id = sqlx::query("INSERT INTO user_library(user_id, manga_id) VALUES (?, ?)")
             .bind(user_id)
             .bind(manga_id)
-            .execute(&mut tx)
+            .execute(tx.deref_mut())
             .await
             .map(|res| res.last_insert_rowid())?;
 
@@ -353,7 +352,7 @@ impl LibraryRepository for LibraryRepositoryImpl {
             for category_id in category_ids {
                 query = query.bind(library_id).bind(category_id);
             }
-            query.execute(&mut tx).await?;
+            query.execute(tx.deref_mut()).await?;
         }
 
         tx.commit().await?;

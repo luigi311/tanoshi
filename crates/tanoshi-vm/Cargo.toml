@@ -7,14 +7,14 @@ repository = "https://github.com/luigi311/tanoshi"
 license = "MIT"
 
 [dependencies]
-tanoshi-lib = { path = "../tanoshi-lib", version = "0.27.0" }
+tanoshi-lib = { path = "../tanoshi-lib" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1"
 bytes = "1"
-log = { version = "*" }
+log = { version = "0.4" }
 anyhow = "1"
 tokio = { version = "1", features = ["full"] }
-reqwest = { version = "0.11", features = [
+reqwest = { version = "0.12", features = [
     "cookies",
     "gzip",
     "brotli",
@@ -27,4 +27,4 @@ libloading = "0.8"
 once_cell = "1"
 
 [dev-dependencies]
-env_logger = "0.10"
+env_logger = "0.11"

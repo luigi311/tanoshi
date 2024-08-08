@@ -1,5 +1,5 @@
 use axum::{
-    body::{boxed, Body, Full},
+    body::Body,
     http::{header, StatusCode},
     response::{IntoResponse, Response},
 };
@@ -34,7 +34,7 @@ where
         let path = self.0.into();
         match Asset::get(path.as_str()) {
             Some(content) => {
-                let body = boxed(Full::from(content.data));
+                let body = content.data.to_vec().into();
                 let mime = mime_guess::from_path(path).first_or_octet_stream();
                 Response::builder()
                     .header(header::CONTENT_TYPE, mime.as_ref())
@@ -43,7 +43,7 @@ where
             }
             None => Response::builder()
                 .status(StatusCode::NOT_FOUND)
-                .body(boxed(Full::from("404")))
+                .body("404".into())
                 .unwrap(),
         }
     }

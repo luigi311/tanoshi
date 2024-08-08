@@ -1,9 +1,10 @@
 use axum::{
     async_trait,
-    extract::{FromRequestParts, TypedHeader},
+    extract::FromRequestParts,
     http::request::Parts,
     RequestPartsExt,
 };
+use axum_extra::TypedHeader;
 use headers::{authorization::Bearer, Authorization};
 
 pub struct Token(pub String);

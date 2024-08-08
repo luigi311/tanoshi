@@ -19,7 +19,7 @@ use std::{
     path::{Path, PathBuf},
 };
 use tanoshi_vm::extension::ExtensionManager;
-use zip::{ZipArchive, ZipWriter};
+use zip::{write::SimpleFileOptions, ZipArchive, ZipWriter};
 
 use tokio::{
     sync::mpsc::{UnboundedReceiver, UnboundedSender},
@@ -265,8 +265,7 @@ where
 
         let contents = response.bytes().await?;
 
-
-        zip.start_file(&filename, Default::default())?;
+        zip.start_file(&*filename, SimpleFileOptions::default())?;
 
         zip.write_all(contents.to_vec().as_slice())?;
 
