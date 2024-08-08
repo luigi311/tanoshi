@@ -80,7 +80,7 @@ fancy-regex = "0.13"
 compress-tools = { git = "https://github.com/luigi311/compress-tools-rs", features = [
     "static",
 ] }
-zip = { version = "0.6", default-features = false }
+zip = { version = "2", default-features = false }
 phf = { version = "0.11", features = ["macros"] }
 human-sort = "0.2"
 aes = "0.8"
