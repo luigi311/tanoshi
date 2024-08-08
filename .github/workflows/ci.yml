@@ -31,7 +31,7 @@ jobs:
           - macos-latest
           - windows-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - run: mkdir crates/tanoshi-web/dist
 
@@ -51,7 +51,7 @@ jobs:
 
       - id: cache-vcpkg
         name: Cache vcpkg (windows)
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         if: ${{ matrix.os == 'windows-latest' }}
         with:
           path: "C:/vcpkg/installed"
@@ -67,7 +67,7 @@ jobs:
           vcpkg install libarchive:x64-windows-static-md
 
       - name: Install LLVM and Clang
-        uses: KyleMayes/install-llvm-action@v1
+        uses: KyleMayes/install-llvm-action@v2.0.3
         with:
           version: ${{ env.LLVM_VERSION }}
 
@@ -87,7 +87,7 @@ jobs:
   build-web:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - uses: dtolnay/rust-toolchain@stable
         with:
@@ -115,7 +115,7 @@ jobs:
           cd crates/tanoshi-web && trunk build --release
 
       - name: Upload tanoshi-web
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: tanoshi-web
           path: crates/tanoshi-web/dist
@@ -133,10 +133,10 @@ jobs:
           - windows-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Download dist
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: tanoshi-web
           path: crates/tanoshi-web/dist
@@ -159,12 +159,12 @@ jobs:
         run: brew install icu4c libarchive bzip2 lz4 zlib expat libiconv
 
       - name: Install LLVM and Clang
-        uses: KyleMayes/install-llvm-action@v1
+        uses: KyleMayes/install-llvm-action@v2.0.3
         with:
           version: ${{ env.LLVM_VERSION }}
 
       - name: Cache vcpkg
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         if: ${{ matrix.os == 'windows-latest' }}
         with:
           path: "C:/vcpkg/installed"
@@ -217,9 +217,9 @@ jobs:
           mv target/release/bundle/msi/*.msi ${{ github.workspace }}/builds/
 
       - name: Upload dist
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: tanoshi-desktop
+          name: tanoshi-desktop-${{ matrix.os }}
           path: ${{ github.workspace }}/builds/
 
       - name: Upload binaries to GitHub Releases
@@ -235,13 +235,13 @@ jobs:
   build-cli:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       
       - name: Install deps
         run: sudo apt update && sudo apt upgrade -y && sudo apt install -y libssl-dev libarchive-dev build-essential cmake libicu-dev nettle-dev libacl1-dev liblzma-dev libzstd-dev liblz4-dev libbz2-dev zlib1g-dev libxml2-dev lsb-release wget software-properties-common libwebkit2gtk-4.0-dev curl libgtk-3-dev libappindicator3-dev patchelf librsvg2-dev libpango1.0-dev
       
       - name: Install LLVM and Clang
-        uses: KyleMayes/install-llvm-action@v1
+        uses: KyleMayes/install-llvm-action@v2.0.3
         with:
           version: ${{ env.LLVM_VERSION }}
           
@@ -262,7 +262,7 @@ jobs:
           cp ${{ github.workspace }}/target/release/tanoshi-cli ${{ github.workspace }}/artifact/
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: tanoshi-cli
           path: ${{ github.workspace }}/artifact/tanoshi-cli
@@ -286,16 +286,16 @@ jobs:
             variant: slim
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Docker Buildx
         id: buildx
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@v3
 
       - name: Login to ghcr.io
         id: docker_login
         continue-on-error: true
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -303,7 +303,7 @@ jobs:
 
       - name: Docker meta
         id: docker_meta_amd64
-        uses: docker/metadata-action@v4
+        uses: docker/metadata-action@v5
         with:
           images: |
             ghcr.io/${{ github.actor }}/tanoshi
@@ -319,7 +319,7 @@ jobs:
 
       - name: Build
         if: "${{ steps.docker_login.outcome != 'success' }}"
-        uses: docker/build-push-action@v4
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: ${{ matrix.dockerfile }}
@@ -334,7 +334,7 @@ jobs:
 
       - name: Build Push
         if: "${{ steps.docker_login.outcome == 'success' && steps.docker_meta_amd64.outputs.tags != '' }}"
-        uses: docker/build-push-action@v4
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: ${{ matrix.dockerfile }}
@@ -359,14 +359,14 @@ jobs:
       
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Docker Buildx
         id: buildx
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@v3
 
       - name: Login to ghcr.io
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -376,7 +376,7 @@ jobs:
         id: docker_meta_aarch64
         env: 
           ARCH: aarch64
-        uses: docker/metadata-action@v4
+        uses: docker/metadata-action@v5
         with:
           images: |
             ghcr.io/${{ github.actor }}/tanoshi
@@ -395,7 +395,7 @@ jobs:
         env:
           ARCH: aarch64
         if: "${{ steps.docker_meta_aarch64.outputs.tags != '' }}"
-        uses: docker/build-push-action@v4
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: ${{ matrix.dockerfile }}
@@ -422,14 +422,14 @@ jobs:
             variant: slim
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Docker Buildx
         id: buildx
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@v3
 
       - name: Login to ghcr.io
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -437,7 +437,7 @@ jobs:
 
       - name: Docker meta
         id: docker_meta
-        uses: docker/metadata-action@v4
+        uses: docker/metadata-action@v5
         with:
           images: |
             ghcr.io/${{ github.actor }}/tanoshi
@@ -459,7 +459,7 @@ jobs:
         env:
           DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
         if: "${{ env.DOCKER_USERNAME != '' }}"
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
