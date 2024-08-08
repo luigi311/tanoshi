@@ -58,7 +58,6 @@ where
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct UserFavoriteId(pub i64, pub i64);
 
-#[async_trait::async_trait]
 impl<H, L, M, T, D> Loader<UserFavoriteId> for DatabaseLoader<H, L, M, T, D>
 where
     H: HistoryRepository + 'static,
@@ -104,7 +103,6 @@ where
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct UserFavoritePath(pub i64, pub String);
 
-#[async_trait::async_trait]
 impl<H, L, M, T, D> Loader<UserFavoritePath> for DatabaseLoader<H, L, M, T, D>
 where
     H: HistoryRepository + 'static,
@@ -148,7 +146,6 @@ where
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct UserLastReadId(pub i64, pub i64);
 
-#[async_trait::async_trait]
 impl<H, L, M, T, D> Loader<UserLastReadId> for DatabaseLoader<H, L, M, T, D>
 where
     H: HistoryRepository + 'static,
@@ -189,7 +186,6 @@ where
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct UserUnreadChaptersId(pub i64, pub i64);
 
-#[async_trait::async_trait]
 impl<H, L, M, T, D> Loader<UserUnreadChaptersId> for DatabaseLoader<H, L, M, T, D>
 where
     H: HistoryRepository + 'static,
@@ -229,7 +225,6 @@ where
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct UserHistoryId(pub i64, pub i64);
 
-#[async_trait::async_trait]
 impl<H, L, M, T, D> Loader<UserHistoryId> for DatabaseLoader<H, L, M, T, D>
 where
     H: HistoryRepository + 'static,
@@ -278,7 +273,6 @@ where
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MangaId(pub i64);
 
-#[async_trait::async_trait]
 impl<H, L, M, T, D> Loader<MangaId> for DatabaseLoader<H, L, M, T, D>
 where
     H: HistoryRepository + 'static,
@@ -308,7 +302,6 @@ where
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct UserTrackerMangaId(pub i64, pub i64);
 
-#[async_trait::async_trait]
 impl<H, L, M, T, D> Loader<UserTrackerMangaId> for DatabaseLoader<H, L, M, T, D>
 where
     H: HistoryRepository + 'static,
@@ -358,7 +351,6 @@ where
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct UserCategoryId(pub i64, pub Option<i64>);
 
-#[async_trait::async_trait]
 impl<H, L, M, T, D> Loader<UserCategoryId> for DatabaseLoader<H, L, M, T, D>
 where
     H: HistoryRepository + 'static,
@@ -396,7 +388,6 @@ where
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ChapterDownloadQueueId(pub i64);
 
-#[async_trait::async_trait]
 impl<H, L, M, T, D> Loader<ChapterDownloadQueueId> for DatabaseLoader<H, L, M, T, D>
 where
     H: HistoryRepository + 'static,

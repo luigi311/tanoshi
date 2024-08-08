@@ -197,7 +197,7 @@ impl Config {
         match std::fs::File::open(config_path.clone()) {
             Ok(file) => {
                 info!("Open config from {:?}", config_path);
-                let mut cfg: Self = serde_yaml::from_reader(file)?;
+                let mut cfg: Self = serde_yml::from_reader(file)?;
                 cfg.path = config_path;
                 Ok(cfg)
             }
@@ -214,7 +214,7 @@ impl Config {
     }
 
     pub fn save(&self) -> Result<(), anyhow::Error> {
-        std::fs::write(&self.path, serde_yaml::to_string(&self)?)?;
+        std::fs::write(&self.path, serde_yml::to_string(&self)?)?;
 
         Ok(())
     }
