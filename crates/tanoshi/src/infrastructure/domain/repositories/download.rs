@@ -1,6 +1,7 @@
 use async_trait::async_trait;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use sqlx::{Row, SqlitePool};
+use std::ops::DerefMut;
 
 use crate::{
     domain::{
@@ -383,11 +384,11 @@ impl DownloadRepository for DownloadRepositoryImpl {
     ) -> Result<(), DownloadRepositoryError> {
         let mut tx = self.pool.begin().await?;
 
-        sqlx::query("UPDATE download_queue SET priority = priority - 1 WHERE priority > (SELECT priority FROM download_queue WHERE chapter_id = ? LIMIT 1)").bind(id).execute(&mut tx).await?;
+        sqlx::query("UPDATE download_queue SET priority = priority - 1 WHERE priority > (SELECT priority FROM download_queue WHERE chapter_id = ? LIMIT 1)").bind(id).execute(tx.deref_mut()).await?;
 
         sqlx::query("DELETE FROM download_queue WHERE chapter_id = ?")
             .bind(id)
-            .execute(&mut tx)
+            .execute(tx.deref_mut())
             .await?;
 
         tx.commit().await?;
@@ -404,18 +405,18 @@ impl DownloadRepository for DownloadRepositoryImpl {
 
         sqlx::query(r#"UPDATE download_queue SET priority = priority - 1 WHERE priority > (SELECT priority FROM download_queue WHERE chapter_id = ?)"#)
             .bind(chapter_id)
-            .execute(&mut tx)
+            .execute(tx.deref_mut())
             .await?;
 
         sqlx::query(r#"UPDATE download_queue SET priority = priority + 1 WHERE priority >= ?"#)
             .bind(priority)
-            .execute(&mut tx)
+            .execute(tx.deref_mut())
             .await?;
 
         sqlx::query(r#"UPDATE download_queue SET priority = ? WHERE chapter_id = ?"#)
             .bind(priority)
             .bind(chapter_id)
-            .execute(&mut tx)
+            .execute(tx.deref_mut())
             .await?;
 
         tx.commit().await?;
