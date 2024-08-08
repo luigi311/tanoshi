@@ -6181,7 +6181,7 @@ checksum = "20f34339676cdcab560c9a82300c4c2581f68b9369aedf0fae86f2ff9565ff3e"
 
 [[package]]
 name = "tanoshi"
-version = "0.32.1"
+version = "0.33.0"
 dependencies = [
  "aes",
  "anyhow",
