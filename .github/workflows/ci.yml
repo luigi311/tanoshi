@@ -15,7 +15,6 @@ on:
 
 env:
   TRUNK_VERSION: 0.16.0
-  RUST_TOOLCHAIN: 1.71.1
   DART_SDK_VERSION: 3.0.7
   DART_SASS_VERSION: 1.62.1
   LLVM_VERSION: 13.0.0
@@ -71,10 +70,6 @@ jobs:
         with:
           version: ${{ env.LLVM_VERSION }}
 
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: ${{ env.RUST_TOOLCHAIN }}
-
       - uses: Swatinem/rust-cache@v2
       
       - name: Run cargo test
@@ -88,11 +83,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: ${{ env.RUST_TOOLCHAIN }}
-          target: wasm32-unknown-unknown
 
       - uses: Swatinem/rust-cache@v2
 
@@ -140,10 +130,6 @@ jobs:
         with:
           name: tanoshi-web
           path: crates/tanoshi-web/dist
-
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: ${{ env.RUST_TOOLCHAIN }}
 
       - name: Install deps (ubuntu)
         if: ${{ matrix.os == 'ubuntu-latest' }}
@@ -247,8 +233,6 @@ jobs:
           
       - name: Install rust
         uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: ${{ env.RUST_TOOLCHAIN }}
 
       - name: Build tanoshi-cli
         env:
