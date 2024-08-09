@@ -155,7 +155,7 @@ checksum = "b3d1d046238990b9cf5bcde22a3fb3584ee5cf65fb2765f454ed428c7a0063da"
 name = "app"
 version = "0.1.0"
 dependencies = [
- "env_logger 0.9.3",
+ "env_logger",
  "log",
  "portpicker",
  "serde",
@@ -675,17 +675,6 @@ name = "atomic-waker"
 version = "1.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1505bd5d3d116872e7271a6d4e16d81d0c8570876c8de68093a09ac269d8aac0"
-
-[[package]]
-name = "atty"
-version = "0.2.14"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d9b39be18770d11421cdb1b9947a45dd3f37e93092cbf377614828a319d5fee8"
-dependencies = [
- "hermit-abi 0.1.19",
- "libc",
- "winapi",
-]
 
 [[package]]
 name = "autocfg"
@@ -1877,19 +1866,6 @@ dependencies = [
 
 [[package]]
 name = "env_logger"
-version = "0.9.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a12e6657c4c97ebab115a42dcee77225f7f482cdd841cf7088c657a42e9e00e7"
-dependencies = [
- "atty",
- "humantime",
- "log",
- "regex",
- "termcolor",
-]
-
-[[package]]
-name = "env_logger"
 version = "0.11.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e13fa619b91fb2381732789fc5de83b45675e882f66623b7d8cb4f643017018d"
@@ -2847,15 +2823,6 @@ name = "heck"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2304e00983f87ffb38b55b444b5e3b60a884b5d30c0fca7d82fe33449bbe55ea"
-
-[[package]]
-name = "hermit-abi"
-version = "0.1.19"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "62b467343b94ba476dcb2500d242dadbb39557df889310ac77c5d99100aaac33"
-dependencies = [
- "libc",
-]
 
 [[package]]
 name = "hermit-abi"
@@ -6190,7 +6157,7 @@ dependencies = [
  "async-trait",
  "axum",
  "axum-extra",
- "base64 0.21.7",
+ "base64 0.22.1",
  "bincode",
  "bytes",
  "cbc",
@@ -6198,7 +6165,7 @@ dependencies = [
  "clap",
  "compress-tools",
  "dirs",
- "env_logger 0.11.5",
+ "env_logger",
  "fancy-regex",
  "flume",
  "futures",
@@ -6237,7 +6204,7 @@ version = "0.7.0"
 dependencies = [
  "anyhow",
  "clap",
- "env_logger 0.11.5",
+ "env_logger",
  "log",
  "serde",
  "serde_json",
@@ -6310,7 +6277,7 @@ version = "0.7.2"
 dependencies = [
  "anyhow",
  "bytes",
- "env_logger 0.11.5",
+ "env_logger",
  "fnv",
  "lazy_static",
  "libloading",
@@ -6729,15 +6696,6 @@ dependencies = [
  "futf",
  "mac",
  "utf-8",
-]
-
-[[package]]
-name = "termcolor"
-version = "1.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "06794f8f6c5c898b3275aebefa6b8a1cb24cd2c6c79397ab15774837a0bc5755"
-dependencies = [
- "winapi-util",
 ]
 
 [[package]]

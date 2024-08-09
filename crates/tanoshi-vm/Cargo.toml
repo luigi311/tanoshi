@@ -9,7 +9,7 @@ license = "MIT"
 [dependencies]
 tanoshi-lib = { path = "../tanoshi-lib" }
 serde = { version = "1.0", features = ["derive"] }
-serde_json = "1"
+serde_json = "1.0"
 bytes = "1"
 log = { version = "0.4" }
 anyhow = "1"
