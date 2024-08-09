@@ -37,8 +37,8 @@ impl DownloadRepository for DownloadRepositoryImpl {
         SELECT * FROM chapter
         WHERE
             (date_added, id) < (datetime(?, 'unixepoch'), ?) AND
-            (date_added, id) > (datetime(?, 'unixepoch'), ?)
-        WHERE downloaded_path IS NOT NULL
+            (date_added, id) > (datetime(?, 'unixepoch'), ?) AND
+            downloaded_path IS NOT NULL
         ORDER BY date_added DESC, id DESC
         LIMIT ?"#,
         )
@@ -81,8 +81,8 @@ impl DownloadRepository for DownloadRepositoryImpl {
                 SELECT * FROM chapter
                 WHERE
                     (date_added, id) < (datetime(?, 'unixepoch'), ?) AND
-                    (date_added, id) > (datetime(?, 'unixepoch'), ?)
-                WHERE downloaded_path IS NOT NULL
+                    (date_added, id) > (datetime(?, 'unixepoch'), ?) AND
+                    downloaded_path IS NOT NULL
                 ORDER BY date_added ASC, id ASC
                 LIMIT ?) c
             ORDER BY c.date_added DESC, c.id DESC"#,
@@ -124,8 +124,8 @@ impl DownloadRepository for DownloadRepositoryImpl {
             SELECT * FROM chapter
             WHERE
                 (date_added, id) < (datetime(?, 'unixepoch'), ?) AND
-                (date_added, id) > (datetime(?, 'unixepoch'), ?)
-            WHERE downloaded_path IS NOT NULL
+                (date_added, id) > (datetime(?, 'unixepoch'), ?) AND
+                downloaded_path IS NOT NULL
             ORDER BY date_added DESC, id DESC
             LIMIT ?"#,
         )
