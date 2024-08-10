@@ -262,6 +262,8 @@ jobs:
 
   build-docker-amd64:
     runs-on: ubuntu-latest
+    env:
+      DEFAULT_VARIANT: slim
     strategy:
       fail-fast: false
       matrix:
@@ -290,16 +292,27 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: |
-            ghcr.io/${{ github.actor }}/tanoshi
+            # Do not push to ghcr.io on PRs due to permission issues, only push if the owner is luigi311 so it doesnt fail on forks
+            ghcr.io/${{ github.repository }},enable=${{ github.event_name != 'pull_request' && github.repository_owner == 'luigi311'}}
+          flavor: latest=false
           tags: |
-            type=raw,value=latest,enable=${{ matrix.variant == 'slim' && github.ref_name == github.event.repository.default_branch }}
-            type=raw,value=dev,enable=${{ matrix.variant == 'slim' && github.ref_name == 'dev' }}
-            type=raw,value=latest,suffix=-${{ matrix.variant }},enable={{ is_default_branch }}
+            type=raw,value=latest,enable=${{ matrix.variant == env.DEFAULT_VARIANT && startsWith(github.ref, 'refs/tags/') }}
+            type=raw,value=latest,suffix=-${{ matrix.variant }},enable=${{ startsWith(github.ref, 'refs/tags/')  }}
+
             type=ref,event=branch,suffix=-${{ matrix.variant }}
+            type=ref,event=branch,enable=${{ matrix.variant == env.DEFAULT_VARIANT }}
+
             type=ref,event=pr,suffix=-${{ matrix.variant }}
+            type=ref,event=pr,enable=${{ matrix.variant == env.DEFAULT_VARIANT }}
+
             type=semver,pattern={{ version }},suffix=-${{ matrix.variant }}
+            type=semver,pattern={{ version }},enable=${{ matrix.variant == env.DEFAULT_VARIANT }}
+
             type=semver,pattern={{ major }}.{{ minor }},suffix=-${{ matrix.variant }}
+            type=semver,pattern={{ major }}.{{ minor }},enable=${{ matrix.variant == env.DEFAULT_VARIANT }}
+
             type=sha,suffix=-${{ matrix.variant }}
+            type=sha,enable=${{ matrix.variant == env.DEFAULT_VARIANT }}
 
       - name: Build
         if: "${{ steps.docker_login.outcome != 'success' }}"
@@ -334,6 +347,9 @@ jobs:
   build-docker-aarch64:
     runs-on: [self-hosted, arm64]
     if: ${{ github.event_name == 'push' }}
+    env:
+      DEFAULT_VARIANT: slim
+      ARCH: aarch64
     strategy:
       fail-fast: false
       matrix:
@@ -358,26 +374,33 @@ jobs:
 
       - name: Docker meta
         id: docker_meta_aarch64
-        env: 
-          ARCH: aarch64
         uses: docker/metadata-action@v5
         with:
           images: |
-            ghcr.io/${{ github.actor }}/tanoshi
+            # Do not push to ghcr.io on PRs due to permission issues, only push if the owner is luigi311 so it doesnt fail on forks
+            ghcr.io/${{ github.repository }},enable=${{ github.event_name != 'pull_request' && github.repository_owner == 'luigi311'}}
+          flavor: latest=false
           tags: |
-            type=raw,value=latest,suffix=-${{ env.ARCH }},enable=${{ matrix.variant == 'slim' && github.ref_name == github.event.repository.default_branch }}
-            type=raw,value=dev,suffix=-${{ env.ARCH }},enable=${{ matrix.variant == 'slim' && github.ref_name == 'dev' }}
-            type=raw,value=latest,suffix=-${{ matrix.variant }}-${{ env.ARCH }},enable={{ is_default_branch }}
+            type=raw,value=latest,suffix=-${{ matrix.variant }}-${{ env.ARCH }},enable=${{ startsWith(github.ref, 'refs/tags/')  }}
+            type=raw,value=latest,suffix=-${{ env.ARCH }},enable=${{ matrix.variant == env.DEFAULT_VARIANT && startsWith(github.ref, 'refs/tags/') }}
+
             type=ref,event=branch,suffix=-${{ matrix.variant }}-${{ env.ARCH }}
+            type=ref,event=branch,suffix=-${{ env.ARCH }},enable=${{ matrix.variant == env.DEFAULT_VARIANT }}
+
             type=ref,event=pr,suffix=-${{ matrix.variant }}-${{ env.ARCH }}
+            type=ref,event=pr,suffix=-${{ env.ARCH }},enable=${{ matrix.variant == env.DEFAULT_VARIANT }}
+
             type=semver,pattern={{ version }},suffix=-${{ matrix.variant }}-${{ env.ARCH }}
+            type=semver,pattern={{ version }},suffix=-${{ env.ARCH }},enable=${{ matrix.variant == env.DEFAULT_VARIANT }}
+
             type=semver,pattern={{ major }}.{{ minor }},suffix=-${{ matrix.variant }}-${{ env.ARCH }}
+            type=semver,pattern={{ major }}.{{ minor }},suffix=-${{ env.ARCH }},enable=${{ matrix.variant == env.DEFAULT_VARIANT }}
+
             type=sha,suffix=-${{ matrix.variant }}-${{ env.ARCH }}
+            type=sha,suffix=-${{ env.ARCH }},enable=${{ matrix.variant == env.DEFAULT_VARIANT }}
 
       - name: Build Push
         id: build_push
-        env:
-          ARCH: aarch64
         if: "${{ steps.docker_meta_aarch64.outputs.tags != '' }}"
         uses: docker/build-push-action@v6
         with:
@@ -395,6 +418,8 @@ jobs:
   docker-build-merge:
     runs-on: ubuntu-latest
     if: ${{ github.event_name == 'push' }}
+    env:
+      DEFAULT_VARIANT: slim
     needs:
       - build-docker-amd64
       - build-docker-aarch64
@@ -424,16 +449,27 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: |
-            ghcr.io/${{ github.actor }}/tanoshi
+            # Do not push to ghcr.io on PRs due to permission issues, only push if the owner is luigi311 so it doesnt fail on forks
+            ghcr.io/${{ github.repository }},enable=${{ github.event_name != 'pull_request' && github.repository_owner == 'luigi311'}}
+          flavor: latest=false
           tags: |
-            type=raw,value=latest,enable=${{ matrix.variant == 'slim' && github.ref_name == github.event.repository.default_branch }}
-            type=raw,value=dev,enable=${{ matrix.variant == 'slim' && github.ref_name == 'dev' }}
-            type=raw,value=latest,suffix=-${{ matrix.variant }},enable={{ is_default_branch }}
+            type=raw,value=latest,enable=${{ matrix.variant == env.DEFAULT_VARIANT && startsWith(github.ref, 'refs/tags/') }}
+            type=raw,value=latest,suffix=-${{ matrix.variant }},enable=${{ startsWith(github.ref, 'refs/tags/')  }}
+
             type=ref,event=branch,suffix=-${{ matrix.variant }}
+            type=ref,event=branch,enable=${{ matrix.variant == env.DEFAULT_VARIANT }}
+
             type=ref,event=pr,suffix=-${{ matrix.variant }}
+            type=ref,event=pr,enable=${{ matrix.variant == env.DEFAULT_VARIANT }}
+
             type=semver,pattern={{ version }},suffix=-${{ matrix.variant }}
+            type=semver,pattern={{ version }},enable=${{ matrix.variant == env.DEFAULT_VARIANT }}
+
             type=semver,pattern={{ major }}.{{ minor }},suffix=-${{ matrix.variant }}
+            type=semver,pattern={{ major }}.{{ minor }},enable=${{ matrix.variant == env.DEFAULT_VARIANT }}
+
             type=sha,suffix=-${{ matrix.variant }}
+            type=sha,enable=${{ matrix.variant == env.DEFAULT_VARIANT }}
   
       - name: Install deps
         run: |
