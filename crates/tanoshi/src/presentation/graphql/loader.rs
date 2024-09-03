@@ -332,7 +332,7 @@ where
             .await
             .map_err(|e| Arc::new(anyhow::anyhow!("{e}")))?
             .iter()
-            .group_by(|m| UserTrackerMangaId(user_id, m.manga_id))
+            .chunk_by(|m| UserTrackerMangaId(user_id, m.manga_id))
             .into_iter()
             .map(|(key, group)| {
                 (

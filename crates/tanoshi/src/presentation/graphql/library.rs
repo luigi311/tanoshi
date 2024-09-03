@@ -97,7 +97,7 @@ impl LibraryRoot {
                             claims.sub,
                             Utc::now().timestamp(),
                             1,
-                            e.uploaded.timestamp(),
+                            e.uploaded.and_utc().timestamp(),
                             e.chapter_id,
                             None,
                             Some(1),
@@ -111,7 +111,7 @@ impl LibraryRoot {
                     has_next_page = !library_svc
                         .get_library_recent_updates(
                             claims.sub,
-                            e.uploaded.timestamp(),
+                            e.uploaded.and_utc().timestamp(),
                             e.chapter_id,
                             0,
                             0,
@@ -126,7 +126,7 @@ impl LibraryRoot {
                 connection.edges.extend(
                     edges
                         .into_iter()
-                        .map(|e| Edge::new(Cursor(e.uploaded.timestamp(), e.chapter_id), e.into())),
+                        .map(|e| Edge::new(Cursor(e.uploaded.and_utc().timestamp(), e.chapter_id), e.into())),
                 );
 
                 Ok::<_, Error>(connection)
@@ -169,7 +169,7 @@ impl LibraryRoot {
                         .get_history_chapters(
                             claims.sub,
                             Utc::now().timestamp(),
-                            e.read_at.timestamp(),
+                            e.read_at.and_utc().timestamp(),
                             None,
                             Some(1),
                         )
@@ -181,7 +181,7 @@ impl LibraryRoot {
                 let mut has_next_page = false;
                 if let Some(e) = edges.last() {
                     has_next_page = !history_svc
-                        .get_history_chapters(claims.sub, e.read_at.timestamp(), 0, Some(1), None)
+                        .get_history_chapters(claims.sub, e.read_at.and_utc().timestamp(), 0, Some(1), None)
                         .await?
                         .is_empty();
                 }
@@ -190,7 +190,7 @@ impl LibraryRoot {
                 connection.edges.extend(
                     edges
                         .into_iter()
-                        .map(|e| Edge::new(Cursor(e.read_at.timestamp(), e.manga_id), e.into())),
+                        .map(|e| Edge::new(Cursor(e.read_at.and_utc().timestamp(), e.manga_id), e.into())),
                 );
 
                 Ok::<_, Error>(connection)

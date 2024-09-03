@@ -222,7 +222,7 @@ impl DownloadRepository for DownloadRepositoryImpl {
                 .bind(item.rank)
                 .bind(&item.url)
                 .bind(&item.priority)
-                .bind(item.date_added.timestamp())
+                .bind(item.date_added.and_utc().timestamp())
         }
 
         query.execute(&self.pool as &SqlitePool).await?;

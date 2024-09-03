@@ -104,7 +104,7 @@ impl DownloadRoot {
                         .get_downloaded_chapters(
                             Utc::now().timestamp(),
                             1,
-                            e.date_added.timestamp(),
+                            e.date_added.and_utc().timestamp(),
                             e.id,
                             None,
                             Some(1),
@@ -117,7 +117,7 @@ impl DownloadRoot {
                 if let Some(e) = edges.last() {
                     has_next_page = !download_svc
                         .get_downloaded_chapters(
-                            e.date_added.timestamp(),
+                            e.date_added.and_utc().timestamp(),
                             e.id,
                             0,
                             0,
@@ -131,7 +131,7 @@ impl DownloadRoot {
                 let mut connection = Connection::new(has_previous_page, has_next_page);
                 connection.edges.extend(edges.into_iter().map(|e| {
                     Edge::new(
-                        Cursor(e.uploaded.timestamp(), e.id),
+                        Cursor(e.uploaded.and_utc().timestamp(), e.id),
                         Chapter {
                             id: e.id,
                             source_id: e.source_id,
