@@ -10,7 +10,7 @@ use axum::{
     routing::{get, post},
     Router,
 };
-use tokio::net::TcpListener;
+use axum_server;
 use std::net::SocketAddr;
 use tower_http::{
     compression::CompressionLayer,
@@ -290,9 +290,11 @@ impl ServerBuilder {
             router = router.fallback(get(assets::static_handler));
         }
 
-        let listener = TcpListener::bind(&addr.into()).await.unwrap();
-        axum::serve(listener, router.into_make_service())
-            .await?;
+        let _ = axum_server::bind(addr.into())
+            .serve(router.into_make_service())
+            .await
+            .map_err(|e| anyhow!("{}", e));
+
 
         Ok(())
     }

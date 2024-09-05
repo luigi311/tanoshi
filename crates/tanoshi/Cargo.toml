@@ -41,6 +41,7 @@ async-graphql = { version = "7", features = [
 ] }
 async-graphql-axum = { version = "7", optional = true }
 axum = { version = "0.7.5", optional = true }
+axum-server = { version = "0.6", features = ["tls-rustls"] }
 axum-extra = { version = "0.9.3", features = [ "typed-header" ]}
 headers = { version = "0.4", optional = true }
 http = { version = "1", optional = true }
@@ -67,13 +68,17 @@ bytes = "1"
 dirs = "5"
 base64 = "0.22"
 sqlx = { version = "0.7", features = [
-    "runtime-tokio-native-tls",
+    "runtime-tokio",
+    "tls-rustls",
     "sqlite",
     "chrono",
     "json",
     "migrate",
 ] }
-reqwest = { version = "0.12", features = ["json"] }
+reqwest = { version = "0.12", default-features = false, features = [
+    "json",
+    "rustls-tls",
+] }
 futures = "0.3"
 rust-argon2 = "1"
 fancy-regex = "0.13"
