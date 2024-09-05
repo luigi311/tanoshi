@@ -15,8 +15,9 @@ RUN cargo chef cook --release --recipe-path recipe.json
 
 COPY . .
 
-RUN rustup target add wasm32-unknown-unknown
-RUN cd crates/tanoshi-web && trunk build --release
+RUN rustup target add wasm32-unknown-unknown && \
+    cargo install --locked wasm-bindgen-cli && \
+    cd crates/tanoshi-web && trunk build --release
 
 RUN cargo build -p tanoshi --release
 
