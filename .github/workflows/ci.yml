@@ -14,9 +14,6 @@ on:
       - ".github/screenshots/**"
 
 env:
-  TRUNK_VERSION: 0.16.0
-  DART_SDK_VERSION: 3.0.7
-  DART_SASS_VERSION: 1.62.1
   LLVM_VERSION: 13.0.0
 
 jobs:
@@ -81,28 +78,15 @@ jobs:
 
   build-web:
     runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/luigi311/tanoshi-builder:latest
     steps:
       - uses: actions/checkout@v4
 
       - uses: Swatinem/rust-cache@v2
 
       - name: Build tanoshi-web
-        run: |
-          export DART_ARCH="linux-x64" && \
-          curl -s "https://storage.googleapis.com/dart-archive/channels/stable/release/${{ env.DART_SDK_VERSION }}/sdk/dartsdk-${DART_ARCH}-release.zip" -o "dartsdk-${DART_ARCH}-release.zip" && \
-          unzip "dartsdk-${DART_ARCH}-release.zip"
-
-          export PATH="$PATH:$(pwd)/dart-sdk/bin"
-
-          curl -sL "https://github.com/sass/dart-sass/archive/refs/tags/${{ env.DART_SASS_VERSION }}.zip" -o "${{ env.DART_SASS_VERSION }}.zip" && \
-          unzip "${{ env.DART_SASS_VERSION }}.zip" && \
-          cd "dart-sass-${{ env.DART_SASS_VERSION }}" && \
-          dart pub get && \
-          dart compile exe bin/sass.dart -o ${{ github.workspace }}/dart-sdk/bin/sass -Dversion="${{ env.DART_SASS_VERSION }}"
-
-          cd ${{ github.workspace }}
-          cargo install trunk --version ${{ env.TRUNK_VERSION }} --locked
-          cd crates/tanoshi-web && trunk build --release
+        run: cd crates/tanoshi-web && trunk build --release
 
       - name: Upload tanoshi-web
         uses: actions/upload-artifact@v4
