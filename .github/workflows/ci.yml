@@ -79,7 +79,7 @@ jobs:
   build-web:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/luigi311/tanoshi-builder:sha-6fdf7ef-slim
+      image: ghcr.io/luigi311/tanoshi-builder:sha-6116733-slim
     steps:
       - uses: actions/checkout@v4
 
