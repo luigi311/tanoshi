@@ -1,5 +1,7 @@
+FROM luigi311/tanoshi-builder:sha-6116733-slim AS base
+
 # Frontend planner
-FROM luigi311/tanoshi-builder:latest AS planner
+FROM base AS planner
 
 COPY . .
 
@@ -8,7 +10,7 @@ RUN cargo chef prepare --recipe-path recipe.json
 
 
 # Backend builder
-FROM luigi311/tanoshi-builder:latest AS builder
+FROM base AS builder
 
 COPY --from=planner /app/recipe.json recipe.json
 RUN cargo chef cook --release --recipe-path recipe.json
