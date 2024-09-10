@@ -39,8 +39,8 @@ jobs:
               libssl-dev libarchive-dev build-essential cmake llvm clang libicu-dev \
               nettle-dev libacl1-dev liblzma-dev libzstd-dev liblz4-dev libbz2-dev \
               zlib1g-dev libxml2-dev lsb-release wget software-properties-common \
-              libwebkit2gtk-4.0-dev curl libgtk-3-dev libappindicator3-dev patchelf \
-              librsvg2-dev libpango1.0-dev
+              libwebkit2gtk-4.1-dev curl libgtk-3-dev libappindicator3-dev patchelf \
+              librsvg2-dev libpango1.0-dev libsoup-3.0-dev libjavascriptcoregtk-4.1-dev
           elif [ "${{ matrix.os }}" == "macos-latest" ]; then
             brew install icu4c libarchive bzip2 lz4 zlib expat libiconv
           fi
