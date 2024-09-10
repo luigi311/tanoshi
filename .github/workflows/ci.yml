@@ -154,7 +154,7 @@ jobs:
         env:
           RUSTFLAGS: "-Clink-arg=-Wl,--allow-multiple-definition"
         run: |
-          cd crates/tanoshi
+          cd crates/tanoshi-tauri
           cargo tauri build
 
       - name: Build tanoshi (macos)
@@ -162,13 +162,13 @@ jobs:
         env:
           PKG_CONFIG_PATH: /usr/local/opt/icu4c/lib/pkgconfig:/usr/local/opt/libarchive/lib/pkgconfig:/usr/local/opt/zlib/lib/pkgconfig:/usr/local/opt/expat/lib/pkgconfig
         run: |
-          cd crates/tanoshi
+          cd crates/tanoshi-tauri
           cargo tauri build
 
       - name: Build tanoshi (windows)
         if: ${{ matrix.os == 'windows-latest' }}
         run: |
-          cd crates/tanoshi
+          cd crates/tanoshi-tauri
           cargo tauri build
 
       - name: Move files (linux/macOS)
