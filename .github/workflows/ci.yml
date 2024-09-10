@@ -39,8 +39,8 @@ jobs:
               libssl-dev libarchive-dev build-essential cmake llvm clang libicu-dev \
               nettle-dev libacl1-dev liblzma-dev libzstd-dev liblz4-dev libbz2-dev \
               zlib1g-dev libxml2-dev lsb-release wget software-properties-common \
-              libwebkit2gtk-4.0-dev curl libgtk-3-dev libappindicator3-dev patchelf \
-              librsvg2-dev libpango1.0-dev
+              libwebkit2gtk-4.1-dev curl libgtk-3-dev libappindicator3-dev patchelf \
+              librsvg2-dev libpango1.0-dev libsoup-3.0-dev libjavascriptcoregtk-4.1-dev
           elif [ "${{ matrix.os }}" == "macos-latest" ]; then
             brew install icu4c libarchive bzip2 lz4 zlib expat libiconv
           fi
@@ -79,7 +79,7 @@ jobs:
   build-web:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/luigi311/tanoshi-builder:sha-6fdf7ef-slim
+      image: ghcr.io/luigi311/tanoshi-builder:sha-6116733-slim
     steps:
       - uses: actions/checkout@v4
 
@@ -117,7 +117,7 @@ jobs:
 
       - name: Install deps (ubuntu)
         if: ${{ matrix.os == 'ubuntu-latest' }}
-        run: sudo apt update && sudo apt upgrade -y && sudo apt install -y libssl-dev libarchive-dev build-essential cmake llvm clang libicu-dev nettle-dev libacl1-dev liblzma-dev libzstd-dev liblz4-dev libbz2-dev zlib1g-dev libxml2-dev lsb-release wget software-properties-common libwebkit2gtk-4.0-dev curl libgtk-3-dev libappindicator3-dev patchelf librsvg2-dev libpango1.0-dev
+        run: sudo apt update && sudo apt upgrade -y && sudo apt install -y libssl-dev libarchive-dev build-essential cmake llvm clang libicu-dev nettle-dev libacl1-dev liblzma-dev libzstd-dev liblz4-dev libbz2-dev zlib1g-dev libxml2-dev lsb-release wget software-properties-common libwebkit2gtk-4.1-dev curl libgtk-3-dev libappindicator3-dev patchelf librsvg2-dev libpango1.0-dev libsoup-3.0-dev libjavascriptcoregtk-4.1-dev
       
       - name: Install deps (macOS)
         if: ${{ matrix.os == 'macos-latest' }}
@@ -147,14 +147,14 @@ jobs:
       - uses: Swatinem/rust-cache@v2
 
       - name: Install tauri-cli
-        run: cargo install tauri-cli --version ^1.0.0-rc --locked
+        run: cargo install tauri-cli --version ^2.0.0-rc --locked
 
       - name: Build tanoshi (ubuntu)
         if: ${{ matrix.os == 'ubuntu-latest' }}
         env:
           RUSTFLAGS: "-Clink-arg=-Wl,--allow-multiple-definition"
         run: |
-          cd crates/tanoshi
+          cd crates/tanoshi-tauri
           cargo tauri build
 
       - name: Build tanoshi (macos)
@@ -162,13 +162,13 @@ jobs:
         env:
           PKG_CONFIG_PATH: /usr/local/opt/icu4c/lib/pkgconfig:/usr/local/opt/libarchive/lib/pkgconfig:/usr/local/opt/zlib/lib/pkgconfig:/usr/local/opt/expat/lib/pkgconfig
         run: |
-          cd crates/tanoshi
+          cd crates/tanoshi-tauri
           cargo tauri build
 
       - name: Build tanoshi (windows)
         if: ${{ matrix.os == 'windows-latest' }}
         run: |
-          cd crates/tanoshi
+          cd crates/tanoshi-tauri
           cargo tauri build
 
       - name: Move files (linux/macOS)
