@@ -1,4 +1,4 @@
-FROM luigi311/tanoshi-builder:sha-6116733-slim AS base
+FROM luigi311/tanoshi-builder:sha-2c3aeb0-slim AS base
 
 # Frontend planner
 FROM base AS planner
@@ -32,7 +32,7 @@ WORKDIR /app
 COPY --from=builder /app/target/release/tanoshi .
 RUN chmod +x tanoshi
 
-RUN apt update && apt upgrade -y && apt install --reinstall -y ca-certificates libssl3
+RUN apt update && apt upgrade -y && apt install --reinstall -y ca-certificates libssl3 libxml2
 
 ENV PORT=80
 ENV TANOSHI_LOG=info

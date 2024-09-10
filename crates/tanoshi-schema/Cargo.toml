@@ -6,6 +6,6 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-graphql_client = "0.13"
+graphql_client = "0.14"
 serde = { version = "1.0", features = ["derive", "rc"] }
 futures-signals = "0.3"
