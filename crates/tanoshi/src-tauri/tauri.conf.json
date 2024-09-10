@@ -1,51 +1,49 @@
 {
-  "package": {
-    "productName": "Tanoshi",
-    "version": "0.33.0"
-  },
-  "build": {
-    "distDir": "../../tanoshi-web/dist",
-    "devPath": "http://localhost:8080",
-    "beforeDevCommand": "",
-    "beforeBuildCommand": ""
-  },
-  "tauri": {
-    "bundle": {
-      "active": true,
-      "targets": "all",
-      "identifier": "com.luigi311.tanoshi",
-      "icon": [
-        "icons/512x512.png",
-        "icons/icon.icns",
-        "icons/icon.ico"
-      ],
-      "resources": [],
-      "externalBin": [],
-      "copyright": "",
-      "category": "DeveloperTool",
-      "shortDescription": "",
-      "longDescription": "",
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "windows": {
+      "certificateThumbprint": null,
+      "digestAlgorithm": "sha256",
+      "timestampUrl": ""
+    },
+    "icon": [
+      "icons/512x512.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "resources": [],
+    "externalBin": [],
+    "copyright": "",
+    "category": "DeveloperTool",
+    "shortDescription": "",
+    "longDescription": "",
+    "macOS": {
+      "frameworks": [],
+      "minimumSystemVersion": "",
+      "exceptionDomain": "",
+      "signingIdentity": null,
+      "entitlements": null
+    },
+    "linux": {
       "deb": {
         "depends": []
-      },
-      "macOS": {
-        "frameworks": [],
-        "minimumSystemVersion": "",
-        "exceptionDomain": "",
-        "signingIdentity": null,
-        "entitlements": null
-      },
-      "windows": {
-        "certificateThumbprint": null,
-        "digestAlgorithm": "sha256",
-        "timestampUrl": ""
       }
-    },
-    "updater": {
-      "active": false
-    },
-    "allowlist": {
-      "all": true
+    }
+  },
+  "build": {
+    "beforeBuildCommand": "",
+    "frontendDist": "../../tanoshi-web/dist",
+    "beforeDevCommand": "",
+    "devUrl": "http://localhost:8080"
+  },
+  "productName": "Tanoshi",
+  "version": "0.33.0",
+  "identifier": "com.luigi311.tanoshi",
+  "plugins": {},
+  "app": {
+    "security": {
+      "csp": "script-src 'wasm-unsafe-eval' 'unsafe-eval' 'self'; default-src blob: data: filesystem: ws: wss: http: https: tauri: graphql: images: 'unsafe-inline' 'self'; connect-src ipc: http://ipc.localhost tauri: graphql: http: ws: wss: 'self'"
     },
     "windows": [
       {
@@ -55,9 +53,6 @@
         "resizable": true,
         "fullscreen": false
       }
-    ],
-    "security": {
-      "csp": "script-src 'wasm-unsafe-eval' 'unsafe-eval' 'self'; default-src blob: data: filesystem: ws: wss: http: https: tauri: graphql: images: 'unsafe-inline' 'self'"
-    }
+    ]
   }
 }
