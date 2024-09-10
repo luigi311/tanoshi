@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/*", "crates/tanoshi/src-tauri"]
+members = ["crates/*"]
 
 [profile.release]
 lto = true

@@ -33,7 +33,7 @@
   },
   "build": {
     "beforeBuildCommand": "",
-    "frontendDist": "../../tanoshi-web/dist",
+    "frontendDist": "../tanoshi-web/dist",
     "beforeDevCommand": "",
     "devUrl": "http://localhost:8080"
   },
