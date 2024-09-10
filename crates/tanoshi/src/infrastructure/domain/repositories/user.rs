@@ -158,10 +158,10 @@ impl UserRepository for UserRepositoryImpl {
         column_to_update.push("telegram_chat_id = ?");
         column_to_update.push("pushover_user_key = ?");
         column_to_update.push("gotify_token = ?");
-        arguments.add(user.telegram_chat_id);
-        arguments.add(user.pushover_user_key.clone());
-        arguments.add(user.gotify_token.clone());
-        arguments.add(user.id);
+        arguments.add(user.telegram_chat_id).unwrap();
+        arguments.add(user.pushover_user_key.clone()).unwrap();
+        arguments.add(user.gotify_token.clone()).unwrap();
+        arguments.add(user.id).unwrap();
 
         if column_to_update.is_empty() {
             return Err(UserRepositoryError::Other(anyhow!("Nothing to update")));
