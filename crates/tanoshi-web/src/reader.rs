@@ -97,6 +97,10 @@ impl Reader {
                     this.next_chapter.set_neq(result.next);
                     this.prev_chapter.set_neq(result.prev);
 
+                    // Update the number of pages so the correct page can be loaded
+                    let pages = result.pages.iter().map(|page| (format!("{}?referer={}", page, result.source.url), PageStatus::Initial)).collect();
+                    this.pages.lock_mut().replace_cloned(pages);
+
                     this.reader_settings.load_by_manga_id(result.manga.id);
 
                     let page;
@@ -120,7 +124,7 @@ impl Reader {
                                 }
                             };
                         },
-                        Nav::Prev => {
+                        Nav::Prev => {                            
                             let len = this.pages.lock_ref().len();
                             page = match this.reader_settings.reader_mode.get() {
                                 ReaderMode::Continous => len - 1,
