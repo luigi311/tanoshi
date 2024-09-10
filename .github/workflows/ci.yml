@@ -14,7 +14,7 @@ on:
       - ".github/screenshots/**"
 
 env:
-  LLVM_VERSION: 13.0.0
+  LLVM_VERSION: 15
   UBUNTU_DEPS: |
     libssl-dev libarchive-dev build-essential cmake llvm clang libicu-dev \
     nettle-dev libacl1-dev liblzma-dev libzstd-dev liblz4-dev libbz2-dev \
@@ -67,7 +67,7 @@ jobs:
           vcpkg install libarchive:x64-windows-static-md
 
       - name: Install LLVM and Clang
-        uses: KyleMayes/install-llvm-action@v2.0.3
+        uses: KyleMayes/install-llvm-action@v2.0.5
         with:
           version: ${{ env.LLVM_VERSION }}
 
@@ -130,7 +130,7 @@ jobs:
       - uses: ilammy/setup-nasm@v1
 
       - name: Install LLVM and Clang
-        uses: KyleMayes/install-llvm-action@v2.0.3
+        uses: KyleMayes/install-llvm-action@v2.0.5
         with:
           version: ${{ env.LLVM_VERSION }}
 
@@ -217,7 +217,7 @@ jobs:
         run: sudo apt update && sudo apt upgrade -y && sudo apt install -y ${{ env.UBUNTU_DEPS }}
       
       - name: Install LLVM and Clang
-        uses: KyleMayes/install-llvm-action@v2.0.3
+        uses: KyleMayes/install-llvm-action@v2.0.5
         with:
           version: ${{ env.LLVM_VERSION }}
           
