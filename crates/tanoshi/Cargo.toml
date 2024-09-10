@@ -41,8 +41,8 @@ async-graphql = { version = "7", features = [
 ] }
 async-graphql-axum = { version = "7", optional = true }
 axum = { version = "0.7.5", optional = true }
-axum-server = { version = "0.6", features = ["tls-rustls"] }
-axum-extra = { version = "0.9.3", features = [ "typed-header" ]}
+axum-server = { version = "0.7", features = [ "tls-rustls" ] }
+axum-extra = { version = "0.9", features = [ "typed-header" ]}
 headers = { version = "0.4", optional = true }
 http = { version = "1", optional = true }
 tower-http = { version = "0.5", features = [
@@ -80,9 +80,9 @@ reqwest = { version = "0.12", default-features = false, features = [
     "rustls-tls",
 ] }
 futures = "0.3"
-rust-argon2 = "1"
+rust-argon2 = "2"
 fancy-regex = "0.13"
-compress-tools = { git = "https://github.com/luigi311/compress-tools-rs", features = [
+compress-tools = { git = "https://github.com/OSSystems/compress-tools-rs", rev = "615e54549ce08695a45c7f38d3fbd10827ed140c", features = [
     "static",
 ] }
 zip = { version = "2", default-features = false }

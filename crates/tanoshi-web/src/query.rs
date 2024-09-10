@@ -245,7 +245,7 @@ pub async fn fetch_recent_updates(
 
 pub async fn subscribe_recent_updates() -> Result<(), Box<dyn Error>> {
     use futures::StreamExt;
-    use graphql_ws_client::{graphql::StreamingOperation, GraphQLClientClientBuilder};
+    use graphql_ws_client::{graphql::StreamingOperation, Client};
     use serde::Serialize;
     use web_sys::{Notification, NotificationOptions};
 
@@ -257,20 +257,12 @@ pub async fn subscribe_recent_updates() -> Result<(), Box<dyn Error>> {
     let (ws, wsio) =
         ws_stream_wasm::WsMeta::connect(graphql_ws_host(), Some(vec!["graphql-transport-ws"]))
             .await?;
-    let (sink, stream) = graphql_ws_client::wasm_websocket_combined_split(ws, wsio).await;
-
-    let token = local_storage()
-        .get("token")
-        .unwrap_throw()
-        .unwrap_or_else(|| "".to_string());
-    let mut client = GraphQLClientClientBuilder::new()
-        .payload(Payload { token })
-        .build(stream, sink, async_executors::AsyncStd)
-        .await?;
+    let connection = graphql_ws_client::ws_stream_wasm::Connection::new((ws, wsio)).await;
+    let (client, _): (Client, graphql_ws_client::ConnectionActor) = Client::build(connection).await?;
 
     let op: StreamingOperation<SubscribeChapterUpdates> =
         StreamingOperation::new(subscribe_chapter_updates::Variables {});
-    let mut stream = client.streaming_operation(op).await?;
+    let mut stream = client.subscribe(op).await?;
 
     let mut updates = HashMap::<String, Vec<String>>::new();
     loop {
@@ -290,13 +282,13 @@ pub async fn subscribe_recent_updates() -> Result<(), Box<dyn Error>> {
             }
             Either::Right((_, _)) => {
                 for (manga_title, chapters) in updates.iter() {
-                    let mut opts = NotificationOptions::new();
+                    let opts = NotificationOptions::new();
                     if chapters.len() > 1 {
-                        opts.body(&format!("{} chapter updates", chapters.len()));
+                        opts.set_body(&format!("{} chapter updates", chapters.len()));
                     } else if chapters.len() == 1 {
-                        opts.body(&chapters[0]);
+                        opts.set_body(&chapters[0]);
                     } else {
-                        opts.body("no chapter updates");
+                        opts.set_body("no chapter updates");
                     }
 
                     let _ = Notification::new_with_options(&manga_title, &opts).unwrap_throw();
