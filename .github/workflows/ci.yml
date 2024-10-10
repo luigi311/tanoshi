@@ -260,16 +260,11 @@ jobs:
         run: |
           cargo build -p tanoshi-cli --release
 
-      - name: Copy artifact
-        run: |
-          mkdir ${{ github.workspace }}/artifact/
-          cp ${{ github.workspace }}/target/release/tanoshi-cli ${{ github.workspace }}/artifact/
-
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: tanoshi-cli
-          path: ${{ github.workspace }}/artifact/tanoshi-cli
+          path: ${{ github.workspace }}/target/release/tanoshi-cli
 
       - name: Upload binaries to GitHub Releases
         if: startsWith(github.ref, 'refs/tags/')
