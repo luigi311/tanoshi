@@ -1,19 +1,7 @@
-FROM luigi311/tanoshi-builder:sha-499dae4-slim AS base
-
-# Frontend planner
-FROM base AS planner
-
-COPY . .
-
-RUN cargo chef prepare --recipe-path recipe.json
-
-
+FROM ghcr.io/luigi311/tanoshi-builder:sha-6886658-slim AS base
 
 # Backend builder
 FROM base AS builder
-
-COPY --from=planner /app/recipe.json recipe.json
-RUN cargo chef cook --release --recipe-path recipe.json
 
 COPY . .
 
@@ -25,12 +13,12 @@ RUN cargo build -p tanoshi --release
 
 FROM debian:bookworm-slim AS runtime
 
+RUN apt update && apt upgrade -y && apt install --reinstall -y ca-certificates libssl3 libxml2
+
 WORKDIR /app
 
 COPY --from=builder /app/target/release/tanoshi .
 RUN chmod +x tanoshi
-
-RUN apt update && apt upgrade -y && apt install --reinstall -y ca-certificates libssl3 libxml2
 
 ENV PORT=80
 ENV TANOSHI_LOG=info
