@@ -1,4 +1,4 @@
-FROM luigi311/tanoshi-builder:sha-2c3aeb0-slim AS base
+FROM luigi311/tanoshi-builder:sha-499dae4-slim AS base
 
 # Frontend planner
 FROM base AS planner
