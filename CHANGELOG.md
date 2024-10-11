@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.35.0]
+- [tanoshi] Better reproducible builds
+- [tanoshi] Update dependencies for hashing, compression, graphql, sqlx
+- [tanoshi-tauri] Separate out tauri
+- [tanoshi-tauri] Upgrade to tauri 2.X
+- [tanoshi-web] Update wasm-bindgen, sass, dart
+- [tanoshi-web] Remove deprecated color function calls
+
 ## [0.34.0]
 - [tanoshi] Update some more dependencies
 - [tanoshi] Fix lots of deprecated warnings
