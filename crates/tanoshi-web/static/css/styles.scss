@@ -1,33 +1,34 @@
+@use "sass:color";
 $color--interval: 12.5%;
 
 $color-gray: #888888;
-$color-gray-100: lighten($color-gray, $color--interval * 4);
-$color-gray-125: lighten($color-gray, $color--interval * 3.75);
-$color-gray-150: lighten($color-gray, $color--interval * 3.5);
-$color-gray-200: lighten($color-gray, $color--interval * 3);
-$color-gray-300: lighten($color-gray, $color--interval * 2);
-$color-gray-400: lighten($color-gray, $color--interval);
+$color-gray-100: color.scale($color-gray, $lightness: $color--interval * 8);
+$color-gray-125: color.scale($color-gray, $lightness: $color--interval * 8);
+$color-gray-150: color.scale($color-gray, $lightness: $color--interval * 7.5);
+$color-gray-200: color.scale($color-gray, $lightness: $color--interval * 6.5);
+$color-gray-300: color.scale($color-gray, $lightness: $color--interval * 4);
+$color-gray-400: color.scale($color-gray, $lightness: $color--interval * 2);
 $color-gray-500: $color-gray;
-$color-gray-600: darken($color-gray, $color--interval);
-$color-gray-700: darken($color-gray, $color--interval * 2);
-$color-gray-800: darken($color-gray, $color--interval * 3);
-$color-gray-850: darken($color-gray, $color--interval * 3.5);
-$color-gray-900: darken($color-gray, $color--interval * 4);
+$color-gray-600: color.adjust($color-gray, $lightness: -$color--interval);
+$color-gray-700: color.adjust($color-gray, $lightness: -$color--interval * 2);
+$color-gray-800: color.adjust($color-gray, $lightness: -$color--interval * 3);
+$color-gray-850: color.adjust($color-gray, $lightness: -$color--interval * 3.5);
+$color-gray-900: color.adjust($color-gray, $lightness: -$color--interval * 4);
 
 $font-stack: Helvetica,
     Roboto,
     sans-serif;
 $primary-color: rgba(91, 116, 155, 1);
-$primary-color-100: lighten($primary-color, $color--interval * 4);
-$primary-color-200: lighten($primary-color, $color--interval * 3);
-$primary-color-300: lighten($primary-color, $color--interval * 2);
-$primary-color-400: lighten($primary-color, $color--interval);
+$primary-color-100: color.scale($primary-color, $lightness: $color--interval * 8);
+$primary-color-200: color.scale($primary-color, $lightness: $color--interval * 6.5);
+$primary-color-300: color.scale($primary-color, $lightness: $color--interval * 4);
+$primary-color-400: color.scale($primary-color, $lightness: $color--interval * 2);
 $primary-color-500: $primary-color;
-$primary-color-600: darken($primary-color, $color--interval);
-$primary-color-700: darken($primary-color, $color--interval * 2);
-$primary-color-800: darken($primary-color, $color--interval * 3);
-$primary-color-850: darken($primary-color, $color--interval * 3.5);
-$primary-color-900: darken($primary-color, $color--interval * 4);
+$primary-color-600: color.adjust($primary-color, $lightness: -$color--interval);
+$primary-color-700: color.adjust($primary-color, $lightness: -$color--interval * 2);
+$primary-color-800: color.adjust($primary-color, $lightness: -$color--interval * 3);
+$primary-color-850: color.adjust($primary-color, $lightness: -$color--interval * 3.5);
+$primary-color-900: color.adjust($primary-color, $lightness: -$color--interval * 4);
 
 $shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1),
     0 1px 2px 0 rgba(0, 0, 0, 0.06);
