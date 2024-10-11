@@ -32,7 +32,6 @@ base64 = "0.22"
 gloo-timers = { version = "0.3", features = [ "futures" ] }
 anyhow = "1"
 ws_stream_wasm = "0.7"
-async_executors = { version = "0.7", features = ["async_std"] }
 graphql-ws-client = { version = "0.10", features = [
   "client-graphql-client",
   "ws_stream_wasm",
@@ -70,6 +69,3 @@ features = [
   'NotificationPermission',
   'NotificationOptions',
 ]
-
-[dev-dependencies]
-wasm-bindgen-test = "*"
