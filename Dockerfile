@@ -13,7 +13,7 @@ RUN cargo build -p tanoshi --release
 
 FROM debian:bookworm-slim AS runtime
 
-RUN apt update && apt upgrade -y && apt install --reinstall -y ca-certificates libssl3 libxml2
+RUN apt update && apt upgrade -y && apt install --reinstall -y tini ca-certificates libssl3 libxml2
 
 WORKDIR /app
 
@@ -26,4 +26,4 @@ ENV TANOSHI_HOME=/tanoshi
 
 EXPOSE $PORT
 
-ENTRYPOINT ["/app/tanoshi"]
+ENTRYPOINT ["/bin/tini", "--", "/app/tanoshi"]
