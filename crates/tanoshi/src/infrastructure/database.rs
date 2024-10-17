@@ -2,7 +2,7 @@ use std::ops::{Deref, DerefMut};
 
 use sqlx::{
     migrate::MigrateError,
-    sqlite::{SqliteConnectOptions, SqlitePool, SqlitePoolOptions},
+    sqlite::{SqliteConnectOptions, SqlitePool, SqlitePoolOptions, SqliteJournalMode},
 };
 
 #[derive(Clone)]
@@ -34,7 +34,8 @@ pub async fn establish_connection(
 ) -> Result<Pool, anyhow::Error> {
     let opts = SqliteConnectOptions::new()
         .create_if_missing(create)
-        .filename(database_path);
+        .filename(database_path)
+        .journal_mode(SqliteJournalMode::Wal);
 
     let pool = SqlitePoolOptions::new()
         .max_connections(5)
