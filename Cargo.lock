@@ -168,32 +168,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "10f00e1f6e58a40e807377c75c6a7f97bf9044fab57816f2414e6f5f4499d7b8"
 
 [[package]]
-name = "app"
-version = "0.1.0"
-dependencies = [
- "env_logger",
- "log",
- "portpicker",
- "serde",
- "serde_json",
- "tanoshi",
- "tanoshi-tracker",
- "tanoshi-vm",
- "tauri",
- "tauri-build",
- "tauri-plugin-clipboard-manager",
- "tauri-plugin-dialog",
- "tauri-plugin-fs",
- "tauri-plugin-global-shortcut",
- "tauri-plugin-http",
- "tauri-plugin-notification",
- "tauri-plugin-os",
- "tauri-plugin-process",
- "tauri-plugin-shell",
- "tokio",
-]
-
-[[package]]
 name = "aquamarine"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6248,7 +6222,7 @@ checksum = "20f34339676cdcab560c9a82300c4c2581f68b9369aedf0fae86f2ff9565ff3e"
 
 [[package]]
 name = "tanoshi"
-version = "0.34.0"
+version = "0.35.0"
 dependencies = [
  "aes",
  "anyhow",
@@ -6297,6 +6271,32 @@ dependencies = [
  "tokio-stream",
  "tower-http",
  "zip",
+]
+
+[[package]]
+name = "tanoshi-app"
+version = "0.1.0"
+dependencies = [
+ "env_logger",
+ "log",
+ "portpicker",
+ "serde",
+ "serde_json",
+ "tanoshi",
+ "tanoshi-tracker",
+ "tanoshi-vm",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-clipboard-manager",
+ "tauri-plugin-dialog",
+ "tauri-plugin-fs",
+ "tauri-plugin-global-shortcut",
+ "tauri-plugin-http",
+ "tauri-plugin-notification",
+ "tauri-plugin-os",
+ "tauri-plugin-process",
+ "tauri-plugin-shell",
+ "tokio",
 ]
 
 [[package]]
