@@ -152,8 +152,11 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
+      - name: Install Binstall
+        uses: cargo-bins/cargo-binstall@main
+      
       - name: Install tauri-cli
-        run: cargo install tauri-cli --version ^2.0.0-rc --locked
+        run: cargo binstall tauri-cli@2.0 --no-confirm --locked
 
       - name: Build tanoshi (ubuntu)
         if: ${{ matrix.os == 'ubuntu-latest' }}
