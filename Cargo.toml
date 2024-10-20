@@ -1,5 +1,15 @@
 [workspace]
 members = ["crates/*"]
+default-members = [
+    "crates/tanoshi",
+    "crates/tanoshi-cli",
+    "crates/tanoshi-lib",
+    "crates/tanoshi-notifier",
+    "crates/tanoshi-schema",
+    "crates/tanoshi-tracker",
+    "crates/tanoshi-util",
+    "crates/tanoshi-vm",
+]
 
 [profile.release]
 lto = true
