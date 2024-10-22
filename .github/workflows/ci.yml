@@ -141,7 +141,7 @@ jobs:
       - name: Upload dist
         uses: actions/upload-artifact@v4
         with:
-          name: tanoshi-desktop-${{ matrix.os }}-${{ matrix.arch }}
+          name: tanoshi-app-linux-${{ matrix.arch }}
           path: ${{ github.workspace }}/builds/
 
       - name: Upload binaries to GitHub Releases
@@ -250,7 +250,7 @@ jobs:
       - name: Upload dist
         uses: actions/upload-artifact@v4
         with:
-          name: tanoshi-desktop-${{ matrix.os }}
+          name: tanoshi-app-${{ matrix.os }}-amd64
           path: ${{ github.workspace }}/builds/
 
       - name: Upload binaries to GitHub Releases
@@ -262,6 +262,42 @@ jobs:
           tag: ${{ github.ref }}
           file_glob: true
           overwrite: true
+
+build-tanoshi-multiplat:
+    runs-on: ${{ matrix.os }}
+    needs:
+      - build-web
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            arch: amd64
+          - os: [self-hosted, arm64]
+            arch: aarch64
+    container:
+      image: ghcr.io/luigi311/tanoshi-builder:sha-6886658-slim
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download dist
+        uses: actions/download-artifact@v4
+        with:
+          name: tanoshi-web
+          path: crates/tanoshi-web/dist
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build tanoshi
+        env:
+          RUSTFLAGS: "-Clink-arg=-Wl,--allow-multiple-definition"
+        run: cargo build -p tanoshi --release
+
+      - name: Upload dist
+        uses: actions/upload-artifact@v4
+        with:
+          name: tanoshi-linux-${{ matrix.arch }}
+          path: ${{ github.workspace }}/target/release/tanoshi
 
   build-cli:
     runs-on: ubuntu-latest
