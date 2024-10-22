@@ -163,7 +163,7 @@ jobs:
         run: cargo binstall tauri-cli@2.0 --no-confirm --locked
 
       - name: Build tauri (ubuntu)
-        if: ${{ matrix.os == 'ubuntu-latest' }}
+        if: ${{ matrix.os != 'macos-latest' && matrix.os != 'windows-latest' }}
         env:
           RUSTFLAGS: "-Clink-arg=-Wl,--allow-multiple-definition"
         run: |
