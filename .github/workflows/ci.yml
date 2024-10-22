@@ -73,7 +73,7 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
         with:
-          key: "${{ matrix.os }}
+          key: "${{ matrix.os }}"
       
       - name: Run cargo test
         env:
