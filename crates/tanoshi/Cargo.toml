@@ -56,7 +56,7 @@ anyhow = { version = "1", default-features = false }
 thiserror = "1"
 rust-embed = { version = "8", optional = true , features = ["interpolate-folder-path"] }
 mime_guess = { version = "2", default-features = false }
-clap = "4"
+clap = { version = "4", features = ["derive"] }
 bytes = { version = "1", default-features = false }
 dirs = "5"
 base64 = { version = "0.22", default-features = false }
