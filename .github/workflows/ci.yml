@@ -303,3 +303,110 @@ jobs:
         with:
           name: tanoshi-${{ matrix.arch }}
           path: ${{ github.workspace }}/target/release/tanoshi
+
+  docker:
+    runs-on: ubuntu-latest
+    needs:
+      - build-tanoshi
+    env:
+      DEFAULT_VARIANT: slim
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - dockerfile: Dockerfile.CI
+            variant: slim
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download dist (AMD64)
+        uses: actions/download-artifact@v4
+        with:
+          name: tanoshi-linux-amd64
+          path: linux/amd64
+      
+      - name: Download dist (AARCH64)
+        uses: actions/download-artifact@v4
+        with:
+          name: tanoshi-linux-aarch64
+          path: linux/arm64
+
+      - name: Docker meta
+        id: docker_meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ${{ secrets.DOCKER_USERNAME }}/tanoshi,enable=${{ secrets.DOCKER_USERNAME != '' }}
+            # Do not push to ghcr.io on PRs due to permission issues, only push if the owner is luigi311 so it doesnt fail on forks
+            ghcr.io/${{ github.repository }},enable=${{ github.event_name != 'pull_request' && github.repository_owner == 'luigi311'}}
+          flavor: latest=false
+          tags: |
+            type=raw,value=latest,enable=${{ matrix.variant == env.DEFAULT_VARIANT && startsWith(github.ref, 'refs/tags/') }}
+            type=raw,value=latest,suffix=-${{ matrix.variant }},enable=${{ startsWith(github.ref, 'refs/tags/')  }}
+
+            type=ref,event=branch,suffix=-${{ matrix.variant }}
+            type=ref,event=branch,enable=${{ matrix.variant == env.DEFAULT_VARIANT }}
+
+            type=ref,event=pr,suffix=-${{ matrix.variant }}
+            type=ref,event=pr,enable=${{ matrix.variant == env.DEFAULT_VARIANT }}
+
+            type=semver,pattern={{ version }},suffix=-${{ matrix.variant }}
+            type=semver,pattern={{ version }},enable=${{ matrix.variant == env.DEFAULT_VARIANT }}
+
+            type=semver,pattern={{ major }}.{{ minor }},suffix=-${{ matrix.variant }}
+            type=semver,pattern={{ major }}.{{ minor }},enable=${{ matrix.variant == env.DEFAULT_VARIANT }}
+
+            type=sha,suffix=-${{ matrix.variant }}
+            type=sha,enable=${{ matrix.variant == env.DEFAULT_VARIANT }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to DockerHub
+        env:
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+        if: "${{ env.DOCKER_USERNAME != '' }}"
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+
+      - name: Login to GitHub Container Registry
+        if: "${{ steps.docker_meta.outcome == 'success' }}"
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build
+        id: build
+        if: "${{ steps.docker_meta.outputs.tags == '' }}"
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          platforms: linux/amd64,linux/arm64
+          push: false
+          tags: tanoshi:action
+
+      - name: Build Push
+        id: build_push
+        if: "${{ steps.docker_meta.outputs.tags != '' }}"
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.docker_meta.outputs.tags }}
+          labels: ${{ steps.docker_meta.outputs.labels }}
+
+      # Echo digest so users can validate their image
+      - name: Image digest
+        if: "${{ steps.docker_meta.outcome == 'success' }}"
+        run: echo "${{ steps.build_push.outputs.digest }}"

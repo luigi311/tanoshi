@@ -1,0 +1,16 @@
+FROM debian:bookworm-slim AS runtime
+
+RUN apt update && apt upgrade -y && apt install --reinstall -y tini ca-certificates libssl3 libxml2
+
+WORKDIR /app
+
+COPY "./$TARGETPLATFORM/tanoshi" .
+RUN chmod +x tanoshi
+
+ENV PORT=80
+ENV TANOSHI_LOG=info
+ENV TANOSHI_HOME=/tanoshi
+
+EXPOSE $PORT
+
+ENTRYPOINT ["/bin/tini", "--", "/app/tanoshi"]
