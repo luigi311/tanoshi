@@ -263,7 +263,7 @@ jobs:
           file_glob: true
           overwrite: true
 
-build-tanoshi-multiplat:
+  build-tanoshi-multiplat:
     runs-on: ${{ matrix.os }}
     needs:
       - build-web
