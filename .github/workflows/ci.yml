@@ -72,6 +72,8 @@ jobs:
           version: ${{ env.LLVM_VERSION }}
 
       - uses: Swatinem/rust-cache@v2
+        with:
+          key: "${{ matrix.os }}"
       
       - name: Run cargo test
         env:
@@ -122,6 +124,10 @@ jobs:
           path: crates/tanoshi-web/dist
       
       - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: "${{ matrix.os }}-${{ matrix.arch }}"
+
 
       - name: Install deps (ubuntu)
         if: ${{ matrix.os != 'macos-latest' && matrix.os != 'windows-latest' }}
@@ -153,8 +159,6 @@ jobs:
           vcpkg integrate install
           vcpkg install --only-downloads libarchive:x64-windows-static-md
           vcpkg install libarchive:x64-windows-static-md
-
-      - uses: Swatinem/rust-cache@v2
 
       - name: Install Binstall
         uses: cargo-bins/cargo-binstall@main
