@@ -82,6 +82,36 @@ jobs:
         run: |
           cargo test
 
+  build-cli:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/luigi311/tanoshi-builder:sha-6b8a514-slim
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build tanoshi-cli
+        env:
+          RUSTFLAGS: "-Clink-arg=-Wl,--allow-multiple-definition"
+        run: |
+          cargo build -p tanoshi-cli --release
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tanoshi-cli
+          path: ${{ github.workspace }}/target/release/tanoshi-cli
+
+      - name: Upload binaries to GitHub Releases
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: target/release/tanoshi-cli
+          asset_name: tanoshi-cli
+          tag: ${{ github.ref }}
+
   build-web:
     runs-on: ubuntu-latest
     container:
@@ -110,10 +140,13 @@ jobs:
         include:
           - os: [self-hosted, arm64]
             arch: aarch64
+            type: linux
           - os: ubuntu-latest
-            arch: amd64  
+            arch: amd64
+            type: linux
           - os: windows-latest
             arch: amd64
+            type: windows
     steps:
       - uses: actions/checkout@v4
 
@@ -206,7 +239,7 @@ jobs:
       - name: Upload dist
         uses: actions/upload-artifact@v4
         with:
-          name: tanoshi-app-${{ matrix.os }}-${{ matrix.arch }}
+          name: tanoshi-app-${{ matrix.type }}-${{ matrix.arch }}
           path: ${{ github.workspace }}/builds/
 
       - name: Upload binaries to GitHub Releases
@@ -219,33 +252,54 @@ jobs:
           file_glob: true
           overwrite: true
 
-
-  build-cli:
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/luigi311/tanoshi-builder:sha-6b8a514-slim
+  build-tanoshi:
+    runs-on: ${{ matrix.os }}
+    needs:
+      - build-web
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: [self-hosted, arm64]
+            arch: aarch64
+            type: linux
+          - os: ubuntu-latest
+            arch: amd64
+            type: linux
     steps:
       - uses: actions/checkout@v4
 
+      - name: Download dist
+        uses: actions/download-artifact@v4
+        with:
+          name: tanoshi-web
+          path: crates/tanoshi-web/dist
+      
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
       - uses: Swatinem/rust-cache@v2
+        with:
+          key: "${{ matrix.os }}-${{ matrix.arch }}"
 
-      - name: Build tanoshi-cli
+
+      - name: Install deps
+        if: ${{ matrix.os != 'macos-latest' && matrix.os != 'windows-latest' }}
+        run: sudo apt update && sudo apt upgrade -y && sudo apt install -y ${{ env.UBUNTU_DEPS }}
+
+
+      - uses: ilammy/setup-nasm@v1
+
+      - name: Install LLVM and Clang
+        uses: KyleMayes/install-llvm-action@v2.0.5
+        with:
+          version: ${{ env.LLVM_VERSION }}
+
+      - name: Build tanoshi
         env:
           RUSTFLAGS: "-Clink-arg=-Wl,--allow-multiple-definition"
-        run: |
-          cargo build -p tanoshi-cli --release
+        run: cargo build -p tanoshi --release
 
-      - name: Upload artifact
+      - name: Upload dist
         uses: actions/upload-artifact@v4
         with:
-          name: tanoshi-cli
-          path: ${{ github.workspace }}/target/release/tanoshi-cli
-
-      - name: Upload binaries to GitHub Releases
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: svenstaro/upload-release-action@v2
-        with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: target/release/tanoshi-cli
-          asset_name: tanoshi-cli
-          tag: ${{ github.ref }}
+          name: tanoshi-${{ matrix.arch }}
+          path: ${{ github.workspace }}/target/release/tanoshi
