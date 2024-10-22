@@ -185,7 +185,7 @@ jobs:
           cargo tauri build
 
       - name: Move files (linux/macOS)
-        if: ${{ matrix.os == 'ubuntu-latest' || matrix.os == 'macos-latest' }}
+        if: ${{ matrix.os != 'windows-latest' }}
         run: |
           mkdir -p builds
           find target/release/bundle/ -type f \( -name "*.deb" -o -name "*.AppImage" -o -name "*.dmg" \) -print0 |
