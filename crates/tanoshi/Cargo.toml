@@ -27,24 +27,19 @@ tanoshi-lib = { path = "../tanoshi-lib" }
 tanoshi-vm = { path = "../tanoshi-vm" }
 tanoshi-tracker = { path = "../tanoshi-tracker" }
 tanoshi-notifier = { path = "../tanoshi-notifier" }
-tokio = { version = "1", features = ["full"] }
-tokio-stream = { version = "0.1", features = ["sync"] }
-serde = { version = "1.0", features = ["derive"] }
+tokio = "1"
+tokio-stream = { version = "0.1", features = ["sync"], default-features = false }
+serde = { version = "1.0", default-features = false }
 serde_json = "1.0"
 serde_yml = "0.0.11"
 bincode = "1"
-async-graphql = { version = "7", features = [
-    "apollo_tracing",
-    "chrono",
-    "dataloader",
-    "log",
-] }
+async-graphql = { version = "7", features = ["chrono", "dataloader", "log", "playground"], default-features = false }
 async-graphql-axum = { version = "7", optional = true }
-axum = { version = "0.7.5", optional = true }
-axum-server = { version = "0.7", features = [ "tls-rustls" ] }
-axum-extra = { version = "0.9", features = [ "typed-header" ]}
+axum = { version = "0.7.5", optional = true , default-features = false }
+axum-server = "0.7"
+axum-extra = { version = "0.9", features = ["typed-header"], default-features = false }
 headers = { version = "0.4", optional = true }
-http = { version = "1", optional = true }
+http = { version = "1", optional = true , default-features = false }
 tower-http = { version = "0.5", features = [
     "cors",
     "compression-br",
@@ -52,46 +47,40 @@ tower-http = { version = "0.5", features = [
     "compression-gzip",
     "compression-zstd",
 ], optional = true }
-rand = { version = "0.8" }
+rand = { version = "0.8", default-features = false }
 log = { version = "0.4" }
-env_logger = "0.11"
-jsonwebtoken = "9"
-chrono = { version = "0.4", features = ["serde"] }
-anyhow = "1"
+env_logger = { version = "0.11", default-features = false }
+jsonwebtoken = { version = "9", default-features = false }
+chrono = { version = "0.4", default-features = false }
+anyhow = { version = "1", default-features = false }
 thiserror = "1"
-rust-embed = { version = "8", features = [
-    "interpolate-folder-path",
-], optional = true }
-mime_guess = "2"
+rust-embed = { version = "8", optional = true , features = ["interpolate-folder-path"] }
+mime_guess = { version = "2", default-features = false }
 clap = { version = "4", features = ["derive"] }
-bytes = "1"
+bytes = { version = "1", default-features = false }
 dirs = "5"
-base64 = "0.22"
+base64 = { version = "0.22", default-features = false }
 sqlx = { version = "0.8", features = [
     "runtime-tokio",
-    "tls-rustls",
+    "tls-rustls-ring",
     "sqlite",
     "chrono",
     "json",
+    "macros",
     "migrate",
-] }
-reqwest = { version = "0.12", default-features = false, features = [
-    "json",
-    "rustls-tls",
-] }
-futures = "0.3"
+], default-features = false }
+reqwest = { version = "0.12", default-features = false }
+futures = { version = "0.3", default-features = false }
 rust-argon2 = "2"
-fancy-regex = "0.13"
-compress-tools = { git = "https://github.com/OSSystems/compress-tools-rs", rev = "615e54549ce08695a45c7f38d3fbd10827ed140c", features = [
-    "static",
-] }
+fancy-regex = { version = "0.13", features = ["std"], default-features = false }
+compress-tools = { git = "https://github.com/OSSystems/compress-tools-rs", rev = "615e54549ce08695a45c7f38d3fbd10827ed140c" , features = ["static"]}
 zip = { version = "2", default-features = false }
-phf = { version = "0.11", features = ["macros"] }
+phf = { version = "0.11", features = ["macros"], default-features = false }
 human-sort = "0.2"
 aes = "0.8"
 cbc = "0.1"
-once_cell = "1"
+once_cell = { version = "1", default-features = false }
 async-trait = "0.1"
-itertools = "0.13"
+itertools = { version = "0.13", features = ["use_alloc"], default-features = false }
 rayon = "1.10"
-flume = "0.11"
+flume = { version = "0.11", default-features = false }

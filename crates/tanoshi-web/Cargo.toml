@@ -24,48 +24,13 @@ serde_json = "1.0"
 futures-signals = "0.3"
 futures = "0.3"
 js-sys = "0.3"
-reqwest = { version = "0.12", default-features = false, features = [
-    "json",
-    "rustls-tls",
-] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 base64 = "0.22"
-gloo-timers = { version = "0.3", features = [ "futures" ] }
+gloo-timers = { version = "0.3", features = ["futures"] }
 anyhow = "1"
 ws_stream_wasm = "0.7"
-graphql-ws-client = { version = "0.10", features = [
-  "client-graphql-client",
-  "ws_stream_wasm",
-] }
+graphql-ws-client = { version = "0.10", features = ["client-graphql-client", "ws_stream_wasm"] }
 
 [dependencies.web-sys]
 version = "0.3"
-features = [
-  'Document',
-  'Element',
-  'HtmlCollection',
-  'HtmlElement',
-  'HtmlImageElement',
-  'HtmlSelectElement',
-  'HtmlOptionElement',
-  'Node',
-  'Window',
-  'CssStyleDeclaration',
-  'Url',
-  'UrlSearchParams',
-  'Cache',
-  'CacheStorage',
-  'EventSource',
-  'MessageEvent',
-  'Location',
-  'FocusEvent',
-  'ErrorEvent',
-  'Storage',
-  'PopStateEvent',
-  'MediaQueryList',
-  'MediaQueryListEvent',
-  'Navigator',
-  'ServiceWorkerContainer',
-  'Notification',
-  'NotificationPermission',
-  'NotificationOptions',
-]
+features = ["Cache", "CacheStorage", "CssStyleDeclaration", "Document", "ErrorEvent", "EventSource", "FocusEvent", "HtmlCollection", "HtmlImageElement", "HtmlOptionElement", "HtmlSelectElement", "Location", "MediaQueryList", "MediaQueryListEvent", "MessageEvent", "Navigator", "Notification", "NotificationOptions", "NotificationPermission", "PopStateEvent", "ServiceWorkerContainer", "Storage", "Url", "UrlSearchParams", "Window"]
