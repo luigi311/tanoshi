@@ -124,7 +124,6 @@ jobs:
       - uses: Swatinem/rust-cache@v2
 
       - name: Build tauri
-        if: ${{ matrix.os == 'ubuntu-latest' }}
         env:
           RUSTFLAGS: "-Clink-arg=-Wl,--allow-multiple-definition"
         run: |
