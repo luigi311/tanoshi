@@ -1,4 +1,4 @@
-FROM ghcr.io/luigi311/tanoshi-builder:sha-6886658-slim AS base
+FROM ghcr.io/luigi311/tanoshi-builder:sha-6b8a514-slim AS base
 
 # Backend builder
 FROM base AS builder

@@ -83,7 +83,7 @@ jobs:
   build-web:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/luigi311/tanoshi-builder:sha-6886658-slim
+      image: ghcr.io/luigi311/tanoshi-builder:sha-6b8a514-slim
     steps:
       - uses: actions/checkout@v4
 
@@ -111,7 +111,7 @@ jobs:
           - os: [self-hosted, arm64]
             arch: aarch64
     container:
-      image: ghcr.io/luigi311/tanoshi-builder:sha-6886658-slim
+      image: ghcr.io/luigi311/tanoshi-builder:sha-6b8a514-slim
     steps:
       - uses: actions/checkout@v4
 
@@ -276,7 +276,7 @@ build-tanoshi-multiplat:
           - os: [self-hosted, arm64]
             arch: aarch64
     container:
-      image: ghcr.io/luigi311/tanoshi-builder:sha-6886658-slim
+      image: ghcr.io/luigi311/tanoshi-builder:sha-6b8a514-slim
     steps:
       - uses: actions/checkout@v4
 
@@ -302,7 +302,7 @@ build-tanoshi-multiplat:
   build-cli:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/luigi311/tanoshi-builder:sha-6886658-slim
+      image: ghcr.io/luigi311/tanoshi-builder:sha-6b8a514-slim
     steps:
       - uses: actions/checkout@v4
 
