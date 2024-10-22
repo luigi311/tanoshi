@@ -98,62 +98,6 @@ jobs:
           name: tanoshi-web
           path: crates/tanoshi-web/dist
   
-  build-tauri-multiplat:
-    runs-on: ${{ matrix.os }}
-    needs:
-      - build-web
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: ubuntu-latest
-            arch: amd64
-          - os: [self-hosted, arm64]
-            arch: aarch64
-    container:
-      image: ghcr.io/luigi311/tanoshi-builder:sha-6b8a514-slim
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Download dist
-        uses: actions/download-artifact@v4
-        with:
-          name: tanoshi-web
-          path: crates/tanoshi-web/dist
-
-      - uses: Swatinem/rust-cache@v2
-
-      - name: Build tauri
-        env:
-          RUSTFLAGS: "-Clink-arg=-Wl,--allow-multiple-definition"
-        run: |
-          cd crates/tanoshi-tauri
-          cargo tauri build
-      
-      - name: Move files
-        run: |
-          mkdir -p builds
-          find target/release/bundle/ -type f \( -name "*.deb" -o -name "*.AppImage" \) -print0 |
-          while IFS= read -r -d '' file; do
-              mv "$file" ${{ github.workspace }}/builds/
-          done
-
-      - name: Upload dist
-        uses: actions/upload-artifact@v4
-        with:
-          name: tanoshi-app-linux-${{ matrix.arch }}
-          path: ${{ github.workspace }}/builds/
-
-      - name: Upload binaries to GitHub Releases
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: svenstaro/upload-release-action@v2
-        with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: ${{ github.workspace }}/builds/*
-          tag: ${{ github.ref }}
-          file_glob: true
-          overwrite: true
-  
   build-tauri:
     runs-on: ${{ matrix.os }}
     needs:
@@ -161,11 +105,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os:
-          #- ubuntu-latest
-          #- macos-latest
-          - windows-latest
-
+        include:
+          - os: [self-hosted, arm64]
+            arch: aarch64
+          - os: ubuntu-latest
+            arch: amd64  
+          - os: windows-latest
+            arch: amd64
     steps:
       - uses: actions/checkout@v4
 
@@ -175,6 +121,10 @@ jobs:
           name: tanoshi-web
           path: crates/tanoshi-web/dist
       
+      - name: Install deps (ubuntu)
+        if: ${{ matrix.os != 'macos-latest' && matrix.os != 'windows-latest' }}
+        run: sudo apt update && sudo apt upgrade -y && sudo apt install -y ${{ env.UBUNTU_DEPS }}
+
       - name: Install deps (macOS)
         if: ${{ matrix.os == 'macos-latest' }}
         run: brew install icu4c libarchive bzip2 lz4 zlib expat libiconv
@@ -210,7 +160,7 @@ jobs:
       - name: Install tauri-cli
         run: cargo binstall tauri-cli@2.0 --no-confirm --locked
 
-      - name: Build tanoshi (ubuntu)
+      - name: Build tauri (ubuntu)
         if: ${{ matrix.os == 'ubuntu-latest' }}
         env:
           RUSTFLAGS: "-Clink-arg=-Wl,--allow-multiple-definition"
@@ -250,7 +200,7 @@ jobs:
       - name: Upload dist
         uses: actions/upload-artifact@v4
         with:
-          name: tanoshi-app-${{ matrix.os }}-amd64
+          name: tanoshi-app-${{ matrix.os }}-${{ matrix.arch }}
           path: ${{ github.workspace }}/builds/
 
       - name: Upload binaries to GitHub Releases
@@ -263,41 +213,6 @@ jobs:
           file_glob: true
           overwrite: true
 
-  build-tanoshi-multiplat:
-    runs-on: ${{ matrix.os }}
-    needs:
-      - build-web
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: ubuntu-latest
-            arch: amd64
-          - os: [self-hosted, arm64]
-            arch: aarch64
-    container:
-      image: ghcr.io/luigi311/tanoshi-builder:sha-6b8a514-slim
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Download dist
-        uses: actions/download-artifact@v4
-        with:
-          name: tanoshi-web
-          path: crates/tanoshi-web/dist
-
-      - uses: Swatinem/rust-cache@v2
-
-      - name: Build tanoshi
-        env:
-          RUSTFLAGS: "-Clink-arg=-Wl,--allow-multiple-definition"
-        run: cargo build -p tanoshi --release
-
-      - name: Upload dist
-        uses: actions/upload-artifact@v4
-        with:
-          name: tanoshi-linux-${{ matrix.arch }}
-          path: ${{ github.workspace }}/target/release/tanoshi
 
   build-cli:
     runs-on: ubuntu-latest
