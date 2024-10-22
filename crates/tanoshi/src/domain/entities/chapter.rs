@@ -16,6 +16,7 @@ pub struct Chapter {
     pub prev: Option<i64>,
 }
 
+#[allow(deprecated)]
 impl From<tanoshi_lib::models::ChapterInfo> for Chapter {
     fn from(ch: tanoshi_lib::models::ChapterInfo) -> Self {
         Self {
