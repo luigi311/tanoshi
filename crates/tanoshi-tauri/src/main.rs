@@ -4,6 +4,8 @@
 )]
 
 extern crate log;
+use std::env;
+use tauri::Manager;
 
 mod server;
 
@@ -23,6 +25,21 @@ fn main() {
     .plugin(tauri_plugin_clipboard_manager::init())
     .plugin(tauri_plugin_fs::init())
     .plugin(Server::new())
+    .setup(|app| {
+      let window = app.get_webview_window("main").unwrap();
+
+      // Check if running on Phosh
+      if let Ok(session) = env::var("XDG_SESSION_DESKTOP") {
+        println!("Session: {}", session);
+        if session == "phosh" {
+          // Hide title bar if running on Phosh
+          window.set_decorations(false).unwrap();
+        } else {
+          window.set_decorations(true).unwrap();
+        }
+      }
+      Ok(())
+    })
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
 }
