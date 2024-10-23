@@ -1,4 +1,6 @@
 FROM debian:bookworm-slim AS runtime
+ARG TARGETPLATFORM
+ENV TARGETPLATFORM=${TARGETPLATFORM:-linux/amd64}
 
 RUN apt update && apt upgrade -y && apt install --reinstall -y tini ca-certificates libssl3 libxml2
 
