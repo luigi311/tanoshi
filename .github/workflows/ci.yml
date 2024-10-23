@@ -323,13 +323,13 @@ jobs:
       - name: Download dist (AMD64)
         uses: actions/download-artifact@v4
         with:
-          name: tanoshi-linux-amd64
+          name: tanoshi-amd64
           path: linux/amd64
       
       - name: Download dist (AARCH64)
         uses: actions/download-artifact@v4
         with:
-          name: tanoshi-linux-aarch64
+          name: tanoshi-aarch64
           path: linux/arm64
 
       - name: Docker meta
