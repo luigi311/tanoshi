@@ -92,23 +92,30 @@ jobs:
       - uses: Swatinem/rust-cache@v2
 
       - name: Build tanoshi-cli
+        shell: bash
         env:
           RUSTFLAGS: "-Clink-arg=-Wl,--allow-multiple-definition"
         run: |
-          cargo build -p tanoshi-cli --release
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            cargo build -p tanoshi-cli --release
+            echo "build_dir=release" >> $GITHUB_ENV
+          else
+            cargo build -p tanoshi-cli
+            echo "build_dir=debug" >> $GITHUB_ENV
+          fi
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: tanoshi-cli
-          path: ${{ github.workspace }}/target/release/tanoshi-cli
+          path: ${{ github.workspace }}/target/${{ env.build_dir }}/tanoshi-cli
 
       - name: Upload binaries to GitHub Releases
         if: startsWith(github.ref, 'refs/tags/')
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: target/release/tanoshi-cli
+          file: target/${{ env.build_dir }}/tanoshi-cli
           asset_name: tanoshi-cli
           tag: ${{ github.ref }}
 
@@ -122,7 +129,13 @@ jobs:
       - uses: Swatinem/rust-cache@v2
 
       - name: Build tanoshi-web
-        run: cd crates/tanoshi-web && trunk build --release
+        shell: bash
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            cd crates/tanoshi-web && trunk build --release
+          else
+            cd crates/tanoshi-web && trunk build
+          fi
 
       - name: Upload tanoshi-web
         uses: actions/upload-artifact@v4
@@ -201,31 +214,45 @@ jobs:
 
       - name: Build tauri (ubuntu)
         if: ${{ matrix.os != 'macos-latest' && matrix.os != 'windows-latest' }}
+        shell: bash
         env:
           RUSTFLAGS: "-Clink-arg=-Wl,--allow-multiple-definition"
         run: |
           cd crates/tanoshi-tauri
-          cargo tauri build
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            cargo tauri build
+          else
+            cargo tauri build --debug
+          fi
 
       - name: Build tanoshi (macos)
         if: ${{ matrix.os == 'macos-latest' }}
+        shell: bash
         env:
           PKG_CONFIG_PATH: /usr/local/opt/icu4c/lib/pkgconfig:/usr/local/opt/libarchive/lib/pkgconfig:/usr/local/opt/zlib/lib/pkgconfig:/usr/local/opt/expat/lib/pkgconfig
         run: |
           cd crates/tanoshi-tauri
-          cargo tauri build
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            cargo tauri build
+          else
+            cargo tauri build --debug
+          fi
 
       - name: Build tanoshi (windows)
         if: ${{ matrix.os == 'windows-latest' }}
         run: |
           cd crates/tanoshi-tauri
-          cargo tauri build
+          if ($env:GITHUB_REF -match '^refs/tags/') {
+            cargo tauri build
+          } else {
+            cargo tauri build --debug
+          }
 
       - name: Move files (linux/macOS)
         if: ${{ matrix.os != 'windows-latest' }}
         run: |
           mkdir -p builds
-          find target/release/bundle/ -type f \( -name "*.deb" -o -name "*.AppImage" -o -name "*.dmg" \) -print0 |
+          find target/ -type f \( -name "*.deb" -o -name "*.AppImage" -o -name "*.dmg" \) -print0 |
           while IFS= read -r -d '' file; do
               mv "$file" ${{ github.workspace }}/builds/
           done
@@ -234,7 +261,7 @@ jobs:
         if: ${{ matrix.os == 'windows-latest' }}
         run: |
           mkdir -p builds
-          mv target/release/bundle/msi/*.msi ${{ github.workspace }}/builds/
+          mv target/*/bundle/msi/*.msi ${{ github.workspace }}/builds/
 
       - name: Upload dist
         uses: actions/upload-artifact@v4
@@ -294,15 +321,23 @@ jobs:
           version: ${{ env.LLVM_VERSION }}
 
       - name: Build tanoshi
+        shell: bash
         env:
           RUSTFLAGS: "-Clink-arg=-Wl,--allow-multiple-definition"
-        run: cargo build -p tanoshi --release
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            cargo build -p tanoshi --release
+            echo "build_dir=release" >> $GITHUB_ENV
+          else
+            cargo build -p tanoshi
+            echo "build_dir=debug" >> $GITHUB_ENV
+          fi
 
       - name: Upload dist
         uses: actions/upload-artifact@v4
         with:
           name: tanoshi-${{ matrix.arch }}
-          path: ${{ github.workspace }}/target/release/tanoshi
+          path: ${{ github.workspace }}/target/${{ env.build_dir }}/tanoshi
 
   docker:
     runs-on: ubuntu-latest
