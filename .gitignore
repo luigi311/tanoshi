@@ -17,3 +17,6 @@ dist/
 *.pem
 .tanoshi/
 output/
+flatpak/*
+!flatpak/org.luigi311.tanoshi.yml
+!flatpak/Tanoshi.desktop

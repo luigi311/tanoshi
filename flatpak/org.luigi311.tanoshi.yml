@@ -1,0 +1,53 @@
+id: org.luigi311.tanoshi
+
+runtime: org.gnome.Platform
+runtime-version: '47'
+sdk: org.gnome.Sdk
+
+
+command: tanoshi-app
+finish-args:
+  - --socket=wayland # Permission needed to show the window
+  - --socket=fallback-x11 # Permission needed to show the window
+  - --device=dri # OpenGL, not necessary for all projects
+  - --share=ipc
+  - --share=network
+  - --filesystem=home/.tanoshi
+
+cleanup:
+  - "/include"
+  - "/lib/pkgconfig"
+  - "/man"
+  - "/share/doc"
+  - "/share/gtk-doc"
+  - "/share/man"
+  - "/share/pkgconfig"
+  - "*.la"
+  - "*.a"
+
+modules:
+  - name: bzip2
+    buildsystem: simple
+    build-commands:
+      - make -f Makefile-libbz2_so
+      - install -D libbz2.so.1.0.8 /app/lib/libbz2.so.1.0.8
+      - ln -s /app/lib/libbz2.so.1.0.8 /app/lib/libbz2.so.1.0
+    sources:
+      - type: archive
+        url: https://github.com/libarchive/bzip2/archive/refs/tags/bzip2-1.0.8.tar.gz
+        sha256: db106b740252669664fd8f3a1c69fe7f689d5cd4b132f82ba82b9afba27627df
+        x-checker-data:
+          type: anitya
+          project-id: 237
+          url-template: https://github.com/libarchive/bzip2/archive/refs/tags/bzip2-$version.tar.gz
+
+  - name: tanoshi
+    buildsystem: simple
+    sources:
+      - type: dir
+        path: ..
+    build-commands:
+      - install -Dm755 target/release/tanoshi-app /app/bin/tanoshi-app
+      - install -Dm644 flatpak/Tanoshi.desktop /app/share/applications/org.luigi311.tanoshi.desktop
+      - install -Dm644 crates/tanoshi-tauri/icons/512x512.png /app/share/icons/hicolor/512x512/apps/org.luigi311.tanoshi.png
+      - install -Dm644 crates/tanoshi-tauri/icons/128x128.png /app/share/icons/hicolor/128x128/apps/org.luigi311.tanoshi.png
