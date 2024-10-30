@@ -14,3 +14,9 @@ default-members = [
 [profile.release]
 lto = "thin"
 opt-level = 3
+strip = true
+
+[profile.release.package.tanoshi-web]
+# Optimize wasm build for size
+# Strip symbols breaks wasm opt https://github.com/rust-lang/rust/issues/93294
+opt-level = "s"
