@@ -223,19 +223,20 @@ jobs:
           cargo tauri build
         if: matrix.arch != 'aarch64' || matrix.include_arm64
 
-      - name: Move files
-        shell: bash
+      - name: Move files (linux/macOS)
+        if: ${{ matrix.os != 'windows-latest' }}
         run: |
           mkdir -p builds
-          if [[ "${{ matrix.os }}" != "windows-latest" ]]; then
-            find target/ -type f \( -name "*.deb" -o -name "*.AppImage" -o -name "*.dmg" \) -print0 |
-            while IFS= read -r -d '' file; do
-                mv "$file" ${{ github.workspace }}/builds/
-            done
-          else
-            mv target/*/bundle/msi/*.msi ${{ github.workspace }}/builds/
-          fi
-        if: matrix.arch != 'aarch64' || matrix.include_arm64
+          find target/ -type f \( -name "*.deb" -o -name "*.AppImage" -o -name "*.dmg" \) -print0 |
+          while IFS= read -r -d '' file; do
+              mv "$file" ${{ github.workspace }}/builds/
+          done
+
+      - name: Move files (windows)
+        if: ${{ matrix.os == 'windows-latest' }}
+        run: |
+          mkdir -p builds
+          mv target/*/bundle/msi/*.msi ${{ github.workspace }}/builds/
 
       - name: Upload dist
         uses: actions/upload-artifact@v4
