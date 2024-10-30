@@ -142,7 +142,7 @@ jobs:
         with:
           name: tanoshi-web
           path: crates/tanoshi-web/dist
-    
+
   build-tauri:
     runs-on: ${{ matrix.runs_on }}
     needs:
@@ -241,6 +241,7 @@ jobs:
         if: matrix.arch != 'aarch64' || matrix.include_arm64
 
       - name: Move files
+        shell: bash
         run: |
           mkdir -p builds
           if [[ "${{ matrix.os }}" != "windows-latest" ]]; then
