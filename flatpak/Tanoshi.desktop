@@ -1,0 +1,7 @@
+[Desktop Entry]
+Categories=Development;
+Exec=tanoshi-app
+Icon=tanoshi-app
+Name=Tanoshi
+Terminal=false
+Type=Application

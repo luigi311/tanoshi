@@ -1,0 +1,88 @@
+id: org.luigi311.tanoshi
+
+runtime: org.gnome.Platform
+runtime-version: '47'
+sdk: org.gnome.Sdk
+sdk-extensions: 
+  - org.freedesktop.Sdk.Extension.rust-stable
+  - org.freedesktop.Sdk.Extension.llvm18
+
+
+command: tanoshi-app
+finish-args:
+  - --socket=wayland # Permission needed to show the window
+  - --socket=fallback-x11 # Permission needed to show the window
+  - --device=dri # OpenGL, not necessary for all projects
+  - --share=ipc
+  - --share=network
+  - --filesystem=home
+
+build-options:
+  append-path: /usr/lib/sdk/rust-stable/bin:/usr/lib/sdk/llvm18/bin:/run/build/tanoshi/cargo/bin
+  env:
+    CARGO_HOME: /run/build/tanoshi/cargo
+  build-args:
+    - --share=network
+
+cleanup:
+  - "/include"
+  - "/lib/pkgconfig"
+  - "/man"
+  - "/share/doc"
+  - "/share/gtk-doc"
+  - "/share/man"
+  - "/share/pkgconfig"
+  - "*.la"
+  - "*.a"
+
+modules:
+  #- name: libb2
+  #  buildsystem: autotools
+  #  sources:
+  #    - type: archive
+  #      url: https://github.com/BLAKE2/libb2/archive/refs/tags/v0.98.1.tar.gz
+  #      sha256: 10053dbc2fa342516b780a6bbf6e7b2a2360b8d49c5ac426936bf3df82526732
+
+  - name: bzip2
+    buildsystem: simple
+    build-commands:
+      - make -f Makefile-libbz2_so
+      - install -D libbz2.so.1.0.8 /app/lib/libbz2.so.1.0.8
+      - ln -s /app/lib/libbz2.so.1.0.8 /app/lib/libbz2.so.1.0
+    sources:
+      - type: archive
+        url: https://github.com/libarchive/bzip2/archive/refs/tags/bzip2-1.0.8.tar.gz
+        sha256: db106b740252669664fd8f3a1c69fe7f689d5cd4b132f82ba82b9afba27627df
+        x-checker-data:
+          type: anitya
+          project-id: 237
+          url-template: https://github.com/libarchive/bzip2/archive/refs/tags/bzip2-$version.tar.gz
+
+  #- name: libarchive
+  #  buildsystem: autotools
+  #  sources:
+  #    - type: archive
+  #      url: https://libarchive.org/downloads/libarchive-3.7.7.tar.gz
+  #      sha256: 4cc540a3e9a1eebdefa1045d2e4184831100667e6d7d5b315bb1cbc951f8ddff
+        
+  - name: tanoshi
+    buildsystem: simple
+    sources:
+      - type: dir
+        path: ..
+    build-commands:
+      - install -Dm755 target/release/tanoshi-app /app/bin/tanoshi-app
+      - install -Dm644 flatpak/Tanoshi.desktop /app/share/applications/org.luigi311.tanoshi.desktop
+      - install -Dm644 crates/tanoshi-tauri/icons/512x512.png /app/share/icons/hicolor/512x512/apps/org.luigi311.tanoshi.png
+      - install -Dm644 crates/tanoshi-tauri/icons/128x128.png /app/share/icons/hicolor/128x128/apps/org.luigi311.tanoshi.png
+
+
+    #sources:
+    #  - type: file
+    #    path: ./Tanoshi_0.33.0_amd64.deb
+    #build-commands:
+    #  - ar -x *.deb
+    #  - tar -xf data.tar.gz
+    #  - install -Dm755 usr/bin/tanoshi-app /app/bin/tanoshi-app
+    #  - install -Dm644 usr/share/applications/Tanoshi.desktop /app/share/applications/org.luigi311.tanoshi.desktop
+    #  - install -Dm644 usr/share/icons/hicolor/512x512/apps/tanoshi-app.png /app/share/icons/hicolor/512x512/apps/org.luigi311.tanoshi.png
