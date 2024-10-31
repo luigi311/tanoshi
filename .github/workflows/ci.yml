@@ -95,27 +95,20 @@ jobs:
         shell: bash
         env:
           RUSTFLAGS: "-Clink-arg=-Wl,--allow-multiple-definition"
-        run: |
-          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
-            cargo build -p tanoshi-cli --release
-            echo "build_dir=release" >> $GITHUB_ENV
-          else
-            cargo build -p tanoshi-cli
-            echo "build_dir=debug" >> $GITHUB_ENV
-          fi
+        run: cargo build -p tanoshi-cli --release
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: tanoshi-cli
-          path: ${{ github.workspace }}/target/${{ env.build_dir }}/tanoshi-cli
+          path: ${{ github.workspace }}/target/release/tanoshi-cli
 
       - name: Upload binaries to GitHub Releases
         if: startsWith(github.ref, 'refs/tags/')
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: target/${{ env.build_dir }}/tanoshi-cli
+          file: target/release/tanoshi-cli
           asset_name: tanoshi-cli
           tag: ${{ github.ref }}
 
@@ -129,54 +122,59 @@ jobs:
       - uses: Swatinem/rust-cache@v2
 
       - name: Build tanoshi-web
-        shell: bash
-        run: |
-          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
-            cd crates/tanoshi-web && trunk build --release
-          else
-            cd crates/tanoshi-web && trunk build
-          fi
+        run: cd crates/tanoshi-web && trunk build --release
 
       - name: Upload tanoshi-web
         uses: actions/upload-artifact@v4
         with:
           name: tanoshi-web
           path: crates/tanoshi-web/dist
-  
+
   build-tauri:
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.runs_on }}
     needs:
       - build-web
     strategy:
       fail-fast: false
       matrix:
         include:
-          - os: [self-hosted, arm64]
-            arch: aarch64
-            type: linux
           - os: ubuntu-latest
             arch: amd64
             type: linux
+            runs_on: ubuntu-latest
           - os: windows-latest
             arch: amd64
             type: windows
+            runs_on: windows-latest
+          - os: ubuntu-latest
+            arch: aarch64
+            type: linux
+            runs_on: [self-hosted, arm64]
+            include_arm64: ${{ startsWith(github.ref, 'refs/tags/') }}
     steps:
+      - name: Skip arm64 build if not release
+        if: matrix.arch == 'aarch64' && !matrix.include_arm64
+        run: echo "Skipping arm64 build since it's not a release."
       - uses: actions/checkout@v4
+        if: matrix.arch != 'aarch64' || matrix.include_arm64
 
       - name: Download dist
         uses: actions/download-artifact@v4
         with:
           name: tanoshi-web
           path: crates/tanoshi-web/dist
+        if: matrix.arch != 'aarch64' || matrix.include_arm64
       
       - uses: actions-rust-lang/setup-rust-toolchain@v1
+        if: matrix.arch != 'aarch64' || matrix.include_arm64
+
       - uses: Swatinem/rust-cache@v2
         with:
           key: "${{ matrix.type }}-${{ matrix.arch }}"
-
+        if: matrix.arch != 'aarch64' || matrix.include_arm64
 
       - name: Install deps (ubuntu)
-        if: ${{ matrix.os != 'macos-latest' && matrix.os != 'windows-latest' }}
+        if: (matrix.os == 'ubuntu-latest' || matrix.os == 'self-hosted') && (matrix.arch != 'aarch64' || matrix.include_arm64)
         run: sudo apt update && sudo apt upgrade -y && sudo apt install -y ${{ env.UBUNTU_DEPS }}
 
       - name: Install deps (macOS)
@@ -184,11 +182,13 @@ jobs:
         run: brew install icu4c libarchive bzip2 lz4 zlib expat libiconv
 
       - uses: ilammy/setup-nasm@v1
+        if: matrix.arch != 'aarch64' || matrix.include_arm64
 
       - name: Install LLVM and Clang
         uses: KyleMayes/install-llvm-action@v2.0.5
         with:
           version: ${{ env.LLVM_VERSION }}
+        if: matrix.arch != 'aarch64' || matrix.include_arm64
 
       - name: Cache vcpkg
         uses: actions/cache@v4
@@ -208,45 +208,20 @@ jobs:
 
       - name: Install Binstall
         uses: cargo-bins/cargo-binstall@main
+        if: matrix.arch != 'aarch64' || matrix.include_arm64
       
       - name: Install tauri-cli
         run: cargo binstall tauri-cli@2.0 --no-confirm --locked
+        if: matrix.arch != 'aarch64' || matrix.include_arm64
 
-      - name: Build tauri (ubuntu)
-        if: ${{ matrix.os != 'macos-latest' && matrix.os != 'windows-latest' }}
+      - name: Build tauri
         shell: bash
         env:
           RUSTFLAGS: "-Clink-arg=-Wl,--allow-multiple-definition"
         run: |
           cd crates/tanoshi-tauri
-          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
-            cargo tauri build
-          else
-            cargo tauri build --debug
-          fi
-
-      - name: Build tanoshi (macos)
-        if: ${{ matrix.os == 'macos-latest' }}
-        shell: bash
-        env:
-          PKG_CONFIG_PATH: /usr/local/opt/icu4c/lib/pkgconfig:/usr/local/opt/libarchive/lib/pkgconfig:/usr/local/opt/zlib/lib/pkgconfig:/usr/local/opt/expat/lib/pkgconfig
-        run: |
-          cd crates/tanoshi-tauri
-          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
-            cargo tauri build
-          else
-            cargo tauri build --debug
-          fi
-
-      - name: Build tanoshi (windows)
-        if: ${{ matrix.os == 'windows-latest' }}
-        run: |
-          cd crates/tanoshi-tauri
-          if ($env:GITHUB_REF -match '^refs/tags/') {
-            cargo tauri build
-          } else {
-            cargo tauri build --debug
-          }
+          cargo tauri build
+        if: matrix.arch != 'aarch64' || matrix.include_arm64
 
       - name: Move files (linux/macOS)
         if: ${{ matrix.os != 'windows-latest' }}
@@ -268,9 +243,10 @@ jobs:
         with:
           name: tanoshi-app-${{ matrix.type }}-${{ matrix.arch }}
           path: ${{ github.workspace }}/builds/
+        if: matrix.arch != 'aarch64' || matrix.include_arm64
 
       - name: Upload binaries to GitHub Releases
-        if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/') && (matrix.arch != 'aarch64' || matrix.include_arm64)
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
@@ -280,64 +256,70 @@ jobs:
           overwrite: true
 
   build-tanoshi:
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.runs_on }}
     needs:
       - build-web
     strategy:
       fail-fast: false
       matrix:
         include:
-          - os: [self-hosted, arm64]
-            arch: aarch64
-            type: linux
           - os: ubuntu-latest
             arch: amd64
             type: linux
+            runs_on: ubuntu-latest
+          - os: ubuntu-latest
+            arch: aarch64
+            type: linux
+            runs_on: [self-hosted, arm64]
+            include_arm64: ${{ startsWith(github.ref, 'refs/tags/') }}
     steps:
+      - name: Skip arm64 build if not release
+        if: matrix.arch == 'aarch64' && !matrix.include_arm64
+        run: echo "Skipping arm64 build since it's not a release."
       - uses: actions/checkout@v4
+        if: matrix.arch != 'aarch64' || matrix.include_arm64
 
       - name: Download dist
         uses: actions/download-artifact@v4
         with:
           name: tanoshi-web
           path: crates/tanoshi-web/dist
+        if: matrix.arch != 'aarch64' || matrix.include_arm64
       
       - uses: actions-rust-lang/setup-rust-toolchain@v1
+        if: matrix.arch != 'aarch64' || matrix.include_arm64
+
       - uses: Swatinem/rust-cache@v2
         with:
           key: "${{ matrix.type }}-${{ matrix.arch }}"
-
+        if: matrix.arch != 'aarch64' || matrix.include_arm64
 
       - name: Install deps
-        if: ${{ matrix.os != 'macos-latest' && matrix.os != 'windows-latest' }}
         run: sudo apt update && sudo apt upgrade -y && sudo apt install -y ${{ env.UBUNTU_DEPS }}
-
+        if: matrix.arch != 'aarch64' || matrix.include_arm64
 
       - uses: ilammy/setup-nasm@v1
+        if: matrix.arch != 'aarch64' || matrix.include_arm64
 
       - name: Install LLVM and Clang
         uses: KyleMayes/install-llvm-action@v2.0.5
         with:
           version: ${{ env.LLVM_VERSION }}
+        if: matrix.arch != 'aarch64' || matrix.include_arm64
 
       - name: Build tanoshi
         shell: bash
         env:
           RUSTFLAGS: "-Clink-arg=-Wl,--allow-multiple-definition"
-        run: |
-          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
-            cargo build -p tanoshi --release
-            echo "build_dir=release" >> $GITHUB_ENV
-          else
-            cargo build -p tanoshi
-            echo "build_dir=debug" >> $GITHUB_ENV
-          fi
+        run: cargo build -p tanoshi --release
+        if: matrix.arch != 'aarch64' || matrix.include_arm64
 
       - name: Upload dist
         uses: actions/upload-artifact@v4
         with:
           name: tanoshi-${{ matrix.arch }}
-          path: ${{ github.workspace }}/target/${{ env.build_dir }}/tanoshi
+          path: ${{ github.workspace }}/target/release/tanoshi
+        if: matrix.arch != 'aarch64' || matrix.include_arm64
 
   docker:
     runs-on: ubuntu-latest
@@ -345,6 +327,7 @@ jobs:
       - build-tanoshi
     env:
       DEFAULT_VARIANT: slim
+      BUILD_PLATFORMS: ${{ startsWith(github.ref, 'refs/tags/') && 'linux/amd64,linux/arm64' || 'linux/amd64' }}
     strategy:
       fail-fast: false
       matrix:
@@ -362,6 +345,7 @@ jobs:
           path: linux/amd64
       
       - name: Download dist (AARCH64)
+        if: startsWith(github.ref, 'refs/tags/')
         uses: actions/download-artifact@v4
         with:
           name: tanoshi-aarch64
@@ -425,7 +409,7 @@ jobs:
         with:
           context: .
           file: ${{ matrix.dockerfile }}
-          platforms: linux/amd64,linux/arm64
+          platforms: ${{ env.BUILD_PLATFORMS }}
           push: false
           tags: tanoshi:action
 
@@ -436,7 +420,7 @@ jobs:
         with:
           context: .
           file: ${{ matrix.dockerfile }}
-          platforms: linux/amd64,linux/arm64
+          platforms: ${{ env.BUILD_PLATFORMS }}
           push: true
           tags: ${{ steps.docker_meta.outputs.tags }}
           labels: ${{ steps.docker_meta.outputs.labels }}
