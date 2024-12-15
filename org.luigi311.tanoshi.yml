@@ -45,9 +45,9 @@ modules:
     buildsystem: simple
     sources:
       - type: dir
-        path: ..
+        path: .
     build-commands:
       - install -Dm755 target/release/tanoshi-app /app/bin/tanoshi-app
-      - install -Dm644 flatpak/Tanoshi.desktop /app/share/applications/org.luigi311.tanoshi.desktop
+      - install -Dm644 Tanoshi.desktop /app/share/applications/org.luigi311.tanoshi.desktop
       - install -Dm644 crates/tanoshi-tauri/icons/512x512.png /app/share/icons/hicolor/512x512/apps/org.luigi311.tanoshi.png
       - install -Dm644 crates/tanoshi-tauri/icons/128x128.png /app/share/icons/hicolor/128x128/apps/org.luigi311.tanoshi.png
