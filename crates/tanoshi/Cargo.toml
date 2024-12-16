@@ -59,6 +59,7 @@ mime_guess = { version = "2", default-features = false }
 clap = { version = "4", features = ["derive"] }
 bytes = { version = "1", default-features = false }
 dirs = "5"
+directories = "5"
 base64 = { version = "0.22", default-features = false }
 sqlx = { version = "0.8", features = [
     "runtime-tokio",

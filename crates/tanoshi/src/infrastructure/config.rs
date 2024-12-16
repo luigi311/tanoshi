@@ -3,6 +3,7 @@ use rand::{thread_rng, Rng};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 use std::{iter, path::PathBuf};
+use directories::ProjectDirs;
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct TelegramConfig {
@@ -109,10 +110,23 @@ impl Default for Config {
 }
 
 fn tanoshi_home() -> PathBuf {
-    match std::env::var("TANOSHI_HOME") {
-        Ok(path) => PathBuf::from(path),
-        Err(_) => dirs::home_dir().expect("should have home").join(".tanoshi"),
+    // If TANOSHI_HOME is explicitly set, prefer that
+    if let Ok(path) = std::env::var("TANOSHI_HOME") {
+        return PathBuf::from(path);
     }
+
+    // Check for legacy directory ~/.tanoshi
+    let legacy_dir = dirs::home_dir()
+        .expect("Home directory should exist")
+        .join(".tanoshi");
+    if legacy_dir.exists() {
+        return legacy_dir;
+    }
+
+    // Use XDG directories
+    let proj_dirs = ProjectDirs::from("org", "luigi311", "tanoshi")
+        .expect("Could not determine project directory");
+    proj_dirs.data_dir().to_path_buf()
 }
 
 fn default_port() -> u16 {
