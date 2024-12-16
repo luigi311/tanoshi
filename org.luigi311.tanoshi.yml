@@ -12,7 +12,7 @@ finish-args:
   - --device=dri # OpenGL, not necessary for all projects
   - --share=ipc
   - --share=network
-  - --filesystem=home/.tanoshi
+  - --filesystem=xdg-data/tanoshi:rw
 
 cleanup:
   - "/include"

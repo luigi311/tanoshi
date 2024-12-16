@@ -1619,6 +1619,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "directories"
+version = "5.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9a49173b84e034382284f27f1af4dcbbd231ffa358c0fe316541a7337f376a35"
+dependencies = [
+ "dirs-sys",
+]
+
+[[package]]
 name = "dirs"
 version = "5.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6292,6 +6301,7 @@ dependencies = [
  "chrono",
  "clap",
  "compress-tools",
+ "directories",
  "dirs",
  "env_logger",
  "fancy-regex",
