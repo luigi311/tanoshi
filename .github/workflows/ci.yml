@@ -297,7 +297,9 @@ jobs:
         name: tanoshi-app-linux-${{ matrix.name }}
         path: target/release/
 
-    - uses: flatpak/flatpak-github-actions/flatpak-builder@v6
+    # Only master contains the upload-artifact option. Waiting on
+    # https://github.com/flatpak/flatpak-github-actions/issues/203
+    - uses: flatpak/flatpak-github-actions/flatpak-builder@master
       if: matrix.arch != 'aarch64' || matrix.include_arm64
       with:
         bundle: tanoshi.${{ matrix.arch }}.flatpak
