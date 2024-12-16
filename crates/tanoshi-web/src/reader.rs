@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use crate::common::{Fit, ReaderSettings, Spinner, events, snackbar};
-use crate::utils::{document, proxied_image_url, window, AsyncLoader, body};
+use crate::utils::{document, proxied_image_url, window, AsyncLoader, body, format_number_title};
 use crate::{
     common::{Background, Direction, DisplayMode, ReaderMode},
     query,
@@ -93,7 +93,7 @@ impl Reader {
                 Ok(result) => {
                     this.manga_id.set_neq(result.manga.id);
                     this.manga_title.set_neq(result.manga.title);
-                    this.chapter_title.set_neq(result.title);
+                    this.chapter_title.set_neq(format_number_title(result.number, &result.title));
                     this.next_chapter.set_neq(result.next);
                     this.prev_chapter.set_neq(result.prev);
 
