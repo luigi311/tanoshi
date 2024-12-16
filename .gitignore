@@ -17,3 +17,5 @@ dist/
 *.pem
 .tanoshi/
 output/
+.flatpak-builder
+repo
