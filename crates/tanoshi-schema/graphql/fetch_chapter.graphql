@@ -1,6 +1,7 @@
 query FetchChapter($chapterId:Int) {
   chapter(id: $chapterId) {
     title
+    number
     prev
     next
     source {
