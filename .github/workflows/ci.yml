@@ -85,7 +85,7 @@ jobs:
   build-cli:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/luigi311/tanoshi-builder:sha-6b8a514-slim
+      image: ghcr.io/luigi311/tanoshi-builder:sha-172c475-slim
     steps:
       - uses: actions/checkout@v4
 
@@ -115,7 +115,7 @@ jobs:
   build-web:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/luigi311/tanoshi-builder:sha-6b8a514-slim
+      image: ghcr.io/luigi311/tanoshi-builder:sha-172c475-slim
     steps:
       - uses: actions/checkout@v4
 
