@@ -1,4 +1,4 @@
-FROM debian:bookworm-slim AS runtime
+FROM ubuntu:24.04 AS runtime
 ARG TARGETPLATFORM
 ENV TARGETPLATFORM=${TARGETPLATFORM:-linux/amd64}
 
