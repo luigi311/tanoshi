@@ -15,12 +15,11 @@ on:
 
 env:
   LLVM_VERSION: 15
-  UBUNTU_DEPS: |
-    libssl-dev libarchive-dev build-essential cmake llvm clang libicu-dev \
-    nettle-dev libacl1-dev liblzma-dev libzstd-dev liblz4-dev libbz2-dev \
-    zlib1g-dev libxml2-dev lsb-release wget software-properties-common \
-    libwebkit2gtk-4.1-dev curl libgtk-3-dev libappindicator3-dev patchelf \
-    librsvg2-dev libpango1.0-dev libsoup-3.0-dev libjavascriptcoregtk-4.1-dev \
+  UBUNTU_DEPS: libssl-dev libarchive-dev build-essential cmake llvm clang libicu-dev 
+    nettle-dev libacl1-dev liblzma-dev libzstd-dev liblz4-dev libbz2-dev 
+    zlib1g-dev libxml2-dev lsb-release wget software-properties-common 
+    libwebkit2gtk-4.1-dev curl libgtk-3-dev libappindicator3-dev patchelf 
+    librsvg2-dev libpango1.0-dev libsoup-3.0-dev libjavascriptcoregtk-4.1-dev 
     libb2-dev
 
 jobs:
@@ -44,7 +43,7 @@ jobs:
         if: ${{ matrix.os != 'windows-latest' }}
         run: |
           if [ "${{ matrix.os }}" == "ubuntu-latest" ]; then
-            sudo apt-get update && sudo apt-get install -y ${{ env.UBUNTU_DEPS }}
+            sudo apt-get update && sudo apt-get install -y $UBUNTU_DEPS
           elif [ "${{ matrix.os }}" == "macos-latest" ]; then
             brew install icu4c libarchive bzip2 lz4 zlib expat libiconv
           fi
@@ -184,7 +183,7 @@ jobs:
 
       - name: Install deps (ubuntu)
         if: (matrix.os == 'ubuntu-latest' || matrix.os == 'self-hosted') && (matrix.arch != 'aarch64' || matrix.include_arm64)
-        run: sudo apt update && sudo apt upgrade -y && sudo apt install -y ${{ env.UBUNTU_DEPS }}
+        run: sudo apt update && sudo apt upgrade -y && sudo apt install -y $UBUNTU_DEPS
 
       - name: Install deps (macOS)
         if: ${{ matrix.os == 'macos-latest' }}
@@ -378,7 +377,7 @@ jobs:
         if: matrix.arch != 'aarch64' || matrix.include_arm64
 
       - name: Install deps
-        run: sudo apt update && sudo apt upgrade -y && sudo apt install -y ${{ env.UBUNTU_DEPS }}
+        run: sudo apt update && sudo apt upgrade -y && sudo apt install -y $UBUNTU_DEPS
         if: matrix.arch != 'aarch64' || matrix.include_arm64
 
       - uses: ilammy/setup-nasm@v1
@@ -512,4 +511,6 @@ jobs:
       # Echo digest so users can validate their image
       - name: Image digest
         if: "${{ steps.docker_meta.outcome == 'success' }}"
-        run: echo "${{ steps.build_push.outputs.digest }}"
+        env: 
+          DIGEST: ${{ steps.build_push.outputs.digest }}
+        run: echo "$DIGEST"
