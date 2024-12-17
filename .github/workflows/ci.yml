@@ -15,12 +15,11 @@ on:
 
 env:
   LLVM_VERSION: 15
-  UBUNTU_DEPS: |
-    libssl-dev libarchive-dev build-essential cmake llvm clang libicu-dev \
-    nettle-dev libacl1-dev liblzma-dev libzstd-dev liblz4-dev libbz2-dev \
-    zlib1g-dev libxml2-dev lsb-release wget software-properties-common \
-    libwebkit2gtk-4.1-dev curl libgtk-3-dev libappindicator3-dev patchelf \
-    librsvg2-dev libpango1.0-dev libsoup-3.0-dev libjavascriptcoregtk-4.1-dev \
+  UBUNTU_DEPS: libssl-dev libarchive-dev build-essential cmake llvm clang libicu-dev 
+    nettle-dev libacl1-dev liblzma-dev libzstd-dev liblz4-dev libbz2-dev 
+    zlib1g-dev libxml2-dev lsb-release wget software-properties-common 
+    libwebkit2gtk-4.1-dev curl libgtk-3-dev libappindicator3-dev patchelf 
+    librsvg2-dev libpango1.0-dev libsoup-3.0-dev libjavascriptcoregtk-4.1-dev 
     libb2-dev
 
 jobs:
@@ -35,6 +34,8 @@ jobs:
           - windows-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - run: mkdir crates/tanoshi-web/dist
 
@@ -42,7 +43,7 @@ jobs:
         if: ${{ matrix.os != 'windows-latest' }}
         run: |
           if [ "${{ matrix.os }}" == "ubuntu-latest" ]; then
-            sudo apt-get update && sudo apt-get install -y ${{ env.UBUNTU_DEPS }}
+            sudo apt-get update && sudo apt-get install -y $UBUNTU_DEPS
           elif [ "${{ matrix.os }}" == "macos-latest" ]; then
             brew install icu4c libarchive bzip2 lz4 zlib expat libiconv
           fi
@@ -88,6 +89,8 @@ jobs:
       image: ghcr.io/luigi311/tanoshi-builder:sha-172c475-slim
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - uses: Swatinem/rust-cache@v2
 
@@ -118,6 +121,8 @@ jobs:
       image: ghcr.io/luigi311/tanoshi-builder:sha-172c475-slim
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - uses: Swatinem/rust-cache@v2
 
@@ -158,6 +163,8 @@ jobs:
 
       - uses: actions/checkout@v4
         if: matrix.arch != 'aarch64' || matrix.include_arm64
+        with:
+          persist-credentials: false
 
       - name: Download dist
         uses: actions/download-artifact@v4
@@ -176,7 +183,7 @@ jobs:
 
       - name: Install deps (ubuntu)
         if: (matrix.os == 'ubuntu-latest' || matrix.os == 'self-hosted') && (matrix.arch != 'aarch64' || matrix.include_arm64)
-        run: sudo apt update && sudo apt upgrade -y && sudo apt install -y ${{ env.UBUNTU_DEPS }}
+        run: sudo apt update && sudo apt upgrade -y && sudo apt install -y $UBUNTU_DEPS
 
       - name: Install deps (macOS)
         if: ${{ matrix.os == 'macos-latest' }}
@@ -275,55 +282,57 @@ jobs:
       # Don't fail the whole workflow if one architecture fails
       fail-fast: false
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
-    # Docker is required by the docker/setup-qemu-action which enables emulation
-    - name: Install deps
-      if: ${{ matrix.arch != 'x86_64' }}
-      run: |
-        dnf -y install docker
+      # Docker is required by the docker/setup-qemu-action which enables emulation
+      - name: Install deps
+        if: ${{ matrix.arch != 'x86_64' }}
+        run: |
+          dnf -y install docker
 
-    - name: Set up QEMU
-      if: ${{ matrix.arch != 'x86_64' }}
-      id: qemu
-      uses: docker/setup-qemu-action@v2
-      with:
-        platforms: arm64
+      - name: Set up QEMU
+        if: ${{ matrix.arch != 'x86_64' }}
+        id: qemu
+        uses: docker/setup-qemu-action@v2
+        with:
+          platforms: arm64
 
-    - name: Download files
-      if: matrix.arch != 'aarch64' || matrix.include_arm64
-      uses: actions/download-artifact@v4
-      with:
-        name: tanoshi-app-linux-${{ matrix.name }}
-        path: target/release/
+      - name: Download files
+        if: matrix.arch != 'aarch64' || matrix.include_arm64
+        uses: actions/download-artifact@v4
+        with:
+          name: tanoshi-app-linux-${{ matrix.name }}
+          path: target/release/
 
-    # Only master contains the upload-artifact option. Waiting on
-    # https://github.com/flatpak/flatpak-github-actions/issues/203
-    - uses: flatpak/flatpak-github-actions/flatpak-builder@master
-      if: matrix.arch != 'aarch64' || matrix.include_arm64
-      with:
-        bundle: tanoshi.${{ matrix.arch }}.flatpak
-        manifest-path: org.luigi311.tanoshi.yml
-        cache-key: flatpak-builder-${{ github.sha }}
-        arch: ${{ matrix.arch }}
-        upload-artifact: false
+      # Only master contains the upload-artifact option. Waiting on
+      # https://github.com/flatpak/flatpak-github-actions/issues/203
+      - uses: flatpak/flatpak-github-actions/flatpak-builder@master
+        if: matrix.arch != 'aarch64' || matrix.include_arm64
+        with:
+          bundle: tanoshi.${{ matrix.arch }}.flatpak
+          manifest-path: org.luigi311.tanoshi.yml
+          cache-key: flatpak-builder-${{ github.sha }}
+          arch: ${{ matrix.arch }}
+          upload-artifact: false
 
-    - name: Upload dist
-      if: matrix.arch != 'aarch64' || matrix.include_arm64
-      uses: actions/upload-artifact@v4
-      with:
-        name: tanoshi.${{ matrix.arch }}.flatpak
-        path: tanoshi.${{ matrix.arch }}.flatpak
+      - name: Upload dist
+        if: matrix.arch != 'aarch64' || matrix.include_arm64
+        uses: actions/upload-artifact@v4
+        with:
+          name: tanoshi.${{ matrix.arch }}.flatpak
+          path: tanoshi.${{ matrix.arch }}.flatpak
 
-    - name: Upload binaries to GitHub Releases
-      if: startsWith(github.ref, 'refs/tags/')
-      uses: svenstaro/upload-release-action@v2
-      with:
-        repo_token: ${{ secrets.GITHUB_TOKEN }}
-        file: tanoshi.${{ matrix.arch }}.flatpak
-        tag: ${{ github.ref }}
-        file_glob: true
-        overwrite: true
+      - name: Upload binaries to GitHub Releases
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: tanoshi.${{ matrix.arch }}.flatpak
+          tag: ${{ github.ref }}
+          file_glob: true
+          overwrite: true
 
   build-tanoshi:
     runs-on: ${{ matrix.runs_on }}
@@ -346,8 +355,11 @@ jobs:
       - name: Skip arm64 build if not release
         if: matrix.arch == 'aarch64' && !matrix.include_arm64
         run: echo "Skipping arm64 build since it's not a release."
+      
       - uses: actions/checkout@v4
         if: matrix.arch != 'aarch64' || matrix.include_arm64
+        with:
+          persist-credentials: false
 
       - name: Download dist
         uses: actions/download-artifact@v4
@@ -365,7 +377,7 @@ jobs:
         if: matrix.arch != 'aarch64' || matrix.include_arm64
 
       - name: Install deps
-        run: sudo apt update && sudo apt upgrade -y && sudo apt install -y ${{ env.UBUNTU_DEPS }}
+        run: sudo apt update && sudo apt upgrade -y && sudo apt install -y $UBUNTU_DEPS
         if: matrix.arch != 'aarch64' || matrix.include_arm64
 
       - uses: ilammy/setup-nasm@v1
@@ -405,8 +417,9 @@ jobs:
           - dockerfile: Dockerfile.CI
             variant: slim
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Download dist (AMD64)
         uses: actions/download-artifact@v4
@@ -498,4 +511,6 @@ jobs:
       # Echo digest so users can validate their image
       - name: Image digest
         if: "${{ steps.docker_meta.outcome == 'success' }}"
-        run: echo "${{ steps.build_push.outputs.digest }}"
+        env: 
+          DIGEST: ${{ steps.build_push.outputs.digest }}
+        run: echo "$DIGEST"
