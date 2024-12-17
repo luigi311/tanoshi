@@ -1,6 +1,6 @@
 [package]
 name = "tanoshi"
-version = "0.35.3"
+version = "0.35.4"
 edition = "2021"
 description = "Tanoshi"
 repository = "https://github.com/luigi311/tanoshi"
