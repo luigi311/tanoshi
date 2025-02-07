@@ -478,7 +478,7 @@ impl Manga {
                     .text_signal(manga.title.signal_cloned().map(|x| x.unwrap_or_else(|| "".to_string())))
                 }),
                 html!("div", {
-                    .style("min-width", "5rem")
+                    .style("min-width", "5.5rem")
                     .children(&mut [
                         html!("button", {
                             .attr("id", "refresh-btn")
