@@ -1035,3 +1035,11 @@ $width in $continuous-width {
 ::-webkit-scrollbar-thumb:window-inactive {
     background: rgba(0, 0, 0, 0.05);
 }
+
+.block-long-press {
+    -webkit-touch-callout: none; /* iOS Safari: no callout on long press */
+    -webkit-user-drag: none;     /* Prevent drag operations on the image */
+    -webkit-user-select: none;   /* Prevent selecting the image */
+    user-select: none;
+    touch-action: manipulation;
+}

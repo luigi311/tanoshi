@@ -1115,9 +1115,10 @@ impl Reader {
         html!("div", {
             .attr("id", "this")
             // Prevent context menu so mobile users dont get a popup asking to save the image
-            .event_with_options(&EventOptions::preventable(), clone!(this => move |e: events::ContextMenu| {
+            .class("block-long-press")
+            .event_with_options(&EventOptions::preventable(), |e: events::ContextMenu| {
                 e.prevent_default();
-            }))
+            })
             .future(this.current_page.signal().for_each(clone!(this => move |page| {
                 Self::update_page_read(this.clone(), page);
 
