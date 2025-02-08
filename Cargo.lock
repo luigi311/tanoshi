@@ -6064,7 +6064,7 @@ checksum = "20f34339676cdcab560c9a82300c4c2581f68b9369aedf0fae86f2ff9565ff3e"
 
 [[package]]
 name = "tanoshi"
-version = "0.35.4"
+version = "0.35.5"
 dependencies = [
  "aes",
  "anyhow",
@@ -6121,7 +6121,7 @@ dependencies = [
 
 [[package]]
 name = "tanoshi-app"
-version = "0.35.4"
+version = "0.35.5"
 dependencies = [
  "env_logger",
  "log",

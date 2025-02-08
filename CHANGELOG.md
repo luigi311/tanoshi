@@ -5,6 +5,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.35.5]
+- [tanoshi-web] Prevent popup in reader asking to save images in IOS
+- [tanoshi-web] Fix icons being mushed together in the manga detail page if it has a long name
+
 ## [0.35.4]
 - [tanoshi] Use proper XDG directories
 - [tanoshi-web] Add chapter number to reader
