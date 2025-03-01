@@ -86,7 +86,7 @@ jobs:
   build-cli:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/luigi311/tanoshi-builder:sha-825fea6
+      image: ghcr.io/luigi311/tanoshi-builder:sha-f9760b1
     steps:
       - uses: actions/checkout@v4
         with:
@@ -118,7 +118,7 @@ jobs:
   build-web:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/luigi311/tanoshi-builder:sha-825fea6
+      image: ghcr.io/luigi311/tanoshi-builder:sha-f9760b1
     steps:
       - uses: actions/checkout@v4
         with:
