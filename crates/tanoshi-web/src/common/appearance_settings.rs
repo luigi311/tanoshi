@@ -42,11 +42,11 @@ pub struct AppearanceSettings {
 
 impl AppearanceSettings {
     pub fn new() -> Rc<Self> {
-        let settings = if let Ok(Some(settings)) = local_storage().get_item("settings:appearance") {
+        let settings = match local_storage().get_item("settings:appearance") { Ok(Some(settings)) => {
             serde_json::from_str::<AppearanceSettings>(&settings).unwrap_or_default()
-        } else {
+        } _ => {
             AppearanceSettings::default()
-        };
+        }};
 
         Rc::new(settings)
     }
@@ -58,7 +58,7 @@ impl AppearanceSettings {
         let _ = local_storage().set_item("theme", &theme);
     }
 
-    fn signal(&self) -> impl Signal<Item = AppearanceSettingsSignal> {
+    fn signal(&self) -> impl Signal<Item = AppearanceSettingsSignal> + use<> {
         map_ref! {
             let theme = self.theme.signal_cloned() =>
 

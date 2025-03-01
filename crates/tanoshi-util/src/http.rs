@@ -83,7 +83,7 @@ pub fn http_request(req: Request) -> Response {
 
 #[cfg(all(not(feature = "__test"), not(feature = "host")))]
 #[link(wasm_import_module = "tanoshi")]
-extern "C" {
+unsafe extern "C" {
     fn host_http_request();
 }
 

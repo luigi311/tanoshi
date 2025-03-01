@@ -358,7 +358,7 @@ impl Manga {
             } else {
                 selected_chapters.insert(chapter.id, ());
             }
-        } else if let Some(timeout) = manga.timeout.replace(None) {
+        } else { match manga.timeout.replace(None) { Some(timeout) => {
             timeout.cancel();
             routing::go_to_url(
                 Route::Chapter(
@@ -369,7 +369,7 @@ impl Manga {
                         else { progress.last_page }
                     ).unwrap_or(0)).url().as_str()
                 );
-        }
+        } _ => {}}}
     }
 
     pub fn render_topbar_edit(manga: Rc<Self>)-> Dom {

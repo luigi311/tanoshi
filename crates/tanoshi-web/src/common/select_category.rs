@@ -116,9 +116,10 @@ impl SelectCategoryModal {
     pub fn render<F>(self: &Rc<Self>, f: F) -> Dom where F: Fn(Vec<i64>) + Clone + 'static {
         self.fetch_categories(f.clone());
         let select = self.clone();
-        self.modal.render(&mut [
+        let mut children = [
             select.render_header(f),
             select.render_main(),
-        ])
+        ];
+        self.modal.render(&mut children)
     }
 }

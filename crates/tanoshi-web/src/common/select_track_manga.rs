@@ -532,26 +532,20 @@ impl SelectTrackMangaModal {
         info!("render select track");
         let select = self.clone();
         self.fetch_manga_tracker_status();
-        self.modal.render(
-            &mut [html!("div", {
-                .child_signal(select.state.signal_cloned().map(clone!(select => move |state| match state {
-                    State::SelectTracker => {
-                        None
-                    }
-                    State::SelectManga(_) => {
-                        Some(select.render_header(f.clone()))
-                    }
-                })))
-                .child_signal(select.state.signal_cloned().map(clone!(select => move |state| match state {
-                    State::SelectTracker => {
-                        Some(select.render_main())
-                    }
-                    State::SelectManga(tracker) => {
-                        Some(select.render_manga_list(&tracker))
-                    }
-                })))
-                .child_signal(select.loader.is_loading().map(|is_loading| is_loading.then(|| Spinner::render_spinner(true))))
-            })],
-        )
+        let html_div = html!("div", {
+            .child_signal(select.state.signal_cloned().map(clone!(select => move |state| match state {
+                State::SelectTracker => None,
+                State::SelectManga(_) => Some(select.render_header(f.clone())),
+            })))
+            .child_signal(select.state.signal_cloned().map(clone!(select => move |state| match state {
+                State::SelectTracker => Some(select.render_main()),
+                State::SelectManga(tracker) => Some(select.render_manga_list(&tracker)),
+            })))
+            .child_signal(select.loader.is_loading().map(|is_loading| {
+                is_loading.then(|| Spinner::render_spinner(true))
+            }))
+        });
+        let mut html_children = [html_div];
+        self.modal.render(&mut html_children)
     }
 }

@@ -46,7 +46,7 @@ impl Library {
 
     pub fn fetch_category_detail(library: Rc<Self>) {
         library.spinner.set_active(true);
-        if let Some(category_id) = library.category_id {
+        match library.category_id { Some(category_id) => {
             library.loader.load(clone!(library => async move {
                 match query::fetch_category_detail(category_id).await {
                     Ok(res) => {
@@ -59,7 +59,7 @@ impl Library {
                 }
                 library.spinner.set_active(false);
             }));
-        } else {
+        } _ => {
             library.loader.load(clone!(library => async move {
                 match query::fetch_categories().await {
                     Ok(res) => {
@@ -72,7 +72,7 @@ impl Library {
                 }
                 library.spinner.set_active(false);
             }));
-        }
+        }}
     }
 
     pub fn fetch_libraries(library: Rc<Self>) {

@@ -50,16 +50,23 @@ impl ExtensionManager {
 
     pub async fn load_all(&self) -> Result<()> {
         let mut read_dir = tokio::fs::read_dir(&self.dir).await?;
-        while let Some(entry) = read_dir.next_entry().await? {
-            let mut name = format!("{:?}", entry.file_name());
-            name.remove(0);
-            name.remove(name.len() - 1);
-            if name.ends_with(PLUGIN_EXTENSION) {
-                if let Err(e) = self.load(&name).await {
-                    error!("failed to load {name}: {e}");
+        while {
+            let entry_opt = read_dir.next_entry().await?;
+            match entry_opt { Some(entry) => {
+                let mut name = format!("{:?}", entry.file_name());
+                name.remove(0);
+                name.remove(name.len() - 1);
+                if name.ends_with(PLUGIN_EXTENSION) {
+                    let load_result = self.load(&name).await;
+                    if let Err(e) = load_result {
+                        error!("failed to load {name}: {e}");
+                    }
                 }
-            }
-        }
+                true
+            } _ => {
+                false
+            }}
+        } {}
         Ok(())
     }
 
@@ -216,13 +223,13 @@ impl ExtensionManager {
         // Do not error if source_entry doesnt work
         let source_entry: Result<&Source> = binding.get(&source_id).ok_or_else(|| anyhow!("no such source"));
 
-        if let Some(entry) = source_entry.ok().and_then(|s| s.extension.get()) {
+        match source_entry.ok().and_then(|s| s.extension.get()) { Some(entry) => {
             let extension =  entry.get_source_info();
             Ok(extension)
-        } else {
+        } _ => {
             println!("Returning dummy source info");
             Ok(dummy_source_info(source_id))
-        }
+        }}
     }
 
     pub fn filter_list(&self, source_id: i64) -> Result<Vec<Input>> {

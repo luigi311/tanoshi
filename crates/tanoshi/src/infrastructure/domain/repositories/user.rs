@@ -97,19 +97,25 @@ impl UserRepository for UserRepositoryImpl {
             .fetch(&self.pool as &SqlitePool);
 
         let mut users = vec![];
-        while let Some(row) = stream.try_next().await? {
-            users.push(User {
-                id: row.get(0),
-                username: row.get(1),
-                password: row.get(2),
-                is_admin: row.get(3),
-                created_at: row.get(4),
-                updated_at: row.get(5),
-                telegram_chat_id: row.get(6),
-                pushover_user_key: row.get(7),
-                gotify_token: row.get(8),
-            });
-        }
+        while {
+            let row_opt = stream.try_next().await?;
+            match row_opt { Some(row) => {
+                users.push(User {
+                    id: row.get(0),
+                    username: row.get(1),
+                    password: row.get(2),
+                    is_admin: row.get(3),
+                    created_at: row.get(4),
+                    updated_at: row.get(5),
+                    telegram_chat_id: row.get(6),
+                    pushover_user_key: row.get(7),
+                    gotify_token: row.get(8),
+                });
+                true
+            } _ => {
+                false
+            }}
+        } {}
         Ok(users)
     }
 

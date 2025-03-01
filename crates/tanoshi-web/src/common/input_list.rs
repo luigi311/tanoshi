@@ -53,7 +53,7 @@ impl InputList {
         self.first_render.replace_with(|_| false);
     }
 
-    fn collapse_signal(&self, index: usize) -> impl Signal<Item = bool> {
+    fn collapse_signal(&self, index: usize) -> impl Signal<Item = bool> + use<> {
         self.collapse
             .entries_cloned()
             .filter_map(move |(i, state)| (index == i && state).then(|| 1))
@@ -71,11 +71,11 @@ impl InputList {
             .style("justify-content", "space-between")
             .event(clone!(input_list, index => move |_: events::Click| {
                 if let Some(index) = index.get() {
-                    let state = if let Some(state) = input_list.collapse.lock_ref().get(&index).cloned() {
+                    let state = match input_list.collapse.lock_ref().get(&index).cloned() { Some(state) => {
                         state
-                    } else {
+                    } _ => {
                         return;
-                    };
+                    }};
                     input_list.collapse.lock_mut().insert(index, !state);
                 }
             }))

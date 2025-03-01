@@ -114,7 +114,7 @@ impl Catalogue {
         catalogue.replace_state_with_url();
         catalogue.spinner.set_active(true);
         catalogue.loader.load(clone!(catalogue => async move {
-            if let Some(keyword) = catalogue.keyword.get_cloned() {
+            match catalogue.keyword.get_cloned() { Some(keyword) => {
                 match query::fetch_manga_from_source(catalogue.source_id, catalogue.page.get(), Some(keyword), None).await {
                     Ok(data) => {
                         catalogue.source_name.set(data.source.name);
@@ -124,7 +124,7 @@ impl Catalogue {
                         snackbar::show(format!("Fetch manga from source failed: {}", e))
                     }
                 }
-            } else if catalogue.is_filter.get() {
+            } _ => if catalogue.is_filter.get() {
                 match query::fetch_manga_from_source(catalogue.source_id, catalogue.page.get(), None, Some(catalogue.input_list_modal.input_list.lock_ref().to_vec())).await {
                     Ok(data) => {
                         catalogue.source_name.set(data.source.name.clone());
@@ -154,7 +154,7 @@ impl Catalogue {
                         snackbar::show(format!("Fetch manga from source failed: {}", e))
                     }
                 }
-            }
+            }}
 
             let state =  catalogue.serialize_into_json();
             local_storage().set(STORAGE_KEY, state.as_str()).unwrap_throw();
@@ -184,11 +184,11 @@ impl Catalogue {
         };
 
         if let Err(e) = history().replace_state_with_url(&JsValue::null(), "", Some(&url)) {
-            let message = if let Some(msg) = e.as_string() {
+            let message = match e.as_string() { Some(msg) => {
                 msg
-            } else {
+            } _ => {
                 "unknown reason".to_string()
-            };
+            }};
 
             error!("error replace_state_with_url: {}", message);
         }

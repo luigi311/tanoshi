@@ -1,7 +1,7 @@
 [package]
 name = "tanoshi-util"
 version = "0.3.0"
-edition = "2021"
+edition = "2024"
 description = "Tanoshi Utilities"
 repository = "https://github.com/luigi311/tanoshi"
 license = "MIT"

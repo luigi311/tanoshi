@@ -59,7 +59,7 @@ impl App {
         }));
     }
 
-    pub fn signal(&self) -> impl Signal<Item = (Route, Option<ServerStatus>)> {
+    pub fn signal(&self) -> impl Signal<Item = (Route, Option<ServerStatus>)> + use<> {
         map_ref! {
             let route = Route::signal(),
             let server_status = self.server_status.signal_cloned() =>
@@ -103,11 +103,11 @@ impl App {
 
                 match route {
                     Route::Root => {
-                        if let Some(default_category) = LibrarySettings::load(false, false).default_category.get_cloned() {
+                        match LibrarySettings::load(false, false).default_category.get_cloned() { Some(default_category) => {
                             routing::go_to_url(&Route::Library(default_category.id).url());
-                        } else {
+                        } _ => {
                             routing::go_to_url(&Route::LibraryList.url());
-                        }
+                        }}
 
                         None
                     }

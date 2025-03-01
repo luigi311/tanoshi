@@ -83,11 +83,11 @@ impl ChapterSettings {
             key = [key, manga_id.to_string()].join(":");
         }
 
-        let settings = if let Ok(Some(settings)) = local_storage().get_item(&key) {
+        let settings = match local_storage().get_item(&key) { Ok(Some(settings)) => {
             serde_json::from_str::<Self>(&settings).unwrap_or_default()
-        } else {
+        } _ => {
             Self::default()
-        };
+        }};
 
         Rc::new(Self {
             use_modal,
@@ -106,13 +106,13 @@ impl ChapterSettings {
         self.manga_id.replace(manga_id);
 
         let key = [KEY.to_string(), manga_id.to_string()].join(":");
-        let settings = if let Ok(Some(settings)) = local_storage().get_item(&key) {
+        let settings = match local_storage().get_item(&key) { Ok(Some(settings)) => {
             serde_json::from_str::<Self>(&settings).unwrap_or_default()
-        } else {
+        } _ => {
             self.sort.set(self.sort.get_cloned());
             self.filter.set(self.filter.get_cloned());
             return;
-        };
+        }};
 
         self.sort.set(settings.sort.get_cloned());
         self.filter.set(settings.filter.get_cloned());
@@ -248,7 +248,7 @@ impl ChapterSettings {
         })
     }
 
-    fn signal(&self) -> impl Signal<Item = ChapterSettingSignal> {
+    fn signal(&self) -> impl Signal<Item = ChapterSettingSignal> + use<> {
         map_ref! {
             let use_modal = signal::always(self.use_modal),
             let sort = self.sort.signal_cloned(),

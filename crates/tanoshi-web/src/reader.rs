@@ -174,11 +174,11 @@ impl Reader {
             "",
             Some(format!("/chapter/{}#{}", chapter_id, current_page,).as_str()),
         ) {
-            let message = if let Some(msg) = e.as_string() {
+            let message = match e.as_string() { Some(msg) => {
                 msg
-            } else {
+            } _ => {
                 "unknown reason".to_string()
-            };
+            }};
 
             error!("error replace_state_with_url: {}", message);
         }
@@ -617,23 +617,23 @@ impl Reader {
     }
 
     fn go_to_next_page(&self) {
-        if let Some(next_page) = self.next_page.get() {
+        match self.next_page.get() { Some(next_page) => {
             self.current_page.set_neq(next_page);
-        } else if let Some(next_chapter) = self.next_chapter.get() {
+        } _ => { match self.next_chapter.get() { Some(next_chapter) => {
             self.chapter_id.set(next_chapter);
-        } else {
+        } _ => {
             info!("no next_page or next_chapter");
-        }
+        }}}}
     }
 
     fn go_to_prev_page(&self) {
-        if let Some(prev_page) = self.prev_page.get() {
+        match self.prev_page.get() { Some(prev_page) => {
             self.current_page.set_neq(prev_page);
-        } else if let Some(prev_chapter) = self.prev_chapter.get() {
+        } _ => { match self.prev_chapter.get() { Some(prev_chapter) => {
             self.chapter_id.set(prev_chapter);
-        } else {
+        } _ => {
             info!("no prev_page or prev_chapter");
-        }
+        }}}}
     }
 
     fn render_navigation(this: Rc<Self>) -> Dom {
@@ -693,7 +693,7 @@ impl Reader {
         })
     }
 
-    fn pages_signal(&self) -> impl SignalVec<Item = (usize, String, PageStatus)> {
+    fn pages_signal(&self) -> impl SignalVec<Item = (usize, String, PageStatus)> + use<> {
         self.pages
             .signal_vec_cloned()
             .enumerate()
@@ -702,7 +702,7 @@ impl Reader {
             .to_signal_vec()
     }
 
-    fn image_src_signal(&self, index: usize, preload_prev: usize, preload_next: usize, page: String, status: PageStatus)-> impl Signal<Item = Option<String>> {
+    fn image_src_signal(&self, index: usize, preload_prev: usize, preload_next: usize, page: String, status: PageStatus)-> impl Signal<Item = Option<String>> + use<> {
         self.current_page.signal_cloned().map(move |current_page| {
             if (index >= current_page.saturating_sub(preload_prev) && index <= current_page + preload_next) || matches!(status, PageStatus::Loaded) {
                 Some(proxied_image_url(&page))
@@ -712,7 +712,7 @@ impl Reader {
         })
     }
 
-    fn fit_signal(&self)-> impl Signal<Item = (Fit, f64)> {
+    fn fit_signal(&self)-> impl Signal<Item = (Fit, f64)> + use<> {
         map_ref!{
             let fit = self.reader_settings.fit.signal(),
             let zoom = self.zoom.signal() => {
@@ -754,11 +754,11 @@ impl Reader {
                     .attr_signal("disabled", this.prev_chapter.signal().map(|prev_chapter| if prev_chapter.is_some() { None } else { Some("true") }))
                     .text_signal(this.prev_chapter.signal().map(|prev_chapter| if prev_chapter.is_some() { "Prev Chapter" } else { "No Prev Chapter" }))
                     .event(clone!(this => move |_: events::Click| {
-                        if let Some(prev_chapter) = this.prev_chapter.get() {
+                        match this.prev_chapter.get() { Some(prev_chapter) => {
                             this.chapter_id.set(prev_chapter);
-                        } else {
+                        } _ => {
                             info!("no prev_page or prev_chapter");
-                        }
+                        }}
                     }))
                 })
             ])
@@ -834,12 +834,12 @@ impl Reader {
                     .attr_signal("disabled", this.next_chapter.signal().map(|next_chapter| if next_chapter.is_some() { None } else { Some("true") }))
                     .text_signal(this.next_chapter.signal().map(|next_chapter| if next_chapter.is_some() { "Next Chapter" } else { "No Next Chapter" }))
                     .event(clone!(this => move |_: events::Click| {
-                        if let Some(next_chapter) = this.next_chapter.get() {
+                        match this.next_chapter.get() { Some(next_chapter) => {
                             this.chapter_id.set(next_chapter);
                             window().scroll_to_with_x_and_y(0.0_f64, 0.0_f64);
-                        } else {
+                        } _ => {
                             info!("no next_page or next_chapter");
-                        }
+                        }}
                     }))
                 })
             ])
@@ -1015,11 +1015,11 @@ impl Reader {
                                 if index == current_page {
                                     hidden = false;
                                     if current_page > 0 {
-                                        let is_prev_img_landscape = if let Some(prev_img) = document().get_element_by_id(format!("{}", current_page - 1).as_str()).and_then(|el| el.dyn_into::<web_sys::HtmlImageElement>().ok()) {
+                                        let is_prev_img_landscape = match document().get_element_by_id(format!("{}", current_page - 1).as_str()).and_then(|el| el.dyn_into::<web_sys::HtmlImageElement>().ok()) { Some(prev_img) => {
                                             prev_img.natural_width() > prev_img.natural_height()
-                                        } else {
+                                        } _ => {
                                             false
-                                        };
+                                        }};
                                         let sub = if is_prev_img_landscape || current_page == 1 {
                                             1
                                         } else {
@@ -1028,11 +1028,11 @@ impl Reader {
                                         this.prev_page.set_neq(current_page.checked_sub(sub));
                                     }
                                 } else if index == current_page + 1 {
-                                    let is_prev_img_portrait = if let Some(prev_img) = document().get_element_by_id(format!("{}", current_page).as_str()).and_then(|el| el.dyn_into::<web_sys::HtmlImageElement>().ok()) {
+                                    let is_prev_img_portrait = match document().get_element_by_id(format!("{}", current_page).as_str()).and_then(|el| el.dyn_into::<web_sys::HtmlImageElement>().ok()) { Some(prev_img) => {
                                         prev_img.natural_width() <= prev_img.natural_height()
-                                    } else {
+                                    } _ => {
                                         true
-                                    };
+                                    }};
 
                                     let pages_len = this.pages.lock_ref().len();
                                     if img.natural_width() < img.natural_height() && is_prev_img_portrait {
