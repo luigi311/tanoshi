@@ -240,6 +240,7 @@ impl SettingsManageDownloads {
                                 .style("padding", "0.5rem")
                                 .style("color", "red")
                                 .event(clone!(settings, entry => move |_:events::Click| {
+                                    let _ = &entry;
                                     Self::remove_download_chapters(settings.clone(), vec![entry.chapter_id]);
                                 }))
                                 .children(&mut [

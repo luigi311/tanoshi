@@ -654,6 +654,7 @@ impl Manga {
                     })
                 ])
                 .event(clone!(chapter => move |_: events::Click| {
+                    let _ = &chapter;
                     routing::go_to_url(Route::Chapter(chapter.id, chapter.read_progress.as_ref().map(|progress| progress.last_page).unwrap_or(0)).url().as_str());
                 }))
             }))))

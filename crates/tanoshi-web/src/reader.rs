@@ -92,7 +92,7 @@ impl Reader {
             match query::fetch_chapter(chapter_id).await {
                 Ok(result) => {
                     this.manga_id.set_neq(result.manga.id);
-                    this.manga_title.set_neq(result.manga.title);
+                    this.manga_title.set_neq(result.manga.title.clone());
                     this.chapter_title.set_neq(format_number_title(result.number, &result.title));
                     this.next_chapter.set_neq(result.next);
                     this.prev_chapter.set_neq(result.prev);
