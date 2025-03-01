@@ -12,6 +12,7 @@ use futures_signals::{
 use std::rc::Rc;
 use web_sys::{HtmlInputElement, HtmlSelectElement};
 
+#[allow(dead_code)]
 #[derive(Debug, Default, Clone)]
 pub struct TrackerStatus {
     pub tracker: String,

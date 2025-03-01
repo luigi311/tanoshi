@@ -6,8 +6,8 @@ use crate::{
     utils::{AsyncLoader, proxied_image_url, window, format_number_title}
 };
 use chrono::NaiveDateTime;
-use dominator::{Dom, EventOptions, clone, events, html, routing, svg, with_node, text_signal};
-use futures_signals::{signal::{self, Mutable, SignalExt, Signal}, signal_vec::{MutableVec, SignalVecExt}, signal_map::{MutableBTreeMap, SignalMapExt}};
+use dominator::{Dom, EventOptions, clone, events, html, routing, svg};
+use futures_signals::{signal::{self, Mutable, SignalExt}, signal_vec::{MutableVec, SignalVecExt}, signal_map::{MutableBTreeMap, SignalMapExt}};
 use gloo_timers::callback::Timeout;
 use std::rc::Rc;
 use wasm_bindgen::prelude::*;
@@ -379,13 +379,13 @@ impl Manga {
                 html!("button", {
                     .style("display", "flex")
                     .style("align-items", "center")
-                    .text_signal(manga.selected_chapters.signal_vec_keys().len().map(clone!(manga => move |selected_len| {
+                    .text_signal(manga.selected_chapters.signal_vec_keys().len().map(move |selected_len| {
                         if selected_len > 0 {
                             "Deselect all"
                         } else {
                             "Select all"
                         }
-                    })))
+                    }))
                     .event(clone!(manga => move |_: events::Click| {
                         let chapters = manga.chapters.lock_ref();
                         let mut selected_chapters = manga.selected_chapters.lock_mut();
@@ -404,13 +404,13 @@ impl Manga {
                     .style("display", "flex")
                     .style("align-items", "center")
                     // Show Select previous only if 1 chapter is selected and remove when its not 1
-                    .text_signal(manga.selected_chapters.signal_vec_keys().len().map(clone!(manga => move |selected_len| {
+                    .text_signal(manga.selected_chapters.signal_vec_keys().len().map(move |selected_len| {
                         if selected_len == 1 {
                             "Select previous"
                         } else {
                             " "
                         }
-                    })))
+                    }))
                     .event(clone!(manga => move |_: events::Click| {
                         let chapters = manga.chapters.lock_ref();
                         let mut selected_chapters = manga.selected_chapters.lock_mut();
@@ -755,9 +755,9 @@ impl Manga {
             .class("chapter-list")
             .attr("id", "chapters")
             // Prevent context menu so mobile users dont get a popup
-            .event_with_options(&EventOptions::preventable(), clone!(manga => move |e: events::ContextMenu| {
+            .event_with_options(&EventOptions::preventable(), move |e: events::ContextMenu| {
                 e.prevent_default();
-            }))
+            })
             .children(&mut [
                 html!("div", {
                     .style("display", "flex")

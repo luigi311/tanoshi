@@ -27,6 +27,7 @@ use crate::{
     utils::{local_storage, AsyncLoader},
 };
 
+#[allow(dead_code)]
 pub struct App {
     pub server_status: Mutable<Option<ServerStatus>>,
     pub spinner: Rc<Spinner>,

@@ -101,6 +101,7 @@ impl Default for Fit {
     }
 }
 
+#[allow(dead_code)]
 pub struct ReaderSettingSignal {
     pub use_modal: bool,
     pub reader_mode: ReaderMode,

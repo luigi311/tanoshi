@@ -59,6 +59,7 @@ impl Default for LibraryFilter {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Clone)]
 pub struct LibrarySettingSignal {
     use_modal: bool,

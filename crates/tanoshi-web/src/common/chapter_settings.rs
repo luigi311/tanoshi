@@ -52,6 +52,7 @@ impl Default for Filter {
 }
 
 #[derive(Clone, Copy)]
+#[allow(dead_code)]
 pub struct ChapterSettingSignal {
     use_modal: bool,
     pub sort: ChapterSort,

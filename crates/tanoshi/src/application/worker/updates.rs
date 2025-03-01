@@ -402,7 +402,7 @@ where
                         .and_then(|created| created.elapsed().ok())
                         .map(|elapsed| {
                             chrono::Duration::from_std(elapsed)
-                                .unwrap_or_else(|_| chrono::Duration::max_value())
+                                .unwrap_or_else(|_| chrono::Duration::MAX)
                         })
                     {
                         if created.num_days() >= 10 {
