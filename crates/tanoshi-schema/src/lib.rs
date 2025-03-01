@@ -306,14 +306,6 @@ pub struct TestGotify;
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "graphql/schema.graphql",
-    query_path = "graphql/test_desktop_notification.graphql",
-    response_derives = "Debug"
-)]
-pub struct TestDesktopNotification;
-
-#[derive(GraphQLQuery)]
-#[graphql(
-    schema_path = "graphql/schema.graphql",
     query_path = "graphql/mark_chapter_as_read.graphql",
     response_derives = "Debug"
 )]

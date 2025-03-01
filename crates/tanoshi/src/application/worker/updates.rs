@@ -284,10 +284,6 @@ where
                 .unwrap_or_default();
 
             for chapter in chapters {
-                #[cfg(feature = "desktop")]
-                self.notifier
-                    .send_desktop_notification(Some(manga.title.clone()), &chapter.title)?;
-
                 for user in &users {
                     self.notifier
                         .send_chapter_notification(
@@ -340,14 +336,6 @@ where
                 let message = format!("{} extension update available", source.name);
                 if let Err(e) = self.notifier.send_all_to_admins(None, &message).await {
                     error!("failed to send extension update to admin, {}", e);
-                }
-
-                #[cfg(feature = "desktop")]
-                if let Err(e) = self
-                    .notifier
-                    .send_desktop_notification(Some("Extension Update".to_string()), &message)
-                {
-                    error!("failed to send notification, reason {}", e);
                 }
             }
         }

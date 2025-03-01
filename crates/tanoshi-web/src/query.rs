@@ -478,12 +478,6 @@ pub async fn test_gotify(token: &str) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-pub async fn test_desktop_notification() -> Result<(), Box<dyn Error>> {
-    let var = test_desktop_notification::Variables {};
-    let _ = post_graphql::<TestDesktopNotification>(var).await?;
-    Ok(())
-}
-
 pub async fn mark_chapter_as_read(chapter_ids: &[i64]) -> Result<(), Box<dyn Error>> {
     let var = mark_chapter_as_read::Variables {
         chapter_ids: Some(chapter_ids.iter().map(|id| Some(*id)).collect()),

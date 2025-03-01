@@ -300,7 +300,6 @@ type QueryRoot {
     # gotify app token
     token: String!
   ): Boolean!
-  testDesktopNotification: Boolean!
   downloadStatus: Boolean!
   downloadQueue: [DownloadQueueEntry!]!
   getDownloadedChapters(
