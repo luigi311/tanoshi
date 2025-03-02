@@ -1,5 +1,4 @@
 use axum::{
-    async_trait,
     extract::FromRequestParts,
     http::request::Parts,
     RequestPartsExt,
@@ -9,7 +8,6 @@ use headers::{authorization::Bearer, Authorization};
 
 pub struct Token(pub String);
 
-#[async_trait]
 impl<S> FromRequestParts<S> for Token
 where
     S: Send + Sync,
