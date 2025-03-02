@@ -2,6 +2,7 @@
 name = "tanoshi-web"
 version = "0.0.0"
 edition = "2024"
+rust-version = "1.85.0"
 description = "Tanoshi Web"
 repository = "https://github.com/luigi311/tanoshi"
 license = "MIT"

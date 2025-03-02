@@ -2,6 +2,7 @@
 name = "tanoshi-lib"
 version = "0.27.0"
 edition = "2024"
+rust-version = "1.85.0"
 description = "Tanoshi library"
 repository = "https://github.com/luigi311/tanoshi"
 license = "MIT"
@@ -11,7 +12,7 @@ exclude = [".github/*"]
 [features]
 
 [dependencies]
-thiserror = "1"
+thiserror = "2"
 anyhow = "1"
 serde = { version = "1", features = ["derive"] }
 
