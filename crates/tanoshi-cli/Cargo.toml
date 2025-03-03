@@ -1,7 +1,8 @@
 [package]
 name = "tanoshi-cli"
 version = "0.7.0"
-edition = "2021"
+edition = "2024"
+rust-version = "1.85.0"
 description = "Tanoshi CLI Utilities"
 repository = "https://github.com/luigi311/tanoshi"
 license = "MIT"
@@ -9,8 +10,8 @@ readme = "README.md"
 exclude = [".github/*"]
 
 [dependencies]
-tanoshi-lib = { path = "../tanoshi-lib", version = "0.27.0" }
-tanoshi-vm = { path = "../tanoshi-vm", version = "0.7.2" }
+tanoshi-lib = { path = "../tanoshi-lib" }
+tanoshi-vm = { path = "../tanoshi-vm" }
 tokio = { version = "1", features = ["full"] }
 clap = { version = "4", features = ["derive"] }
 anyhow = "1"

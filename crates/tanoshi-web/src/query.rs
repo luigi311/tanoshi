@@ -33,18 +33,19 @@ where
     }
     let res = req.json(&request_body).send().await?;
     let response_body: graphql_client::Response<Q::ResponseData> = res.json().await?;
-    match (response_body.data, response_body.errors) {
-        (Some(data), _) => Ok(data) as Result<_, _>,
-        (_, Some(errors)) => {
-            return Err(errors
-                .iter()
-                .map(|e| format!("{}", e))
-                .collect::<Vec<String>>()
-                .join(", ")
-                .into());
-        }
+    let result = (response_body.data, response_body.errors);
+
+    match result {
+        (Some(data), _) => Ok(data),
+        (_, Some(errors)) => Err(errors
+            .into_iter()
+            .map(|e| format!("{}", e))
+            .collect::<Vec<String>>()
+            .join(", ")
+            .into()),
         _ => Err("no data".into()),
     }
+
 }
 
 pub type InputList = Vec<Input>;
@@ -266,7 +267,8 @@ pub async fn subscribe_recent_updates() -> Result<(), Box<dyn Error>> {
 
     let mut updates = HashMap::<String, Vec<String>>::new();
     loop {
-        match select(stream.next(), TimeoutFuture::new(1_000)).await {
+        let selected = select(stream.next(), TimeoutFuture::new(1_000)).await;
+        match selected {
             Either::Left((val, timeout)) => {
                 drop(timeout);
                 if let Some(Ok(item)) = val {
@@ -290,13 +292,14 @@ pub async fn subscribe_recent_updates() -> Result<(), Box<dyn Error>> {
                     } else {
                         opts.set_body("no chapter updates");
                     }
-
+    
                     let _ = Notification::new_with_options(&manga_title, &opts).unwrap_throw();
                 }
                 updates.clear();
             }
         }
     }
+    
 
     debug!("subscribe_recent_updates");
     Ok(())
@@ -472,12 +475,6 @@ pub async fn test_gotify(token: &str) -> Result<(), Box<dyn Error>> {
         token: Some(token.to_string()),
     };
     let _ = post_graphql::<TestGotify>(var).await?;
-    Ok(())
-}
-
-pub async fn test_desktop_notification() -> Result<(), Box<dyn Error>> {
-    let var = test_desktop_notification::Variables {};
-    let _ = post_graphql::<TestDesktopNotification>(var).await?;
     Ok(())
 }
 

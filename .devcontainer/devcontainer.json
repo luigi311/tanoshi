@@ -1,7 +1,7 @@
 // For format details, see https://aka.ms/devcontainer.json. For config options, see the
 // README at: https://github.com/devcontainers/templates/tree/main/src/docker-existing-dockerfile
 {
-	"image": "ghcr.io/luigi311/tanoshi-builder:sha-172c475-slim",
+	"image": "ghcr.io/luigi311/tanoshi-builder:sha-52ce25d",
 
 	// Features to add to the dev container. More info: https://containers.dev/features.
 	//"features": {},

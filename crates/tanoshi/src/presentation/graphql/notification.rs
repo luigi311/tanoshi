@@ -52,17 +52,4 @@ impl NotificationRoot {
 
         Ok(true)
     }
-
-    async fn test_desktop_notification(&self, _ctx: &Context<'_>) -> Result<bool> {
-        #[cfg(feature = "desktop")]
-        {
-            _ctx.data::<Notification<UserRepositoryImpl>>()?
-                .send_desktop_notification(None, "Test Notification")?;
-
-            Ok(true)
-        }
-
-        #[cfg(not(feature = "desktop"))]
-        Err("desktop notification only available for desktop version".into())
-    }
 }

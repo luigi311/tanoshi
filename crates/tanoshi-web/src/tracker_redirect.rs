@@ -38,13 +38,13 @@ impl TrackerRedirect {
 
     fn fetch_myanimelist_login_end(self: Arc<Self>) {
         let code = self.code.clone();
-        let state = if let Some(state) = self.state.clone() {
+        let state = match self.state.clone() { Some(state) => {
             state
-        } else {
+        } _ => {
             self.authorization_state
                 .set_neq(AuthorizationState::Failed("no state code".to_string()));
             return;
-        };
+        }};
 
         let tracker_redirect = self.clone();
         self.loader.load(async move {
@@ -62,13 +62,10 @@ impl TrackerRedirect {
                 .authorization_state
                 .set_neq(AuthorizationState::Authorizing);
 
-            match query::myanimelist_login_end(code, state, csrf_state, pkce_code_verifier).await {
-                Ok(()) => tracker_redirect
-                    .authorization_state
-                    .set_neq(AuthorizationState::Success),
-                Err(e) => tracker_redirect
-                    .authorization_state
-                    .set_neq(AuthorizationState::Failed(format!("{e}"))),
+            let login_result = query::myanimelist_login_end(code, state, csrf_state, pkce_code_verifier).await;
+            match login_result {
+                Ok(()) => tracker_redirect.authorization_state.set_neq(AuthorizationState::Success),
+                Err(e) => tracker_redirect.authorization_state.set_neq(AuthorizationState::Failed(format!("{e}"))),
             }
         });
     }

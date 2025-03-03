@@ -160,17 +160,16 @@ where
         manga_path: P,
         archive_path: P,
     ) -> Result<ZipWriter<File>> {
-        if let Ok(file) = std::fs::OpenOptions::new()
+        match std::fs::OpenOptions::new()
             .read(true)
             .write(true)
             .open(&archive_path)
-        {
+        { Ok(file) => {
             return Ok(zip::ZipWriter::new_append(file)?);
-        } else if let Ok(file) =
-            std::fs::create_dir_all(manga_path).and_then(|_| std::fs::File::create(&archive_path))
-        {
+        } _ => { match std::fs::create_dir_all(manga_path).and_then(|_| std::fs::File::create(&archive_path))
+        { Ok(file) => {
             return Ok(zip::ZipWriter::new(file));
-        }
+        } _ => {}}}}
 
         Err(anyhow!("cannot open or create new zip file"))
     }
@@ -310,22 +309,34 @@ where
             tokio::select! {
                 Ok(chapter) = self.chapter_update_receiver.recv() => {
                     if self.auto_download_chapter {
-                        if let Err(e) = self.insert_to_queue(&chapter.chapter).await {
-                            error!("failed to insert queue, reason {e}");
-                        } else {
-                            let _ = self.tx.send(Command::Download);
+                        let insert_result = self
+                            .insert_to_queue(&chapter.chapter)
+                            .await;
+                        match insert_result {
+                            Err(e) => {
+                                error!("failed to insert queue, reason {e}");
+                            } Ok(_) => {
+                                let _ = self.tx.send(Command::Download);
+                            }
                         }
                     }
                 }
                 Some(cmd) = self.rx.recv() => {
                     match cmd {
                         Command::InsertIntoQueue(chapter_id) => {
-                            match self.chapter_repo.get_chapter_by_id(chapter_id).await {
+                            let chapter_result = self
+                                .chapter_repo
+                                .get_chapter_by_id(chapter_id)
+                                .await;
+                            match chapter_result {
                                 Ok(chapter) => {
-                                    if let Err(e) = self.insert_to_queue(&chapter).await {
-                                        error!("failed to insert queue, reason {}", e);
-                                    } else {
-                                        self.tx.send(Command::Download).unwrap();
+                                    let insert_result = self.insert_to_queue(&chapter).await;
+                                    match insert_result { 
+                                        Err(e) => {
+                                            error!("failed to insert queue, reason {}", e);
+                                        } Ok(_) => {
+                                            let _ = self.tx.send(Command::Download).unwrap();
+                                        }
                                     }
                                 }
                                 Err(e) => {
@@ -334,16 +345,20 @@ where
                             }
                         }
                         Command::InsertIntoQueueBySourcePath(source_id, path) => {
-                            match self
+                            let chapter_result = self
                                 .chapter_repo
                                 .get_chapter_by_source_id_path(source_id, &path)
-                                .await
-                            {
+                                .await;
+                            match chapter_result {
                                 Ok(chapter) => {
-                                    if let Err(e) = self.insert_to_queue(&chapter).await {
-                                        error!("failed to insert queue, reason {e}");
-                                    } else {
-                                        let _ = self.tx.send(Command::Download);
+                                    let insert_result = self.insert_to_queue(&chapter).await;
+                                    match insert_result {
+                                        Err(e) => {
+                                            error!("failed to insert queue, reason {e}");
+                                        }
+                                        Ok(_) => {
+                                            let _ = self.tx.send(Command::Download);
+                                        }
                                     }
                                 }
                                 Err(e) => {
@@ -353,7 +368,8 @@ where
                         }
                         Command::Download => {
                             if !self.paused().await {
-                                if let Err(e) = self.download().await {
+                                let download_result = self.download().await;
+                                if let Err(e) = download_result {
                                     error!("{e}")
                                 }
                             }

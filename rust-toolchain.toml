@@ -3,5 +3,5 @@
 # 1st https://github.com/luigi311/tanoshi-builder
 # 2nd Here and then create a release
 # 3rd https://github.com/luigi311/tanoshi-extensions
-channel = "1.79.0"
+channel = "1.85.0"
 targets = [ "wasm32-unknown-unknown" ]

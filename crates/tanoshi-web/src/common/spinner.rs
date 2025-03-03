@@ -55,7 +55,7 @@ impl Spinner {
         self.active.set_neq(active);
     }
 
-    pub fn signal(&self) -> impl Signal<Item = bool> {
+    pub fn signal(&self) -> impl Signal<Item = bool> + use<> {
         self.active.signal_ref(|x| *x)
     }
 

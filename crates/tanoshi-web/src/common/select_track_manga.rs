@@ -12,6 +12,7 @@ use futures_signals::{
 use std::rc::Rc;
 use web_sys::{HtmlInputElement, HtmlSelectElement};
 
+#[allow(dead_code)]
 #[derive(Debug, Default, Clone)]
 pub struct TrackerStatus {
     pub tracker: String,
@@ -294,7 +295,7 @@ impl SelectTrackMangaModal {
                                         })
                                     }),
                                 ])
-                                .child_signal(tracker.tracker_manga_title.signal_cloned().map(clone!(tracker => move |tracker_manga_title| if let Some(tracker_manga_title) = tracker_manga_title {
+                                .child_signal(tracker.tracker_manga_title.signal_cloned().map(clone!(tracker => move |tracker_manga_title| { let _ = &tracker; if let Some(tracker_manga_title) = tracker_manga_title {
                                     Some(html!("span", {
                                         .style("margin-left", "0.5rem")
                                         .text(&tracker_manga_title)
@@ -304,7 +305,7 @@ impl SelectTrackMangaModal {
                                         .style("margin-left", "0.5rem")
                                         .text(&tracker.tracker)
                                     }))
-                                })))
+                                }})))
                             }),
                         ])
                         .child_signal(tracker.tracker_manga_id.signal_cloned().map(clone!(select, tracker => move |tracker_manga_id| if tracker_manga_id.is_some() {
@@ -312,6 +313,7 @@ impl SelectTrackMangaModal {
                                 .style("color", "red")
                                 .text("Remove")
                                 .event(clone!(select, tracker => move |_: events::Click| {
+                                    let _ = &tracker;
                                     select.untrack_manga(select.manga_id, tracker.tracker.clone());
                                 }))
                             }))
@@ -403,6 +405,7 @@ impl SelectTrackMangaModal {
                                                     ])
                                                     .with_node!(el => {
                                                         .event(clone!(select, el, tracker, tracker_manga_id => move |_: events::Change| {
+                                                            let _ = &tracker;
                                                             let value = el.value();
                                                             info!("status {value}");
                                                             select.update_tracker_status(
@@ -432,6 +435,7 @@ impl SelectTrackMangaModal {
                                                     .prop_signal("value", tracker.num_chapters_read.signal_cloned().map(|num_chapters_read| num_chapters_read.map(|num_chapters_read| format!("{num_chapters_read}")).unwrap_or_else(|| "".to_string())))
                                                     .with_node!(input => {
                                                         .event(clone!(select, input, tracker, tracker_manga_id => move |_: events::Change| {
+                                                            let _ = &tracker;
                                                             if let Ok(value) = input.value().parse::<i64>() {
                                                                 info!("status {value}");
                                                                 select.update_tracker_status(
@@ -464,6 +468,7 @@ impl SelectTrackMangaModal {
                                                     .with_node!(input => {
                                                         .event(clone!(select, input, tracker, tracker_manga_id => move |_: events::Change| {
                                                             if let Ok(value) = input.value().parse::<i64>() {
+                                                                let _ = &tracker;
                                                                 info!("status {value}");
                                                                 select.update_tracker_status(
                                                                     tracker.tracker.clone(), 
@@ -528,26 +533,20 @@ impl SelectTrackMangaModal {
         info!("render select track");
         let select = self.clone();
         self.fetch_manga_tracker_status();
-        self.modal.render(
-            &mut [html!("div", {
-                .child_signal(select.state.signal_cloned().map(clone!(select => move |state| match state {
-                    State::SelectTracker => {
-                        None
-                    }
-                    State::SelectManga(_) => {
-                        Some(select.render_header(f.clone()))
-                    }
-                })))
-                .child_signal(select.state.signal_cloned().map(clone!(select => move |state| match state {
-                    State::SelectTracker => {
-                        Some(select.render_main())
-                    }
-                    State::SelectManga(tracker) => {
-                        Some(select.render_manga_list(&tracker))
-                    }
-                })))
-                .child_signal(select.loader.is_loading().map(|is_loading| is_loading.then(|| Spinner::render_spinner(true))))
-            })],
-        )
+        let html_div = html!("div", {
+            .child_signal(select.state.signal_cloned().map(clone!(select => move |state| match state {
+                State::SelectTracker => None,
+                State::SelectManga(_) => Some(select.render_header(f.clone())),
+            })))
+            .child_signal(select.state.signal_cloned().map(clone!(select => move |state| match state {
+                State::SelectTracker => Some(select.render_main()),
+                State::SelectManga(tracker) => Some(select.render_manga_list(&tracker)),
+            })))
+            .child_signal(select.loader.is_loading().map(|is_loading| {
+                is_loading.then(|| Spinner::render_spinner(true))
+            }))
+        });
+        let mut html_children = [html_div];
+        self.modal.render(&mut html_children)
     }
 }

@@ -1,7 +1,8 @@
 [package]
 name = "tanoshi-util"
 version = "0.3.0"
-edition = "2021"
+edition = "2024"
+rust-version = "1.85.0"
 description = "Tanoshi Utilities"
 repository = "https://github.com/luigi311/tanoshi"
 license = "MIT"
@@ -11,7 +12,7 @@ exclude = [".github/*"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-ureq = { version = "2", optional = true }
+ureq = { version = "3", optional = true }
 serde = { version = "1", features = ["derive"] }
 ron = "0.8"
 

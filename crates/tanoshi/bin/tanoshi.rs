@@ -42,10 +42,11 @@ async fn main() -> Result<(), anyhow::Error> {
         info!("rust_log: {}", rust_log);
     } else if let Ok(tanoshi_log) = std::env::var("TANOSHI_LOG") {
         info!("tanoshi_log: {}", tanoshi_log);
-        std::env::set_var(
+        // TODO: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::set_var(
             "RUST_LOG",
             format!("tanoshi={},tanoshi_vm={}", tanoshi_log, tanoshi_log),
-        );
+        ) };
     }
 
     env_logger::init();

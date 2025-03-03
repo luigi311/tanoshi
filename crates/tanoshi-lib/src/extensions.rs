@@ -55,7 +55,7 @@ pub trait PluginRegistrar {
 /// macro for export an extension
 #[macro_export]
 macro_rules! export_plugin {
-    ($register:expr) => {
+    ($register:expr_2021) => {
         #[doc(hidden)]
         #[no_mangle]
         pub static plugin_declaration: $crate::extensions::PluginDeclaration =

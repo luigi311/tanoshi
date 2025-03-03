@@ -75,7 +75,7 @@ pub fn warn(message: String) {
 
 #[cfg(all(not(feature = "__test"), not(feature = "host")))]
 #[link(wasm_import_module = "tanoshi")]
-extern "C" {
+unsafe extern "C" {
     fn host_debug();
     fn host_error();
     fn host_info();

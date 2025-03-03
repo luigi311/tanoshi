@@ -101,6 +101,7 @@ impl Default for Fit {
     }
 }
 
+#[allow(dead_code)]
 pub struct ReaderSettingSignal {
     pub use_modal: bool,
     pub reader_mode: ReaderMode,
@@ -140,11 +141,11 @@ impl ReaderSettings {
             key = [key, manga_id.to_string()].join(":");
         }
 
-        let settings = if let Ok(Some(settings)) = local_storage().get_item(&key) {
+        let settings = match local_storage().get_item(&key) { Ok(Some(settings)) => {
             serde_json::from_str::<ReaderSettings>(&settings).unwrap_or_default()
-        } else {
+        } _ => {
             ReaderSettings::default()
-        };
+        }};
 
         Rc::new(ReaderSettings {
             use_modal,
@@ -163,11 +164,11 @@ impl ReaderSettings {
         self.manga_id.replace(manga_id);
 
         let key = [KEY.to_string(), manga_id.to_string()].join(":");
-        let settings = if let Ok(Some(settings)) = local_storage().get_item(&key) {
+        let settings = match local_storage().get_item(&key) { Ok(Some(settings)) => {
             serde_json::from_str::<ReaderSettings>(&settings).unwrap_or_default()
-        } else {
+        } _ => {
             return;
-        };
+        }};
         self.reader_mode.replace(settings.reader_mode.get());
         self.padding.replace(settings.padding.get());
         self.display_mode.replace(settings.display_mode.get());
@@ -209,7 +210,7 @@ impl ReaderSettings {
         }
     }
 
-    pub fn reader_direction_signal(&self) -> impl Signal<Item = (ReaderMode, Direction)> {
+    pub fn reader_direction_signal(&self) -> impl Signal<Item = (ReaderMode, Direction)> + use<> {
         map_ref! {
             let r = self.reader_mode.signal(),
             let d = self.direction.signal() =>
@@ -489,7 +490,7 @@ impl ReaderSettings {
         })
     }
 
-    fn signal(&self) -> impl Signal<Item = ReaderSettingSignal> {
+    fn signal(&self) -> impl Signal<Item = ReaderSettingSignal> + use<> {
         map_ref! {
             let use_modal = signal::always(self.use_modal),
             let reader_mode = self.reader_mode.signal_cloned(),

@@ -94,7 +94,8 @@ where
         let mut tracker_token = self.repo.get_user_tracker_token(tracker, user_id).await?;
 
         for _ in 0..2 {
-            match self.repo.search_manga(&tracker_token, tracker, title).await {
+            let search_result = self.repo.search_manga(&tracker_token, tracker, title).await;
+            match search_result {
                 Ok(manga) => {
                     return Ok(manga);
                 }
@@ -141,15 +142,16 @@ where
                 .and_then(|id| id.parse::<i64>().ok())
             {
                 for _ in 0..2 {
-                    match self
+                    let fetch_result = self
                         .repo
                         .fetch_manga_details(
                             &tracker_token.access_token,
                             &manga.tracker,
                             tracker_manga_id,
                         )
-                        .await
-                    {
+                        .await;
+
+                    match fetch_result {
                         Ok(res) => status = res.tracker_status,
                         Err(TrackerRepositoryError::Unauthorized) => {
                             let token = self
@@ -201,7 +203,7 @@ where
             .map_err(|e| TrackerError::Other(format!("{e}")))?;
 
         for _ in 0..2 {
-            match self
+            let update_result = self
                 .repo
                 .update_manga_tracking_status(
                     &tracker_token.access_token,
@@ -213,8 +215,9 @@ where
                     started_at,
                     completed_at,
                 )
-                .await
-            {
+                .await;
+
+            match update_result {
                 Ok(()) => {
                     return Ok(());
                 }

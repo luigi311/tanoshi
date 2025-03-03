@@ -59,6 +59,7 @@ impl Default for LibraryFilter {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Clone)]
 pub struct LibrarySettingSignal {
     use_modal: bool,
@@ -88,11 +89,11 @@ impl LibrarySettings {
     }
 
     pub fn load(show: bool, use_modal: bool) -> Rc<Self> {
-        let settings = if let Ok(Some(settings)) = local_storage().get_item(KEY) {
+        let settings = match local_storage().get_item(KEY) { Ok(Some(settings)) => {
             serde_json::from_str::<Self>(&settings).unwrap_or_default()
-        } else {
+        } _ => {
             Self::default()
-        };
+        }};
 
         Rc::new(Self {
             use_modal,
@@ -293,7 +294,7 @@ impl LibrarySettings {
         })
     }
 
-    fn signal(&self) -> impl Signal<Item = LibrarySettingSignal> {
+    fn signal(&self) -> impl Signal<Item = LibrarySettingSignal> + use<> {
         map_ref! {
             let use_modal = signal::always(self.use_modal),
             let default_category = self.default_category.signal_cloned(),

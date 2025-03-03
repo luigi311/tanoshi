@@ -260,7 +260,7 @@ impl ServerBuilder {
 
         router = router
             .route("/health", get(health_check))
-            .route("/image/:url", get(fetch_image))
+            .route("/image/{url}", get(fetch_image))
             .layer(Extension(image_svc));
 
         let svc = if self.enable_playground {

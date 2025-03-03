@@ -53,7 +53,7 @@ pub fn external_link() -> Dom {
     })
 }
 
-pub fn checkmark() -> Dom {
+pub fn _checkmark() -> Dom {
     svg!("svg", {
         .attr("xmlns", "http://www.w3.org/2000/svg")
         .attr("fill", "currentColor")
@@ -69,7 +69,7 @@ pub fn checkmark() -> Dom {
     })
 }
 
-pub fn crossmark() -> Dom {
+pub fn _crossmark() -> Dom {
     svg!("svg", {
         .attr("xmlns", "http://www.w3.org/2000/svg")
         .attr("fill", "currentColor")

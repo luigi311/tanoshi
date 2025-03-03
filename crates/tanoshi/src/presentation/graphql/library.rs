@@ -363,7 +363,7 @@ impl LibrarySubscriptionRoot {
     async fn recent_updates_subscription(
         &self,
         ctx: &Context<'_>,
-    ) -> Result<impl Stream<Item = RecentUpdate>> {
+    ) -> Result<impl Stream<Item = RecentUpdate> + use<>> {
         let user_id = ctx
             .data::<Claims>()
             .map_err(|_| "token not exists, please login")?
@@ -375,7 +375,7 @@ impl LibrarySubscriptionRoot {
 
         let stream = stream.filter_map(move |res| async move {
             debug!("update: {res:?}");
-            if let Ok(update) = res {
+            match res { Ok(update) => {
                 if update.users.get(&user_id).is_some() {
                     Some(RecentUpdate {
                         manga_id: update.chapter.manga_id,
@@ -388,9 +388,9 @@ impl LibrarySubscriptionRoot {
                 } else {
                     None
                 }
-            } else {
+            } _ => {
                 None
-            }
+            }}
         });
 
         Ok(stream)

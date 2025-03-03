@@ -97,7 +97,7 @@ impl AsyncLoader {
         });
     }
 
-    pub fn is_loading(&self) -> impl Signal<Item = bool> {
+    pub fn is_loading(&self) -> impl Signal<Item = bool> + use<> {
         self.loading.signal_ref(|x| x.is_some())
     }
 }

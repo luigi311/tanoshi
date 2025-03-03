@@ -33,14 +33,14 @@ impl TryFrom<&str> for ImageUri {
                 let regex = format!(r#"\.({})[\/|\\]"#, SUPPORTED_FILES.iter().join("|"));
                 let re = Regex::new(&regex)?;
 
-                if let Some(matches) = re.find(uri).ok().flatten() {
+                match re.find(uri).ok().flatten() { Some(matches) => {
                     let archive = uri[0..matches.end() - 1].to_owned();
                     let filename = uri[matches.end()..uri.len()].to_owned();
 
                     Self::Archive(archive, filename)
-                } else {
+                } _ => {
                     return Err(anyhow!("invalid file uri"));
-                }
+                }}
             }
         } else {
             return Err(anyhow!("bad uri"));

@@ -10,9 +10,9 @@ backend = "http://localhost:3030/image"
 
 [tools]
 sass = "1.79.4"
-wasm_bindgen = "0.2.95"
+wasm_bindgen = "0.2.93"
 # Pin to version of binaryen in tanoshi-builder
 wasm_opt = "version_108"
 
 [serve]
-address = "0.0.0.0"
+addresses = ["0.0.0.0"]

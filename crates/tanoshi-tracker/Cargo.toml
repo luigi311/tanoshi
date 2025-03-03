@@ -1,7 +1,8 @@
 [package]
 name = "tanoshi-tracker"
 version = "0.0.0"
-edition = "2021"
+edition = "2024"
+rust-version = "1.85.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -14,4 +15,4 @@ anyhow = "1"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 log = { version = "0.4" }
 async-trait = "0.1"
-thiserror = "1"
+thiserror = "2"
