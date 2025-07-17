@@ -25,12 +25,17 @@ use zip::{write::SimpleFileOptions, ZipWriter};
 use tokio::{
     sync::mpsc::{UnboundedReceiver, UnboundedSender},
     task::JoinHandle,
+    time::{sleep, Duration},
 };
 
 use super::updates::ChapterUpdateReceiver;
 
 pub type DownloadSender = UnboundedSender<Command>;
 type DownloadReceiver = UnboundedReceiver<Command>;
+
+
+const MAX_RETRIES: usize = 3;
+const RETRY_DELAY_SECS: u64 = 3;
 
 #[derive(Debug)]
 pub enum Command {
@@ -211,27 +216,34 @@ where
         {
             let mut tmp_zip = ZipWriter::new(&tmp);
 
-            // Download page
-            let referrer = self
-                .ext
-                .get_source_info(queue.source_id)
-                .map(|s| s.url)
-                .unwrap_or_default();
-            let resp = self
-                .client
-                .request(Method::GET, url.clone())
-                .header("Referer", referrer)
-                .header("User-Agent", format!("Tanoshi/{}", env!("CARGO_PKG_VERSION")).as_str())
-                .send()
-                .await?;
-            if !resp.status().is_success() {
-                return Err(anyhow!(
-                    "failed to download {}, status: {}",
-                    url,
-                    resp.status()
-                ));
-            }
-            let data = resp.bytes().await?;
+            let mut attempts = 0;
+            let data = loop {
+                // Build request each attempt
+                let referrer = self.ext.get_source_info(queue.source_id).map(|s| s.url).unwrap_or_default();
+                let req = self.client.request(Method::GET, url.clone())
+                    .header("Referer", &referrer)
+                    .header("User-Agent", format!("Tanoshi/{}", env!("CARGO_PKG_VERSION")).as_str());
+                match req.send().await {
+                    Ok(resp) if resp.status().is_success() => match resp.bytes().await {
+                        Ok(b) => break b,
+                        Err(e) => {
+                            error!("error reading bytes {} attempt {}", e, attempts);
+                        }
+                    },
+                    Ok(resp) => {
+                        error!("bad status {} for {} attempt {}", resp.status(), url, attempts);
+                    }
+                    Err(e) => {
+                        error!("network error {} for {} attempt {}", e, url, attempts);
+                    }
+                }
+                attempts += 1;
+                if attempts >= MAX_RETRIES {
+                    return Err(anyhow!("failed to download {} after {} attempts", url, MAX_RETRIES));
+                }
+                sleep(Duration::from_secs(RETRY_DELAY_SECS)).await;
+            };
+
             tmp_zip.start_file(&filename, SimpleFileOptions::default())?;
             tmp_zip.write_all(&data)?;
             tmp_zip.finish()?;
