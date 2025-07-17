@@ -1,5 +1,5 @@
-use rand::distributions::Alphanumeric;
-use rand::{thread_rng, Rng};
+use rand::distr::Alphanumeric;
+use rand::{rng, Rng};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 use std::{iter, path::PathBuf};
@@ -145,7 +145,7 @@ fn default_update_interval() -> u64 {
 }
 
 fn default_secret() -> String {
-    let mut rng = thread_rng();
+    let mut rng = rng();
     let chars = iter::repeat(())
         .map(|()| rng.sample(Alphanumeric))
         .take(16)

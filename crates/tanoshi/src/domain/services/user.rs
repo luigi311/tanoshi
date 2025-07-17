@@ -49,7 +49,7 @@ where
         }
 
         let mut salt: [u8; 32] = [0; 32];
-        rand::thread_rng().fill_bytes(&mut salt);
+        rand::rng().fill_bytes(&mut salt);
 
         let hash = {
             let config = argon2::Config::default();
@@ -102,7 +102,7 @@ where
         }
 
         let mut salt: [u8; 32] = [0; 32];
-        rand::thread_rng().fill_bytes(&mut salt);
+        rand::rng().fill_bytes(&mut salt);
 
         let hash = {
             let config = argon2::Config::default();

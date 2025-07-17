@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use bincode::config::legacy;
 use std::path::{Path, PathBuf};
 
 use crate::domain::{
@@ -24,9 +25,8 @@ impl ImageCacheRepository for ImageCacheRepositoryImpl {
     async fn set(&self, key: &str, image: &Image) -> Result<(), ImageCacheRepositoryError> {
         let path = self.path.join(key);
 
-        let encoded = bincode::serialize(&image)?;
-
-        tokio::fs::write(&path, &encoded).await?;
+        let encoded = bincode::serde::encode_to_vec(image, legacy())?;
+        tokio::fs::write(&path, encoded).await?;
 
         Ok(())
     }
@@ -34,9 +34,8 @@ impl ImageCacheRepository for ImageCacheRepositoryImpl {
     async fn get(&self, key: &str) -> Result<Image, ImageCacheRepositoryError> {
         let path = self.path.join(key);
 
-        let encoded = tokio::fs::read(path).await?;
-
-        let decoded = bincode::deserialize(&encoded)?;
+        let encoded = tokio::fs::read(&path).await?;
+        let (decoded, _bytes_read) = bincode::serde::decode_from_slice(&encoded, legacy())?;
 
         Ok(decoded)
     }
