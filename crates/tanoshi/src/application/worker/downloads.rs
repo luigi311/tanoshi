@@ -12,14 +12,15 @@ use crate::{
 };
 use anyhow::{anyhow, Result};
 use chrono::Utc;
-use reqwest::Url;
+use reqwest::{Url, Method};
 use std::{
-    fs::File,
+    fs::{self, File},
     io::Write,
     path::{Path, PathBuf},
 };
 use tanoshi_vm::extension::ExtensionManager;
-use zip::{write::SimpleFileOptions, ZipArchive, ZipWriter};
+use tempfile::NamedTempFile;
+use zip::{write::SimpleFileOptions, ZipWriter};
 
 use tokio::{
     sync::mpsc::{UnboundedReceiver, UnboundedSender},
@@ -150,30 +151,6 @@ where
         self.download_dir.join(".pause").exists()
     }
 
-    fn open_readable_zip_file<P: AsRef<Path>>(&self, archive_path: P) -> Result<ZipArchive<File>> {
-        let file = std::fs::OpenOptions::new().read(true).open(&archive_path)?;
-        Ok(zip::ZipArchive::new(file)?)
-    }
-
-    fn open_or_create_writeble_zip_file<P: AsRef<Path>>(
-        &self,
-        manga_path: P,
-        archive_path: P,
-    ) -> Result<ZipWriter<File>> {
-        match std::fs::OpenOptions::new()
-            .read(true)
-            .write(true)
-            .open(&archive_path)
-        { Ok(file) => {
-            return Ok(zip::ZipWriter::new_append(file)?);
-        } _ => { match std::fs::create_dir_all(manga_path).and_then(|_| std::fs::File::create(&archive_path))
-        { Ok(file) => {
-            return Ok(zip::ZipWriter::new(file));
-        } _ => {}}}}
-
-        Err(anyhow!("cannot open or create new zip file"))
-    }
-
     fn save_manga_info_if_not_exists(&self, manga_path: &PathBuf, manga: &Manga) -> Result<()> {
         let path = manga_path.join("details.json");
         if path.exists() {
@@ -228,46 +205,44 @@ where
 
         let archive_path = manga_path.join(format!("{}.cbz", queue.chapter_title));
 
-        if let Ok(mut zip) = self.open_readable_zip_file(&archive_path) {
-            if zip.by_name(&filename).is_ok() {
-                debug!("file already downloaded, mark as compeleted then skip");
-                self.download_repo
-                    .mark_single_download_queue_as_completed(queue.id)
-                    .await?;
-                if !self.paused().await {
-                    self.tx.send(Command::Download).unwrap();
-                }
-                return Ok(());
+        // 3. Build/update archive in a temp file
+        fs::create_dir_all(&manga_path)?;
+        let tmp = NamedTempFile::new_in(&manga_path)?;
+        {
+            let mut tmp_zip = ZipWriter::new(&tmp);
+
+            // Download page
+            let referrer = self
+                .ext
+                .get_source_info(queue.source_id)
+                .map(|s| s.url)
+                .unwrap_or_default();
+            let resp = self
+                .client
+                .request(Method::GET, url.clone())
+                .header("Referer", referrer)
+                .header("User-Agent", format!("Tanoshi/{}", env!("CARGO_PKG_VERSION")).as_str())
+                .send()
+                .await?;
+            if !resp.status().is_success() {
+                return Err(anyhow!(
+                    "failed to download {}, status: {}",
+                    url,
+                    resp.status()
+                ));
             }
+            let data = resp.bytes().await?;
+            tmp_zip.start_file(&filename, SimpleFileOptions::default())?;
+            tmp_zip.write_all(&data)?;
+            tmp_zip.finish()?;
         }
 
-        let mut zip = self.open_or_create_writeble_zip_file(&manga_path, &archive_path)?;
+        // 4. Atomically replace the archive
+        tmp.as_file().sync_all()?;
+        File::open(&manga_path)?.sync_all()?;
+        tmp.persist(&archive_path)?;
 
-        let referrer = self
-            .ext
-            .get_source_info(queue.source_id)
-            .map(|s| s.url)
-            .unwrap_or_default();
-
-        let response = self
-            .client
-            .request(reqwest::Method::GET, url.clone())
-            .header("Referer", referrer)
-            .header("User-Agent", format!("Tanoshi/{}", env!("CARGO_PKG_VERSION")).as_str(),)
-            .send()
-            .await?;
-        
-        // Check if the response is successful
-        if !response.status().is_success() {
-            return Err(anyhow!("failed to download {}, status: {}, body: {}", url, response.status(), response.text().await?));
-        }
-
-        let contents = response.bytes().await?;
-
-        zip.start_file(&*filename, SimpleFileOptions::default())?;
-
-        zip.write_all(contents.to_vec().as_slice())?;
-
+        // 5. Mark page complete and possibly chapter complete
         self.download_repo
             .mark_single_download_queue_as_completed(queue.id)
             .await?;
@@ -290,8 +265,7 @@ where
                 .await?;
         }
 
-        zip.flush()?;
-
+        // 6. Trigger next download
         if !self.paused().await {
             self.tx.send(Command::Download).unwrap();
         }
