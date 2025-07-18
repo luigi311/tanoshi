@@ -19,7 +19,6 @@ use std::{
     path::{Path, PathBuf},
 };
 use tanoshi_vm::extension::ExtensionManager;
-use tempfile::NamedTempFile;
 use zip::{write::SimpleFileOptions, ZipWriter};
 
 use tokio::{
@@ -156,6 +155,25 @@ where
         self.download_dir.join(".pause").exists()
     }
 
+    fn open_or_create_writeble_zip_file<P: AsRef<Path>>(
+        &self,
+        manga_path: P,
+        archive_path: P,
+    ) -> Result<ZipWriter<File>> {
+        match std::fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open(&archive_path)
+        { Ok(file) => {
+            return Ok(zip::ZipWriter::new_append(file)?);
+        } _ => { match std::fs::create_dir_all(manga_path).and_then(|_| std::fs::File::create(&archive_path))
+        { Ok(file) => {
+            return Ok(zip::ZipWriter::new(file));
+        } _ => {}}}}
+
+        Err(anyhow!("cannot open or create new zip file"))
+    }
+
     fn save_manga_info_if_not_exists(&self, manga_path: &PathBuf, manga: &Manga) -> Result<()> {
         let path = manga_path.join("details.json");
         if path.exists() {
@@ -209,12 +227,12 @@ where
             .join(&queue.manga_title);
 
         let archive_path = manga_path.join(format!("{}.cbz", queue.chapter_title));
+        let tmp = manga_path.join(format!("{}.temp.cbz", queue.chapter_title));
 
         // 3. Build/update archive in a temp file
         fs::create_dir_all(&manga_path)?;
-        let tmp = NamedTempFile::new_in(&manga_path)?;
         {
-            let mut tmp_zip = ZipWriter::new(&tmp);
+            let mut tmp_zip = self.open_or_create_writeble_zip_file(&manga_path, &tmp)?;
 
             let mut attempts = 0;
             let data = loop {
@@ -244,17 +262,12 @@ where
                 sleep(Duration::from_secs(RETRY_DELAY_SECS)).await;
             };
 
-            tmp_zip.start_file(&filename, SimpleFileOptions::default())?;
-            tmp_zip.write_all(&data)?;
+            tmp_zip.start_file(&*filename, SimpleFileOptions::default())?;
+            tmp_zip.write_all(data.to_vec().as_slice())?;
             tmp_zip.finish()?;
         }
 
-        // 4. Atomically replace the archive
-        tmp.as_file().sync_all()?;
-        File::open(&manga_path)?.sync_all()?;
-        tmp.persist(&archive_path)?;
-
-        // 5. Mark page complete and possibly chapter complete
+        // 4. Mark page complete and possibly chapter complete
         self.download_repo
             .mark_single_download_queue_as_completed(queue.id)
             .await?;
@@ -265,6 +278,13 @@ where
             .await
             .unwrap_or_default()
         {
+            // 5. Atomically replace the archive
+            if tmp.exists() {
+                fs::rename(tmp, &archive_path)?;
+            } else {
+                error!("temporary file {} does not exist", tmp.display());
+            }
+
             self.download_repo
                 .update_chapter_downloaded_path(
                     queue.chapter_id,

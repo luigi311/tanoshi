@@ -89,4 +89,3 @@ async-trait = "0.1"
 itertools = { version = "0.14", features = ["use_alloc"], default-features = false }
 rayon = "1.10"
 flume = { version = "0.11", default-features = false }
-tempfile = "3.20"
