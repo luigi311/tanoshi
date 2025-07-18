@@ -6158,7 +6158,6 @@ dependencies = [
  "tanoshi-notifier",
  "tanoshi-tracker",
  "tanoshi-vm",
- "tempfile",
  "thiserror 2.0.12",
  "tokio",
  "tokio-stream",
