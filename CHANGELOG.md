@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.36.2]
+- [tanoshi] Improve downloader so they dont get stuck fully downloaded
+- [tanoshi] Added retry to downloader so it doesnt require a pause and start if a page fails to download
+- [all] Upgrade tons of dependencies
+
 ## [0.36.1]
 - [web] Remove webkit scrollbar customizations
 
