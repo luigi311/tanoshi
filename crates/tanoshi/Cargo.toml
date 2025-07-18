@@ -33,12 +33,12 @@ tokio-stream = { version = "0.1", features = ["sync"], default-features = false 
 serde = { version = "1.0", default-features = false }
 serde_json = "1.0"
 serde_yml = "0.0.12"
-bincode = "1"
-async-graphql = { version = "=7.0.15", features = ["chrono", "dataloader", "log", "playground"], default-features = false }
-async-graphql-derive = "=7.0.15"
-async-graphql-parser = "=7.0.15"
-async-graphql-value = "=7.0.15"
-async-graphql-axum = { version = "=7.0.15", optional = true }
+bincode = { version = "2.0", features = ["serde"] }
+async-graphql = { version = "=7.0.16", features = ["chrono", "dataloader", "log", "playground"], default-features = false }
+async-graphql-derive = "=7.0.16"
+async-graphql-parser = "=7.0.16"
+async-graphql-value = "=7.0.16"
+async-graphql-axum = { version = "=7.0.16", optional = true }
 axum = { version = "0.8", optional = true , default-features = false }
 axum-server = "0.7"
 axum-extra = { version = "0.10", features = ["typed-header"], default-features = false }
@@ -51,7 +51,7 @@ tower-http = { version = "0.6", features = [
     "compression-gzip",
     "compression-zstd",
 ], optional = true }
-rand = { version = "0.8", default-features = false }
+rand = { version = "0.9", default-features = false }
 log = { version = "0.4" }
 env_logger = { version = "0.11", default-features = false }
 jsonwebtoken = { version = "9", default-features = false }
@@ -76,11 +76,11 @@ sqlx = { version = "0.8", features = [
 ], default-features = false }
 reqwest = { version = "0.12", default-features = false }
 futures = { version = "0.3", default-features = false }
-rust-argon2 = "2"
-fancy-regex = { version = "0.14", features = ["std"], default-features = false }
+rust-argon2 = "3"
+fancy-regex = { version = "0.15", features = ["std"], default-features = false }
 compress-tools = { git = "https://github.com/OSSystems/compress-tools-rs", rev = "615e54549ce08695a45c7f38d3fbd10827ed140c" , features = ["static"]}
-zip = { version = "2", default-features = false }
-phf = { version = "0.11", features = ["macros"], default-features = false }
+zip = { version = "4", default-features = false }
+phf = { version = "0.12", features = ["macros"], default-features = false }
 human-sort = "0.2"
 aes = "0.8"
 cbc = "0.1"

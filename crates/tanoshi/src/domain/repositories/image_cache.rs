@@ -8,7 +8,9 @@ pub enum ImageCacheRepositoryError {
     #[error("io error: {0}")]
     FileError(#[from] std::io::Error),
     #[error("io error: {0}")]
-    SerializeError(#[from] bincode::Error),
+    SerializeError(#[from] bincode::error::EncodeError),
+    #[error("io error: {0}")]
+    DeserializeError(#[from] bincode::error::DecodeError),
     #[error("other error: {0}")]
     Other(String),
 }
