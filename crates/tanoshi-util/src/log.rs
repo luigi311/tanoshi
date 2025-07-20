@@ -85,25 +85,25 @@ unsafe extern "C" {
 
 #[cfg(any(feature = "__test", feature = "host"))]
 pub fn print_debug(message: String) {
-    log::debug!(target: "extension", "{}", message);
+    log::debug!(target: "extension", "{message}");
 }
 
 #[cfg(any(feature = "__test", feature = "host"))]
 pub fn print_error(message: String) {
-    log::error!(target: "extension", "{}", message);
+    log::error!(target: "extension", "{message}");
 }
 
 #[cfg(any(feature = "__test", feature = "host"))]
 pub fn print_info(message: String) {
-    log::info!(target: "extension", "{}", message);
+    log::info!(target: "extension", "{message}");
 }
 
 #[cfg(any(feature = "__test", feature = "host"))]
 pub fn print_trace(message: String) {
-    log::trace!(target: "extension", "{}", message);
+    log::trace!(target: "extension", "{message}");
 }
 
 #[cfg(any(feature = "__test", feature = "host"))]
 pub fn print_warn(message: String) {
-    log::warn!(target: "extension", "{}", message);
+    log::warn!(target: "extension", "{message}");
 }

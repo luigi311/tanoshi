@@ -19,8 +19,7 @@ where
         let token = parts
             .extract::<TypedHeader<Authorization<Bearer>>>()
             .await
-            .map(|TypedHeader(Authorization(bearer))| Token(bearer.token().to_string()))
-            .unwrap_or_else(|_| Token("".to_string()));
+            .map_or_else(|_| Token(String::new()), |TypedHeader(Authorization(bearer))| Token(bearer.token().to_string()));
 
         Ok(token)
     }

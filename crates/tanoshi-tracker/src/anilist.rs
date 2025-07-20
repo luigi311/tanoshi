@@ -66,17 +66,17 @@ impl From<Media> for TrackerManga {
         let title = other
             .title
             .and_then(|t| t.romaji)
-            .unwrap_or_else(|| "".to_string());
+            .unwrap_or_default();
         Self {
             tracker: NAME.to_string(),
             tracker_manga_id: other.id.to_string(),
             title: title.clone(),
-            synopsis: other.description.unwrap_or_else(|| "".to_string()),
+            synopsis: other.description.unwrap_or_default(),
             cover_url: other
                 .cover_image
                 .and_then(|c| c.medium)
-                .unwrap_or_else(|| "".to_string()),
-            status: other.status.unwrap_or_else(|| "".to_string()),
+                .unwrap_or_default(),
+            status: other.status.unwrap_or_default(),
             tracker_status: if let Some(status) = other.media_list_entry {
                 Some(TrackerStatus {
                     tracker: NAME.to_string(),
@@ -198,7 +198,7 @@ impl Tracker for AniList {
         let res = res
             .get("data")
             .and_then(|data| data.get("Media"))
-            .map(|media| media.to_owned())
+            .map(ToOwned::to_owned)
             .ok_or_else(|| anyhow!("no data"))?;
 
         let media: Media = serde_json::from_value(res).map_err(|e| anyhow!("{e}"))?;
@@ -334,7 +334,7 @@ impl AniList {
         let res = res
             .get("data")
             .and_then(|data| data.get("Media"))
-            .map(|media| media.to_owned())
+            .map(ToOwned::to_owned)
             .ok_or_else(|| anyhow!("no data"))?;
 
         let media: Media = serde_json::from_value(res).map_err(|e| anyhow!("{e}"))?;

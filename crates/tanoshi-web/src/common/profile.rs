@@ -62,7 +62,7 @@ impl Profile {
                     profile.anilist_status.set(result.anilist_status);
                 },
                 Err(err) => {
-                    snackbar::show(format!("{}", err));
+                    snackbar::show(format!("{err}"));
                 }
             }
         }));
@@ -78,7 +78,7 @@ impl Profile {
                 match query::test_telegram(chat_id).await {
                     Ok(_) => {}
                     Err(err) => {
-                        snackbar::show(format!("{}", err));
+                        snackbar::show(format!("{err}"));
                     }
                 }
             });
@@ -91,7 +91,7 @@ impl Profile {
                 match query::test_pushover(&user_key).await {
                     Ok(_) => {}
                     Err(err) => {
-                        snackbar::show(format!("{}", err));
+                        snackbar::show(format!("{err}"));
                     }
                 }
             });
@@ -104,7 +104,7 @@ impl Profile {
                 match query::test_gotify(&token).await {
                     Ok(_) => {}
                     Err(err) => {
-                        snackbar::show(format!("{}", err));
+                        snackbar::show(format!("{err}"));
                     }
                 }
             });
@@ -139,7 +139,7 @@ impl Profile {
             match query::tracker_logout(tracker).await {
                 Ok(_) => Self::fetch_me(profile),
                 Err(err) => {
-                    snackbar::show(format!("{}", err));
+                    snackbar::show(format!("{err}"));
                 }
             }
         }))
@@ -154,7 +154,7 @@ impl Profile {
                     // routing::go_to_url(Route::Settings(SettingCategory::None).url().as_str());
                 },
                 Err(e) => {
-                    snackbar::show(format!("change password error: {}", e));
+                    snackbar::show(format!("change password error: {e}"));
                 }
             };
         }));

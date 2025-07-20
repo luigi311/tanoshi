@@ -163,7 +163,7 @@ impl Tracker for MyAnimeList {
             )
             .await?;
 
-        Ok(manga_list.into_iter().map(|m| m.into()).collect())
+        Ok(manga_list.into_iter().map(Into::into).collect())
     }
 
     async fn get_manga_details(

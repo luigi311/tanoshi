@@ -39,7 +39,7 @@ impl SettingsDownloads {
                         settings.status.set(status);
                     }
                     Err(err) => {
-                        snackbar::show(format!("{}", err));
+                        snackbar::show(format!("{err}"));
                     }
                 }
 
@@ -48,7 +48,7 @@ impl SettingsDownloads {
                         settings.status.set(status);
                     }
                     Err(err) => {
-                        snackbar::show(format!("{}", err));
+                        snackbar::show(format!("{err}"));
                     }
                 }
             }
@@ -64,7 +64,7 @@ impl SettingsDownloads {
                         settings.status.set(status);
                     }
                     Err(err) => {
-                        snackbar::show(format!("{}", err));
+                        snackbar::show(format!("{err}"));
                     }
                 }
 
@@ -73,7 +73,7 @@ impl SettingsDownloads {
                         settings.status.set(status);
                     }
                     Err(err) => {
-                        snackbar::show(format!("{}", err));
+                        snackbar::show(format!("{err}"));
                     }
                 }
             }
@@ -89,7 +89,7 @@ impl SettingsDownloads {
                         settings.fetch_download_queue();
                     }
                     Err(err) => {
-                        snackbar::show(format!("{}", err));
+                        snackbar::show(format!("{err}"));
                     }
                 }
             }
@@ -105,7 +105,7 @@ impl SettingsDownloads {
                         settings.status.set(status);
                     }
                     Err(err) => {
-                        snackbar::show(format!("{}", err));
+                        snackbar::show(format!("{err}"));
                     }
                 }
             }
@@ -133,7 +133,7 @@ impl SettingsDownloads {
                         settings.queue.lock_mut().replace_cloned(queue);
                     }
                     Err(err) => {
-                        snackbar::show(format!("{}", err));
+                        snackbar::show(format!("{err}"));
                     }
                 }
             }
@@ -149,7 +149,7 @@ impl SettingsDownloads {
                         settings.fetch_download_queue();
                     }
                     Err(err) => {
-                        snackbar::show(format!("{}", err));
+                        snackbar::show(format!("{err}"));
                     }
                 }
             }

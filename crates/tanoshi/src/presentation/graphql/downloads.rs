@@ -61,7 +61,7 @@ impl DownloadRoot {
             .get_download_queue(vec![])
             .await?
             .into_par_iter()
-            .map(|q| q.into())
+            .map(Into::into)
             .collect();
 
         Ok(queue)

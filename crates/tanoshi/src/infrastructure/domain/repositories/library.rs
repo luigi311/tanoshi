@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use futures::{stream::BoxStream, StreamExt};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use sqlx::{Row, SqlitePool};
-use std::{collections::HashMap, ops::DerefMut};
+use std::collections::HashMap;
 
 use crate::{
     domain::{
@@ -34,12 +34,13 @@ impl LibraryRepository for LibraryRepositoryImpl {
         user_id: i64,
     ) -> Result<Vec<Category>, LibraryRepositoryError> {
         let categories = sqlx::query(
-            r#"SELECT
-                id,
-                name
-            FROM user_category
-            WHERE user_id = ?
-            ORDER BY name"#,
+            r#"
+        SELECT
+            id,
+            name
+        FROM user_category
+        WHERE user_id = ?
+        ORDER BY name"#,
         )
         .bind(user_id)
         .fetch_all(&self.pool as &SqlitePool)
@@ -56,11 +57,12 @@ impl LibraryRepository for LibraryRepositoryImpl {
 
     async fn get_category_by_id(&self, id: i64) -> Result<Category, LibraryRepositoryError> {
         let row = sqlx::query(
-            r#"SELECT
-                    id,
-                    name
-                FROM user_category
-                WHERE id = ?"#,
+            r#"
+        SELECT
+            id,
+            name
+        FROM user_category
+        WHERE id = ?"#,
         )
         .bind(id)
         .fetch_one(&self.pool as &SqlitePool)
@@ -122,11 +124,19 @@ impl LibraryRepository for LibraryRepositoryImpl {
         user_id: i64,
     ) -> Result<HashMap<Option<i64>, i64>, LibraryRepositoryError> {
         let data = sqlx::query(
-            "SELECT user_category.id, COUNT(1) FROM manga
-        INNER JOIN user_library ON user_library.user_id = ? AND manga.id = user_library.manga_id
-        LEFT JOIN library_category ON user_library.id = library_category.library_id
-        LEFT JOIN user_category ON library_category.category_id = user_category.id
-        GROUP BY user_category.id",
+            r#"
+        SELECT
+            user_category.id,
+            COUNT(1)
+        FROM manga
+            INNER JOIN user_library
+                ON user_library.user_id = ?
+                AND manga.id = user_library.manga_id
+            LEFT JOIN library_category
+                ON user_library.id = library_category.library_id
+            LEFT JOIN user_category
+                ON library_category.category_id = user_category.id
+        GROUP BY user_category.id"#,
         )
         .bind(user_id)
         .fetch_all(&self.pool as &SqlitePool)
@@ -143,9 +153,13 @@ impl LibraryRepository for LibraryRepositoryImpl {
         manga_id: i64,
     ) -> Result<Vec<User>, LibraryRepositoryError> {
         let users = sqlx::query(
-            r#"SELECT user.* FROM user_library
-                    JOIN user ON user_library.user_id = user.id
-                    WHERE user_library.manga_id = ?"#,
+            r#"
+        SELECT
+            user.*
+        FROM user_library
+            JOIN user
+                ON user_library.user_id = user.id
+        WHERE user_library.manga_id = ?"#,
         )
         .bind(manga_id)
         .fetch_all(&self.pool as &SqlitePool)
@@ -154,7 +168,7 @@ impl LibraryRepository for LibraryRepositoryImpl {
         .map(|row| User {
             id: row.get(0),
             username: row.get(1),
-            password: "".to_string(),
+            password: String::new(),
             is_admin: row.get(3),
             created_at: row.get(4),
             updated_at: row.get(5),
@@ -171,10 +185,16 @@ impl LibraryRepository for LibraryRepositoryImpl {
         &self,
     ) -> BoxStream<Result<Manga, LibraryRepositoryError>> {
         sqlx::query(
-            "SELECT DISTINCT manga.*, MAX(chapter.uploaded) as last_uploaded FROM manga \
-                JOIN user_library ON manga.id = user_library.manga_id \
-                JOIN chapter ON manga.id = chapter.manga_id \
-                GROUP by manga.id",
+            r#"
+        SELECT DISTINCT
+            manga.*,
+            MAX(chapter.uploaded) as last_uploaded
+        FROM manga
+            JOIN user_library
+                ON manga.id = user_library.manga_id
+            JOIN chapter
+                ON manga.id = chapter.manga_id
+        GROUP by manga.id"#,
         )
         .fetch(&self.pool as &SqlitePool)
         .map(|row| {
@@ -201,11 +221,17 @@ impl LibraryRepository for LibraryRepositoryImpl {
         id: i64,
     ) -> BoxStream<Result<Manga, LibraryRepositoryError>> {
         sqlx::query(
-            "SELECT DISTINCT manga.*, MAX(chapter.uploaded) as last_uploaded FROM manga \
-                JOIN user_library ON manga.id = user_library.manga_id \
-                JOIN chapter ON manga.id = chapter.manga_id \
-                WHERE manga.id = ?
-                GROUP by manga.id",
+            r#"
+        SELECT DISTINCT
+            manga.*,
+            MAX(chapter.uploaded) as last_uploaded
+        FROM manga
+            JOIN user_library
+                ON manga.id = user_library.manga_id
+            JOIN chapter
+                ON manga.id = chapter.manga_id
+        WHERE manga.id = ?
+        GROUP by manga.id"#,
         )
         .bind(id)
         .fetch(&self.pool as &SqlitePool)
@@ -233,11 +259,17 @@ impl LibraryRepository for LibraryRepositoryImpl {
         user_id: i64,
     ) -> BoxStream<Result<Manga, LibraryRepositoryError>> {
         sqlx::query(
-            "SELECT DISTINCT manga.*, MAX(chapter.uploaded) as last_uploaded FROM manga \
-                JOIN user_library ON manga.id = user_library.manga_id \
-                JOIN chapter ON manga.id = chapter.manga_id \
-                WHERE user_library.user_id = ?
-                GROUP by manga.id",
+            r#"
+        SELECT DISTINCT
+            manga.*,
+            MAX(chapter.uploaded) as last_uploaded
+        FROM manga
+            JOIN user_library
+                ON manga.id = user_library.manga_id
+            JOIN chapter
+                ON manga.id = chapter.manga_id
+        WHERE user_library.user_id = ?
+        GROUP by manga.id"#,
         )
         .bind(user_id)
         .fetch(&self.pool as &SqlitePool)
@@ -265,10 +297,17 @@ impl LibraryRepository for LibraryRepositoryImpl {
         user_id: i64,
     ) -> Result<Vec<Manga>, LibraryRepositoryError> {
         let manga = sqlx::query(
-            r#"SELECT manga.*, library_category.category_id FROM manga
-            INNER JOIN user_library ON user_library.user_id = ? AND manga.id = user_library.manga_id
-            LEFT JOIN library_category ON user_library.id = library_category.library_id
-            ORDER BY title"#,
+            r#"
+        SELECT
+            manga.*,
+            library_category.category_id
+        FROM manga
+            INNER JOIN user_library
+                ON user_library.user_id = ?
+                AND manga.id = user_library.manga_id
+            LEFT JOIN library_category
+                ON user_library.id = library_category.library_id
+        ORDER BY title"#,
         )
         .bind(user_id)
         .fetch_all(&self.pool as &SqlitePool)
@@ -298,11 +337,18 @@ impl LibraryRepository for LibraryRepositoryImpl {
         category_id: Option<i64>,
     ) -> Result<Vec<Manga>, LibraryRepositoryError> {
         let manga = sqlx::query(
-            r#"SELECT manga.*, library_category.category_id FROM manga
-            INNER JOIN user_library ON user_library.user_id = ? AND manga.id = user_library.manga_id
-            LEFT JOIN library_category ON user_library.id = library_category.library_id
-            WHERE category_id IS ?
-            ORDER BY title"#,
+            r#"
+        SELECT
+            manga.*,
+            library_category.category_id
+        FROM manga
+            INNER JOIN user_library
+                ON user_library.user_id = ?
+                AND manga.id = user_library.manga_id
+            LEFT JOIN library_category
+                ON user_library.id = library_category.library_id
+        WHERE category_id IS ?
+        ORDER BY title"#,
         )
         .bind(user_id)
         .bind(category_id)
@@ -338,7 +384,7 @@ impl LibraryRepository for LibraryRepositoryImpl {
         let library_id = sqlx::query("INSERT INTO user_library(user_id, manga_id) VALUES (?, ?)")
             .bind(user_id)
             .bind(manga_id)
-            .execute(tx.deref_mut())
+            .execute(&mut *tx)
             .await
             .map(|res| res.last_insert_rowid())?;
 
@@ -352,7 +398,7 @@ impl LibraryRepository for LibraryRepositoryImpl {
             for category_id in category_ids {
                 query = query.bind(library_id).bind(category_id);
             }
-            query.execute(tx.deref_mut()).await?;
+            query.execute(&mut *tx).await?;
         }
 
         tx.commit().await?;

@@ -67,7 +67,7 @@ impl CategoryRoot {
             .get_categories_by_user_id(claims.sub)
             .await?
             .into_par_iter()
-            .map(|cat| cat.into())
+            .map(Into::into)
             .collect();
 
         Ok(categories)

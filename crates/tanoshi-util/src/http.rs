@@ -68,7 +68,7 @@ pub fn http_request(req: Request) -> Response {
     if let Err(err) = crate::shim::write_object(req) {
         return Response {
             headers: HashMap::new(),
-            body: format!("{}", err),
+            body: format!("{err}"),
             status: 9999,
         };
     }
@@ -76,7 +76,7 @@ pub fn http_request(req: Request) -> Response {
     unsafe { host_http_request() };
     crate::shim::read_object().unwrap_or_else(|err| Response {
         headers: HashMap::new(),
-        body: format!("{}", err),
+        body: format!("{err}"),
         status: 9999,
     })
 }
@@ -136,11 +136,11 @@ pub fn http_request(req: Request) -> Response {
             }
         }
         Err(err) => {
-            debug!("response error => {:?}", err);
+            debug!("response error => {err:?}");
 
             Response {
                 headers: HashMap::new(),
-                body: format!("{}", err),
+                body: format!("{err}"),
                 status: 9999,
             }
         }

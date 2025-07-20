@@ -118,7 +118,7 @@ where
             }
         }
 
-        Err(TrackerError::Other(format!("failed to search manga")))
+        Err(TrackerError::Other("failed to search manga".to_string()))
     }
 
     pub async fn fetch_manga_tracking_status(
@@ -138,7 +138,7 @@ where
             let mut status: Option<TrackerStatus> = None;
             if let Some(tracker_manga_id) = manga
                 .tracker_manga_id
-                .to_owned()
+                .clone()
                 .and_then(|id| id.parse::<i64>().ok())
             {
                 for _ in 0..2 {

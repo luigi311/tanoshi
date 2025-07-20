@@ -93,9 +93,9 @@ where
         source_id: i64,
         path: &str,
     ) -> Result<Manga, MangaError> {
-        let manga = match self.repo.get_manga_by_source_path(source_id, path).await { Ok(manga) => {
+        let manga = if let Ok(manga) = self.repo.get_manga_by_source_path(source_id, path).await {
             manga
-        } _ => {
+        } else {
             let mut manga = self
                 .sources
                 .get_manga_detail(source_id, path.to_string())
@@ -105,7 +105,7 @@ where
             self.repo.insert_manga(&mut manga).await?;
 
             manga
-        }};
+        };
 
         Ok(manga)
     }

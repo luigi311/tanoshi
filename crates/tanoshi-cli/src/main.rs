@@ -76,7 +76,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     source,
                     rustc_version,
                     lib_version,
-                })
+                });
             }
 
             let json = serde_json::to_string(&indexes)?;

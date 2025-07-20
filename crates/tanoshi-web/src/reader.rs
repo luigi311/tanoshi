@@ -98,7 +98,7 @@ impl Reader {
                     this.prev_chapter.set_neq(result.prev);
 
                     // Update the number of pages so the correct page can be loaded
-                    let pages = result.pages.iter().map(|page| (format!("{}?referer={}", page, result.source.url), PageStatus::Initial)).collect();
+                    let pages = result.pages.iter().map(|page| (format!("{page}?referer={}", result.source.url), PageStatus::Initial)).collect();
                     this.pages.lock_mut().replace_cloned(pages);
 
                     this.reader_settings.load_by_manga_id(result.manga.id);
@@ -106,7 +106,7 @@ impl Reader {
                     let page;
                     match nav {
                         Nav::None => {
-                            info!("get current_page {}", current_page);
+                            info!("get current_page {current_page}");
                             page = match this.reader_settings.reader_mode.get() {
                                 ReaderMode::Continous => current_page,
                                 ReaderMode::Paged => {
@@ -148,19 +148,19 @@ impl Reader {
                         },
                     }
 
-                    info!("set current_page to {} nav: {:?}", page, nav);
+                    info!("set current_page to {page} nav: {nav:?}");
                     this.current_page.set_neq(page);
 
                     this.pages_loaded.set(ContinousLoaded::Initial);
 
                     let source_url = result.source.url;
-                    let pages = result.pages.iter().map(|page| (format!("{}?referer={}", page, source_url), PageStatus::Initial)).collect();
+                    let pages = result.pages.iter().map(|page| (format!("{page}?referer={source_url}"), PageStatus::Initial)).collect();
                     this.pages.lock_mut().replace_cloned(pages);
                     
                     Self::replace_state_with_url(chapter_id, page + 1);
                 },
                 Err(err) => {
-                    snackbar::show(format!("{}", err));
+                    snackbar::show(format!("{err}"));
                 }
             }
             
@@ -172,7 +172,7 @@ impl Reader {
         if let Err(e) = history().replace_state_with_url(
             &JsValue::null(),
             "",
-            Some(format!("/chapter/{}#{}", chapter_id, current_page,).as_str()),
+            Some(format!("/chapter/{chapter_id}#{current_page}").as_str()),
         ) {
             let message = match e.as_string() { Some(msg) => {
                 msg
@@ -180,7 +180,7 @@ impl Reader {
                 "unknown reason".to_string()
             }};
 
-            error!("error replace_state_with_url: {}", message);
+            error!("error replace_state_with_url: {message}");
         }
     }
 
@@ -204,7 +204,7 @@ impl Reader {
                 match query::update_page_read_at(chapter_id, page as i64, is_complete).await {
                     Ok(_) => {}
                     Err(err) => {
-                        snackbar::show(format!("{}", err));
+                        snackbar::show(format!("{err}"));
                     }
                 }
             });
@@ -413,7 +413,7 @@ impl Reader {
                                     .with_node!(input => {
                                         .event(clone!(this, input => move |_: events::Change| {
                                             let page = input.value().parse().unwrap_or(0);
-                                            info!("page: {}", page);
+                                            info!("page: {page}");
                                             if matches!(this.reader_settings.reader_mode.get(), ReaderMode::Continous) {
                                                 let page_top =  document()
                                                     .get_element_by_id(format!("{}", page - 1).as_str())
@@ -421,7 +421,7 @@ impl Reader {
                                                     .map(|el| el.offset_top() as f64)
                                                     .unwrap_or_default();
         
-                                                info!("scroll to {}", page_top);
+                                                info!("scroll to {page_top}");
                                                 window().scroll_to_with_x_and_y(0.0_f64, page_top);
                                             }
                                             this.current_page.set(page);
@@ -729,7 +729,7 @@ impl Reader {
             .style("flex-direction", "column")
             .future(this.pages_loaded.signal_cloned().for_each(clone!(this => move |loaded| {
                 let page = this.current_page.get();
-                info!("page: {} loaded: {:?}", page, loaded);
+                info!("page: {page} loaded: {loaded:?}");
                 if page > 0 && matches!(loaded, ContinousLoaded::Loaded) {
                     let page_top =  document()
                         .get_element_by_id(format!("{}", page - 1).as_str())
@@ -737,7 +737,7 @@ impl Reader {
                         .map(|el| el.offset_top() as f64)
                         .unwrap_or_default();
 
-                    info!("scroll to {}", page_top);
+                    info!("scroll to {page_top}");
                     window().scroll_to_with_x_and_y(0.0_f64, page_top);
                     this.pages_loaded.set_neq(ContinousLoaded::Scrolled);
                 }
@@ -770,7 +770,7 @@ impl Reader {
                         .style("margin-right", "auto")
                         .style_signal("margin-top", this.reader_settings.padding.signal().map(|x| x.then(|| "0.25rem")))
                         .style_signal("margin-bottom", this.reader_settings.padding.signal().map(|x| x.then(|| "0.25rem")))
-                        .attr("id", format!("{}", index).as_str())
+                        .attr("id", format!("{index}").as_str())
                         .attr_signal("src", this.image_src_signal(index, 3, 4, page.clone(), status))
                         .style_signal("max-width", this.fit_signal().map(|(fit, zoom)| match fit {
                             crate::common::Fit::Height => "none".to_string(),
@@ -857,7 +857,7 @@ impl Reader {
                 let pages_len = this.pages.lock_ref().len() ;
                 for i in 0..pages_len {
                     let page_top = document()
-                        .get_element_by_id(format!("{}", i).as_str())
+                        .get_element_by_id(format!("{i}").as_str())
                         .and_then(|el| el.dyn_into::<web_sys::HtmlElement>().ok())
                         .map(|el| el.offset_top())
                         .unwrap_or_default();
@@ -976,7 +976,7 @@ impl Reader {
                     html!("img" => HtmlImageElement, {
                         .style("margin-left", "auto")
                         .style("margin-right", "auto")
-                        .attr("id", format!("{}", index).as_str())
+                        .attr("id", format!("{index}").as_str())
                         .style_signal("max-width", this.reader_settings.fit.signal().map(|x| match x {
                             crate::common::Fit::Height => "none",
                             _ => "100%",
@@ -1028,7 +1028,7 @@ impl Reader {
                                         this.prev_page.set_neq(current_page.checked_sub(sub));
                                     }
                                 } else if index == current_page + 1 {
-                                    let is_prev_img_portrait = match document().get_element_by_id(format!("{}", current_page).as_str()).and_then(|el| el.dyn_into::<web_sys::HtmlImageElement>().ok()) { Some(prev_img) => {
+                                    let is_prev_img_portrait = match document().get_element_by_id(format!("{current_page}").as_str()).and_then(|el| el.dyn_into::<web_sys::HtmlImageElement>().ok()) { Some(prev_img) => {
                                         prev_img.natural_width() <= prev_img.natural_height()
                                     } _ => {
                                         true
@@ -1061,7 +1061,7 @@ impl Reader {
                     })
                 } else {
                     html!("div", {
-                        .attr("id", format!("{}", index).as_str())
+                        .attr("id", format!("{index}").as_str())
                         .style("display", "flex")
                         .style_signal("width", this.reader_settings.fit.signal().map(|x| match x {
                             crate::common::Fit::Height => "none",

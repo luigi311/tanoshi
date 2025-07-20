@@ -27,7 +27,7 @@ impl ImageRepository for ImageRepositoryImpl {
         url: &str,
         referer: Option<&String>,
     ) -> Result<Image, ImageRepositoryError> {
-        debug!("get image from {}", url);
+        debug!("get image from {url}");
         if url.is_empty() {
             return Err(ImageRepositoryError::Other(
                 "url cannot be empty".to_string(),

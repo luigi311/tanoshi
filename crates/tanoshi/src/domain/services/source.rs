@@ -50,7 +50,7 @@ where
                 .map(|s| (s.id, s))
                 .collect();
 
-            for source in sources.iter_mut() {
+            for source in &mut sources {
                 if let Some(available_source) = available_sources.get(&source.id) {
                     let available_version = Version::from_str(&available_source.version)?;
                     let installed_version = Version::from_str(&source.version)?;

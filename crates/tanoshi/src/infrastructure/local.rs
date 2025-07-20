@@ -48,7 +48,7 @@ fn default_cover_url() -> String {
 fn filter_supported_files_and_folders(entry: Result<DirEntry, std::io::Error>) -> Option<DirEntry> {
     let entry = entry.ok()?;
     if entry.path().is_dir()
-        || SUPPORTED_FILES.contains(&entry.path().extension()?.to_string_lossy().to_string())
+        || SUPPORTED_FILES.contains(entry.path().extension()?.to_string_lossy().as_ref())
     {
         Some(entry)
     } else {
@@ -61,7 +61,7 @@ fn find_cover_from_archive(path: &Path) -> String {
     let source = match std::fs::File::open(path) {
         Ok(file) => file,
         Err(e) => {
-            error!("error open {}, reason {}", path.display(), e);
+            error!("error open {}, reason {e}", path.display());
             return default_cover_url();
         }
     };
@@ -74,8 +74,7 @@ fn find_cover_from_archive(path: &Path) -> String {
             debug!("{} {:?}", file.display(), res.first());
             if res
                 .first()
-                .map(|m| m.type_() == mime::IMAGE)
-                .unwrap_or(false)
+                .is_some_and(|m| m.type_() == mime::IMAGE)
             {
                 cover_url = path.join(file).display().to_string();
                 break;
@@ -92,8 +91,7 @@ fn find_cover_from_dir(path: &Path) -> String {
         .ok()
         .map(sort_dir)
         .and_then(|dir| dir.into_iter().next())
-        .map(|entry| entry.path().display().to_string())
-        .unwrap_or_else(default_cover_url)
+        .map_or_else(default_cover_url, |entry| entry.path().display().to_string())
 }
 
 // find details from an archvie
@@ -141,11 +139,8 @@ fn find_cover_url(entry: &Path) -> String {
         return find_cover_from_archive(entry);
     }
 
-    let entry_read_dir = match entry.read_dir() {
-        Ok(entry_read_dir) => entry_read_dir,
-        Err(_) => {
-            return default_cover_url();
-        }
+    let Ok(entry_read_dir) = entry.read_dir() else {
+       return default_cover_url();
     };
 
     let path = match entry_read_dir
@@ -184,23 +179,21 @@ pub fn get_pages_from_archive(path: &Path) -> Result<Vec<String>, anyhow::Error>
             let pages = files
                 .into_iter()
                 .filter(|p| {
-                    mime_guess::from_path(&p)
+                    mime_guess::from_path(p)
                         .first()
-                        .map(|m| m.type_() == mime::IMAGE)
-                        .unwrap_or(false)
+                        .is_some_and(|m| m.type_() == mime::IMAGE)
                 })
                 .map(|p| path.join(p).display().to_string())
                 .collect();
             Ok(pages)
         }
-        Err(e) => Err(anyhow::anyhow!("{}", e)),
+        Err(e) => Err(anyhow::anyhow!("{e}")),
     }
 }
 
 fn get_pages_from_dir(path: &Path) -> Result<Vec<String>, anyhow::Error> {
     let pages = path
         .read_dir()?
-        .into_iter()
         .filter_map(Result::ok)
         .filter_map(|f| (f.path().is_file()).then(|| f.path().display().to_string()))
         .collect();
@@ -219,13 +212,10 @@ fn map_entry_to_chapter(source_id: i64, path: &Path) -> Option<ChapterInfo> {
             return None;
         }
     };
-    let number_re = match Regex::new(
+    let Ok(number_re) = Regex::new(
         r"(?i)(?<=v)(\d+)|(?<=volume)\s*(\d+)|(?<=vol)\s*(\d+)|(?<=\s)(\d+)|(\d+)",
-    ) {
-        Ok(re) => re,
-        Err(_) => {
-            return None;
-        }
+    ) else {
+        return None;
     };
     let file_name = path.file_stem()?.to_string_lossy().to_string();
     let number = match number_re.find(&file_name).ok().and_then(|m| m) {
@@ -294,7 +284,7 @@ impl Extension for Local {
         let read_dir = match std::fs::read_dir(&path) {
             Ok(read_dir) => read_dir,
             Err(e) => {
-                return Err(anyhow!("{}", e));
+                return Err(anyhow!("{e}"));
             }
         };
 
@@ -323,7 +313,7 @@ impl Extension for Local {
                     .path()
                     .file_stem()
                     .map(|s| s.to_string_lossy().to_string())
-                    .unwrap_or_else(|| "".to_string()),
+                    .unwrap_or_default(),
                 author: vec![],
                 genre: vec![],
                 status: None,
@@ -342,8 +332,8 @@ impl Extension for Local {
 
         let title = path
             .file_stem()
-            .map(|s| s.to_string_lossy().to_string())
-            .unwrap_or_else(|| "".to_string());
+            .map_or(String::new(), |s| s.to_string_lossy().to_string());
+
         let cover_url = find_cover_url(&path);
 
         let mut manga = MangaInfo {
@@ -351,7 +341,7 @@ impl Extension for Local {
             title: title.clone(),
             author: vec![],
             genre: vec![],
-            status: Some("".to_string()),
+            status: Some(String::new()),
             description: Some(title),
             path: path.display().to_string(),
             cover_url,
@@ -392,7 +382,7 @@ impl Extension for Local {
         let read_dir = match std::fs::read_dir(&path) {
             Ok(read_dir) => read_dir,
             Err(e) => {
-                return Err(anyhow!("{}", e));
+                return Err(anyhow!("{e}"));
             }
         };
 
@@ -413,12 +403,12 @@ impl Extension for Local {
         let mut pages = if path.is_dir() {
             match get_pages_from_dir(&path) {
                 Ok(pages) => pages,
-                Err(e) => return Err(anyhow!("{}", e)),
+                Err(e) => return Err(anyhow!("{e}")),
             }
         } else if path.is_file() {
             match get_pages_from_archive(&path) {
                 Ok(pages) => pages,
-                Err(e) => return Err(anyhow!("{}", e)),
+                Err(e) => return Err(anyhow!("{e}")),
             }
         } else {
             return Err(anyhow!("filename neither file or dir"));

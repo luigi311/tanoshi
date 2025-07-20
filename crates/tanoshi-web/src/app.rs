@@ -54,7 +54,7 @@ impl App {
                     }));
                 }
                 Err(e) => {
-                    snackbar::show(format!("error check server status: {}", e));
+                    snackbar::show(format!("error check server status: {e}"));
                 }
             }
         }));

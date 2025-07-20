@@ -157,7 +157,7 @@ impl Manga {
                     manga.chapter_settings.load_by_manga_id(manga.id.get());                    
                 },
                 Err(err) => {
-                    snackbar::show(format!("{}", err));
+                    snackbar::show(format!("{err}"));
                 }
             }
         }));
@@ -212,7 +212,7 @@ impl Manga {
                     manga.chapter_settings.load_by_manga_id(manga.id.get());
                 },
                 Err(err) => {
-                    snackbar::show(format!("{}", err));
+                    snackbar::show(format!("{err}"));
                 }
             }
         }));
@@ -225,7 +225,7 @@ impl Manga {
             match query::mark_chapter_as_read(&selected_chapter_id).await {
                 Ok(_) => {},
                 Err(err) => {
-                    snackbar::show(format!("{}", err));
+                    snackbar::show(format!("{err}"));
                 }
             }
 
@@ -246,7 +246,7 @@ impl Manga {
             match query::mark_chapter_as_unread(&selected_chapter_id).await {
                 Ok(_) => {},
                 Err(err) => {
-                    snackbar::show(format!("{}", err));
+                    snackbar::show(format!("{err}"));
                 }
             }
 
@@ -269,7 +269,7 @@ impl Manga {
             match query::download_chapters(&selected_chapter_id).await {
                 Ok(_) => {},
                 Err(err) => {
-                    snackbar::show(format!("{}", err));
+                    snackbar::show(format!("{err}"));
                 }
             }
 
@@ -290,7 +290,7 @@ impl Manga {
             match query::remove_downloaded_chapters(&selected_chapter_id).await {
                 Ok(_) => {},
                 Err(err) => {
-                    snackbar::show(format!("{}", err));
+                    snackbar::show(format!("{err}"));
                 }
             }
 
@@ -317,7 +317,7 @@ impl Manga {
                     manga.is_favorite.set_neq(true);
                 },
                 Err(err) => {
-                    snackbar::show(format!("{}", err));
+                    snackbar::show(format!("{err}"));
                 }
             }
         }))
@@ -334,7 +334,7 @@ impl Manga {
                     manga.is_favorite.set_neq(false);
                 },
                 Err(err) => {
-                    snackbar::show(format!("{}", err));
+                    snackbar::show(format!("{err}"));
                 }
             }
         }));

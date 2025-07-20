@@ -96,7 +96,7 @@ impl Settings {
                     }).collect());                    
                 },
                 Err(err) => {
-                    snackbar::show(format!("{}", err));
+                    snackbar::show(format!("{err}"));
                 }
             }
         }));
@@ -121,7 +121,7 @@ impl Settings {
                     }).collect());
                 },
                 Err(err) => {
-                    snackbar::show(format!("{}", err));
+                    snackbar::show(format!("{err}"));
                 }
             }
         }));
@@ -134,7 +134,7 @@ impl Settings {
                     Self::fetch_user_list(settings.clone());
                 },
                 Err(err) => {
-                    snackbar::show(format!("{}", err));
+                    snackbar::show(format!("{err}"));
                 }
             }
 
@@ -154,7 +154,7 @@ impl Settings {
                     }))
                 },
                 Err(err) => {
-                    snackbar::show(format!("{}", err));
+                    snackbar::show(format!("{err}"));
                 }
             }
         }));
@@ -166,7 +166,7 @@ impl Settings {
             match query::install_source(id).await {
                 Ok(_) => {},
                 Err(err) => {
-                    snackbar::show(format!("{}", err));
+                    snackbar::show(format!("{err}"));
                     return;
                 }
             }
@@ -192,7 +192,7 @@ impl Settings {
                     }).collect());
                 },
                 Err(err) => {
-                    snackbar::show(format!("{}", err));
+                    snackbar::show(format!("{err}"));
                 }
             }
 
@@ -205,7 +205,7 @@ impl Settings {
             match query::update_source(id).await {
                 Ok(_) => {},
                 Err(err) => {
-                    snackbar::show(format!("{}", err));
+                    snackbar::show(format!("{err}"));
                     return;
                 }
             }
@@ -231,7 +231,7 @@ impl Settings {
                     }).collect());
                 },
                 Err(err) => {
-                    snackbar::show(format!("{}", err));
+                    snackbar::show(format!("{err}"));
                 }
             }
         }));

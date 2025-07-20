@@ -39,7 +39,7 @@ impl Login {
                     App::fetch_server_status(app);
                 }
                 Err(e) => {
-                    snackbar::show(format!("Login failed: {}", e));
+                    snackbar::show(format!("Login failed: {e}"));
                 }
             }
         });

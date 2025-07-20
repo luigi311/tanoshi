@@ -29,7 +29,7 @@ where
 
     let mut req = client.post(url);
     if !token.is_empty() {
-        req = req.header("Authorization", format!("Bearer {}", token));
+        req = req.header("Authorization", format!("Bearer {token}"));
     }
     let res = req.json(&request_body).send().await?;
     let response_body: graphql_client::Response<Q::ResponseData> = res.json().await?;
@@ -39,7 +39,7 @@ where
         (Some(data), _) => Ok(data),
         (_, Some(errors)) => Err(errors
             .into_iter()
-            .map(|e| format!("{}", e))
+            .map(|e| format!("{e}"))
             .collect::<Vec<String>>()
             .join(", ")
             .into()),

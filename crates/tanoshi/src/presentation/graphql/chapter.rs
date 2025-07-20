@@ -202,7 +202,7 @@ impl Chapter {
             .data::<DataLoader<DatabaseLoader>>()?
             .load_one(ChapterDownloadQueueId(self.id))
             .await?
-            .map(|q| q.into());
+            .map(Into::into);
 
         Ok(queue)
     }

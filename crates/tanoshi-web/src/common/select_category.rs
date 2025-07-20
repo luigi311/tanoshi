@@ -45,7 +45,7 @@ impl SelectCategoryModal {
                     })).collect());
                 }
                 Err(e) => {
-                    snackbar::show(format!("failed to fetch categories {}", e));
+                    snackbar::show(format!("failed to fetch categories {e}"));
                 }
             }
         }));

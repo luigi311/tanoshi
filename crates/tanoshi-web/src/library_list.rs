@@ -42,7 +42,7 @@ impl LibraryList {
                     }).collect());
                 }
                 Err(e) => {
-                    snackbar::show(format!("failed to fetch categories {}", e));
+                    snackbar::show(format!("failed to fetch categories {e}"));
                 }
             }
             library.spinner.set_active(false);

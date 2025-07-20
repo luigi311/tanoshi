@@ -49,7 +49,7 @@ impl LibraryRoot {
             .get_manga_from_library_by_category_id(claims.sub, category_id)
             .await?
             .into_par_iter()
-            .map(|m| m.into())
+            .map(Into::into)
             .collect();
 
         Ok(manga)
@@ -376,7 +376,7 @@ impl LibrarySubscriptionRoot {
         let stream = stream.filter_map(move |res| async move {
             debug!("update: {res:?}");
             match res { Ok(update) => {
-                if update.users.get(&user_id).is_some() {
+                if update.users.contains(&user_id) {
                     Some(RecentUpdate {
                         manga_id: update.chapter.manga_id,
                         chapter_id: update.chapter.id,

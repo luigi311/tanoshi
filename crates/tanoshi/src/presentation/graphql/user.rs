@@ -140,7 +140,7 @@ impl UserRoot {
             sub: user.id,
             username: user.username,
             is_admin: user.is_admin,
-            exp: (current_time + std::time::Duration::from_secs(2678400)).as_secs() as usize, // 31 days
+            exp: (current_time + std::time::Duration::from_secs(2_678_400)).as_secs() as usize, // 31 days
         };
         let token = auth::encode_jwt(secret, &claims)?;
 
@@ -154,7 +154,7 @@ impl UserRoot {
             .fetch_all_users()
             .await?;
 
-        Ok(users.into_iter().map(|user| user.into()).collect())
+        Ok(users.into_iter().map(Into::into).collect())
     }
 
     async fn me(&self, ctx: &Context<'_>) -> Result<User> {

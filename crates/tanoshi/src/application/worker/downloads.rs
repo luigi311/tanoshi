@@ -105,8 +105,7 @@ where
             .download_repo
             .get_download_queue_last_priority()
             .await?
-            .map(|p| p + 1)
-            .unwrap_or(0);
+            .map_or(0, |p| p + 1);
 
         let manga = self.manga_repo.get_manga_by_id(chapter.manga_id).await?;
         let pages = self
@@ -143,7 +142,7 @@ where
                 url: page.clone(),
                 priority,
                 date_added,
-            })
+            });
         }
 
         self.download_repo.insert_download_queue(&queue).await?;
@@ -166,10 +165,9 @@ where
             .open(&archive_path)
         { Ok(file) => {
             return Ok(zip::ZipWriter::new_append(file)?);
-        } _ => { match std::fs::create_dir_all(manga_path).and_then(|_| std::fs::File::create(&archive_path))
-        { Ok(file) => {
+        } _ => { if let Ok(file) = std::fs::create_dir_all(manga_path).and_then(|()| std::fs::File::create(&archive_path)) {
             return Ok(zip::ZipWriter::new(file));
-        } _ => {}}}}
+        }}}
 
         Err(anyhow!("cannot open or create new zip file"))
     }
@@ -181,7 +179,7 @@ where
         }
 
         info!("creating directory: {}", path.display());
-        std::fs::create_dir_all(&manga_path)?;
+        std::fs::create_dir_all(manga_path)?;
 
         let manga_info = LocalMangaInfo {
             title: Some(manga.title.clone()),
@@ -203,12 +201,9 @@ where
     }
 
     async fn download(&mut self) -> Result<()> {
-        let queue = match self.download_repo.get_single_download_queue().await? {
-            Some(queue) => queue,
-            None => {
-                info!("no queue");
-                return Ok(());
-            }
+        let Some(queue) = self.download_repo.get_single_download_queue().await? else {
+            info!("no queue");
+            return Ok(());
         };
 
         debug!("got {}", queue.url);
@@ -217,8 +212,8 @@ where
 
         let filename = url
             .path_segments()
-            .and_then(|seg| seg.last())
-            .map(|s| s.to_string())
+            .and_then(Iterator::last)
+            .map(ToString::to_string)
             .ok_or_else(|| anyhow!("no filename"))?;
 
         let manga_path = self
@@ -245,19 +240,19 @@ where
                     Ok(resp) if resp.status().is_success() => match resp.bytes().await {
                         Ok(b) => break b,
                         Err(e) => {
-                            error!("error reading bytes {} attempt {}", e, attempts);
+                            error!("error reading bytes {e} attempt {attempts}");
                         }
                     },
                     Ok(resp) => {
-                        error!("bad status {} for {} attempt {}", resp.status(), url, attempts);
+                        error!("bad status {} for {url} attempt {attempts}", resp.status());
                     }
                     Err(e) => {
-                        error!("network error {} for {} attempt {}", e, url, attempts);
+                        error!("network error {e} for {url} attempt {attempts}");
                     }
                 }
                 attempts += 1;
                 if attempts >= MAX_RETRIES {
-                    return Err(anyhow!("failed to download {} after {} attempts", url, MAX_RETRIES));
+                    return Err(anyhow!("failed to download {url} after {MAX_RETRIES} attempts"));
                 }
                 sleep(Duration::from_secs(RETRY_DELAY_SECS)).await;
             };
@@ -321,7 +316,7 @@ where
                         match insert_result {
                             Err(e) => {
                                 error!("failed to insert queue, reason {e}");
-                            } Ok(_) => {
+                            } Ok(()) => {
                                 let _ = self.tx.send(Command::Download);
                             }
                         }
@@ -339,14 +334,14 @@ where
                                     let insert_result = self.insert_to_queue(&chapter).await;
                                     match insert_result { 
                                         Err(e) => {
-                                            error!("failed to insert queue, reason {}", e);
-                                        } Ok(_) => {
-                                            let _ = self.tx.send(Command::Download).unwrap();
+                                            error!("failed to insert queue, reason {e}");
+                                        } Ok(()) => {
+                                            self.tx.send(Command::Download).unwrap();
                                         }
                                     }
                                 }
                                 Err(e) => {
-                                    error!("chapter {} not found, {}", chapter_id, e);
+                                    error!("chapter {chapter_id} not found, {e}");
                                 }
                             }
                         }
@@ -362,7 +357,7 @@ where
                                         Err(e) => {
                                             error!("failed to insert queue, reason {e}");
                                         }
-                                        Ok(_) => {
+                                        Ok(()) => {
                                             let _ = self.tx.send(Command::Download);
                                         }
                                     }
@@ -376,7 +371,7 @@ where
                             if !self.paused().await {
                                 let download_result = self.download().await;
                                 if let Err(e) = download_result {
-                                    error!("{e}")
+                                    error!("{e}");
                                 }
                             }
                         }

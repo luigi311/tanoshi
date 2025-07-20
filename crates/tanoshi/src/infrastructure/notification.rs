@@ -94,11 +94,11 @@ where
                 .await;
         }
         if let Some(chat_id) = user.telegram_chat_id {
-            let mut message = "".to_string();
+            let mut message = String::new();
             if let Some(title) = title {
-                message = format!("<b>{}</b>\n", title);
+                message = format!("<b>{title}</b>\n");
             }
-            message = format!("{}{}", message, body);
+            message = format!("{message}{body}");
             let _ = self.send_message_to_telegram(chat_id, &message).await;
         }
 

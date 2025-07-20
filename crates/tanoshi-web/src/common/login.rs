@@ -39,7 +39,7 @@ impl Login {
                     routing::go_to_url(Route::Settings(SettingCategory::Users).url().as_str());
                 }
                 Err(e) => {
-                    snackbar::show(format!("error register: {}", e));
+                    snackbar::show(format!("error register: {e}"));
                 }
             }
         }));

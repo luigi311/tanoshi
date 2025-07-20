@@ -17,8 +17,8 @@ impl Default for User {
     fn default() -> Self {
         Self {
             id: 0,
-            username: "".to_string(),
-            password: "".to_string(),
+            username: String::new(),
+            password: String::new(),
             is_admin: false,
             created_at: NaiveDateTime::default(),
             updated_at: NaiveDateTime::default(),

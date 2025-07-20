@@ -120,7 +120,7 @@ impl Route {
                                 .strip_prefix('#')
                                 .and_then(|h| h.parse().ok())
                                 .unwrap_or(1);
-                            info!("chapter {} page {}", id, page);
+                            info!("chapter {id} page {page}");
                             Route::Chapter(id, page - 1)
                         } else {
                             Route::NotFound
@@ -182,7 +182,7 @@ impl Route {
             Route::LibraryList => "/libraries".to_string(),
             Route::Library(category_id) => {
                 if let Some(id) = category_id {
-                    format!("/library/{}", id)
+                    format!("/library/{id}")
                 } else {
                     "/library".to_string()
                 }
@@ -190,15 +190,15 @@ impl Route {
             Route::CatalogueList => "/catalogue".to_string(),
             Route::Catalogue { id, latest, query } => {
                 if *latest {
-                    return format!("/catalogue/{}/latest", id);
+                    return format!("/catalogue/{id}/latest");
                 }
 
                 let mut param = vec![];
                 if let Some(query) = query {
-                    param.push(format!("query={}", query));
+                    param.push(format!("query={query}"));
                 }
 
-                format!("/catalogue/{}?{}", id, param.join("&"))
+                format!("/catalogue/{id}?{}", param.join("&"))
             }
             Route::Manga(manga_id) => ["/manga".to_string(), manga_id.to_string()].join("/"),
             Route::MangaBySourcePath(source_id, path) => [
@@ -208,7 +208,7 @@ impl Route {
             ]
             .join("/"),
             Route::Chapter(chapter_id, page) => {
-                format!("/chapter/{}#{}", chapter_id, page + 1)
+                format!("/chapter/{chapter_id}#{}", page + 1)
             }
             Route::Updates => "/updates".to_string(),
             Route::Histories => "/histories".to_string(),
@@ -220,7 +220,7 @@ impl Route {
             Route::Settings(SettingCategory::Reader) => "/settings/reader".to_string(),
             Route::Settings(SettingCategory::SourceList) => "/settings/sources".to_string(),
             Route::Settings(SettingCategory::Source(source_id)) => {
-                format!("/settings/sources/{}", source_id)
+                format!("/settings/sources/{source_id}")
             }
             Route::Settings(SettingCategory::Users) => "/settings/users".to_string(),
             Route::Settings(SettingCategory::CreateUser) => "/settings/users/create".to_string(),

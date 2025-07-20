@@ -54,7 +54,7 @@ impl UserRepository for UserRepositoryImpl {
         is_admin: bool,
     ) -> Result<u64, UserRepositoryError> {
         let row_id = sqlx::query(r#"UPDATE user SET is_admin = ? WHERE id = ?"#)
-            .bind(&is_admin)
+            .bind(is_admin)
             .bind(id)
             .execute(&self.pool as &SqlitePool)
             .await?

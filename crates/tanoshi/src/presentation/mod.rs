@@ -293,7 +293,7 @@ impl ServerBuilder {
         let _ = axum_server::bind(addr.into())
             .serve(router.into_make_service())
             .await
-            .map_err(|e| anyhow!("{}", e));
+            .map_err(|e| anyhow!("{e}"));
 
 
         Ok(())
