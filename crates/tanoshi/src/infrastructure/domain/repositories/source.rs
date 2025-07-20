@@ -42,7 +42,7 @@ impl SourceRepository for SourceRepositoryImpl {
             .list()
             .await?
             .into_iter()
-            .map(|s| s.into())
+            .map(Into::into)
             .collect::<Vec<Source>>();
 
         sources.sort_by(|a, b| a.id.cmp(&b.id));

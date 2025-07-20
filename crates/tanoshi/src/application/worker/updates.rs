@@ -109,7 +109,7 @@ where
         } else {
             period
         };
-        info!("periodic updates every {} seconds", period);
+        info!("periodic updates every {period} seconds");
 
         let (command_tx, command_rx) = flume::bounded(0);
 
@@ -236,7 +236,7 @@ where
                     })
                     .collect(),
                 Err(e) => {
-                    error!("error fetch new chapters for {}, source {}, reason: {}", manga.title, manga.source_id, e);
+                    error!("error fetch new chapters for {}, source {}, reason: {e}", manga.title, manga.source_id);
                     continue;
                 }
             };
@@ -330,12 +330,11 @@ where
             if available_sources_map
                 .get(&source.id)
                 .and_then(|index| Version::from_str(&index.version).ok())
-                .map(|v| v > Version::from_str(source.version).unwrap_or_default())
-                .unwrap_or(false)
+                .is_some_and(|v| v > Version::from_str(source.version).unwrap_or_default())
             {
                 let message = format!("{} extension update available", source.name);
                 if let Err(e) = self.notifier.send_all_to_admins(None, &message).await {
-                    error!("failed to send extension update to admin, {}", e);
+                    error!("failed to send extension update to admin, {e}");
                 }
             }
         }
@@ -368,7 +367,7 @@ where
             info!("new server update found!");
             let message = format!("Tanoshi {} Released\n{}", release.tag_name, release.body);
             if let Err(e) = self.notifier.send_all_to_admins(None, &message).await {
-                error!("failed to send extension update to admin, {}", e);
+                error!("failed to send extension update to admin, {e}");
             }
         } else {
             info!("no tanoshi update found");
@@ -425,21 +424,21 @@ where
                         ChapterUpdateCommand::All(tx) => {
                             self.start_chapter_update_queue_all(manga_tx);
                             let res = self.check_chapter_update(manga_rx).await;
-                            if let Err(_) = tx.send(res) {
+                            if tx.send(res).is_err() {
                                 info!("failed to send chapter update result");
                             }
                         },
                         ChapterUpdateCommand::Manga(manga_id, tx) => {
                             self.start_chapter_update_queue_by_manga_id(manga_tx, manga_id).await;
                             let res = self.check_chapter_update(manga_rx).await;
-                            if let Err(_) = tx.send(res) {
+                            if tx.send(res).is_err() {
                                 info!("failed to send chapter update result");
                             }
                         },
                         ChapterUpdateCommand::Library(user_id, tx) => {
                             self.start_chapter_update_queue_by_user_id(manga_tx, user_id);
                             let res = self.check_chapter_update(manga_rx).await;
-                            if let Err(_) = tx.send(res) {
+                            if tx.send(res).is_err() {
                                 info!("failed to send chapter update result");
                             }
                         }
@@ -457,7 +456,7 @@ where
                     
                     let check_chapter_result = self.check_chapter_update(manga_rx).await;
                     if let Err(e) = check_chapter_result {
-                        error!("failed check chapter update: {e}")
+                        error!("failed check chapter update: {e}");
                     }
 
                     info!("periodic updates done in {:?}", Instant::now() - start);
@@ -467,14 +466,14 @@ where
 
                     let check_server_result = self.check_server_update().await;
                     if let Err(e) = check_server_result {
-                        error!("failed check server update: {e}")
+                        error!("failed check server update: {e}");
                     }
 
                     info!("check extension update");
 
                     let check_extension_result = self.check_extension_update().await;
                     if let Err(e) = check_extension_result {
-                        error!("failed check extension update: {e}")
+                        error!("failed check extension update: {e}");
                     }
                 }
                 _ = clear_cache_interval.tick() => {

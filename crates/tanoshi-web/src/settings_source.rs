@@ -39,7 +39,7 @@ impl SettingsSource {
                     settings.input_list.set(s.preferences);
                 },
                 Err(err) => {
-                    snackbar::show(format!("{}", err));
+                    snackbar::show(format!("{err}"));
                 }
             }
         }));
@@ -50,7 +50,7 @@ impl SettingsSource {
             match query::set_preferences(settings.source_id, settings.input_list.input_list.lock_ref().to_vec().clone()).await {
                 Ok(()) => {},
                 Err(err) => {
-                    snackbar::show(format!("{}", err));
+                    snackbar::show(format!("{err}"));
                 }
             }
         }));
@@ -63,7 +63,7 @@ impl SettingsSource {
                     routing::go_to_url(&Route::Settings(SettingCategory::SourceList).url());
                 }
                 Err(err) => {
-                    snackbar::show(format!("{}", err));
+                    snackbar::show(format!("{err}"));
                 }
             }
         });

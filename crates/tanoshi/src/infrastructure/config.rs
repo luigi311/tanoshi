@@ -208,22 +208,19 @@ impl Config {
             None => tanoshi_home().join("config.yml"),
         };
 
-        match std::fs::File::open(config_path.clone()) {
-            Ok(file) => {
-                info!("Open config from {:?}", config_path);
-                let mut cfg: Self = serde_yml::from_reader(file)?;
-                cfg.path = config_path;
-                Ok(cfg)
-            }
-            Err(_) => {
-                let cfg = Config {
-                    path: config_path,
-                    ..Default::default()
-                };
-                cfg.save()?;
-                info!("Write default config at {:?}", cfg.path);
-                Ok(cfg)
-            }
+        if let Ok(file) = std::fs::File::open(config_path.clone()) {
+            info!("Open config from {config_path:?}");
+            let mut cfg: Self = serde_yml::from_reader(file)?;
+            cfg.path = config_path;
+            Ok(cfg)
+        } else {
+            let cfg = Config {
+                path: config_path,
+                ..Default::default()
+            };
+            cfg.save()?;
+            info!("Write default config at {:?}", cfg.path);
+            Ok(cfg)
         }
     }
 

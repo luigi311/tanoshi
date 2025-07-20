@@ -54,7 +54,7 @@ impl Library {
                         Self::fetch_libraries(library.clone());
                     }
                     Err(e) => {
-                        snackbar::show(format!("failed to fetch library {}", e));
+                        snackbar::show(format!("failed to fetch library {e}"));
                     }
                 }
                 library.spinner.set_active(false);
@@ -67,7 +67,7 @@ impl Library {
                         Self::fetch_libraries(library.clone());
                     }
                     Err(e) => {
-                        snackbar::show(format!("failed to fetch categories {}", e));
+                        snackbar::show(format!("failed to fetch categories {e}"));
                     }
                 }
                 library.spinner.set_active(false);
@@ -100,7 +100,7 @@ impl Library {
                     library.cover_list.lock_mut().replace_cloned(covers);
                 }
                 Err(e) => {
-                    snackbar::show(format!("failed to fetch library {}", e));
+                    snackbar::show(format!("failed to fetch library {e}"));
                 }
             }
             library.spinner.set_active(false);

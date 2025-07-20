@@ -16,8 +16,8 @@ impl From<tanoshi_lib::models::SourceInfo> for Source {
             name: s.name.to_string(),
             url: s.url.to_string(),
             version: s.version.to_string(),
-            rustc_version: "".to_string(),
-            lib_version: "".to_string(),
+            rustc_version: String::new(),
+            lib_version: String::new(),
             icon: s.icon.to_string(),
             has_update: false,
         }

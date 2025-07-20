@@ -30,7 +30,7 @@ fn main() {
 
       // Check if running on Phosh
       if let Ok(session) = env::var("XDG_SESSION_DESKTOP") {
-        println!("Session: {}", session);
+        println!("Session: {session}");
         if session == "phosh" {
           // Hide title bar if running on Phosh
           window.set_decorations(false).unwrap();

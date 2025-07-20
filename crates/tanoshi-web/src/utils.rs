@@ -91,7 +91,7 @@ impl AsyncLoader {
                     }
                 }
                 Err(e) => {
-                    error!("failed to spawn task: {}", e);
+                    error!("failed to spawn task: {e}");
                 }
             }
         });
@@ -103,7 +103,7 @@ impl AsyncLoader {
 }
 
 pub fn proxied_image_url(image_url: &str) -> String {
-    format!("{}/{}", image_proxy_host(), image_url)
+    format!("{}/{image_url}", image_proxy_host())
 }
 
 pub fn initialize_urls() {
@@ -142,7 +142,7 @@ pub fn initialize_urls() {
             .unwrap_throw(),
     };
 
-    GRAPHQL_HOST.with(|s| *s.borrow_mut() = format!("{}/graphql", graphql_host));
+    GRAPHQL_HOST.with(|s| *s.borrow_mut() = format!("{graphql_host}/graphql"));
     GRAPHQL_WS_HOST
         .with(|s| *s.borrow_mut() = format!("{}/ws", graphql_host.replace("http", "ws")));
 }
@@ -160,8 +160,8 @@ pub fn format_number_title(number: f64, title: &str) -> String {
         break;
     }
 
-    if cleaned_title.starts_with(&format!("{}", number)) {
-        cleaned_title = cleaned_title.replacen(&format!("{}", number), "", 1);
+    if cleaned_title.starts_with(&format!("{number}")) {
+        cleaned_title = cleaned_title.replacen(&format!("{number}"), "", 1);
         cleaned_title = cleaned_title.trim().to_string(); // Trim
     }   
    

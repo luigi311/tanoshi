@@ -62,7 +62,7 @@ impl Histories {
                     histories.is_entries_empty.set(histories.entries.lock_ref().is_empty());
                 },
                 Err(err) => {
-                    snackbar::show(format!("{}", err));
+                    snackbar::show(format!("{err}"));
                 }
             }
             histories.spinner.set_active(false);

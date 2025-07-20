@@ -21,13 +21,13 @@ impl Default for Manga {
         Self {
             id: 0,
             source_id: 0,
-            title: "".to_string(),
+            title: String::new(),
             author: vec![],
             genre: vec![],
             status: None,
             description: None,
-            path: "".to_string(),
-            cover_url: "".to_string(),
+            path: String::new(),
+            cover_url: String::new(),
             date_added: NaiveDateTime::default(),
             last_uploaded_at: None,
         }

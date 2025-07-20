@@ -230,7 +230,7 @@ impl ChapterRepository for ChapterRepositoryImpl {
 
         let mut query = sqlx::query(&query_str).bind(source_id).bind(manga_id);
 
-        for path in paths.iter() {
+        for path in paths {
             query = query.bind(path);
         }
 

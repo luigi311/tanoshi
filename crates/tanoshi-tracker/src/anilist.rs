@@ -198,7 +198,7 @@ impl Tracker for AniList {
         let res = res
             .get("data")
             .and_then(|data| data.get("Media"))
-            .map(|media| media.to_owned())
+            .map(ToOwned::to_owned)
             .ok_or_else(|| anyhow!("no data"))?;
 
         let media: Media = serde_json::from_value(res).map_err(|e| anyhow!("{e}"))?;
@@ -334,7 +334,7 @@ impl AniList {
         let res = res
             .get("data")
             .and_then(|data| data.get("Media"))
-            .map(|media| media.to_owned())
+            .map(ToOwned::to_owned)
             .ok_or_else(|| anyhow!("no data"))?;
 
         let media: Media = serde_json::from_value(res).map_err(|e| anyhow!("{e}"))?;

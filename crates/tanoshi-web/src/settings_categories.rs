@@ -42,7 +42,7 @@ impl SettingsCategories {
                         settings.fetch_categories();
                     }
                     Err(err) => {
-                        snackbar::show(format!("{}", err));
+                        snackbar::show(format!("{err}"));
                     }
                 }
             }
@@ -58,7 +58,7 @@ impl SettingsCategories {
                         settings.fetch_categories();
                     }
                     Err(err) => {
-                        snackbar::show(format!("{}", err));
+                        snackbar::show(format!("{err}"));
                     }
                 }
             }
@@ -75,7 +75,7 @@ impl SettingsCategories {
                         settings.fetch_categories();
                     }
                     Err(err) => {
-                        snackbar::show(format!("{}", err));
+                        snackbar::show(format!("{err}"));
                     }
                 }
             }
@@ -95,7 +95,7 @@ impl SettingsCategories {
                     settings.categories.lock_mut().replace_cloned(res);
                 }
                 Err(e) => {
-                    snackbar::show(format!("failed to fetch categories {}", e));
+                    snackbar::show(format!("failed to fetch categories {e}"));
                 }
             }
         }));

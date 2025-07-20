@@ -53,7 +53,7 @@ impl TryFrom<&str> for ImageUri {
 impl ImageUri {
     pub fn from_encrypted(secret: &str, encrypted: &str) -> Result<Self, anyhow::Error> {
         let mut decoded = general_purpose::URL_SAFE_NO_PAD.decode(encrypted)?;
-        trace!("decoded: {:?}", decoded);
+        trace!("decoded: {decoded:?}");
 
         let iv = [0_u8; 16];
 

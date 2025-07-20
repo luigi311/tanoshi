@@ -82,7 +82,7 @@ impl SelectTrackMangaModal {
                     }).collect())
                 }
                 Err(e) => {
-                    snackbar::show(format!("failed to fetch manga tracker status {}", e));
+                    snackbar::show(format!("failed to fetch manga tracker status {e}"));
                 }
             }
         }));
@@ -104,7 +104,7 @@ impl SelectTrackMangaModal {
                     }).collect());
                 }
                 Err(e) => {
-                    snackbar::show(format!("failed to fetch tracker manga list {}", e));
+                    snackbar::show(format!("failed to fetch tracker manga list {e}"));
                 }
             }
         }));
@@ -117,7 +117,7 @@ impl SelectTrackMangaModal {
                 match query::track_manga(select.manga_id, tracker, tracker_manga_id).await {
                     Ok(_) => {}
                     Err(e) => {
-                        snackbar::show(format!("failed to add manga to tracker {}", e));
+                        snackbar::show(format!("failed to add manga to tracker {e}"));
                     }
                 }
             }
@@ -131,7 +131,7 @@ impl SelectTrackMangaModal {
 
                 }
                 Err(e) => {
-                    snackbar::show(format!("failed to add manga to tracker {}", e));
+                    snackbar::show(format!("failed to add manga to tracker {e}"));
                 }
             }
         });
@@ -160,7 +160,7 @@ impl SelectTrackMangaModal {
 
                 }
                 Err(e) => {
-                    snackbar::show(format!("failed to add manga to tracker {}", e));
+                    snackbar::show(format!("failed to add manga to tracker {e}"));
                 }
             }
            

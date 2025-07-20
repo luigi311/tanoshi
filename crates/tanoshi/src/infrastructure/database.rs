@@ -46,7 +46,7 @@ pub async fn establish_connection(
 
     match sqlx::migrate!("./migrations").run(&pool).await {
         Err(MigrateError::VersionMismatch(version)) => {
-            warn!("migration {version} was previously applied but has been modified")
+            warn!("migration {version} was previously applied but has been modified");
         }
         Err(e) => {
             return Err(e.into());

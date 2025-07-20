@@ -166,7 +166,7 @@ impl TrackingRoot {
             .search_manga(claim.sub, &tracker, &title)
             .await?
             .into_iter()
-            .map(|m| m.into())
+            .map(Into::into)
             .collect();
 
         Ok(manga)
@@ -186,7 +186,7 @@ impl TrackingRoot {
             .fetch_manga_tracking_status(claim.sub, manga_id)
             .await?
             .into_iter()
-            .map(|m| m.into())
+            .map(Into::into)
             .collect();
 
         Ok(status)

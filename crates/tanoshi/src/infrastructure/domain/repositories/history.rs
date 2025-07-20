@@ -186,22 +186,23 @@ impl HistoryRepository for HistoryRepositoryImpl {
         manga_ids: &[i64],
     ) -> Result<Vec<HistoryChapter>, HistoryRepositoryError> {
         let query_str = format!(
-            r#"SELECT
-                    manga.id,
-                    chapter.id,
-                    manga.title,
-                    manga.cover_url,
-                    chapter.title,
-                    user_history.read_at,
-                    user_history.last_page,
-                    user_history.is_complete
-                FROM user_history
-                JOIN chapter ON 
-                    chapter.id = user_history.chapter_id AND
-                    chapter.manga_id IN ({})
-                JOIN manga ON 
-                    manga.id = chapter.manga_id
-                WHERE user_history.user_id = ?"#,
+            r#"
+        SELECT
+            manga.id,
+            chapter.id,
+            manga.title,
+            manga.cover_url,
+            chapter.title,
+            user_history.read_at,
+            user_history.last_page,
+            user_history.is_complete
+        FROM user_history
+        JOIN chapter ON 
+            chapter.id = user_history.chapter_id AND
+            chapter.manga_id IN ({})
+        JOIN manga ON 
+            manga.id = chapter.manga_id
+        WHERE user_history.user_id = ?"#,
             vec!["?"; manga_ids.len()].join(",")
         );
 
@@ -237,20 +238,24 @@ impl HistoryRepository for HistoryRepositoryImpl {
         chapter_ids: &[i64],
     ) -> Result<Vec<HistoryChapter>, HistoryRepositoryError> {
         let query_str = format!(
-            r#"SELECT
-                    manga.id,
-                    chapter.id,
-                    manga.title,
-                    manga.cover_url,
-                    chapter.title,
-                    user_history.read_at,
-                    user_history.last_page,
-                    user_history.is_complete
-                FROM user_history
-                JOIN chapter ON 
-                    chapter.id = user_history.chapter_id
-                JOIN manga ON manga.id = chapter.manga_id
-                WHERE user_history.user_id = ? AND user_history.chapter_id IN ({})"#,
+            r#"
+        SELECT
+            manga.id,
+            chapter.id,
+            manga.title,
+            manga.cover_url,
+            chapter.title,
+            user_history.read_at,
+            user_history.last_page,
+            user_history.is_complete
+        FROM
+            user_history
+            JOIN chapter 
+                ON chapter.id = user_history.chapter_id
+            JOIN manga ON manga.id = chapter.manga_id
+        WHERE
+            user_history.user_id = ?
+            AND user_history.chapter_id IN ({})"#,
             vec!["?"; chapter_ids.len()].join(",")
         );
 
@@ -331,7 +336,7 @@ impl HistoryRepository for HistoryRepositoryImpl {
         let mut query = sqlx::query(&query_str);
 
         let now = Utc::now().naive_utc();
-        for chapter_id in chapter_ids.iter() {
+        for chapter_id in chapter_ids {
             query = query.bind(user_id).bind(chapter_id).bind(now);
         }
 
@@ -359,7 +364,7 @@ impl HistoryRepository for HistoryRepositoryImpl {
 
         let mut query = sqlx::query(&query_str).bind(user_id);
 
-        for chapter_id in chapter_ids.iter() {
+        for chapter_id in chapter_ids {
             query = query.bind(chapter_id);
         }
 
@@ -377,12 +382,18 @@ impl HistoryRepository for HistoryRepositoryImpl {
         values.resize(manga_ids.len(), "?");
 
         let query_str = format!(
-            r#"SELECT manga_id, COUNT(1) FROM (
-                SELECT manga_id, IFNULL(user_history.is_complete, false) AS is_complete 
+            r#"
+            SELECT
+                manga_id,
+                COUNT(1)
+            FROM (
+                SELECT
+                    manga_id,
+                    IFNULL(user_history.is_complete, false) AS is_complete 
                 FROM chapter c 
-                LEFT JOIN user_history ON 
-                    user_history.user_id = ? AND 
-                    user_history.chapter_id = c.id 
+                    LEFT JOIN user_history
+                        ON user_history.user_id = ?
+                        AND user_history.chapter_id = c.id 
                 WHERE c.manga_id IN ({})
             )
             WHERE is_complete = false
@@ -392,7 +403,7 @@ impl HistoryRepository for HistoryRepositoryImpl {
 
         let mut query = sqlx::query(&query_str).bind(user_id);
         for manga_id in manga_ids {
-            query = query.bind(manga_id)
+            query = query.bind(manga_id);
         }
 
         let data = query

@@ -39,14 +39,14 @@ struct Opts {
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
     if let Ok(rust_log) = std::env::var("RUST_LOG") {
-        info!("rust_log: {}", rust_log);
+        info!("rust_log: {rust_log}");
     } else if let Ok(tanoshi_log) = std::env::var("TANOSHI_LOG") {
-        info!("tanoshi_log: {}", tanoshi_log);
+        info!("tanoshi_log: {tanoshi_log}");
         // TODO: Audit that the environment access only happens in single-threaded code.
         unsafe { std::env::set_var(
             "RUST_LOG",
-            format!("tanoshi={},tanoshi_vm={}", tanoshi_log, tanoshi_log),
-        ) };
+            format!("tanoshi={tanoshi_log},tanoshi_vm={tanoshi_log}"),
+        ); };
     }
 
     env_logger::init();
@@ -54,7 +54,7 @@ async fn main() -> Result<(), anyhow::Error> {
     let opts: Opts = Opts::parse();
     let config = Config::open(opts.config)?;
 
-    debug!("config: {:?}", config);
+    debug!("config: {config:?}");
 
     let pool =
         database::establish_connection(&config.database_path, config.create_database).await?;
@@ -243,7 +243,7 @@ async fn main() -> Result<(), anyhow::Error> {
         _ = download_worker_handle => {
             info!("download worker quit");
         }
-        Some(_) = telegram_bot_fut => {
+        Some(()) = telegram_bot_fut => {
             info!("worker shutdown");
         }
         _ = tokio::signal::ctrl_c() => {

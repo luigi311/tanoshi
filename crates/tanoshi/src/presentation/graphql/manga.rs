@@ -188,7 +188,7 @@ impl Manga {
             .fetch_chapters_by_manga_id(self.source_id, &self.path, self.id, refresh)
             .await?
             .into_par_iter()
-            .map(|c| c.into())
+            .map(Into::into)
             .collect::<Vec<Chapter>>();
 
         Ok(chapters)
@@ -217,7 +217,7 @@ impl Manga {
             .data::<HistoryService<ChapterRepositoryImpl, HistoryRepositoryImpl>>()?
             .get_next_chapter(claims.sub, self.id)
             .await?
-            .map(|chapter| chapter.into());
+            .map(Into::into);
 
         Ok(chapter)
     }

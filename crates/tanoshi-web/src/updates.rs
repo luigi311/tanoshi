@@ -70,7 +70,7 @@ impl Updates {
                     updates.is_entries_empty.set(updates.entries.lock_ref().is_empty());
                 },
                 Err(err) => {
-                    snackbar::show(format!("{}", err));
+                    snackbar::show(format!("{err}"));
                 }
             }
             

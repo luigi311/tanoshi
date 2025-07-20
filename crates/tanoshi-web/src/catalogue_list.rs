@@ -103,8 +103,7 @@ impl CatalogueList {
                         cover_list.insert_cloned(source.id, SourceManga { name: source.name.clone(), covers } );
                     }
                     Err(e) => {
-                        // snackbar::show(format!("Fetch manga from source failed: {}", e))
-                        error!("Fetch manga from source failed: {}", e);
+                        error!("Fetch manga from source failed: {e}");
                     }
                 }
 

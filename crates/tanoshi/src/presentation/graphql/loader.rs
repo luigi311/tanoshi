@@ -91,7 +91,7 @@ where
             .map(|manga| {
                 (
                     UserFavoriteId(user_id, manga.id),
-                    manga_id_set.get(&manga.id).is_some(),
+                    manga_id_set.contains(&manga.id),
                 )
             })
             .collect();
@@ -134,7 +134,7 @@ where
             .map_err(|e| Arc::new(anyhow::anyhow!("{e}")))?
             .into_par_iter()
             .map(|manga| {
-                let is_library = manga_path_set.get(&manga.path).is_some();
+                let is_library = manga_path_set.contains(&manga.path);
                 (UserFavoritePath(user_id, manga.path), is_library)
             })
             .collect();

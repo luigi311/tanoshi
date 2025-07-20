@@ -19,8 +19,8 @@ pub struct ExtensionManager {
 pub fn dummy_source_info(id: i64) -> SourceInfo {
     SourceInfo {
         id,
-        name: format!("Missing source {}", id),
-        url: "".to_string(),
+        name: format!("Missing source {id}"),
+        url: String::new(),
         version: "",
         icon: "",
         languages: Lang::All,
@@ -91,7 +91,7 @@ impl ExtensionManager {
             PLUGIN_EXTENSION
         );
 
-        info!("downloading {}", source_file_url);
+        info!("downloading {source_file_url}");
 
         let contents = reqwest::get(&source_file_url).await?.bytes().await?;
 
@@ -122,7 +122,7 @@ impl ExtensionManager {
             .arg(library_path.file_name().unwrap())
             .output()
         {
-            error!("failed to run install_name_tool: {}", e);
+            error!("failed to run install_name_tool: {e}");
         }
 
         unsafe {
@@ -223,13 +223,13 @@ impl ExtensionManager {
         // Do not error if source_entry doesnt work
         let source_entry: Result<&Source> = binding.get(&source_id).ok_or_else(|| anyhow!("no such source"));
 
-        match source_entry.ok().and_then(|s| s.extension.get()) { Some(entry) => {
+        if let Some(entry) = source_entry.ok().and_then(|s| s.extension.get()) {
             let extension =  entry.get_source_info();
             Ok(extension)
-        } _ => {
+        } else {
             println!("Returning dummy source info");
             Ok(dummy_source_info(source_id))
-        }}
+        }
     }
 
     pub fn filter_list(&self, source_id: i64) -> Result<Vec<Input>> {

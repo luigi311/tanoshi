@@ -67,7 +67,7 @@ impl SettingsManageDownloads {
                             .set(settings.entries.lock_ref().is_empty());
                     }
                     Err(err) => {
-                        snackbar::show(format!("{}", err));
+                        snackbar::show(format!("{err}"));
                     }
                 }
 
@@ -82,7 +82,7 @@ impl SettingsManageDownloads {
             match query::remove_downloaded_chapters(&ids).await {
                 Ok(_) => {},
                 Err(err) => {
-                    snackbar::show(format!("{}", err));
+                    snackbar::show(format!("{err}"));
                 }
             }
 

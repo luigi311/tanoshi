@@ -119,8 +119,8 @@ impl TrackerRedirect {
                         let tracker = self.tracker.clone();
                         move |state| match state {
                             AuthorizationState::Idle | AuthorizationState::Authorizing => format!("Authorizing {tracker}..."),
-                            AuthorizationState::Success => format!("Authorization {} success. You can close this window", tracker),
-                            AuthorizationState::Failed(e) => format!("Authorization {} failed: {e}", tracker),
+                            AuthorizationState::Success => format!("Authorization {tracker} success. You can close this window"),
+                            AuthorizationState::Failed(e) => format!("Authorization {tracker} failed: {e}"),
                         }
                     }))
                 })
