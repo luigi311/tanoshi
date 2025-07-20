@@ -21,7 +21,7 @@ impl Gotify {
 impl Notifier for Gotify {
     async fn send_notification(&self, token: &str, message: &str) -> Result<(), anyhow::Error> {
         self.client
-            .post(&format!("{}/message", self.base_url))
+            .post(format!("{}/message", self.base_url))
             .query(&[("token", token)])
             .json(&serde_json::json!({ "message": message }))
             .send()
@@ -37,7 +37,7 @@ impl Notifier for Gotify {
         message: &str,
     ) -> Result<(), anyhow::Error> {
         self.client
-            .post(&format!("{}/message", self.base_url))
+            .post(format!("{}/message", self.base_url))
             .query(&[("token", token)])
             .json(&serde_json::json!({ "message": message, "title": title }))
             .send()
@@ -55,7 +55,7 @@ impl Notifier for Gotify {
         _: &str,
     ) -> Result<(), anyhow::Error> {
         self.client
-            .post(&format!("{}/message", self.base_url))
+            .post(format!("{}/message", self.base_url))
             .query(&[("token", token)])
             .json(&serde_json::json!({
                 "message": message,

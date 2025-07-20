@@ -213,15 +213,15 @@ impl DownloadRepository for DownloadRepositoryImpl {
         let mut query = sqlx::query(&query_str);
         for item in items {
             query = query
-                .bind(&item.source_id)
+                .bind(item.source_id)
                 .bind(&item.source_name)
-                .bind(&item.manga_id)
+                .bind(item.manga_id)
                 .bind(&item.manga_title)
-                .bind(&item.chapter_id)
+                .bind(item.chapter_id)
                 .bind(&item.chapter_title)
                 .bind(item.rank)
                 .bind(&item.url)
-                .bind(&item.priority)
+                .bind(item.priority)
                 .bind(item.date_added.and_utc().timestamp())
         }
 

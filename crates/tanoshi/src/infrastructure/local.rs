@@ -48,7 +48,7 @@ fn default_cover_url() -> String {
 fn filter_supported_files_and_folders(entry: Result<DirEntry, std::io::Error>) -> Option<DirEntry> {
     let entry = entry.ok()?;
     if entry.path().is_dir()
-        || SUPPORTED_FILES.contains(&entry.path().extension()?.to_string_lossy().to_string())
+        || SUPPORTED_FILES.contains(entry.path().extension()?.to_string_lossy().as_ref())
     {
         Some(entry)
     } else {
@@ -184,7 +184,7 @@ pub fn get_pages_from_archive(path: &Path) -> Result<Vec<String>, anyhow::Error>
             let pages = files
                 .into_iter()
                 .filter(|p| {
-                    mime_guess::from_path(&p)
+                    mime_guess::from_path(p)
                         .first()
                         .map(|m| m.type_() == mime::IMAGE)
                         .unwrap_or(false)
@@ -200,7 +200,6 @@ pub fn get_pages_from_archive(path: &Path) -> Result<Vec<String>, anyhow::Error>
 fn get_pages_from_dir(path: &Path) -> Result<Vec<String>, anyhow::Error> {
     let pages = path
         .read_dir()?
-        .into_iter()
         .filter_map(Result::ok)
         .filter_map(|f| (f.path().is_file()).then(|| f.path().display().to_string()))
         .collect();
@@ -323,7 +322,7 @@ impl Extension for Local {
                     .path()
                     .file_stem()
                     .map(|s| s.to_string_lossy().to_string())
-                    .unwrap_or_else(|| "".to_string()),
+                    .unwrap_or_default(),
                 author: vec![],
                 genre: vec![],
                 status: None,

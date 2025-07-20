@@ -141,7 +141,7 @@ impl ChapterRepository for ChapterRepositoryImpl {
     ) -> Result<Vec<Chapter>, ChapterRepositoryError> {
         let limit = limit
             .map(|limit| format!("LIMIT {limit}"))
-            .unwrap_or_else(|| "".to_string());
+            .unwrap_or_default();
         let order_by = order_by.unwrap_or("number");
         let order = if asc { "ASC" } else { "DESC" };
 

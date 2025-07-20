@@ -18,7 +18,7 @@ pub struct ExtensionManager {
 
 pub fn dummy_source_info(id: i64) -> SourceInfo {
     SourceInfo {
-        id: id,
+        id,
         name: format!("Missing source {}", id),
         url: "".to_string(),
         version: "",
@@ -97,7 +97,7 @@ impl ExtensionManager {
 
         tokio::fs::write(
             self.dir
-                .join(&name.to_lowercase())
+                .join(name.to_lowercase())
                 .with_extension(PLUGIN_EXTENSION),
             contents,
         )
@@ -199,7 +199,7 @@ impl ExtensionManager {
         {
             std::fs::remove_file(
                 self.dir
-                    .join(&source.name.to_lowercase())
+                    .join(source.name.to_lowercase())
                     .with_extension(PLUGIN_EXTENSION),
             )?;
         }

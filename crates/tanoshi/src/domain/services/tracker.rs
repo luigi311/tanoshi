@@ -118,7 +118,7 @@ where
             }
         }
 
-        Err(TrackerError::Other(format!("failed to search manga")))
+        Err(TrackerError::Other("failed to search manga".to_string()))
     }
 
     pub async fn fetch_manga_tracking_status(

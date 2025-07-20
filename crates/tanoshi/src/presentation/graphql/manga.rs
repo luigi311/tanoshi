@@ -34,6 +34,7 @@ pub struct Tracker {
 
 /// A type represent manga details, normalized across source
 #[derive(Debug, Clone)]
+#[derive(Default)]
 pub struct Manga {
     pub id: i64,
     pub source_id: i64,
@@ -47,22 +48,6 @@ pub struct Manga {
     pub date_added: chrono::NaiveDateTime,
 }
 
-impl Default for Manga {
-    fn default() -> Self {
-        Self {
-            id: Default::default(),
-            source_id: Default::default(),
-            title: Default::default(),
-            author: Default::default(),
-            genre: Default::default(),
-            status: Default::default(),
-            description: Default::default(),
-            path: Default::default(),
-            cover_url: Default::default(),
-            date_added: NaiveDateTime::default(),
-        }
-    }
-}
 
 impl From<tanoshi_lib::models::MangaInfo> for Manga {
     fn from(m: tanoshi_lib::models::MangaInfo) -> Self {

@@ -31,10 +31,10 @@ pub async fn fetch_image(
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-    Ok(Response::builder()
+    Response::builder()
         .header("Content-Type", image.content_type)
         .header("Content-Length", image.data.len())
         .header("Cache-Control", "max-age=864000")
         .body(Body::from(image.data))
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?)
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
 }

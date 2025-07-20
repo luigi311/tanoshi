@@ -140,7 +140,8 @@ where
             while {
                 let manga_opt = manga_stream.next().await;
                 match manga_opt { Some(manga_result) => {
-                    let should_continue = match manga_result {
+                    
+                    match manga_result {
                         Ok(manga) => {
                             match tx.send(manga).await { Err(e) => {
                                 error!("error send update: {e:?}");
@@ -153,8 +154,7 @@ where
                             error!("error: {e:?}");
                             true
                         }
-                    };
-                    should_continue
+                    }
                 } _ => {
                     false
                 }}
@@ -193,7 +193,8 @@ where
             while {
                 let manga_opt = manga_stream.next().await;
                 match manga_opt { Some(manga_result) => {
-                    let should_continue = match manga_result {
+                    
+                    match manga_result {
                         Ok(manga) => {
                             match tx.send(manga).await { Err(e) => {
                                 error!("error send update: {e:?}");
@@ -206,8 +207,7 @@ where
                             error!("error: {e:?}");
                             true
                         }
-                    };
-                    should_continue
+                    }
                 } _ => {
                     false
                 }}
@@ -390,7 +390,7 @@ where
                         .and_then(|created| created.elapsed().ok())
                         .map(|elapsed| {
                             chrono::Duration::from_std(elapsed)
-                                .unwrap_or_else(|_| chrono::Duration::MAX)
+                                .unwrap_or(chrono::Duration::MAX)
                         })
                     {
                         if created.num_days() >= 10 {

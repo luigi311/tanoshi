@@ -166,10 +166,9 @@ where
             .open(&archive_path)
         { Ok(file) => {
             return Ok(zip::ZipWriter::new_append(file)?);
-        } _ => { match std::fs::create_dir_all(manga_path).and_then(|_| std::fs::File::create(&archive_path))
-        { Ok(file) => {
+        } _ => { if let Ok(file) = std::fs::create_dir_all(manga_path).and_then(|_| std::fs::File::create(&archive_path)) {
             return Ok(zip::ZipWriter::new(file));
-        } _ => {}}}}
+        }}}
 
         Err(anyhow!("cannot open or create new zip file"))
     }
@@ -181,7 +180,7 @@ where
         }
 
         info!("creating directory: {}", path.display());
-        std::fs::create_dir_all(&manga_path)?;
+        std::fs::create_dir_all(manga_path)?;
 
         let manga_info = LocalMangaInfo {
             title: Some(manga.title.clone()),
@@ -341,7 +340,7 @@ where
                                         Err(e) => {
                                             error!("failed to insert queue, reason {}", e);
                                         } Ok(_) => {
-                                            let _ = self.tx.send(Command::Download).unwrap();
+                                            self.tx.send(Command::Download).unwrap();
                                         }
                                     }
                                 }
