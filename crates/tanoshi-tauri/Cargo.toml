@@ -3,7 +3,7 @@ name = "tanoshi-app"
 version = "0.36.2"
 default-run = "tanoshi-app"
 edition = "2021"
-rust-version = "1.85.0"
+rust-version = "1.90.0"
 build = "src/build.rs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
