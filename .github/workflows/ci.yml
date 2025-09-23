@@ -1,4 +1,6 @@
 name: CI
+permissions:
+  contents: read
 
 on:
   workflow_dispatch:
@@ -85,6 +87,8 @@ jobs:
 
   build-cli:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     container:
       image: ghcr.io/luigi311/tanoshi-builder:sha-52ce25d
     steps:
@@ -137,6 +141,8 @@ jobs:
 
   build-tauri:
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
     needs:
       - build-web
     strategy:
@@ -250,6 +256,8 @@ jobs:
 
   build-flatpak:
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
     needs: build-tauri
     container:
       image: ghcr.io/flathub-infra/flatpak-github-actions:gnome-47
@@ -355,6 +363,8 @@ jobs:
 
   docker:
     runs-on: ubuntu-latest
+    permissions:
+      packages: write
     needs:
       - build-tanoshi
     steps:
