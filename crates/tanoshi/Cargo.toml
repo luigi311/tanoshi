@@ -79,8 +79,8 @@ futures = { version = "0.3", default-features = false }
 rust-argon2 = "3"
 fancy-regex = { version = "0.15", features = ["std"], default-features = false }
 compress-tools = { git = "https://github.com/OSSystems/compress-tools-rs", rev = "615e54549ce08695a45c7f38d3fbd10827ed140c" , features = ["static"]}
-zip = { version = "4", default-features = false }
-phf = { version = "0.12", features = ["macros"], default-features = false }
+zip = { version = "5", default-features = false }
+phf = { version = "0.13", features = ["macros"], default-features = false }
 human-sort = "0.2"
 aes = "0.8"
 cbc = "0.1"
