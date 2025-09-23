@@ -355,6 +355,8 @@ jobs:
 
   docker:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     needs:
       - build-tanoshi
     steps:
