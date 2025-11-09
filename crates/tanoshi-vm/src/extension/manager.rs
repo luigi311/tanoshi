@@ -36,13 +36,13 @@ impl ExtensionManager {
         }
     }
 
-    fn read(&self) -> Result<RwLockReadGuard<FnvHashMap<i64, Source>>> {
+    fn read(&self) -> Result<RwLockReadGuard<'_, FnvHashMap<i64, Source>>> {
         self.extensions
             .read()
             .map_err(|e| anyhow!("failed to lock read: {e}"))
     }
 
-    fn write(&self) -> Result<RwLockWriteGuard<FnvHashMap<i64, Source>>> {
+    fn write(&self) -> Result<RwLockWriteGuard<'_, FnvHashMap<i64, Source>>> {
         self.extensions
             .write()
             .map_err(|e| anyhow!("failed to lock write: {e}"))

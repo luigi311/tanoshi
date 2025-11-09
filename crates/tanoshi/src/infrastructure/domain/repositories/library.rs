@@ -183,7 +183,7 @@ impl LibraryRepository for LibraryRepositoryImpl {
 
     fn get_manga_from_all_users_library_stream(
         &self,
-    ) -> BoxStream<Result<Manga, LibraryRepositoryError>> {
+    ) -> BoxStream<'_, Result<Manga, LibraryRepositoryError>> {
         sqlx::query(
             r#"
         SELECT DISTINCT
@@ -219,7 +219,7 @@ impl LibraryRepository for LibraryRepositoryImpl {
     fn get_manga_from_all_users_library_by_manga_id_stream(
         &self,
         id: i64,
-    ) -> BoxStream<Result<Manga, LibraryRepositoryError>> {
+    ) -> BoxStream<'_, Result<Manga, LibraryRepositoryError>> {
         sqlx::query(
             r#"
         SELECT DISTINCT
@@ -257,7 +257,7 @@ impl LibraryRepository for LibraryRepositoryImpl {
     fn get_manga_from_user_library_stream(
         &self,
         user_id: i64,
-    ) -> BoxStream<Result<Manga, LibraryRepositoryError>> {
+    ) -> BoxStream<'_, Result<Manga, LibraryRepositoryError>> {
         sqlx::query(
             r#"
         SELECT DISTINCT
