@@ -12,6 +12,7 @@ use futures_signals::map_ref;
 use futures_signals::signal::{self, Mutable, Signal, SignalExt};
 use futures_signals::signal_vec::{MutableVec, SignalVec, SignalVecExt};
 use gloo_timers::callback::Timeout;
+use wasm_bindgen::prelude::Closure;
 use wasm_bindgen::{JsCast, JsValue, UnwrapThrowExt};
 use wasm_bindgen_futures::spawn_local;
 use web_sys::{HtmlImageElement, HtmlInputElement};
@@ -37,6 +38,15 @@ enum ContinousLoaded {
     Scrolled
 }
 
+#[derive(Clone, Debug)]
+struct ZoomAnchor {
+    page_index: usize,
+    // where in the element the viewport center was, as a ratio (0..1)
+    center_ratio: f64,
+    // viewport height at capture time
+    viewport_h: f64,
+}
+
 pub struct Reader {
     chapter_id: Mutable<i64>,
     manga_id: Mutable<i64>,
@@ -54,7 +64,8 @@ pub struct Reader {
     is_bar_visible: Mutable<bool>,
     loader: Rc<AsyncLoader>,
     spinner: Rc<Spinner>,
-    timeout: Mutable<Option<Timeout>>
+    timeout: Mutable<Option<Timeout>>,
+    is_zooming: Mutable<bool>,
 }
 
 impl Reader {
@@ -82,8 +93,105 @@ impl Reader {
             loader,
             spinner,
             timeout: Mutable::new(None),
+            is_zooming: Mutable::new(false),
         })
     }
+
+    fn viewport_h() -> f64 {
+        document()
+            .document_element()
+            .unwrap_throw()
+            .client_height() as f64
+    }
+
+    fn scroll_y() -> f64 {
+        window().scroll_y().unwrap_throw()
+    }
+
+    fn element_abs_top(el: &web_sys::Element) -> f64 {
+        let rect = el.get_bounding_client_rect();
+        Self::scroll_y() + rect.top()
+    }
+
+    fn element_height(el: &web_sys::Element) -> f64 {
+        el.get_bounding_client_rect().height()
+    }
+
+    fn capture_zoom_anchor(&self) -> Option<ZoomAnchor> {
+        if !matches!(self.reader_settings.reader_mode.get(), ReaderMode::Continous) {
+            return None;
+        }
+
+        let page_index = self.current_page.get_cloned();
+        let el = document().get_element_by_id(&page_index.to_string())?;
+
+        let viewport_h = Self::viewport_h();
+        let viewport_center_y = Self::scroll_y() + (viewport_h / 2.0);
+
+        let top = Self::element_abs_top(&el);
+        let h = Self::element_height(&el);
+        if h <= 1.0 {
+            return None;
+        }
+
+        let mut ratio = (viewport_center_y - top) / h;
+        if ratio < 0.0 { ratio = 0.0; }
+        if ratio > 1.0 { ratio = 1.0; }
+
+        Some(ZoomAnchor {
+            page_index,
+            center_ratio: ratio,
+            viewport_h,
+        })
+    }
+
+    fn request_animation_frame(f: impl 'static + FnOnce()) {
+        let cb = Closure::once_into_js(f);
+        window()
+            .request_animation_frame(cb.as_ref().unchecked_ref())
+            .unwrap_throw();
+        // cb is moved into JS; no drop needed
+    }
+
+    fn apply_zoom_anchor(anchor: ZoomAnchor) {
+        let el = match document().get_element_by_id(&anchor.page_index.to_string()) {
+            Some(el) => el,
+            None => return,
+        };
+
+        let new_viewport_h = Self::viewport_h();
+
+        let top = Self::element_abs_top(&el);
+        let h = Self::element_height(&el);
+        if h <= 1.0 {
+            return;
+        }
+
+        // Where the center *should* be after zoom
+        let desired_center_y = top + (anchor.center_ratio * h);
+
+        let new_scroll_y = desired_center_y - (new_viewport_h / 2.0);
+
+        // clamp >= 0
+        let new_scroll_y = if new_scroll_y < 0.0 { 0.0 } else { new_scroll_y };
+
+        window().scroll_to_with_x_and_y(0.0, new_scroll_y);
+    }
+
+    fn zoom_to(this: Rc<Self>, new_zoom: f64) {
+        let anchor = this.capture_zoom_anchor();
+
+        this.is_zooming.set_neq(true);
+        this.zoom.set_neq(new_zoom);
+
+        Self::request_animation_frame(clone!(this, anchor => move || {
+            if let Some(anchor) = anchor {
+                Self::apply_zoom_anchor(anchor);
+            }
+            this.is_zooming.set_neq(false);
+        }));
+    }
+
 
     fn fetch_detail(this: Rc<Self>, chapter_id: i64, nav: Nav) {
         let current_page = this.current_page.get_cloned();
@@ -512,7 +620,7 @@ impl Reader {
                     .style("text-align", "center")
                     .event(clone!(this => move |_: events::Click| {
                         info!("zoom in");
-                        this.zoom.set_neq(this.zoom.get() + 0.25);   
+                        Self::zoom_to(this.clone(), this.zoom.get() + 0.25);
                     }))
                     .children(&mut [
                         svg!("svg", {
@@ -548,12 +656,12 @@ impl Reader {
                     .event(clone!(this => move |_: events::Click| {
                         info!("zoom out");
                         let zoom = this.zoom.get();
-                        if zoom > 0.25 {
-                            this.zoom.set_neq(this.zoom.get() - 0.25);   
+                        let new_zoom = if zoom <= 0.25 {
+                            0.25
                         } else {
-                            // minimum zoom is 25%
-                            this.zoom.set_neq(0.25);
-                        }
+                            zoom - 0.25
+                        };
+                        Self::zoom_to(this.clone(), new_zoom);
                     }))
                     .children(&mut [
                         svg!("svg", {
@@ -788,8 +896,8 @@ impl Reader {
                             _ => format!("{}vw", 100.0 * zoom)
                         }))
                         .style_signal("height", this.fit_signal().map(|(fit, zoom)| match fit {
-                            crate::common::Fit::Width => "initial".to_string(),
-                            _ => format!("{}vh", 100.0 * zoom)
+                            Fit::Height => format!("{}vh", 100.0 * zoom),
+                            _ => "auto".to_string(),
                         }))
                         .event(clone!(this, page => move |_: events::Error| {
                             log::error!("error loading image");
@@ -853,6 +961,10 @@ impl Reader {
                 }
             }))
             .global_event(clone!(this => move |_: events::Scroll| {
+                if this.is_zooming.get() {
+                    return;
+                }
+
                 let mut page_no = 0;
                 let window_height = body().offset_height();
                 let client_height = document().document_element().unwrap_throw().client_height();
