@@ -208,7 +208,7 @@ jobs:
           vcpkg install libarchive:x64-windows-static-md
 
       - name: Install Binstall
-        uses: cargo-bins/cargo-binstall@20aa316bab4942180bbbabe93237858e8d77f1ed
+        uses: cargo-bins/cargo-binstall@11f258db84cec40fc56c7b10bfc37c31dd9a3c98
       
       - name: Install tauri-cli
         run: cargo binstall tauri-cli@2 --no-confirm --locked
