@@ -34,16 +34,16 @@ serde = { version = "1.0", default-features = false }
 serde_json = "1.0"
 serde_yaml2 = "0.1"
 bincode = { version = "2.0", features = ["serde"] }
-async-graphql = { version = "=7.0.16", features = ["chrono", "dataloader", "log", "playground"], default-features = false }
-async-graphql-derive = "=7.0.16"
-async-graphql-parser = "=7.0.16"
-async-graphql-value = "=7.0.16"
-async-graphql-axum = { version = "=7.0.16", optional = true }
+async-graphql = { version = "=7.2.1", features = ["chrono", "dataloader", "log", "playground"], default-features = false }
+async-graphql-derive = "=7.2.1"
+async-graphql-parser = "=7.2.1"
+async-graphql-value = "=7.2.1"
+async-graphql-axum = { version = "=7.2.1", optional = true }
 axum = { version = "0.8", optional = true , default-features = false }
-axum-server = "0.7"
-axum-extra = { version = "0.10", features = ["typed-header"], default-features = false }
+axum-server = "0.8"
+axum-extra = { version = "0.12", features = ["typed-header"], default-features = false }
 headers = { version = "0.4", optional = true }
-http = { version = "1", optional = true , default-features = false }
+http = { version = "1", optional = true, default-features = false }
 tower-http = { version = "0.6", features = [
     "cors",
     "compression-br",
@@ -54,7 +54,7 @@ tower-http = { version = "0.6", features = [
 rand = { version = "0.9", default-features = false }
 log = { version = "0.4" }
 env_logger = { version = "0.11", default-features = false }
-jsonwebtoken = { version = "9", default-features = false }
+jsonwebtoken = { version = "10", features = ["rust_crypto"] }
 chrono = { version = "0.4", default-features = false }
 anyhow = { version = "1", default-features = false }
 thiserror = "2"
@@ -74,12 +74,15 @@ sqlx = { version = "0.8", features = [
     "macros",
     "migrate",
 ], default-features = false }
-reqwest = { version = "0.12", default-features = false }
+reqwest = { version = "0.13", default-features = false, features = [
+    "json",
+    "rustls",
+] }
 futures = { version = "0.3", default-features = false }
 rust-argon2 = "3"
-fancy-regex = { version = "0.15", features = ["std"], default-features = false }
+fancy-regex = { version = "0.17", features = ["std"], default-features = false }
 compress-tools = { git = "https://github.com/OSSystems/compress-tools-rs", rev = "615e54549ce08695a45c7f38d3fbd10827ed140c" , features = ["static"]}
-zip = { version = "5", default-features = false }
+zip = { version = "7", default-features = false }
 phf = { version = "0.13", features = ["macros"], default-features = false }
 human-sort = "0.2"
 aes = "0.8"
@@ -88,4 +91,4 @@ once_cell = { version = "1", default-features = false }
 async-trait = "0.1"
 itertools = { version = "0.14", features = ["use_alloc"], default-features = false }
 rayon = "1.10"
-flume = { version = "0.11", default-features = false }
+flume = { version = "0.12", default-features = false, features = ["async"] }

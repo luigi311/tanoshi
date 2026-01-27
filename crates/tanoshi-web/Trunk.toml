@@ -10,8 +10,8 @@ backend = "http://localhost:3030/image"
 
 [tools]
 sass = "1.93.2"
-wasm_bindgen = "0.2.103"
-wasm_opt = "version_123"
+wasm_bindgen = "0.2.108"
+wasm_opt = "version_125"
 
 [serve]
 addresses = ["0.0.0.0"]
