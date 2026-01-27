@@ -512,7 +512,7 @@ impl Reader {
                     .style("text-align", "center")
                     .event(clone!(this => move |_: events::Click| {
                         info!("zoom in");
-                        this.zoom.set_neq(this.zoom.get() + 0.5);   
+                        this.zoom.set_neq(this.zoom.get() + 0.25);   
                     }))
                     .children(&mut [
                         svg!("svg", {
@@ -548,8 +548,11 @@ impl Reader {
                     .event(clone!(this => move |_: events::Click| {
                         info!("zoom out");
                         let zoom = this.zoom.get();
-                        if zoom > 0.0 {
-                            this.zoom.set_neq(this.zoom.get() - 0.5);   
+                        if zoom > 0.25 {
+                            this.zoom.set_neq(this.zoom.get() - 0.25);   
+                        } else {
+                            // minimum zoom is 25%
+                            this.zoom.set_neq(0.25);
                         }
                     }))
                     .children(&mut [
