@@ -965,29 +965,27 @@ impl Reader {
                     return;
                 }
 
-                let mut page_no = 0;
-                let window_height = body().offset_height();
-                let client_height = document().document_element().unwrap_throw().client_height();
-                let body_top = window().scroll_y().unwrap_throw().round() as i32;
-                let pages_len = this.pages.lock_ref().len() ;
+                let pages_len = this.pages.lock_ref().len();
+                if pages_len == 0 { return; }
+
+                let probe_y = Reader::scroll_y() + (Reader::viewport_h() / 2.0);
+
+                let mut page_no = 0usize;
+
                 for i in 0..pages_len {
-                    let page_top = document()
-                        .get_element_by_id(format!("{i}").as_str())
-                        .and_then(|el| el.dyn_into::<web_sys::HtmlElement>().ok())
-                        .map(|el| el.offset_top())
-                        .unwrap_or_default();
-                    if page_top > body_top {
-                        page_no = i;
-                        break;
+                    if let Some(el) = document().get_element_by_id(&i.to_string()) {
+                        let top = Reader::element_abs_top(&el);
+                        if top <= probe_y {
+                            page_no = i;
+                        } else {
+                            break; // tops increase as you go down
+                        }
                     }
                 }
-                if  body_top + client_height > window_height - 10 {
-                    info!("window_height: {} body_top: {}", window_height, body_top + client_height);
-                    page_no = pages_len - 1;
-                }
+
                 let is_last_page = pages_len == this.current_page.get() + 1;
                 if !(is_last_page && page_no == 0) {
-                    this.current_page.set_neq(page_no as usize);
+                    this.current_page.set_neq(page_no);
                 }
             }))
         })
