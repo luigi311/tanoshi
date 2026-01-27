@@ -34,4 +34,32 @@ graphql-ws-client = { version = "0.11", features = ["client-graphql-client", "ws
 
 [dependencies.web-sys]
 version = "0.3"
-features = ["Cache", "CacheStorage", "CssStyleDeclaration", "Document", "ErrorEvent", "EventSource", "FocusEvent", "HtmlCollection", "HtmlImageElement", "HtmlOptionElement", "HtmlSelectElement", "Location", "MediaQueryList", "MediaQueryListEvent", "MessageEvent", "Navigator", "Notification", "NotificationOptions", "NotificationPermission", "PopStateEvent", "ServiceWorkerContainer", "Storage", "Url", "UrlSearchParams", "Window"]
+features = [
+    "Cache",
+    "CacheStorage",
+    "CssStyleDeclaration",
+    "Document",
+    "DomRect",
+    "Element",
+    "ErrorEvent",
+    "EventSource",
+    "FocusEvent",
+    "HtmlCollection",
+    "HtmlImageElement",
+    "HtmlOptionElement",
+    "HtmlSelectElement",
+    "Location",
+    "MediaQueryList",
+    "MediaQueryListEvent",
+    "MessageEvent",
+    "Navigator",
+    "Notification",
+    "NotificationOptions",
+    "NotificationPermission",
+    "PopStateEvent",
+    "ServiceWorkerContainer",
+    "Storage",
+    "Url",
+    "UrlSearchParams",
+    "Window",
+]
