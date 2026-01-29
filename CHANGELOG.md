@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.37.1]
+- [reader] Fix reader zoom chaning pages when zoomed in on continous mode
+- [reader] Add more zoom steps and prevent zooming out too much
+- [web] Change more to settings in bottom bar
+- [all] Upgrade dependencies
+
 ## [0.37.0]
 - [all] Upgrade to rust 1.90.0
 
