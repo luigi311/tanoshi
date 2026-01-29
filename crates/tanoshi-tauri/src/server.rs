@@ -49,7 +49,7 @@ impl<R: Runtime> Plugin<R> for Server {
     Some(format!("window.__TANOSHI_PORT__ = {};", self.port))
   }
 
-  fn initialize(&mut self, _app: &AppHandle<R>, _config: serde_json::Value) -> Result<(), Box<(dyn std::error::Error + 'static)>> {
+  fn initialize(&mut self, _app: &AppHandle<R>, _config: serde_json::Value) -> Result<(), Box<dyn std::error::Error + 'static>> {
     let port = self.port;
 
     tauri::async_runtime::spawn(async move {
