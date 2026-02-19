@@ -90,7 +90,7 @@ jobs:
     permissions:
       contents: write
     container:
-      image: ghcr.io/luigi311/tanoshi-builder:sha-381b86c
+      image: ghcr.io/luigi311/tanoshi-builder:sha-4cf682e
     steps:
       - uses: actions/checkout@v4
         with:
@@ -122,7 +122,7 @@ jobs:
   build-web:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/luigi311/tanoshi-builder:sha-381b86c
+      image: ghcr.io/luigi311/tanoshi-builder:sha-4cf682e
     steps:
       - uses: actions/checkout@v4
         with:
