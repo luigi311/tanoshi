@@ -2,7 +2,7 @@
 name = "tanoshi-vm"
 version = "0.7.2"
 edition = "2024"
-rust-version = "1.90.0"
+rust-version = "1.93.1"
 description = "Tanoshi VM"
 repository = "https://github.com/luigi311/tanoshi"
 license = "MIT"
