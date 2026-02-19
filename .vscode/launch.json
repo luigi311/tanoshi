@@ -1,0 +1,202 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug executable 'tanoshi-app'",
+            "type": "lldb",
+            "request": "launch",
+            "cargo": {
+                "args": [
+                    "run",
+                    "--bin=tanoshi-app",
+                    "--package=tanoshi-app"
+                ]
+            },
+            "args": [],
+            // Set RUST_LOG=debug for the debug session
+            "env": {
+                "RUST_LOG": "debug"
+            }
+        },
+        {
+            "name": "Debug unit tests in library 'tanoshi'",
+            "type": "lldb",
+            "request": "launch",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--package=tanoshi"
+                ]
+            }
+        },
+        {
+            "name": "Debug executable 'tanoshi'",
+            "type": "lldb",
+            "request": "launch",
+            "cargo": {
+                "args": [
+                    "run",
+                    "--bin=tanoshi",
+                    "--package=tanoshi"
+                ]
+            },
+            "args": []
+        },
+        {
+            "name": "Debug unit tests in executable 'tanoshi'",
+            "type": "lldb",
+            "request": "launch",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--bin=tanoshi",
+                    "--package=tanoshi"
+                ]
+            }
+        },
+        {
+            "name": "Debug unit tests in library 'tanoshi_lib'",
+            "type": "lldb",
+            "request": "launch",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--package=tanoshi-lib"
+                ]
+            }
+        },
+        {
+            "name": "Debug unit tests in library 'tanoshi_notifier'",
+            "type": "lldb",
+            "request": "launch",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--package=tanoshi-notifier"
+                ]
+            }
+        },
+        {
+            "name": "Debug unit tests in library 'tanoshi_tracker'",
+            "type": "lldb",
+            "request": "launch",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--package=tanoshi-tracker"
+                ]
+            }
+        },
+        {
+            "name": "Debug unit tests in library 'tanoshi_vm'",
+            "type": "lldb",
+            "request": "launch",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--package=tanoshi-vm"
+                ]
+            }
+        },
+        {
+            "name": "Debug example 'example'",
+            "type": "lldb",
+            "request": "launch",
+            "cargo": {
+                "args": [
+                    "run",
+                    "--example=example",
+                    "--package=tanoshi-vm"
+                ]
+            },
+            "args": []
+        },
+        {
+            "name": "Debug unit tests in example 'example'",
+            "type": "lldb",
+            "request": "launch",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--example=example",
+                    "--package=tanoshi-vm"
+                ]
+            }
+        },
+        {
+            "name": "Debug executable 'tanoshi-cli'",
+            "type": "lldb",
+            "request": "launch",
+            "cargo": {
+                "args": [
+                    "run",
+                    "--bin=tanoshi-cli",
+                    "--package=tanoshi-cli"
+                ]
+            },
+            "args": []
+        },
+        {
+            "name": "Debug unit tests in executable 'tanoshi-cli'",
+            "type": "lldb",
+            "request": "launch",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--bin=tanoshi-cli",
+                    "--package=tanoshi-cli"
+                ]
+            }
+        },
+        {
+            "name": "Debug unit tests in library 'tanoshi_schema'",
+            "type": "lldb",
+            "request": "launch",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--package=tanoshi-schema"
+                ]
+            }
+        },
+        {
+            "name": "Debug executable 'tanoshi-app'",
+            "type": "lldb",
+            "request": "launch",
+            "cargo": {
+                "args": [
+                    "run",
+                    "--bin=tanoshi-app",
+                    "--package=tanoshi-app"
+                ]
+            },
+            "args": []
+        },
+        {
+            "name": "Debug unit tests in executable 'tanoshi-app'",
+            "type": "lldb",
+            "request": "launch",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--bin=tanoshi-app",
+                    "--package=tanoshi-app"
+                ]
+            }
+        },
+        {
+            "name": "Debug unit tests in library 'tanoshi_util'",
+            "type": "lldb",
+            "request": "launch",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--package=tanoshi-util"
+                ]
+            }
+        }
+    ]
+}

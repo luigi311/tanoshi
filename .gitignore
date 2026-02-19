@@ -1,6 +1,5 @@
 .DS_Store
 target/
-.vscode/
 .env
 .idea/
 /manga/

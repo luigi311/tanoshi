@@ -13,7 +13,19 @@
 	// "postCreateCommand": "cat /etc/os-release",
 
 	// Configure tool-specific properties.
-	// "customizations": {},
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"vadimcn.vscode-lldb",
+				"ms-azuretools.vscode-docker",
+				"tamasfe.even-better-toml",
+				"fill-labs.dependi",
+				"esbenp.prettier-vscode",
+				"github.vscode-github-actions",
+				"rust-lang.rust-analyzer",
+			]
+		}
+	},
 
 	// Uncomment to connect as an existing user other than the container default. More info: https://aka.ms/dev-containers-non-root.
 	// "remoteUser": "devcontainer"
