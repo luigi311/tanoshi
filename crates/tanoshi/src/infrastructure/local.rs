@@ -244,6 +244,7 @@ impl Extension for Local {
             icon: "/icons/192.png",
             languages: Lang::All,
             nsfw: false,
+            requests_per_second: None,
         }
     }
 

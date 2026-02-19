@@ -65,6 +65,7 @@ pub struct SourceInfo {
     pub version: String,
     pub icon: String,
     pub nsfw: bool,
+    pub requests_per_second: Option<f64>,
 }
 
 struct UpdatesWorker<C, M, L>

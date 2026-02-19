@@ -18,4 +18,5 @@ pub struct SourceInfo {
     pub icon: &'static str,
     pub languages: Lang,
     pub nsfw: bool,
+    pub requests_per_second: Option<f64>,
 }

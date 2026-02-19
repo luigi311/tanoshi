@@ -25,6 +25,7 @@ pub fn dummy_source_info(id: i64) -> SourceInfo {
         icon: "",
         languages: Lang::All,
         nsfw: false,
+        requests_per_second: None,
     }
 }
 
