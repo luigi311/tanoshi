@@ -306,7 +306,6 @@ where
         }
 
         loop {
-            tokio::time::sleep(tokio::time::Duration::from_micros(1_000_000)).await;
             tokio::select! {
                 Ok(chapter) = self.chapter_update_receiver.recv() => {
                     if self.auto_download_chapter {
