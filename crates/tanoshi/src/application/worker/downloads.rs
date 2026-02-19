@@ -224,7 +224,7 @@ where
         let archive_path = manga_path.join(format!("{}.cbz", queue.chapter_title));
         let tmp = manga_path.join(format!("{}.temp.cbz", queue.chapter_title));
 
-        // 3. Build/update archive in a temp file
+        // Build/update archive in a temp file
         fs::create_dir_all(&manga_path)?;
         {
             let mut tmp_zip = self.open_or_create_writeble_zip_file(&manga_path, &tmp)?;
@@ -262,7 +262,7 @@ where
             tmp_zip.finish()?;
         }
 
-        // 4. Mark page complete and possibly chapter complete
+        // Mark page complete and possibly chapter complete
         self.download_repo
             .mark_single_download_queue_as_completed(queue.id)
             .await?;
@@ -273,7 +273,7 @@ where
             .await
             .unwrap_or_default()
         {
-            // 5. Atomically replace the archive
+            // Atomically replace the archive
             if tmp.exists() {
                 fs::rename(tmp, &archive_path)?;
             } else {
@@ -292,7 +292,25 @@ where
                 .await?;
         }
 
-        // 6. Trigger next download
+        // Delay based on source's requests per second before next download.
+        // Should apply even if chapter is completed in case the next chapter is from the same source.
+        let source = self.ext.get_source_info(queue.source_id)?;
+        if let Some(rps) = source.requests_per_second {
+            if rps.is_finite() && rps > 0.0 {
+                let delay = Duration::from_secs_f64(1.0 / rps);
+                debug!(
+                    "delaying next download by {delay:?} based on source's requests per second {rps}"
+                );
+                tokio::time::sleep(delay).await;
+            } else {
+                warn!(
+                    "invalid requests_per_second value {rps} for source {} - skipping delay",
+                    queue.source_id
+                );
+            }
+        }
+        
+        // Trigger next download
         if !self.paused().await {
             self.tx.send(Command::Download).unwrap();
         }
@@ -306,7 +324,6 @@ where
         }
 
         loop {
-            tokio::time::sleep(tokio::time::Duration::from_micros(1_000_000)).await;
             tokio::select! {
                 Ok(chapter) = self.chapter_update_receiver.recv() => {
                     if self.auto_download_chapter {

@@ -57,7 +57,7 @@ pub trait PluginRegistrar {
 macro_rules! export_plugin {
     ($register:expr_2021) => {
         #[doc(hidden)]
-        #[no_mangle]
+        #[unsafe(no_mangle)]
         pub static plugin_declaration: $crate::extensions::PluginDeclaration =
             $crate::extensions::PluginDeclaration {
                 rustc_version: $crate::RUSTC_VERSION,
