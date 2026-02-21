@@ -335,6 +335,7 @@ type RecentChapter {
   chapterTitle: String!
   readAt: NaiveDateTime!
   lastPageRead: Int!
+  source: Source!
 }
 
 type RecentChapterConnection {
@@ -364,6 +365,7 @@ type RecentUpdate {
   coverUrl: String!
   chapterTitle: String!
   uploaded: NaiveDateTime!
+  source: Source!
 }
 
 type RecentUpdateConnection {

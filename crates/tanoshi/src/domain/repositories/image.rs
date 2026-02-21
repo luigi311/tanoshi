@@ -19,7 +19,7 @@ pub trait ImageRepository: Send + Sync {
     async fn fetch_image_from_url(
         &self,
         url: &str,
-        referer: Option<&String>,
+        source_id: i64,
     ) -> Result<Image, ImageRepositoryError>;
     async fn fetch_image_from_file<P>(&self, path: P) -> Result<Image, ImageRepositoryError>
     where

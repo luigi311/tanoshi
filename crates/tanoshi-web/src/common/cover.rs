@@ -30,7 +30,7 @@ impl Cover {
         last_read_at: Option<NaiveDateTime>,
         unread_chapter_count: i64,
     ) -> Self {
-        let cover_url = proxied_image_url(&cover_url);
+        let cover_url = proxied_image_url(&cover_url, source_id);
         Self {
             id,
             source_id,

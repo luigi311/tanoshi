@@ -529,14 +529,14 @@ impl Manga {
                     // .class_signal("animate-pulse", manga.loader.is_loading())
                     .children(&mut [
                         html!("div", {
-                            .child_signal(manga.cover_url.signal_cloned().map(|x| {
+                            .child_signal(manga.cover_url.signal_cloned().map(clone!(manga => move |x| {
                                 x.map(|cover_url| html!("img", {
                                     .style("border-radius", "0.375rem")
                                     .style("width", "8rem")
                                     .style("height", "auto")
-                                    .attr("src", &proxied_image_url(&cover_url))
+                                    .attr("src", &proxied_image_url(&cover_url, manga.source_id.get()))
                                 }))
-                            }))
+                            })))
                         }),
                         html!("div", {
                             .style("display", "flex")

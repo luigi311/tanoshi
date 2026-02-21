@@ -2,21 +2,23 @@ use std::path::Path;
 
 use async_trait::async_trait;
 
-use http::{HeaderMap, HeaderValue};
+use tanoshi_vm::extension::ExtensionManager;
 
 use crate::domain::{
     entities::image::Image,
     repositories::image::{ImageRepository, ImageRepositoryError},
 };
 
-#[derive(Default, Clone)]
+#[derive(Clone)]
 pub struct ImageRepositoryImpl {
-    client: reqwest::Client,
+    extension: ExtensionManager,
 }
 
 impl ImageRepositoryImpl {
-    pub fn new() -> Self {
-        Self::default()
+    pub fn new(extension: ExtensionManager) -> Self {
+        Self {
+            extension: extension,
+        }
     }
 }
 
@@ -25,37 +27,28 @@ impl ImageRepository for ImageRepositoryImpl {
     async fn fetch_image_from_url(
         &self,
         url: &str,
-        referer: Option<&String>,
+        source_id: i64,
     ) -> Result<Image, ImageRepositoryError> {
-        debug!("get image from {url}");
         if url.is_empty() {
             return Err(ImageRepositoryError::Other(
                 "url cannot be empty".to_string(),
             ));
         }
 
-        let mut headers = HeaderMap::new();
+        // determine content type from the URL
+        let content_type = extract_image_type_from_url(&url);
 
-        if let Some(referer) = referer.and_then(|r| r.parse::<HeaderValue>().ok()) {
-            headers.insert("Referer", referer);
-        }
+        let bytes = self
+            .extension
+            .get_image_bytes(source_id, url.to_string())
+            .await
+            .map_err(|e| ImageRepositoryError::Other(format!("{e}")))?;
 
-        // Insert tanoshi user-agent
-        headers.insert("User-Agent", format!("Tanoshi/{}", env!("CARGO_PKG_VERSION")).parse().unwrap());
-
-        let source_res = self.client.get(url).headers(headers).send().await?;
-
-        let content_type = source_res
-            .headers()
-            .get("content-type")
-            .ok_or_else(|| ImageRepositoryError::Other("not a string".to_string()))?
-            .to_str()
-            .map_err(|_| ImageRepositoryError::Other("no content type".to_string()))?
-            .to_string();
-
-        let data = source_res.bytes().await?;
-
-        Ok(Image { content_type, data })
+        debug!("fetched image from extension source_id={source_id}, url={}, content_type={content_type}, size={} bytes", &url, bytes.len());
+        Ok(Image {
+            content_type,
+            data: bytes,
+        })
     }
 
     async fn fetch_image_from_file<P>(&self, path: P) -> Result<Image, ImageRepositoryError>
@@ -105,5 +98,22 @@ impl ImageRepository for ImageRepositoryImpl {
             content_type,
             data: data.into(),
         })
+    }
+
+}
+
+fn extract_image_type_from_url(url: &str) -> String {
+    let extension = url.split('.').last();
+
+    match extension {
+        Some(ext) => match ext.to_lowercase().as_str() {
+            "jpg" | "jpeg" => "image/jpeg".to_string(),
+            "png" => "image/png".to_string(),
+            "gif" => "image/gif".to_string(),
+            "bmp" => "image/bmp".to_string(),
+            "webp" => "image/webp".to_string(),
+            _ => "application/octet-stream".to_string(),
+        },
+        None => "application/octet-stream".to_string(),
     }
 }

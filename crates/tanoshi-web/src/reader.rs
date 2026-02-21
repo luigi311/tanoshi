@@ -66,6 +66,7 @@ pub struct Reader {
     spinner: Rc<Spinner>,
     timeout: Mutable<Option<Timeout>>,
     is_zooming: Mutable<bool>,
+    source_id: Mutable<i64>,
 }
 
 impl Reader {
@@ -94,6 +95,7 @@ impl Reader {
             spinner,
             timeout: Mutable::new(None),
             is_zooming: Mutable::new(false),
+            source_id: Mutable::new(0),
         })
     }
 
@@ -199,6 +201,7 @@ impl Reader {
         this.loader.load(clone!(this => async move {
             match query::fetch_chapter(chapter_id).await {
                 Ok(result) => {
+                    this.source_id.set_neq(result.source.id);
                     this.manga_id.set_neq(result.manga.id);
                     this.manga_title.set_neq(result.manga.title.clone());
                     this.chapter_title.set_neq(format_number_title(result.number, &result.title));
@@ -206,7 +209,7 @@ impl Reader {
                     this.prev_chapter.set_neq(result.prev);
 
                     // Update the number of pages so the correct page can be loaded
-                    let pages = result.pages.iter().map(|page| (format!("{page}?referer={}", result.source.url), PageStatus::Initial)).collect();
+                    let pages = result.pages.iter().map(|page| (format!("{page}"), PageStatus::Initial)).collect();
                     this.pages.lock_mut().replace_cloned(pages);
 
                     this.reader_settings.load_by_manga_id(result.manga.id);
@@ -261,8 +264,7 @@ impl Reader {
 
                     this.pages_loaded.set(ContinousLoaded::Initial);
 
-                    let source_url = result.source.url;
-                    let pages = result.pages.iter().map(|page| (format!("{page}?referer={source_url}"), PageStatus::Initial)).collect();
+                    let pages = result.pages.iter().map(|page| (format!("{page}"), PageStatus::Initial)).collect();
                     this.pages.lock_mut().replace_cloned(pages);
                     
                     Self::replace_state_with_url(chapter_id, page + 1);
@@ -814,9 +816,10 @@ impl Reader {
     }
 
     fn image_src_signal(&self, index: usize, preload_prev: usize, preload_next: usize, page: String, status: PageStatus)-> impl Signal<Item = Option<String>> + use<> {
+        let source_id = self.source_id.get();
         self.current_page.signal_cloned().map(move |current_page| {
             if (index >= current_page.saturating_sub(preload_prev) && index <= current_page + preload_next) || matches!(status, PageStatus::Loaded) {
-                Some(proxied_image_url(&page))
+                Some(proxied_image_url(&page, source_id))
             } else {
                 None
             }
