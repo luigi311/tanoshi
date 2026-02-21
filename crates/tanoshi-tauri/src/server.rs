@@ -133,6 +133,7 @@ impl<R: Runtime> Plugin<R> for Server {
         chapter_repo.clone(),
         manga_repo.clone(),
         download_repo.clone(),
+        library_repo.clone(),
         extension_manager.clone(),
         notifier.clone(),
         download_sender.clone(),

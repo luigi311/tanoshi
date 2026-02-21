@@ -2,7 +2,7 @@ use crate::{
     domain::{
         entities::{chapter::Chapter, download::DownloadQueue, manga::Manga},
         repositories::{
-            chapter::ChapterRepository, download::DownloadRepository, manga::MangaRepository,
+            chapter::ChapterRepository, download::DownloadRepository, library::LibraryRepository, manga::MangaRepository
         },
     },
     infrastructure::{
@@ -43,16 +43,18 @@ pub enum Command {
     Download,
 }
 
-pub struct DownloadWorker<C, D, M>
+pub struct DownloadWorker<C, D, M, L>
 where
     C: ChapterRepository + 'static,
     D: DownloadRepository + 'static,
     M: MangaRepository + 'static,
+    L: LibraryRepository + 'static,
 {
     download_dir: PathBuf,
     chapter_repo: C,
     manga_repo: M,
     download_repo: D,
+    library_repo: L,
     ext: ExtensionManager,
     _notifier: Notification<UserRepositoryImpl>,
     tx: DownloadSender,
@@ -61,17 +63,19 @@ where
     auto_download_chapter: bool,
 }
 
-impl<C, D, M> DownloadWorker<C, D, M>
+impl<C, D, M, L> DownloadWorker<C, D, M, L>
 where
     C: ChapterRepository + 'static,
     D: DownloadRepository + 'static,
     M: MangaRepository + 'static,
+    L: LibraryRepository + 'static,
 {
     pub fn new<P: AsRef<Path>>(
         dir: P,
         chapter_repo: C,
         manga_repo: M,
         download_repo: D,
+        library_repo: L,
         ext: ExtensionManager,
         notifier: Notification<UserRepositoryImpl>,
         download_sender: DownloadSender,
@@ -84,6 +88,7 @@ where
             chapter_repo,
             manga_repo,
             download_repo,
+            library_repo,
             ext,
             _notifier: notifier,
             tx: download_sender,
@@ -298,13 +303,32 @@ where
             tokio::select! {
                 Ok(chapter) = self.chapter_update_receiver.recv() => {
                     if self.auto_download_chapter {
+                        let manga = self.manga_repo.get_manga_by_id(chapter.chapter.manga_id).await;
+                        let manga_title = manga.map(|m| m.title).unwrap_or_default();
                         // Check if chapter is already downloaded
-                        if let Ok(_) = self.download_repo.get_chapter_downloaded_path(chapter.chapter.id).await {
-                            let manga = self.manga_repo.get_manga_by_id(chapter.chapter.manga_id).await;
-                            let manga_title = manga.map(|m| m.title).unwrap_or_default();
-                            debug!("chapter {} of manga {} already downloaded, skipping", chapter.chapter.title, manga_title);
-                            continue;
+                        match self.download_repo.get_chapter_downloaded_path(chapter.chapter.id).await {
+                            Ok(path) => {
+                                if !path.is_empty() {
+                                    debug!("chapter {} for manga {} already downloaded, skipping", chapter.chapter.title, manga_title);
+                                    continue;
+                                }
+                            }
+                            Err(e) => {
+                                error!("failed to get downloaded path for chapter {}, reason: {:?}", chapter.chapter.id, e);
+                            }
                         }
+                        match self.library_repo.get_users_by_manga_id(chapter.chapter.manga_id).await {
+                            Ok(users) => {
+                                if users.is_empty() {
+                                    debug!("manga {} not in library, skipping auto download for chapter {}", manga_title, chapter.chapter.title);
+                                    continue;
+                                }
+                            }
+                            Err(e) => {
+                                error!("failed to get library users for manga {}, reason: {:?}", manga_title, e);
+                            }
+                        }
+
                         let insert_result = self
                             .insert_to_queue(&chapter.chapter)
                             .await;
@@ -381,11 +405,12 @@ pub fn channel() -> (DownloadSender, DownloadReceiver) {
     tokio::sync::mpsc::unbounded_channel::<Command>()
 }
 
-pub fn start<C, D, M, P>(
+pub fn start<C, D, M, L, P>(
     dir: P,
     chapter_repo: C,
     manga_repo: M,
     download_repo: D,
+    library_repo: L,
     ext: ExtensionManager,
     notifier: Notification<UserRepositoryImpl>,
     download_sender: DownloadSender,
@@ -397,6 +422,7 @@ where
     C: ChapterRepository + 'static,
     D: DownloadRepository + 'static,
     M: MangaRepository + 'static,
+    L: LibraryRepository + 'static,
     P: AsRef<Path>,
 {
     let download_worker = DownloadWorker::new(
@@ -404,6 +430,7 @@ where
         chapter_repo,
         manga_repo,
         download_repo,
+        library_repo,
         ext,
         notifier,
         download_sender,
