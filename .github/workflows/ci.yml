@@ -312,6 +312,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     needs:
       - build-web
+    container:
+      image: ghcr.io/luigi311/tanoshi-builder:sha-4cf682e
     strategy:
       fail-fast: false
       matrix:
@@ -332,22 +334,10 @@ jobs:
         with:
           name: tanoshi-web
           path: crates/tanoshi-web/dist
-      
-      - uses: actions-rust-lang/setup-rust-toolchain@02be93da58aa71fb456aa9c43b301149248829d8
 
       - uses: Swatinem/rust-cache@98c8021b550208e191a6a3145459bfc9fb29c4c0
         with:
           key: "${{ matrix.type }}-${{ matrix.arch }}"
-
-      - name: Install deps
-        run: sudo apt update && sudo apt upgrade -y && sudo apt install -y $UBUNTU_DEPS
-
-      - uses: ilammy/setup-nasm@72793074d3c8cdda771dba85f6deafe00623038b
-
-      - name: Install LLVM and Clang
-        uses: KyleMayes/install-llvm-action@a7a1a882e2d06ebe05d5bb97c3e1f8c984ae96fc
-        with:
-          version: ${{ env.LLVM_VERSION }}
 
       - name: Build tanoshi
         shell: bash
