@@ -5,6 +5,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.38.0]
+- [tanoshi] Use extensions to fetch images to avoid rate limits and bypass issues
+- [all] Upgrade to rust 1.93.1
+
 ## [0.37.1]
 - [reader] Fix reader zoom chaning pages when zoomed in on continous mode
 - [reader] Add more zoom steps and prevent zooming out too much

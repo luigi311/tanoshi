@@ -38,7 +38,7 @@
     "devUrl": "http://localhost:8080"
   },
   "productName": "Tanoshi",
-  "version": "0.37.1",
+  "version": "0.38.0",
   "identifier": "com.luigi311.tanoshi",
   "plugins": {},
   "app": {

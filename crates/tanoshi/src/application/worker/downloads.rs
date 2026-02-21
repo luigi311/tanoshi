@@ -12,7 +12,7 @@ use crate::{
 };
 use anyhow::{anyhow, Result};
 use chrono::Utc;
-use reqwest::{Url, Method};
+use reqwest::Url;
 use std::{
     fs::{self, File},
     io::Write,
