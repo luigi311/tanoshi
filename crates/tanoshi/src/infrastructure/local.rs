@@ -420,7 +420,7 @@ impl Extension for Local {
         Ok(pages)
     }
 
-    fn get_image_bytes(&self, url: String) -> Result<Bytes> {
+    fn get_image_bytes(&self, _url: String) -> Result<Bytes> {
         Err(anyhow!("not implemented"))
     }
 }

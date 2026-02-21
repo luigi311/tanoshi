@@ -50,7 +50,6 @@ where
     M: MangaRepository + 'static,
 {
     download_dir: PathBuf,
-    client: reqwest::Client,
     chapter_repo: C,
     manga_repo: M,
     download_repo: D,
@@ -82,7 +81,6 @@ where
     ) -> Self {
         Self {
             download_dir: PathBuf::new().join(dir),
-            client: reqwest::ClientBuilder::new().build().unwrap(),
             chapter_repo,
             manga_repo,
             download_repo,
@@ -300,6 +298,13 @@ where
             tokio::select! {
                 Ok(chapter) = self.chapter_update_receiver.recv() => {
                     if self.auto_download_chapter {
+                        // Check if chapter is already downloaded
+                        if let Ok(_) = self.download_repo.get_chapter_downloaded_path(chapter.chapter.id).await {
+                            let manga = self.manga_repo.get_manga_by_id(chapter.chapter.manga_id).await;
+                            let manga_title = manga.map(|m| m.title).unwrap_or_default();
+                            debug!("chapter {} of manga {} already downloaded, skipping", chapter.chapter.title, manga_title);
+                            continue;
+                        }
                         let insert_result = self
                             .insert_to_queue(&chapter.chapter)
                             .await;
