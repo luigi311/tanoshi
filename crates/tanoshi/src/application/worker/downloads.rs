@@ -231,23 +231,14 @@ where
 
             let mut attempts = 0;
             let data = loop {
-                // Build request each attempt
-                let referrer = self.ext.get_source_info(queue.source_id).map(|s| s.url).unwrap_or_default();
-                let req = self.client.request(Method::GET, url.clone())
-                    .header("Referer", &referrer)
-                    .header("User-Agent", format!("Tanoshi/{}", env!("CARGO_PKG_VERSION")).as_str());
-                match req.send().await {
-                    Ok(resp) if resp.status().is_success() => match resp.bytes().await {
-                        Ok(b) => break b,
-                        Err(e) => {
-                            error!("error reading bytes {e} attempt {attempts}");
-                        }
-                    },
-                    Ok(resp) => {
-                        error!("bad status {} for {url} attempt {attempts}", resp.status());
-                    }
+                let results = self
+                    .ext
+                    .get_image_bytes(queue.source_id, url.to_string())
+                    .await;
+                match results {
+                    Ok(bytes) => break bytes,
                     Err(e) => {
-                        error!("network error {e} for {url} attempt {attempts}");
+                        error!("failed to download {}, reason: {e}", queue.url);
                     }
                 }
                 attempts += 1;
