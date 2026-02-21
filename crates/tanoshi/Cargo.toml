@@ -1,6 +1,6 @@
 [package]
 name = "tanoshi"
-version = "0.38.0"
+version = "0.38.1"
 edition = "2024"
 rust-version = "1.93.1"
 description = "Tanoshi"
