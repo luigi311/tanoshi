@@ -64,18 +64,18 @@ where
                 image
             }
             ImageUri::ExtensionRemote { source_id, url } => {
+                // determine content type from the URL
+                let content_type = Self::extract_image_type_from_url(&url);
+
                 let bytes = self
                     .ext
-                    .get_image_bytes(source_id, url)
+                    .get_image_bytes(source_id, url.clone())
                     .await
                     .map_err(|e| ImageError::Other(anyhow::anyhow!("{e}")))?;
 
-                // You *must* decide a content-type. Either:
-                // 1) sniff via header in extension API (best), or
-                // 2) sniff by magic bytes, or
-                // 3) default "image/jpeg" (least safe)
+                debug!("fetched image from extension source_id={source_id}, url={}, content_type={content_type}, size={} bytes", &url, bytes.len());
                 let image = Image {
-                    content_type: "image/jpeg".to_string(), // TODO: improve
+                    content_type,
                     data: bytes,
                 };
 
@@ -111,5 +111,21 @@ where
         };
 
         Ok(image_uri.into_encrypted(secret)?)
+    }
+
+    fn extract_image_type_from_url(url: &str) -> String {
+        let extension = url.split('.').last();
+
+        match extension {
+            Some(ext) => match ext.to_lowercase().as_str() {
+                "jpg" | "jpeg" => "image/jpeg".to_string(),
+                "png" => "image/png".to_string(),
+                "gif" => "image/gif".to_string(),
+                "bmp" => "image/bmp".to_string(),
+                "webp" => "image/webp".to_string(),
+                _ => "application/octet-stream".to_string(),
+            },
+            None => "application/octet-stream".to_string(),
+        }
     }
 }
