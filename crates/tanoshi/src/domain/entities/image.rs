@@ -15,10 +15,6 @@ type Aes128CbcDec = cbc::Decryptor<aes::Aes128>;
 
 pub enum ImageUri {
     Remote(String),
-    ExtensionRemote {
-        source_id: i64,
-        url: String,
-    },
     File(String),
     Archive(String, String),
 }
@@ -26,28 +22,7 @@ pub enum ImageUri {
 impl TryFrom<&str> for ImageUri {
     type Error = anyhow::Error;
 
-    fn try_from(uri: &str) -> Result<Self, Self::Error> {
-        // extension-backed remote
-        if let Some(rest) = uri.strip_prefix("ext:") {
-            // split into 2 parts: source_id and the remaining url
-            let (sid_str, url) = rest
-                .split_once(':')
-                .ok_or_else(|| anyhow!("invalid ext uri, expected ext:<source_id>:<url>"))?;
-
-            let source_id: i64 = sid_str
-                .parse()
-                .map_err(|_| anyhow!("invalid ext uri source_id"))?;
-
-            if !url.starts_with("http") {
-                return Err(anyhow!("invalid ext uri url, expected http(s) url"));
-            }
-
-            return Ok(ImageUri::ExtensionRemote {
-                source_id,
-                url: url.to_string(),
-            });
-        }
-        
+    fn try_from(uri: &str) -> Result<Self, Self::Error> {       
         let uri = if uri.starts_with("http") {
             Self::Remote(uri.to_string())
         } else if !uri.is_empty() {
@@ -115,7 +90,6 @@ impl ToString for ImageUri {
     fn to_string(&self) -> String {
         match self {
             ImageUri::Remote(url) => url.to_owned(),
-            ImageUri::ExtensionRemote { source_id, url } => format!("ext:{source_id}:{url}"),
             ImageUri::File(path) => path.to_owned(),
             ImageUri::Archive(archive, filename) => format!("{archive}/{filename}"),
         }

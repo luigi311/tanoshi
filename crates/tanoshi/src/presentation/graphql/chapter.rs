@@ -187,7 +187,7 @@ impl Chapter {
             let secret = &ctx.data::<Config>()?.secret;
             pages
                 .par_iter_mut()
-                .for_each(|p| *p = image_svc.encrypt_extension_image_url(secret, self.source_id, p).unwrap());
+                .for_each(|p| *p = image_svc.encrypt_image_url(secret, p).unwrap());
         }
 
         Ok(pages)

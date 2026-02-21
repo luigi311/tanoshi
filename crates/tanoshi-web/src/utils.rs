@@ -102,8 +102,8 @@ impl AsyncLoader {
     }
 }
 
-pub fn proxied_image_url(image_url: &str) -> String {
-    format!("{}/{image_url}", image_proxy_host())
+pub fn proxied_image_url(image_url: &str, source_id: i64) -> String {
+    format!("{}/{image_url}?source_id={}", image_proxy_host(), source_id)
 }
 
 pub fn initialize_urls() {

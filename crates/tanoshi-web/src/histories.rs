@@ -22,6 +22,7 @@ pub struct Entry {
     read_at: chrono::NaiveDateTime,
     last_page_read: i64,
     cursor: String,
+    source_id: i64
 }
 
 pub struct Histories {
@@ -57,6 +58,7 @@ impl Histories {
                             read_at: chrono::NaiveDateTime::parse_from_str(&edge.node.read_at, "%Y-%m-%dT%H:%M:%S%.f").unwrap_throw(),
                             last_page_read: edge.node.last_page_read,
                             cursor: edge.cursor.clone(),
+                            source_id: edge.node.source.id,
                         })
                     }
                     histories.is_entries_empty.set(histories.entries.lock_ref().is_empty());
@@ -100,7 +102,7 @@ impl Histories {
                                 .class("update-item-thumbnail")
                                 .children(&mut [
                                     html!("img", {
-                                        .attr("src", &proxied_image_url(&entry.cover_url))
+                                        .attr("src", &proxied_image_url(&entry.cover_url, entry.source_id))
                                     })
                                 ])
                             }),

@@ -160,9 +160,9 @@ impl<R: Runtime> Plugin<R> for Server {
       let tracker_repo = TrackerRepositoryImpl::new(pool.clone(), mal_client.clone(), al_client);
       let tracker_svc = TrackerService::new(tracker_repo.clone());
 
-      let image_repo = ImageRepositoryImpl::new();
+      let image_repo = ImageRepositoryImpl::new(extension_manager.clone());
       let image_cache_repo = ImageCacheRepositoryImpl::new(&config.cache_path);
-      let image_svc = ImageService::new(image_repo, image_cache_repo, extension_manager.clone());
+      let image_svc = ImageService::new(image_repo, image_cache_repo);
 
       let loader = DatabaseLoader::new(
         history_repo,

@@ -17,7 +17,7 @@ use crate::{
 
 #[derive(Debug, Deserialize)]
 pub struct Params {
-    referer: Option<String>,
+    source_id: i64,
 }
 
 pub async fn fetch_image(
@@ -27,7 +27,7 @@ pub async fn fetch_image(
     Extension(svc): Extension<ImageService<ImageCacheRepositoryImpl, ImageRepositoryImpl>>,
 ) -> Result<impl IntoResponse, StatusCode> {
     let image = svc
-        .fetch_image(&config.secret, &encrypted_url, params.referer.as_ref())
+        .fetch_image(&config.secret, &encrypted_url, params.source_id)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
