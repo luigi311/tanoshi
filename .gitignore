@@ -18,3 +18,4 @@ dist/
 output/
 .flatpak-builder
 repo
+**.so

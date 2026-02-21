@@ -1,6 +1,6 @@
 [package]
 name = "tanoshi-lib"
-version = "0.27.0"
+version = "0.38.0"
 edition = "2024"
 rust-version = "1.93.1"
 description = "Tanoshi library"
@@ -15,6 +15,7 @@ exclude = [".github/*"]
 thiserror = "2"
 anyhow = "1"
 serde = { version = "1", features = ["derive"] }
+bytes = "1"
 
 [build-dependencies]
 rustc_version = "0.4"

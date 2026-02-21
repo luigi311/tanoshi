@@ -7,6 +7,7 @@ use std::{
 
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
+use bytes::Bytes;
 use fancy_regex::Regex;
 use mime_guess::mime;
 use serde::{Deserialize, Serialize};
@@ -417,6 +418,10 @@ impl Extension for Local {
         pages.sort_by(|a, b| human_sort::compare(a, b));
 
         Ok(pages)
+    }
+
+    fn get_image_bytes(&self, url: String) -> Result<Bytes> {
+        Err(anyhow!("not implemented"))
     }
 }
 

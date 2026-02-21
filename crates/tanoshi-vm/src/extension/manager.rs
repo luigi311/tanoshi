@@ -1,9 +1,9 @@
 use std::{
-    path::{Path, PathBuf},
-    sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard},
+    path::{Path, PathBuf}, sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard}
 };
 
 use anyhow::{anyhow, bail, Result};
+use bytes::Bytes;
 use fnv::FnvHashMap;
 use libloading::Library;
 use tanoshi_lib::prelude::{Input, PluginDeclaration, SourceInfo, Lang};
@@ -388,6 +388,26 @@ impl ExtensionManager {
                 .get()
                 .ok_or_else(|| anyhow!("uninitiated"))?
                 .get_pages(path)
+        })
+        .await?
+    }
+
+    pub async fn get_image_bytes(
+        &self,
+        source_id: i64,
+        url: String,
+    ) -> Result<Bytes> {
+        let extensions = self.extensions.clone();
+        tokio::task::spawn_blocking(move || {
+            extensions
+                .read()
+                .map_err(|e| anyhow!("failed to lock read: {e}"))?
+                .get(&source_id)
+                .ok_or_else(|| anyhow!("no such source"))?
+                .extension
+                .get()
+                .ok_or_else(|| anyhow!("uninitiated"))?
+                .get_image_bytes(url)
         })
         .await?
     }

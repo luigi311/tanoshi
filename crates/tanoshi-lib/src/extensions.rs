@@ -1,7 +1,8 @@
-use std::collections::HashMap;
+use std::{collections::HashMap};
 
 use crate::models::{ChapterInfo, Input, MangaInfo, SourceInfo};
 use anyhow::Result;
+use bytes::Bytes;
 
 pub trait Extension: Send + Sync {
     fn get_source_info(&self) -> SourceInfo;
@@ -38,6 +39,8 @@ pub trait Extension: Send + Sync {
     fn get_chapters(&self, path: String) -> Result<Vec<ChapterInfo>>;
 
     fn get_pages(&self, path: String) -> Result<Vec<String>>;
+
+    fn get_image_bytes(&self, url: String) -> Result<Bytes>;
 }
 
 /// A type represents an extension
@@ -57,7 +60,7 @@ pub trait PluginRegistrar {
 macro_rules! export_plugin {
     ($register:expr_2021) => {
         #[doc(hidden)]
-        #[no_mangle]
+        #[unsafe(no_mangle)]
         pub static plugin_declaration: $crate::extensions::PluginDeclaration =
             $crate::extensions::PluginDeclaration {
                 rustc_version: $crate::RUSTC_VERSION,

@@ -7,6 +7,7 @@ use crate::domain::{
 };
 use std::convert::TryFrom;
 use thiserror::Error;
+use tanoshi_vm::extension::ExtensionManager;
 
 #[derive(Debug, Error)]
 pub enum ImageError {
@@ -28,6 +29,7 @@ where
 {
     repo: R,
     cache_repo: C,
+    ext: ExtensionManager,
 }
 
 impl<C, R> ImageService<C, R>
@@ -35,8 +37,8 @@ where
     C: ImageCacheRepository,
     R: ImageRepository,
 {
-    pub fn new(repo: R, cache_repo: C) -> Self {
-        Self { repo, cache_repo }
+    pub fn new(repo: R, cache_repo: C, ext: ExtensionManager) -> Self {
+        Self { repo, cache_repo, ext }
     }
 
     pub async fn fetch_image(
@@ -61,6 +63,25 @@ where
 
                 image
             }
+            ImageUri::ExtensionRemote { source_id, url } => {
+                let bytes = self
+                    .ext
+                    .get_image_bytes(source_id, url)
+                    .await
+                    .map_err(|e| ImageError::Other(anyhow::anyhow!("{e}")))?;
+
+                // You *must* decide a content-type. Either:
+                // 1) sniff via header in extension API (best), or
+                // 2) sniff by magic bytes, or
+                // 3) default "image/jpeg" (least safe)
+                let image = Image {
+                    content_type: "image/jpeg".to_string(), // TODO: improve
+                    data: bytes,
+                };
+
+                let _ = self.cache_repo.set(encrypted_url, &image).await;
+                image
+            }
             ImageUri::File(path) => self.repo.fetch_image_from_file(&path).await?,
             ImageUri::Archive(archive, filename) => {
                 self.repo
@@ -74,6 +95,20 @@ where
 
     pub fn encrypt_image_url(&self, secret: &str, url: &str) -> Result<String, ImageError> {
         let image_uri = ImageUri::try_from(url)?;
+
+        Ok(image_uri.into_encrypted(secret)?)
+    }
+
+    pub fn encrypt_extension_image_url(
+        &self,
+        secret: &str,
+        source_id: i64,
+        url: &str,
+    ) -> Result<String, ImageError> {
+        let image_uri = ImageUri::ExtensionRemote {
+            source_id,
+            url: url.to_string(),
+        };
 
         Ok(image_uri.into_encrypted(secret)?)
     }

@@ -125,7 +125,7 @@ impl Manga {
 
         Ok(ctx
             .data::<ImageService<ImageCacheRepositoryImpl, ImageRepositoryImpl>>()?
-            .encrypt_image_url(secret, &self.cover_url)?)
+            .encrypt_extension_image_url(secret, self.source_id, &self.cover_url)?)
     }
 
     async fn is_favorite(&self, ctx: &Context<'_>) -> Result<bool> {

@@ -162,7 +162,7 @@ impl<R: Runtime> Plugin<R> for Server {
 
       let image_repo = ImageRepositoryImpl::new();
       let image_cache_repo = ImageCacheRepositoryImpl::new(&config.cache_path);
-      let image_svc = ImageService::new(image_repo, image_cache_repo);
+      let image_svc = ImageService::new(image_repo, image_cache_repo, extension_manager.clone());
 
       let loader = DatabaseLoader::new(
         history_repo,
