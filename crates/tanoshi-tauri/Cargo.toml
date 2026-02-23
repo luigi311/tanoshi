@@ -1,6 +1,6 @@
 [package]
 name = "tanoshi-app"
-version = "0.38.1"
+version = "0.38.2"
 default-run = "tanoshi-app"
 edition = "2021"
 rust-version = "1.93.1"
