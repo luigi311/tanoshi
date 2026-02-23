@@ -1,6 +1,3 @@
-use async_graphql::{Context, Object, Result};
-use chrono::NaiveDateTime;
-
 use crate::{
     domain::services::image::ImageService,
     infrastructure::{
@@ -8,6 +5,8 @@ use crate::{
         domain::repositories::{image::ImageRepositoryImpl, image_cache::ImageCacheRepositoryImpl},
     },
 };
+use async_graphql::{Context, Object, Result};
+use chrono::NaiveDateTime;
 
 pub struct RecentChapter {
     pub manga_id: i64,
@@ -17,6 +16,7 @@ pub struct RecentChapter {
     pub chapter_title: String,
     pub read_at: NaiveDateTime,
     pub last_page_read: i64,
+    pub source_id: i64,
 }
 
 impl From<crate::domain::entities::history::HistoryChapter> for RecentChapter {
@@ -29,6 +29,7 @@ impl From<crate::domain::entities::history::HistoryChapter> for RecentChapter {
             chapter_title: other.chapter_title,
             read_at: other.read_at,
             last_page_read: other.last_page_read,
+            source_id: other.source_id,
         }
     }
 }
@@ -68,6 +69,10 @@ impl RecentChapter {
     async fn last_page_read(&self) -> i64 {
         self.last_page_read
     }
+
+    async fn source_id(&self) -> i64 {
+        self.source_id
+    }
 }
 
 #[derive(Debug)]
@@ -78,6 +83,7 @@ pub struct RecentUpdate {
     pub cover_url: String,
     pub chapter_title: String,
     pub uploaded: NaiveDateTime,
+    pub source_id: i64,
 }
 
 impl From<crate::domain::entities::library::LibraryUpdate> for RecentUpdate {
@@ -89,6 +95,7 @@ impl From<crate::domain::entities::library::LibraryUpdate> for RecentUpdate {
             cover_url: other.cover_url,
             chapter_title: other.chapter_title,
             uploaded: other.uploaded,
+            source_id: other.source_id,
         }
     }
 }
@@ -123,5 +130,9 @@ impl RecentUpdate {
 
     async fn uploaded(&self) -> NaiveDateTime {
         self.uploaded
+    }
+
+    async fn source_id(&self) -> i64 {
+        self.source_id
     }
 }

@@ -58,7 +58,7 @@ impl Histories {
                             read_at: chrono::NaiveDateTime::parse_from_str(&edge.node.read_at, "%Y-%m-%dT%H:%M:%S%.f").unwrap_throw(),
                             last_page_read: edge.node.last_page_read,
                             cursor: edge.cursor.clone(),
-                            source_id: edge.node.source.id,
+                            source_id: edge.node.source_id,
                         })
                     }
                     histories.is_entries_empty.set(histories.entries.lock_ref().is_empty());

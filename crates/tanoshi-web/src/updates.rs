@@ -66,7 +66,7 @@ impl Updates {
                             chapter_title: edge.node.chapter_title.clone(),
                             uploaded: chrono::NaiveDateTime::parse_from_str(&edge.node.uploaded, "%Y-%m-%dT%H:%M:%S%.f").unwrap_throw(),
                             cursor: edge.cursor.clone(),
-                            source_id: edge.node.source.id,
+                            source_id: edge.node.source_id,
                         })
                     }
                     updates.is_entries_empty.set(updates.entries.lock_ref().is_empty());

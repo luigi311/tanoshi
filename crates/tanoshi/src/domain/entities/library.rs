@@ -23,4 +23,5 @@ pub struct LibraryUpdate {
     pub cover_url: String,
     pub chapter_title: String,
     pub uploaded: NaiveDateTime,
+    pub source_id: i64,
 }

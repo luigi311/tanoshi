@@ -437,7 +437,8 @@ impl LibraryRepository for LibraryRepositoryImpl {
             manga.title,
             manga.cover_url,
             chapter.title,
-            chapter.uploaded
+            chapter.uploaded,
+            manga.source_id
         FROM chapter
         JOIN manga ON manga.id = chapter.manga_id
         JOIN user_library ON
@@ -465,6 +466,7 @@ impl LibraryRepository for LibraryRepositoryImpl {
             cover_url: row.get(3),
             chapter_title: row.get(4),
             uploaded: row.get(5),
+            source_id: row.get(6),
         })
         .collect();
 
@@ -490,6 +492,7 @@ impl LibraryRepository for LibraryRepositoryImpl {
                 manga.cover_url,
                 chapter.title,
                 chapter.uploaded,
+                manga.source_id,
                 chapter.number
             FROM chapter
             JOIN manga ON manga.id = chapter.manga_id
@@ -519,6 +522,7 @@ impl LibraryRepository for LibraryRepositoryImpl {
             cover_url: row.get(3),
             chapter_title: row.get(4),
             uploaded: row.get(5),
+            source_id: row.get(6),
         })
         .collect();
 
@@ -541,7 +545,8 @@ impl LibraryRepository for LibraryRepositoryImpl {
             manga.title,
             manga.cover_url,
             chapter.title,
-            chapter.uploaded
+            chapter.uploaded,
+            manga.source_id
         FROM chapter
         JOIN manga ON manga.id = chapter.manga_id
         JOIN user_library ON
@@ -567,6 +572,7 @@ impl LibraryRepository for LibraryRepositoryImpl {
             cover_url: row.get(3),
             chapter_title: row.get(4),
             uploaded: row.get(5),
+            source_id: row.get(6),
         })
         .collect();
 

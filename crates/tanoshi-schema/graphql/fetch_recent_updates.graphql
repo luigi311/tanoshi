@@ -8,9 +8,7 @@ query FetchRecentUpdates($first: Int, $cursor: String) {
         chapterId
         chapterTitle
         uploaded
-        source {
-          id
-        }
+        sourceId
       }
       cursor
     }

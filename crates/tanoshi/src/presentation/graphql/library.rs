@@ -384,6 +384,7 @@ impl LibrarySubscriptionRoot {
                         cover_url: update.manga.cover_url,
                         chapter_title: update.chapter.title,
                         uploaded: update.chapter.uploaded,
+                        source_id: update.manga.source_id,
                     })
                 } else {
                     None

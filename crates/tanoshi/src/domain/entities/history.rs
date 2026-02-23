@@ -10,4 +10,5 @@ pub struct HistoryChapter {
     pub read_at: NaiveDateTime,
     pub last_page_read: i64,
     pub is_complete: bool,
+    pub source_id: i64,
 }
