@@ -9,9 +9,7 @@ query FetchHistories($first: Int, $cursor: String) {
         chapterTitle
         readAt
         lastPageRead
-        source {
-          id
-        }
+        sourceId
       }
       cursor
     }

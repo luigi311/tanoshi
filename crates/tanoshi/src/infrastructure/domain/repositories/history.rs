@@ -43,7 +43,8 @@ impl HistoryRepository for HistoryRepositoryImpl {
             chapter.title,
             MAX(user_history.read_at) AS read_at,
             user_history.last_page,
-            user_history.is_complete
+            user_history.is_complete,
+            manga.source_id
         FROM user_history
         JOIN chapter ON 
             user_history.user_id = ? AND
@@ -72,6 +73,7 @@ impl HistoryRepository for HistoryRepositoryImpl {
             read_at: row.get(5),
             last_page_read: row.get(6),
             is_complete: row.get(7),
+            source_id: row.get(8),
         })
         .collect();
 
@@ -96,7 +98,8 @@ impl HistoryRepository for HistoryRepositoryImpl {
                 chapter.title,
                 MAX(user_history.read_at) AS read_at,
                 user_history.last_page,
-                user_history.is_complete
+                user_history.is_complete,
+                manga.source_id
             FROM user_history
             JOIN chapter ON 
                 user_history.user_id = ? AND
@@ -125,6 +128,7 @@ impl HistoryRepository for HistoryRepositoryImpl {
             read_at: row.get(5),
             last_page_read: row.get(6),
             is_complete: row.get(7),
+            source_id: row.get(8),
         })
         .collect();
 
@@ -147,7 +151,8 @@ impl HistoryRepository for HistoryRepositoryImpl {
             chapter.title,
             MAX(user_history.read_at) AS read_at,
             user_history.last_page,
-            user_history.is_complete
+            user_history.is_complete,
+            manga.source_id
         FROM user_history
         JOIN chapter ON 
             user_history.user_id = ? AND
@@ -174,6 +179,7 @@ impl HistoryRepository for HistoryRepositoryImpl {
             read_at: row.get(5),
             last_page_read: row.get(6),
             is_complete: row.get(7),
+            source_id: row.get(8),
         })
         .collect();
 
@@ -195,7 +201,8 @@ impl HistoryRepository for HistoryRepositoryImpl {
             chapter.title,
             user_history.read_at,
             user_history.last_page,
-            user_history.is_complete
+            user_history.is_complete,
+            manga.source_id
         FROM user_history
         JOIN chapter ON 
             chapter.id = user_history.chapter_id AND
@@ -226,6 +233,7 @@ impl HistoryRepository for HistoryRepositoryImpl {
                 read_at: row.get(5),
                 last_page_read: row.get(6),
                 is_complete: row.get(7),
+                source_id: row.get(8),
             })
             .collect();
 
@@ -247,7 +255,8 @@ impl HistoryRepository for HistoryRepositoryImpl {
             chapter.title,
             user_history.read_at,
             user_history.last_page,
-            user_history.is_complete
+            user_history.is_complete,
+            manga.source_id
         FROM
             user_history
             JOIN chapter 
@@ -278,6 +287,7 @@ impl HistoryRepository for HistoryRepositoryImpl {
                 read_at: row.get(5),
                 last_page_read: row.get(6),
                 is_complete: row.get(7),
+                source_id: row.get(8),
             })
             .collect();
 
