@@ -104,6 +104,31 @@ where
             anyhow::bail!("local source can't be downloaded");
         }
 
+        let existing_path = self
+            .download_repo
+            .get_chapter_downloaded_path(chapter.id)
+            .await
+            .unwrap_or_default();
+
+        if !existing_path.is_empty() {
+            // Remove the old archive file
+            let old_archive = Path::new(&existing_path);
+            if old_archive.exists() {
+                fs::remove_file(old_archive)?;
+            }
+
+            // Clear the downloaded path in the DB
+            self.download_repo
+                .update_chapter_downloaded_path(chapter.id, None)
+                .await?;
+        }
+
+        // Also clear any stale queue entries for this chapter
+        self.download_repo
+            .delete_single_chapter_download_queue(chapter.id)
+            .await
+            .ok(); // ignore if nothing to delete
+
         let priority = self
             .download_repo
             .get_download_queue_last_priority()
@@ -129,6 +154,17 @@ where
         let manga_path = self.download_dir.join(&source_name).join(&manga_title);
 
         self.save_manga_info_if_not_exists(&manga_path, &manga)?;
+
+        // Remove any leftover temp file from a previous interrupted download
+        let temp_archive = self
+            .download_dir
+                .join(&source_name)
+                .join(&manga_title)
+                .join(format!("{}.temp.cbz", chapter_title));
+        if temp_archive.exists() {
+            debug!("removing leftover temp archive {}", temp_archive.display());
+            fs::remove_file(temp_archive)?;
+        }
 
         let mut queue = vec![];
         let date_added = Utc::now().naive_utc();
@@ -213,11 +249,14 @@ where
 
         let url = Url::parse(&queue.url)?;
 
-        let filename = url
-            .path_segments()
-            .and_then(Iterator::last)
-            .map(ToString::to_string)
-            .ok_or_else(|| anyhow!("no filename"))?;
+        let filename = format!(
+            "{:04}_{}",
+            queue.rank,
+            url.path_segments()
+                .and_then(Iterator::last)
+                .map(ToString::to_string)
+                .ok_or_else(|| anyhow!("no filename"))?
+        );
 
         let manga_path = self
             .download_dir
