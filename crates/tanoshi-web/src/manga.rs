@@ -113,6 +113,7 @@ impl Manga {
 
             match query::fetch_manga_detail(manga.id.get(), refresh).await {
                 Ok(result) => {
+                    manga.source_id.set(result.source.id);
                     manga.source_name.set(result.source.name);
                     manga.title.set_neq(Some(result.title));
                     manga.author.lock_mut().replace_cloned(result.author);

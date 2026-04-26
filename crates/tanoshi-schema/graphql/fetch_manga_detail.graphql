@@ -10,6 +10,7 @@ query FetchMangaDetail($id: Int, $refresh: Boolean) {
     isFavorite
     link
     source {
+      id
       name
     }
     trackers {
