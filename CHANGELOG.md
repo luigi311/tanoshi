@@ -5,6 +5,9 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.38.4]
+- [tanoshi] Fix covers breaking over time when a manga would refresh the metadata outside the catalogue
+
 ## [0.38.3]
 - [tanoshi] Fix downloader failing and getting stuck when downloading chapter with existing files
 
