@@ -105,7 +105,7 @@ pub async fn fetch_manga_from_favorite(
         .map(|item| {
             Cover::new(
                 item.id,
-                0,
+                item.source.id,
                 item.path.clone(),
                 item.title.clone(),
                 item.cover_url.clone(),
@@ -292,14 +292,14 @@ pub async fn subscribe_recent_updates() -> Result<(), Box<dyn Error>> {
                     } else {
                         opts.set_body("no chapter updates");
                     }
-    
+
                     let _ = Notification::new_with_options(&manga_title, &opts).unwrap_throw();
                 }
                 updates.clear();
             }
         }
     }
-    
+
 
     debug!("subscribe_recent_updates");
     Ok(())

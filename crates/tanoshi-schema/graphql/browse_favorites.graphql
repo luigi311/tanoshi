@@ -1,6 +1,9 @@
 query BrowseFavorites($categoryId: Int) {
   library(categoryId: $categoryId) {
     id
+    source {
+        id
+    }
     title
     path
     coverUrl
