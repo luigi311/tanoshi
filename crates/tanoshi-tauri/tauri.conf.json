@@ -7,11 +7,7 @@
       "digestAlgorithm": "sha256",
       "timestampUrl": ""
     },
-    "icon": [
-      "icons/512x512.png",
-      "icons/icon.icns",
-      "icons/icon.ico"
-    ],
+    "icon": ["icons/512x512.png", "icons/icon.icns", "icons/icon.ico"],
     "resources": [],
     "externalBin": [],
     "copyright": "",
@@ -38,7 +34,7 @@
     "devUrl": "http://localhost:8080"
   },
   "productName": "Tanoshi",
-  "version": "0.38.4",
+  "version": "0.38.5",
   "identifier": "com.luigi311.tanoshi",
   "plugins": {},
   "app": {
