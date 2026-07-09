@@ -615,7 +615,9 @@ impl Catalogue {
                         .style("background", "rgba(0,0,0,0.5)")
                         .style("z-index", "9999")
                         .child(html!("div", {
-                            .style("background", "var(--bg, white)")
+                            .style("background", "var(--modal-background-color)")
+                            .style("color", "var(--color)")
+                            .style("box-shadow", "var(--shadow)")
                             .style("border-radius", "0.75rem")
                             .style("max-width", "32rem")
                             .style("margin", "10vh auto")

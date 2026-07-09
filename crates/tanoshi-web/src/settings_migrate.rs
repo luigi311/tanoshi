@@ -250,7 +250,9 @@ impl SettingsMigrate {
 
                             .child(html!("div", {
                                 // Modal card
-                                .style("background", "var(--bg, white)")
+                                .style("background", "var(--modal-background-color)")
+                                .style("color", "var(--color)")
+                                .style("box-shadow", "var(--shadow)")
                                 .style("border-radius", "0.75rem")
                                 .style("max-width", "32rem")
                                 .style("margin", "10vh auto")
