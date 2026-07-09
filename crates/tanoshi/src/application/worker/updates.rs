@@ -115,6 +115,7 @@ where
     M: MangaRepository + 'static,
     L: LibraryRepository + 'static,
 {
+    #[allow(clippy::too_many_arguments)]
     fn new<P: AsRef<Path>>(
         period: u64,
         library_repo: L,
@@ -456,6 +457,7 @@ where
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn start<C, M, L, P>(
     period: u64,
     library_repo: L,

@@ -1,9 +1,8 @@
-use chrono::NaiveDateTime;
 use tanoshi_tracker::{Session, TrackerManga, TrackerStatus};
 use thiserror::Error;
 
 use crate::domain::{
-    entities::tracker::TrackedManga,
+    entities::tracker::{TrackedManga, TrackerStatusUpdate},
     repositories::tracker::{TrackerRepository, TrackerRepositoryError},
 };
 
@@ -190,11 +189,7 @@ where
         user_id: i64,
         tracker: &str,
         tracker_manga_id: String,
-        status: Option<String>,
-        score: Option<i64>,
-        progress: Option<i64>,
-        started_at: Option<NaiveDateTime>,
-        completed_at: Option<NaiveDateTime>,
+        update: TrackerStatusUpdate,
     ) -> Result<(), TrackerError> {
         let mut tracker_token = self.repo.get_user_tracker_token(tracker, user_id).await?;
 
@@ -209,11 +204,7 @@ where
                     &tracker_token.access_token,
                     tracker,
                     tracker_manga_id,
-                    status.clone(),
-                    score,
-                    progress,
-                    started_at,
-                    completed_at,
+                    update.clone(),
                 )
                 .await;
 

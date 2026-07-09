@@ -7,9 +7,15 @@ use crate::{
     application::worker::updates::{
         ChapterUpdateCommand, ChapterUpdateCommandSender, ChapterUpdateReceiver,
     },
-    domain::services::{
-        chapter::ChapterService, history::HistoryService, library::LibraryService,
-        manga::MangaService, tracker::TrackerService,
+    domain::{
+        entities::tracker::TrackerStatusUpdate,
+        services::{
+            chapter::ChapterService,
+            history::HistoryService,
+            library::{LibraryService, RecentUpdatesCursor},
+            manga::MangaService,
+            tracker::TrackerService,
+        },
     },
     infrastructure::{
         auth::Claims,
@@ -82,10 +88,12 @@ impl LibraryRoot {
                 let edges = library_svc
                     .get_library_recent_updates(
                         claims.sub,
-                        after_cursor.0,
-                        after_cursor.1,
-                        before_cursor.0,
-                        before_cursor.1,
+                        RecentUpdatesCursor {
+                            after_timestamp: after_cursor.0,
+                            after_id: after_cursor.1,
+                            before_timestamp: before_cursor.0,
+                            before_id: before_cursor.1,
+                        },
                         first,
                         last,
                     )
@@ -96,10 +104,12 @@ impl LibraryRoot {
                     has_previous_page = !library_svc
                         .get_library_recent_updates(
                             claims.sub,
-                            Utc::now().timestamp(),
-                            1,
-                            e.uploaded.and_utc().timestamp(),
-                            e.chapter_id,
+                            RecentUpdatesCursor {
+                                after_timestamp: Utc::now().timestamp(),
+                                after_id: 1,
+                                before_timestamp: e.uploaded.and_utc().timestamp(),
+                                before_id: e.chapter_id,
+                            },
                             None,
                             Some(1),
                         )
@@ -112,10 +122,12 @@ impl LibraryRoot {
                     has_next_page = !library_svc
                         .get_library_recent_updates(
                             claims.sub,
-                            e.uploaded.and_utc().timestamp(),
-                            e.chapter_id,
-                            0,
-                            0,
+                            RecentUpdatesCursor {
+                                after_timestamp: e.uploaded.and_utc().timestamp(),
+                                after_id: e.chapter_id,
+                                before_timestamp: 0,
+                                before_id: 0,
+                            },
                             Some(1),
                             None,
                         )
@@ -312,11 +324,10 @@ impl LibraryMutationRoot {
                             claims.sub,
                             &manga.tracker,
                             tracker_manga_id,
-                            None,
-                            None,
-                            Some(chapter.number as i64),
-                            None,
-                            None,
+                            TrackerStatusUpdate {
+                                progress: Some(chapter.number as i64),
+                                ..Default::default()
+                            },
                         )
                         .await?;
                 }

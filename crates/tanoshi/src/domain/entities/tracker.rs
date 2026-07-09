@@ -20,3 +20,14 @@ pub struct TrackedManga {
     pub tracker: String,
     pub tracker_manga_id: Option<String>,
 }
+
+/// Fields of a tracked manga to update on the remote tracker; `None` fields
+/// are left unchanged.
+#[derive(Debug, Clone, Default)]
+pub struct TrackerStatusUpdate {
+    pub status: Option<String>,
+    pub score: Option<i64>,
+    pub progress: Option<i64>,
+    pub started_at: Option<chrono::NaiveDateTime>,
+    pub completed_at: Option<chrono::NaiveDateTime>,
+}

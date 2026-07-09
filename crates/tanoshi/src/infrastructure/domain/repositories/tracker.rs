@@ -1,13 +1,12 @@
 use std::{collections::HashMap, sync::Arc};
 
 use async_trait::async_trait;
-use chrono::NaiveDateTime;
 use sqlx::{Row, SqlitePool};
 use tanoshi_tracker::{anilist, myanimelist, AniList, MyAnimeList, Session, Tracker, TrackerManga};
 
 use crate::{
     domain::{
-        entities::tracker::{Token, TrackedManga},
+        entities::tracker::{Token, TrackedManga, TrackerStatusUpdate},
         repositories::tracker::{TrackerRepository, TrackerRepositoryError},
     },
     infrastructure::database::Pool,
@@ -272,11 +271,7 @@ impl TrackerRepository for TrackerRepositoryImpl {
         token: &str,
         tracker: &str,
         tracker_manga_id: i64,
-        status: Option<String>,
-        score: Option<i64>,
-        progress: Option<i64>,
-        started_at: Option<NaiveDateTime>,
-        completed_at: Option<NaiveDateTime>,
+        update: TrackerStatusUpdate,
     ) -> Result<(), TrackerRepositoryError> {
         match self
             .clients
@@ -285,11 +280,11 @@ impl TrackerRepository for TrackerRepositoryImpl {
             .update_tracker_status(
                 token.to_string(),
                 tracker_manga_id,
-                status,
-                score,
-                progress,
-                started_at,
-                completed_at,
+                update.status,
+                update.score,
+                update.progress,
+                update.started_at,
+                update.completed_at,
             )
             .await
         {

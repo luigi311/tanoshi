@@ -75,6 +75,7 @@ where
     M: MangaRepository + 'static,
     L: LibraryRepository + 'static,
 {
+    #[allow(clippy::too_many_arguments)]
     pub fn new<P: AsRef<Path>>(
         dir: P,
         chapter_repo: C,
@@ -445,6 +446,7 @@ pub fn channel() -> (DownloadSender, DownloadReceiver) {
     tokio::sync::mpsc::unbounded_channel::<Command>()
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn start<C, D, M, L, P>(
     dir: P,
     chapter_repo: C,

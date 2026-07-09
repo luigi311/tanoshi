@@ -14,6 +14,16 @@ pub enum LibraryError {
     RepositoryError(#[from] LibraryRepositoryError),
 }
 
+/// Cursor window for paginating recent library updates, keyed by
+/// (uploaded timestamp, chapter id).
+#[derive(Debug, Clone, Copy)]
+pub struct RecentUpdatesCursor {
+    pub after_timestamp: i64,
+    pub after_id: i64,
+    pub before_timestamp: i64,
+    pub before_id: i64,
+}
+
 pub struct LibraryService<R>
 where
     R: LibraryRepository,
@@ -131,13 +141,17 @@ where
     pub async fn get_library_recent_updates(
         &self,
         user_id: i64,
-        after_timestamp: i64,
-        after_id: i64,
-        before_timestamp: i64,
-        before_id: i64,
+        cursor: RecentUpdatesCursor,
         first: Option<usize>,
         last: Option<usize>,
     ) -> Result<Vec<LibraryUpdate>, LibraryError> {
+        let RecentUpdatesCursor {
+            after_timestamp,
+            after_id,
+            before_timestamp,
+            before_id,
+        } = cursor;
+
         let updates = if let Some(first) = first {
             self.repo
                 .get_first_library_updates(
