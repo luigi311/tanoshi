@@ -189,7 +189,7 @@ impl SettingsManageDownloads {
                                     .lock_ref()
                                     .to_vec()
                                     .iter()
-                                    .filter_map(|entry| entry.selected.get().then(|| entry.chapter_id))
+                                    .filter_map(|entry| entry.selected.get().then_some(entry.chapter_id))
                                     .collect();
                                 Self::remove_download_chapters(settings.clone(), selected_chapter_id);
                             }))

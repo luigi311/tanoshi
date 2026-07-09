@@ -8,10 +8,11 @@ use std::rc::Rc;
 
 use crate::utils::{apply_theme, local_storage};
 
-#[derive(PartialEq, Copy, Clone, Serialize, Deserialize)]
+#[derive(PartialEq, Copy, Clone, Serialize, Deserialize, Default)]
 pub enum Theme {
     Light,
     Dark,
+    #[default]
     Auto,
 }
 
@@ -22,12 +23,6 @@ impl std::fmt::Display for Theme {
             Theme::Dark => write!(f, "dark"),
             Theme::Auto => write!(f, ""),
         }
-    }
-}
-
-impl Default for Theme {
-    fn default() -> Self {
-        Theme::Auto
     }
 }
 
@@ -42,11 +37,14 @@ pub struct AppearanceSettings {
 
 impl AppearanceSettings {
     pub fn new() -> Rc<Self> {
-        let settings = match local_storage().get_item("settings:appearance") { Ok(Some(settings)) => {
-            serde_json::from_str::<AppearanceSettings>(&settings).unwrap_or_default()
-        } _ => {
-            AppearanceSettings::default()
-        }};
+        let settings = local_storage()
+            .get_item("settings:appearance")
+            .ok()
+            .flatten()
+            .map(|settings| {
+                serde_json::from_str::<AppearanceSettings>(&settings).unwrap_or_default()
+            })
+            .unwrap_or_default();
 
         Rc::new(settings)
     }

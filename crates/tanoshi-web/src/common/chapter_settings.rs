@@ -38,17 +38,12 @@ impl Default for ChapterSort {
     }
 }
 
-#[derive(Clone, Copy, Deserialize, Serialize)]
+#[derive(Clone, Copy, Deserialize, Serialize, Default)]
 pub enum Filter {
+    #[default]
     None,
     Read,
     Unread,
-}
-
-impl Default for Filter {
-    fn default() -> Self {
-        Self::None
-    }
 }
 
 #[derive(Clone, Copy)]
@@ -84,11 +79,12 @@ impl ChapterSettings {
             key = [key, manga_id.to_string()].join(":");
         }
 
-        let settings = match local_storage().get_item(&key) { Ok(Some(settings)) => {
-            serde_json::from_str::<Self>(&settings).unwrap_or_default()
-        } _ => {
-            Self::default()
-        }};
+        let settings = local_storage()
+            .get_item(&key)
+            .ok()
+            .flatten()
+            .map(|settings| serde_json::from_str::<Self>(&settings).unwrap_or_default())
+            .unwrap_or_default();
 
         Rc::new(Self {
             use_modal,
@@ -107,13 +103,12 @@ impl ChapterSettings {
         self.manga_id.replace(manga_id);
 
         let key = [KEY.to_string(), manga_id.to_string()].join(":");
-        let settings = match local_storage().get_item(&key) { Ok(Some(settings)) => {
-            serde_json::from_str::<Self>(&settings).unwrap_or_default()
-        } _ => {
+        let Ok(Some(settings)) = local_storage().get_item(&key) else {
             self.sort.set(self.sort.get_cloned());
             self.filter.set(self.filter.get_cloned());
             return;
-        }};
+        };
+        let settings = serde_json::from_str::<Self>(&settings).unwrap_or_default();
 
         self.sort.set(settings.sort.get_cloned());
         self.filter.set(settings.filter.get_cloned());

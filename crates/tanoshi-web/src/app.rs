@@ -98,17 +98,17 @@ impl App {
                 async move {}
             }))
             .child_signal(app.signal().map(clone!(app => move |(route, server_status)| {
-                if server_status.is_none() {
-                    return None;
-                }
+                server_status.as_ref()?;
 
                 match route {
                     Route::Root => {
-                        match LibrarySettings::load(false, false).default_category.get_cloned() { Some(default_category) => {
+                        if let Some(default_category) =
+                            LibrarySettings::load(false, false).default_category.get_cloned()
+                        {
                             routing::go_to_url(&Route::Library(default_category.id).url());
-                        } _ => {
+                        } else {
                             routing::go_to_url(&Route::LibraryList.url());
-                        }}
+                        }
 
                         None
                     }

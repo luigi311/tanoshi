@@ -20,7 +20,7 @@ thread_local! {
     static IMAGE_PROXY_HOST: std::cell::RefCell<String> = std::cell::RefCell::new("/image".to_string());
     static GRAPHQL_HOST: std::cell::RefCell<String> = std::cell::RefCell::new("/graphql".to_string());
     static GRAPHQL_WS_HOST: std::cell::RefCell<String> = std::cell::RefCell::new("/ws".to_string());
-    static IS_TAURI: std::cell::RefCell<bool> = std::cell::RefCell::new(false);
+    static IS_TAURI: std::cell::RefCell<bool> = const { std::cell::RefCell::new(false) };
 }
 
 pub struct AsyncState {
@@ -84,11 +84,10 @@ impl AsyncLoader {
                 Ok(()) => {
                     let mut loading = loading.lock_mut();
 
-                    if let Some(current_id) = loading.as_ref().map(|x| x.id) {
-                        if current_id == id {
+                    if let Some(current_id) = loading.as_ref().map(|x| x.id)
+                        && current_id == id {
                             *loading = None;
                         }
-                    }
                 }
                 Err(e) => {
                     error!("failed to spawn task: {e}");
@@ -148,35 +147,34 @@ pub fn initialize_urls() {
 }
 
 pub fn format_number_title(number: f64, title: &str) -> String {
-    let check_formats_prefixes = ["Chapter "];
-    
     let mut cleaned_title = title.to_string();
-    // remove format from title
-    for format in check_formats_prefixes.iter() {
-        if title.starts_with(format) {
-            cleaned_title = title.replacen(format, "", 1);
-            cleaned_title = cleaned_title.trim().to_string(); // Trim
+
+    // remove a known chapter prefix from the title, e.g. "Chapter 12: Foo"
+    for prefix in ["Chapter "] {
+        if let Some(stripped) = cleaned_title.strip_prefix(prefix) {
+            cleaned_title = stripped.trim().to_string();
+            break;
         }
-        break;
     }
 
-    if cleaned_title.starts_with(&format!("{number}")) {
-        cleaned_title = cleaned_title.replacen(&format!("{number}"), "", 1);
-        cleaned_title = cleaned_title.trim().to_string(); // Trim
-    }   
-   
-    // remove characters from title ":" "-" 
-    let check_format_characters = [":", "-"];
-   
-    for format in check_format_characters.iter() {
-        if cleaned_title.starts_with(format) {
-            cleaned_title = cleaned_title.replacen(format, "", 1);
-            cleaned_title = cleaned_title.trim().to_string(); // Trim
-        }
-        break;
+    // remove the chapter number itself
+    if let Some(stripped) = cleaned_title.strip_prefix(&number.to_string()) {
+        cleaned_title = stripped.trim().to_string();
     }
 
-    format!("Ch {}{}", number, if cleaned_title.is_empty() { "".to_string() } else { format!(": {}", cleaned_title) })
+    // remove a leading separator, e.g. ": Foo" or "- Foo"
+    for separator in [":", "-"] {
+        if let Some(stripped) = cleaned_title.strip_prefix(separator) {
+            cleaned_title = stripped.trim().to_string();
+            break;
+        }
+    }
+
+    if cleaned_title.is_empty() {
+        format!("Ch {number}")
+    } else {
+        format!("Ch {number}: {cleaned_title}")
+    }
 }
 
 pub fn is_tauri() -> bool {

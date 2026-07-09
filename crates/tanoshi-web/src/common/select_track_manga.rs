@@ -225,7 +225,7 @@ impl SelectTrackMangaModal {
                             .style("border-radius", "0.5rem")
                             .style_signal("border", select.selected_tracker_manga.signal_cloned().map(clone!(manga => move |selected_tracker| {
                                 info!("{selected_tracker:?}");
-                                selected_tracker.and_then(|selected_tracker| (selected_tracker.tracker == manga.tracker && selected_tracker.tracker_manga_id == manga.tracker_manga_id).then(|| "var(--list-group-border)"))
+                                selected_tracker.and_then(|selected_tracker| (selected_tracker.tracker == manga.tracker && selected_tracker.tracker_manga_id == manga.tracker_manga_id).then_some("var(--list-group-border)"))
                             })))
                             .children(&mut [
                                 html!("div", {
@@ -375,32 +375,32 @@ impl SelectTrackMangaModal {
                                                         html!("option", {
                                                             .prop("value", "")
                                                             .attr("disabled", "disabled")
-                                                            .attr_signal("selected", tracker.status.signal_cloned().map(|status| status.is_none().then(|| "true")))
+                                                            .attr_signal("selected", tracker.status.signal_cloned().map(|status| status.is_none().then_some("true")))
                                                         }),
                                                         html!("option", {
                                                             .prop("value", "reading")
                                                             .text("Reading")
-                                                            .attr_signal("selected", tracker.status.signal_cloned().map(|status| status.and_then(|s| (s == "reading").then(|| "true"))))
+                                                            .attr_signal("selected", tracker.status.signal_cloned().map(|status| status.and_then(|s| (s == "reading").then_some("true"))))
                                                         }),
                                                         html!("option", {
                                                             .prop("value", "completed")
                                                             .text("Completed")
-                                                            .attr_signal("selected", tracker.status.signal_cloned().map(|status| status.and_then(|s| (s == "completed").then(|| "true"))))
+                                                            .attr_signal("selected", tracker.status.signal_cloned().map(|status| status.and_then(|s| (s == "completed").then_some("true"))))
                                                         }),
                                                         html!("option", {
                                                             .prop("value", "on_hold")
                                                             .text("On hold")
-                                                            .attr_signal("selected", tracker.status.signal_cloned().map(|status| status.and_then(|s| (s == "on_hold").then(|| "true"))))
+                                                            .attr_signal("selected", tracker.status.signal_cloned().map(|status| status.and_then(|s| (s == "on_hold").then_some("true"))))
                                                         }),
                                                         html!("option", {
                                                             .prop("value", "dropped")
                                                             .text("Dropped")
-                                                            .attr_signal("selected", tracker.status.signal_cloned().map(|status| status.and_then(|s| (s == "dropped").then(|| "true"))))
+                                                            .attr_signal("selected", tracker.status.signal_cloned().map(|status| status.and_then(|s| (s == "dropped").then_some("true"))))
                                                         }),
                                                         html!("option", {
                                                             .prop("value", "plan_to_read")
                                                             .text("Plan to read")
-                                                            .attr_signal("selected", tracker.status.signal_cloned().map(|status| status.and_then(|s| (s == "plan_to_read").then(|| "true"))))
+                                                            .attr_signal("selected", tracker.status.signal_cloned().map(|status| status.and_then(|s| (s == "plan_to_read").then_some("true"))))
                                                         })
                                                     ])
                                                     .with_node!(el => {

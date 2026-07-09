@@ -43,7 +43,7 @@ impl Updates {
 
     fn refresh_chapters(updates: Rc<Self>) {
         updates.loader.load(async move {
-            snackbar::show(format!("Updating chapters..."));
+            snackbar::show("Updating chapters...".to_string());
             if let Err(e) = query::refresh_chapters(None, false).await {
                 snackbar::show(format!("failed to refresh chapters: {e}"));
             }

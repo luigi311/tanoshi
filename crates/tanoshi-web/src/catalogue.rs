@@ -217,11 +217,9 @@ impl Catalogue {
         };
 
         if let Err(e) = history().replace_state_with_url(&JsValue::null(), "", Some(&url)) {
-            let message = match e.as_string() { Some(msg) => {
-                msg
-            } _ => {
-                "unknown reason".to_string()
-            }};
+            let message = e
+                .as_string()
+                .unwrap_or_else(|| "unknown reason".to_string());
 
             error!("error replace_state_with_url: {}", message);
         }
@@ -270,7 +268,7 @@ impl Catalogue {
                         .style("width", "100%")
                         .attr("placeholder", "Search")
                         .attr("type", "text")
-                        .attr("value", &catalogue.keyword.get_cloned().unwrap_or_else(|| "".to_string()))
+                        .attr("value", &catalogue.keyword.get_cloned().unwrap_or_default())
                         .with_node!(input => {
                             .event_with_options(&EventOptions::preventable(), clone!(catalogue => move |e: events::KeyDown| {
                                 if e.key() == "Enter" {
