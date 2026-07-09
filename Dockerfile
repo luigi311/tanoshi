@@ -15,7 +15,7 @@ RUN cargo build -p tanoshi --release
 
 FROM ubuntu:26.04 AS runtime
 
-RUN apt update && apt upgrade -y && apt install --reinstall -y tini ca-certificates libssl3 libxml2-dev
+RUN apt update && apt upgrade -y && apt install --reinstall -y tini ca-certificates libssl3 libxml2-dev libnettle8t64
 
 WORKDIR /app
 
