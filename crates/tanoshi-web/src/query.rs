@@ -687,3 +687,22 @@ pub async fn refresh_chapters(manga_id: Option<i64>, wait: bool) -> Result<(), B
 
     Ok(())
 }
+
+/// Migrate a library manga to another source: the server moves the library
+/// entry (with categories), read progress, and trackers to the manga at
+/// `to_path` on `to_source_id` in one transaction. Returns the destination
+/// manga id.
+pub async fn migrate_manga(
+    from_manga_id: i64,
+    to_source_id: i64,
+    to_path: String,
+) -> Result<i64, Box<dyn Error>> {
+    let var = migrate_manga::Variables {
+        manga_id: from_manga_id,
+        to_source_id,
+        to_path,
+    };
+    let data = post_graphql::<MigrateManga>(var).await?;
+
+    Ok(data.migrate_manga)
+}

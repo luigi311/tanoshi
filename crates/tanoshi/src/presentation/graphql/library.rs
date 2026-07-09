@@ -9,13 +9,14 @@ use crate::{
     },
     domain::services::{
         chapter::ChapterService, history::HistoryService, library::LibraryService,
-        tracker::TrackerService,
+        manga::MangaService, tracker::TrackerService,
     },
     infrastructure::{
         auth::Claims,
         domain::repositories::{
             chapter::ChapterRepositoryImpl, history::HistoryRepositoryImpl,
-            library::LibraryRepositoryImpl, tracker::TrackerRepositoryImpl,
+            library::LibraryRepositoryImpl, manga::MangaRepositoryImpl,
+            tracker::TrackerRepositoryImpl,
         },
     },
 };
@@ -236,6 +237,44 @@ impl LibraryMutationRoot {
             .await?;
 
         Ok(1)
+    }
+
+    /// Migrate a manga to another source: moves the library entry with its
+    /// categories, read progress and trackers to the manga at `to_path` on
+    /// `to_source_id`. Returns the destination manga id.
+    async fn migrate_manga(
+        &self,
+        ctx: &Context<'_>,
+        #[graphql(desc = "manga id to migrate from")] manga_id: i64,
+        #[graphql(desc = "destination source id")] to_source_id: i64,
+        #[graphql(desc = "destination manga path")] to_path: String,
+    ) -> Result<i64> {
+        let claims = ctx
+            .data::<Claims>()
+            .map_err(|_| "token not exists, please login")?;
+
+        // Resolve the destination manga; this stores it if it was only seen
+        // through browsing so far.
+        let to_manga = ctx
+            .data::<MangaService<MangaRepositoryImpl>>()?
+            .fetch_manga_by_source_path(to_source_id, &to_path)
+            .await?;
+
+        if to_manga.id == manga_id {
+            return Err("cannot migrate a manga to itself".into());
+        }
+
+        // Make sure the destination chapters exist so read progress has
+        // something to map onto.
+        ctx.data::<ChapterService<ChapterRepositoryImpl>>()?
+            .fetch_chapters_by_manga_id(to_source_id, &to_manga.path, to_manga.id, true)
+            .await?;
+
+        ctx.data::<LibraryService<LibraryRepositoryImpl>>()?
+            .migrate_manga(claims.sub, manga_id, to_manga.id)
+            .await?;
+
+        Ok(to_manga.id)
     }
 
     async fn update_page_read_at(

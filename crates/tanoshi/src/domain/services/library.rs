@@ -115,6 +115,19 @@ where
         Ok(())
     }
 
+    pub async fn migrate_manga(
+        &self,
+        user_id: i64,
+        from_manga_id: i64,
+        to_manga_id: i64,
+    ) -> Result<(), LibraryError> {
+        self.repo
+            .migrate_manga(user_id, from_manga_id, to_manga_id)
+            .await?;
+
+        Ok(())
+    }
+
     pub async fn get_library_recent_updates(
         &self,
         user_id: i64,

@@ -2,6 +2,7 @@ use std::rc::Rc;
 
 use crate::{
     common::{snackbar, Cover, InputList, Spinner},
+    migration,
     query,
     utils::{history, local_storage, window, AsyncLoader},
 };
@@ -57,6 +58,10 @@ pub struct Catalogue {
     loader: AsyncLoader,
     #[serde(skip)]
     spinner: Rc<Spinner>,
+    #[serde(skip)]
+    migration_state: Mutable<Option<migration::MigrationState>>,
+    #[serde(skip)]
+    pending_migration: Mutable<Option<Cover>>,
 }
 
 impl Default for Catalogue {
@@ -73,13 +78,15 @@ impl Default for Catalogue {
             input_list_modal: Rc::new(InputList::new(true)),
             spinner: Spinner::new(),
             loader: AsyncLoader::new(),
+            migration_state: Mutable::new(None),
+            pending_migration: Mutable::new(None),
         }
     }
 }
 
 impl Catalogue {
     pub fn new(source_id: i64) -> Rc<Self> {
-        let catalogue = local_storage()
+        let mut catalogue = local_storage()
             .get(STORAGE_KEY)
             .unwrap_throw()
             .and_then(|object_str| serde_json::from_str(&object_str).ok())
@@ -88,7 +95,12 @@ impl Catalogue {
                 ..Default::default()
             });
 
-        Rc::new(catalogue)
+        // ensure source_id matches the route when restoring from storage
+        catalogue.source_id = source_id;
+
+        let rc = Rc::new(catalogue);
+        rc.migration_state.set(migration::get());
+        rc
     }
 
     pub fn serialize_into_json(&self) -> String {
@@ -354,45 +366,94 @@ impl Catalogue {
     }
 
     pub fn render_main(catalogue: Rc<Self>) -> Dom {
+        use futures_signals::signal::SignalExt;
+
+        let is_migrate_mode_signal = catalogue
+            .migration_state
+            .signal_cloned()
+            .map(clone!(catalogue => move |ms| {
+                ms.as_ref()
+                    .map(|s| s.to_source_id == catalogue.source_id)
+                    .unwrap_or(false)
+            }));
+
         html!("div", {
             .style("padding", "0.5rem")
             .children(&mut [
+                // IMPORTANT: the child_signal returns the manga-grid itself
                 html!("div", {
-                    .class("manga-grid")
-                    .children_signal_vec(catalogue.cover_list.signal_vec_cloned().map(|cover| cover.render()))
+                    .child_signal(is_migrate_mode_signal.map(clone!(catalogue => move |is_migrate_mode| {
+                        if is_migrate_mode {
+                            Some(html!("div", {
+                                .class("manga-grid")
+                                .children_signal_vec(
+                                    catalogue.cover_list.signal_vec_cloned().map(clone!(catalogue => move |cover| {
+                                        html!("div", {
+                                            .class("manga-cover")
+                                            .class("animate__animated")
+                                            .class("animate__faster")
+                                            .class("animate__fadeIn")
+                                            .event(clone!(catalogue, cover => move |_: events::Click| {
+                                                Catalogue::confirm_migration_target(catalogue.clone(), cover.clone());
+                                            }))
+                                            .children(&mut [
+                                                html!("img", {
+                                                    .attr("src", &cover.cover_url)
+                                                    .attr("loading", "lazy")
+                                                }),
+                                                html!("div", {
+                                                    .class("title")
+                                                    .child(html!("span", { .text(&cover.title) }))
+                                                })
+                                            ])
+                                        })
+                                    }))
+                                )
+                            }))
+                        } else {
+                            Some(html!("div", {
+                                .class("manga-grid")
+                                .children_signal_vec(
+                                    catalogue.cover_list
+                                        .signal_vec_cloned()
+                                        .map(|cover| cover.render())
+                                )
+                            }))
+                        }
+                    })))
                 }),
+
                 html!("div", {
                     .class("load-more-btn")
-                    .child_signal(catalogue.spinner.signal().map(clone!(catalogue => move |x| if x {
-                        Some(Spinner::render(catalogue.spinner.clone()))
-                    } else {
-                        Some(html!("button", {
-                            .text("Load More")
-                            .event(clone!(catalogue => move |_: events::Click| {
-                                catalogue.page.set(catalogue.page.get() + 1);
-                                Self::fetch_mangas(catalogue.clone());
+                    .child_signal(catalogue.spinner.signal().map(clone!(catalogue => move |x| {
+                        if x {
+                            Some(Spinner::render(catalogue.spinner.clone()))
+                        } else {
+                            Some(html!("button", {
+                                .text("Load More")
+                                .event(clone!(catalogue => move |_: events::Click| {
+                                    catalogue.page.set(catalogue.page.get() + 1);
+                                    Self::fetch_mangas(catalogue.clone());
+                                }))
                             }))
-                        }))
+                        }
                     })))
-                })
+                }),
             ])
         })
     }
 
     pub fn render(self: Rc<Self>, latest: bool, query: Option<String>) -> Dom {
-        if self.cover_list.lock_ref().is_empty() {
-            Self::fetch_mangas(self.clone());
-        }
-
-        // let s = map_ref! {
-        //     let keyword = self.keyword.signal_cloned(),
-
-        //     (keyword.clone())
-        // };
+        // refresh migration state every time we render
+        self.migration_state.set_neq(migration::get());
 
         self.is_search.set_neq(query.is_some());
         self.keyword.set_neq(query);
         self.latest.set_neq(latest);
+
+        if self.cover_list.lock_ref().is_empty() {
+            Self::fetch_mangas(self.clone());
+        }
 
         html!("div", {
             .future(self.keyword.signal_cloned().for_each({
@@ -409,8 +470,48 @@ impl Catalogue {
                     .class("topbar-spacing")
                 })
             ])
+            .child_signal(self.migration_state.signal_cloned().map({
+                let catalogue = self.clone();
+                move |ms| {
+                    let show = ms.as_ref().map(|s| s.to_source_id == catalogue.source_id).unwrap_or(false);
+                    show.then(|| html!("div", {
+                        .style("margin", "0.5rem")
+                        .style("padding", "0.5rem 0.75rem")
+                        .style("border-radius", "0.5rem")
+                        .style("background", "rgba(255,255,255,0.06)")
+                        .style("display", "flex")
+                        .style("justify-content", "space-between")
+                        .style("align-items", "center")
+                        .children(&mut [
+                            html!("div", {
+                                .style("display", "flex")
+                                .style("flex-direction", "column")
+                                .children(&mut [
+                                    html!("span", { .text("Migration mode") }),
+                                    html!("span", {
+                                        .style("font-size", "0.875rem")
+                                        .style("opacity", "0.85")
+                                        .text(ms.as_ref().map(|s| format!("Select the destination manga for: {}", s.from_title)).unwrap_or_default().as_str())
+                                    })
+                                ])
+                            }),
+                            html!("button", {
+                                .text("Cancel")
+                                .event({
+                                    let catalogue = catalogue.clone();
+                                    move |_: events::Click| {
+                                        migration::clear();
+                                        catalogue.migration_state.set_neq(None);
+                                    }
+                                })
+                            })
+                        ])
+                    }))
+                }
+            }))
             .children(&mut [
                 Self::render_main(self.clone()),
+                Self::render_migration_confirm_modal(self.clone()),
                 InputList::render(self.input_list_modal.clone(), {
                     let catalogue = self.clone();
                     move || {
@@ -425,6 +526,101 @@ impl Catalogue {
                     .class("bottombar-spacing")
                 })
             ])
+        })
+    }
+
+    // window.confirm doesn't work in the tauri webview (the dialog plugin
+    // replaces it with an async version), so confirmation is an in-app modal.
+    pub fn confirm_migration_target(catalogue: Rc<Self>, to_cover: Cover) {
+        let valid = catalogue
+            .migration_state
+            .get_cloned()
+            .is_some_and(|s| s.to_source_id == catalogue.source_id);
+        if valid {
+            catalogue.pending_migration.set(Some(to_cover));
+        }
+    }
+
+    fn migrate_to(catalogue: Rc<Self>, to_cover: Cover) {
+        let Some(ms) = catalogue.migration_state.get_cloned() else {
+            return;
+        };
+
+        catalogue.spinner.set_active(true);
+        catalogue.loader.load(clone!(catalogue => async move {
+            // Migrate by source path: browse covers may not be in the database
+            // yet, so their id can be 0.
+            match query::migrate_manga(ms.from_manga_id, catalogue.source_id, to_cover.path.clone()).await {
+                Ok(to_manga_id) => {
+                    snackbar::show("Migration complete".to_string());
+                    migration::clear();
+                    catalogue.migration_state.set_neq(None);
+
+                    // Go directly to the migrated manga
+                    routing::go_to_url(&crate::common::Route::Manga(to_manga_id).url());
+                }
+                Err(e) => {
+                    snackbar::show(format!("Migration failed: {e}"));
+                }
+            }
+            catalogue.spinner.set_active(false);
+        }));
+    }
+
+    fn render_migration_confirm_modal(catalogue: Rc<Self>) -> Dom {
+        html!("div", {
+            .child_signal(catalogue.pending_migration.signal_cloned().map(clone!(catalogue => move |pending| {
+                pending.map(|to_cover| {
+                    let from_title = catalogue
+                        .migration_state
+                        .get_cloned()
+                        .map(|s| s.from_title)
+                        .unwrap_or_default();
+
+                    html!("div", {
+                        .style("position", "fixed")
+                        .style("inset", "0")
+                        .style("background", "rgba(0,0,0,0.5)")
+                        .style("z-index", "9999")
+                        .child(html!("div", {
+                            .style("background", "var(--bg, white)")
+                            .style("border-radius", "0.75rem")
+                            .style("max-width", "32rem")
+                            .style("margin", "10vh auto")
+                            .style("padding", "1rem")
+                            .children(&mut [
+                                html!("h3", {
+                                    .style("margin", "0 0 0.5rem 0")
+                                    .text("Confirm migration")
+                                }),
+                                html!("div", { .text(format!("From: {from_title}").as_str()) }),
+                                html!("div", { .text(format!("To: {}", to_cover.title).as_str()) }),
+                                html!("div", {
+                                    .style("display", "flex")
+                                    .style("justify-content", "flex-end")
+                                    .style("gap", "0.5rem")
+                                    .style("margin-top", "0.75rem")
+                                    .children(&mut [
+                                        html!("button", {
+                                            .text("Cancel")
+                                            .event(clone!(catalogue => move |_: events::Click| {
+                                                catalogue.pending_migration.set(None);
+                                            }))
+                                        }),
+                                        html!("button", {
+                                            .text("Migrate")
+                                            .event(clone!(catalogue, to_cover => move |_: events::Click| {
+                                                catalogue.pending_migration.set(None);
+                                                Self::migrate_to(catalogue.clone(), to_cover.clone());
+                                            }))
+                                        })
+                                    ])
+                                })
+                            ])
+                        }))
+                    })
+                })
+            })))
         })
     }
 }

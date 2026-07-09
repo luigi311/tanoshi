@@ -10,6 +10,7 @@ mod library;
 mod library_list;
 mod login;
 mod manga;
+mod migration;
 #[allow(dead_code)]
 mod query;
 mod reader;
@@ -17,6 +18,7 @@ mod settings;
 mod settings_categories;
 mod settings_download_queue;
 mod settings_manage_downloads;
+mod settings_migrate;
 mod settings_source;
 mod tracker_login;
 mod tracker_redirect;

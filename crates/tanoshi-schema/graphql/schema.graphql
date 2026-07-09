@@ -117,6 +117,20 @@ type MutationRoot {
     # manga id
     mangaId: Int!
   ): Int!
+
+  # Migrate a manga to another source: moves the library entry with its
+  # categories, read progress and trackers to the manga at `to_path` on
+  # `to_source_id`. Returns the destination manga id.
+  migrateManga(
+    # manga id to migrate from
+    mangaId: Int!
+
+    # destination source id
+    toSourceId: Int!
+
+    # destination manga path
+    toPath: String!
+  ): Int!
   updatePageReadAt(
     # chapter id
     chapterId: Int!

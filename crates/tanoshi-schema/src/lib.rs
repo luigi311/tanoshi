@@ -90,6 +90,14 @@ pub struct DeleteFromLibrary;
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "graphql/schema.graphql",
+    query_path = "graphql/migrate_manga.graphql",
+    response_derives = "Debug"
+)]
+pub struct MigrateManga;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/schema.graphql",
     query_path = "graphql/fetch_category_detail.graphql",
     response_derives = "Debug"
 )]
