@@ -92,6 +92,9 @@ jobs:
       contents: write
     container:
       image: ghcr.io/luigi311/tanoshi-builder:sha-6e8cc9c
+      # The image defaults to the non-root 'ubuntu' user for devcontainer use;
+      # CI needs root so checkout can write to the runner-owned workspace mount.
+      options: --user root
     steps:
       - uses: actions/checkout@v7
         with:
@@ -124,6 +127,9 @@ jobs:
     runs-on: ubuntu-26.04
     container:
       image: ghcr.io/luigi311/tanoshi-builder:sha-6e8cc9c
+      # The image defaults to the non-root 'ubuntu' user for devcontainer use;
+      # CI needs root so checkout can write to the runner-owned workspace mount.
+      options: --user root
     steps:
       - uses: actions/checkout@v7
         with:
@@ -315,6 +321,9 @@ jobs:
       - build-web
     container:
       image: ghcr.io/luigi311/tanoshi-builder:sha-6e8cc9c
+      # The image defaults to the non-root 'ubuntu' user for devcontainer use;
+      # CI needs root so checkout can write to the runner-owned workspace mount.
+      options: --user root
     strategy:
       fail-fast: false
       matrix:
