@@ -6,7 +6,11 @@ use super::{
     source::Source,
 };
 use crate::{
-    domain::services::{chapter::ChapterService, image::ImageService, source::SourceService},
+    domain::services::{
+        chapter::ChapterService,
+        image::{ImageError, ImageService},
+        source::SourceService,
+    },
     infrastructure::{
         auth::Claims,
         config::Config,
@@ -185,9 +189,10 @@ impl Chapter {
 
         if encrypt {
             let secret = &ctx.data::<Config>()?.secret;
-            pages
-                .par_iter_mut()
-                .for_each(|p| *p = image_svc.encrypt_image_url(secret, p).unwrap());
+            pages.par_iter_mut().try_for_each(|p| -> std::result::Result<(), ImageError> {
+                *p = image_svc.encrypt_image_url(secret, p)?;
+                Ok(())
+            })?;
         }
 
         Ok(pages)

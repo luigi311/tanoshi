@@ -5,9 +5,8 @@ use crate::{
     },
     infrastructure::database::Pool,
 };
-use anyhow::anyhow;
 use async_trait::async_trait;
-use sqlx::{sqlite::SqliteArguments, Arguments, Row, SqlitePool};
+use sqlx::{Row, SqlitePool};
 use tokio_stream::StreamExt;
 
 #[derive(Clone)]
@@ -152,30 +151,20 @@ impl UserRepository for UserRepositoryImpl {
     }
 
     async fn update_user_setting(&self, user: &User) -> Result<u64, UserRepositoryError> {
-        let mut column_to_update = vec![];
-        let mut arguments = SqliteArguments::default();
-
-        column_to_update.push("telegram_chat_id = ?");
-        column_to_update.push("pushover_user_key = ?");
-        column_to_update.push("gotify_token = ?");
-        arguments.add(user.telegram_chat_id).unwrap();
-        arguments.add(user.pushover_user_key.clone()).unwrap();
-        arguments.add(user.gotify_token.clone()).unwrap();
-        arguments.add(user.id).unwrap();
-
-        if column_to_update.is_empty() {
-            return Err(UserRepositoryError::Other(anyhow!("Nothing to update")));
-        }
-
-        let query = format!(
-            r#"UPDATE user SET {} WHERE id = ?"#,
-            column_to_update.join(",")
-        );
-
-        let rows_affected = sqlx::query_with(&query, arguments)
-            .execute(&self.pool as &SqlitePool)
-            .await?
-            .rows_affected();
+        let rows_affected = sqlx::query(
+            r#"UPDATE user
+            SET telegram_chat_id = ?,
+                pushover_user_key = ?,
+                gotify_token = ?
+            WHERE id = ?"#,
+        )
+        .bind(user.telegram_chat_id)
+        .bind(&user.pushover_user_key)
+        .bind(&user.gotify_token)
+        .bind(user.id)
+        .execute(&self.pool as &SqlitePool)
+        .await?
+        .rows_affected();
 
         Ok(rows_affected)
     }
