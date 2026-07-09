@@ -18,6 +18,7 @@ pub enum SettingCategory {
     CreateUser,
     User,
     DownloadQueue,
+    Migrate,
 }
 
 #[derive(Debug, Clone)]
@@ -68,7 +69,7 @@ impl Route {
                     ["catalogue", id] => {
                         if let Ok(id) = id.parse() {
                             let params = url.search_params();
-                            let query = params.get("keyword");
+                            let query = params.get("query").or_else(|| params.get("keyword"));
                             Route::Catalogue {
                                 id,
                                 latest: false,
@@ -81,7 +82,7 @@ impl Route {
                     ["catalogue", id, "latest"] => {
                         if let Ok(id) = id.parse() {
                             let params = url.search_params();
-                            let query = params.get("keyword");
+                            let query = params.get("query").or_else(|| params.get("keyword"));
                             Route::Catalogue {
                                 id,
                                 latest: true,
@@ -137,6 +138,7 @@ impl Route {
                         "users" => Route::Settings(SettingCategory::Users),
                         "user" => Route::Settings(SettingCategory::User),
                         "downloads-queue" => Route::Settings(SettingCategory::DownloadQueue),
+                        "migrate" => Route::Settings(SettingCategory::Migrate),
                         _ => Route::NotFound,
                     },
                     ["settings", "users", "create"] => Route::Settings(SettingCategory::CreateUser),
@@ -195,10 +197,15 @@ impl Route {
 
                 let mut param = vec![];
                 if let Some(query) = query {
-                    param.push(format!("query={query}"));
+                    let q = urlencoding::encode(query);
+                    param.push(format!("query={}", q));
                 }
 
-                format!("/catalogue/{id}?{}", param.join("&"))
+                if param.is_empty() {
+                    format!("/catalogue/{id}")
+                } else {
+                    format!("/catalogue/{id}?{}", param.join("&"))
+                }
             }
             Route::Manga(manga_id) => ["/manga".to_string(), manga_id.to_string()].join("/"),
             Route::MangaBySourcePath(source_id, path) => [
@@ -228,6 +235,7 @@ impl Route {
             Route::Settings(SettingCategory::DownloadQueue) => {
                 "/settings/downloads-queue".to_string()
             }
+            Route::Settings(SettingCategory::Migrate) => "/settings/migrate".to_string(),
             Route::TrackerLogin(tracker) => format!("/tracker/{tracker}/login"),
             Route::TrackerRedirect {
                 tracker,

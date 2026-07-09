@@ -1,0 +1,3 @@
+mutation MigrateManga($mangaId: Int!, $toSourceId: Int!, $toPath: String!) {
+  migrateManga(mangaId: $mangaId, toSourceId: $toSourceId, toPath: $toPath)
+}

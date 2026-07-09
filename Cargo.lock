@@ -6846,6 +6846,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tanoshi-schema",
+ "urlencoding",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "wasm-logger",
@@ -8015,6 +8016,12 @@ dependencies = [
  "serde",
  "serde_derive",
 ]
+
+[[package]]
+name = "urlencoding"
+version = "2.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "daf8dba3b7eb870caf1ddeed7bc9d2a049f3cfdfae7cb521b087cc33ae4c49da"
 
 [[package]]
 name = "urlpattern"

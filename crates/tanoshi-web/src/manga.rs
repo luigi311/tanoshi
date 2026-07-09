@@ -111,6 +111,7 @@ impl Manga {
                 }
             }
 
+            debug!("Fetching manga detail for manga id {} with refresh={}", manga.id.get(), refresh);
             match query::fetch_manga_detail(manga.id.get(), refresh).await {
                 Ok(result) => {
                     manga.source_id.set(result.source.id);

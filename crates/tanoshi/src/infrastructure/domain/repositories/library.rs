@@ -420,6 +420,136 @@ impl LibraryRepository for LibraryRepositoryImpl {
         Ok(())
     }
 
+    async fn migrate_manga(
+        &self,
+        user_id: i64,
+        from_manga_id: i64,
+        to_manga_id: i64,
+    ) -> Result<(), LibraryRepositoryError> {
+        let mut tx = self.pool.begin().await?;
+
+        // Move the library entry. Keeping the user_library row id carries its
+        // library_category rows along. OR IGNORE skips the move when the
+        // destination is already in the library (it keeps its own categories).
+        sqlx::query("UPDATE OR IGNORE user_library SET manga_id = ? WHERE user_id = ? AND manga_id = ?")
+            .bind(to_manga_id)
+            .bind(user_id)
+            .bind(from_manga_id)
+            .execute(&mut *tx)
+            .await?;
+
+        sqlx::query("DELETE FROM user_library WHERE user_id = ? AND manga_id = ?")
+            .bind(user_id)
+            .bind(from_manga_id)
+            .execute(&mut *tx)
+            .await?;
+
+        // Copy read progress onto destination chapters matched by chapter
+        // number, preserving the original read_at. The scalar subquery
+        // (ORDER BY id LIMIT 1) picks exactly one destination chapter even
+        // when the destination has duplicate chapter numbers; unmatched
+        // chapters resolve to NULL and are filtered out. On conflict keep the
+        // furthest progress.
+        sqlx::query(
+            r#"
+        INSERT INTO user_history(user_id, chapter_id, last_page, read_at, is_complete)
+        SELECT user_id, to_chapter_id, last_page, read_at, is_complete
+        FROM (
+            SELECT uh.user_id AS user_id,
+                   (SELECT tc.id FROM chapter tc
+                    WHERE tc.manga_id = ? AND tc.number = fc.number
+                    ORDER BY tc.id LIMIT 1) AS to_chapter_id,
+                   uh.last_page AS last_page,
+                   uh.read_at AS read_at,
+                   uh.is_complete AS is_complete
+            FROM user_history uh
+                JOIN chapter fc
+                    ON fc.id = uh.chapter_id
+                    AND fc.manga_id = ?
+            WHERE uh.user_id = ?
+        )
+        WHERE to_chapter_id IS NOT NULL
+        ON CONFLICT(user_id, chapter_id) DO UPDATE SET
+            last_page = MAX(user_history.last_page, excluded.last_page),
+            read_at = MAX(user_history.read_at, excluded.read_at),
+            is_complete = MAX(user_history.is_complete, excluded.is_complete)"#,
+        )
+        .bind(to_manga_id)
+        .bind(from_manga_id)
+        .bind(user_id)
+        .execute(&mut *tx)
+        .await?;
+
+        // Fall back to title matching for chapters whose number has no
+        // counterpart in the destination. Same single-match + NULL-filter
+        // scheme as above.
+        sqlx::query(
+            r#"
+        INSERT INTO user_history(user_id, chapter_id, last_page, read_at, is_complete)
+        SELECT user_id, to_chapter_id, last_page, read_at, is_complete
+        FROM (
+            SELECT uh.user_id AS user_id,
+                   (SELECT tc.id FROM chapter tc
+                    WHERE tc.manga_id = ? AND tc.title = fc.title COLLATE NOCASE
+                    ORDER BY tc.id LIMIT 1) AS to_chapter_id,
+                   uh.last_page AS last_page,
+                   uh.read_at AS read_at,
+                   uh.is_complete AS is_complete
+            FROM user_history uh
+                JOIN chapter fc
+                    ON fc.id = uh.chapter_id
+                    AND fc.manga_id = ?
+            WHERE uh.user_id = ?
+                AND NOT EXISTS (
+                    SELECT 1 FROM chapter t2 WHERE t2.manga_id = ? AND t2.number = fc.number
+                )
+        )
+        WHERE to_chapter_id IS NOT NULL
+        ON CONFLICT(user_id, chapter_id) DO UPDATE SET
+            last_page = MAX(user_history.last_page, excluded.last_page),
+            read_at = MAX(user_history.read_at, excluded.read_at),
+            is_complete = MAX(user_history.is_complete, excluded.is_complete)"#,
+        )
+        .bind(to_manga_id)
+        .bind(from_manga_id)
+        .bind(user_id)
+        .bind(to_manga_id)
+        .execute(&mut *tx)
+        .await?;
+
+        // Remove the old history so the migrated manga doesn't show up twice
+        // in reading history.
+        sqlx::query(
+            r#"
+        DELETE FROM user_history
+        WHERE user_id = ?
+            AND chapter_id IN (SELECT id FROM chapter WHERE manga_id = ?)"#,
+        )
+        .bind(user_id)
+        .bind(from_manga_id)
+        .execute(&mut *tx)
+        .await?;
+
+        // Move trackers. OR IGNORE skips trackers already attached to the
+        // destination; leftovers on the old manga are removed after.
+        sqlx::query("UPDATE OR IGNORE tracker_manga SET manga_id = ? WHERE user_id = ? AND manga_id = ?")
+            .bind(to_manga_id)
+            .bind(user_id)
+            .bind(from_manga_id)
+            .execute(&mut *tx)
+            .await?;
+
+        sqlx::query("DELETE FROM tracker_manga WHERE user_id = ? AND manga_id = ?")
+            .bind(user_id)
+            .bind(from_manga_id)
+            .execute(&mut *tx)
+            .await?;
+
+        tx.commit().await?;
+
+        Ok(())
+    }
+
     async fn get_first_library_updates(
         &self,
         user_id: i64,

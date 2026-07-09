@@ -15,7 +15,8 @@ use crate::{
     }, 
     query, 
     settings_categories::SettingsCategories, 
-    settings_download_queue::SettingsDownloads, 
+    settings_download_queue::SettingsDownloads,
+    settings_migrate::SettingsMigrate,
     utils::{AsyncLoader, is_tauri, window}, settings_source::SettingsSource
 };
 use dominator::svg;
@@ -308,7 +309,8 @@ impl Settings {
                             SettingCategory::Users => "Users",
                             SettingCategory::CreateUser => "Create User",
                             SettingCategory::User => "User",
-                            SettingCategory::DownloadQueue => "Downloads Queue"
+                            SettingCategory::DownloadQueue => "Downloads Queue",
+                            SettingCategory::Migrate => "Migrate Manga"
                         }
                     ))
                 }),
@@ -411,7 +413,11 @@ impl Settings {
                 link!(Route::Settings(SettingCategory::SourceList).url(), {
                     .class("list-item")
                     .text("Sources")
-                })
+                }),
+                link!(Route::Settings(SettingCategory::Migrate).url(), {
+                    .class("list-item")
+                    .text("Migrate Manga")
+                }),
             ])
             .child_signal(settings.me.signal_cloned().map(|me| {
                 if let Some(me) = me {
@@ -797,6 +803,7 @@ impl Settings {
                     SettingCategory::User => Some(Profile::render(Profile::new())),
                     SettingCategory::CreateUser => Some(Login::render(Login::new())),
                     SettingCategory::DownloadQueue => Some(SettingsDownloads::render(SettingsDownloads::new())),
+                    SettingCategory::Migrate => Some(SettingsMigrate::render(SettingsMigrate::new())),
                 }
             }))            
         })

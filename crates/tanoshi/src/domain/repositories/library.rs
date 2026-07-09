@@ -88,6 +88,13 @@ pub trait LibraryRepository: Clone + Send + Sync {
         manga_id: i64,
     ) -> Result<(), LibraryRepositoryError>;
 
+    async fn migrate_manga(
+        &self,
+        user_id: i64,
+        from_manga_id: i64,
+        to_manga_id: i64,
+    ) -> Result<(), LibraryRepositoryError>;
+
     async fn get_first_library_updates(
         &self,
         user_id: i64,
