@@ -1,5 +1,5 @@
 use rand::distr::Alphanumeric;
-use rand::{rng, Rng};
+use rand::{rng, RngExt};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 use std::{iter, path::PathBuf};

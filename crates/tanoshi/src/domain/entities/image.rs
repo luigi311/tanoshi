@@ -1,4 +1,4 @@
-use aes::cipher::{block_padding::Pkcs7, BlockDecryptMut, BlockEncryptMut, KeyIvInit};
+use aes::cipher::{block_padding::Pkcs7, BlockModeDecrypt, BlockModeEncrypt, KeyIvInit};
 use anyhow::anyhow;
 use base64::{engine::general_purpose, Engine};
 use bytes::Bytes;
@@ -57,8 +57,9 @@ impl ImageUri {
 
         let iv = [0_u8; 16];
 
-        let bytes = Aes128CbcDec::new(secret.as_bytes().into(), &iv.into())
-            .decrypt_padded_mut::<Pkcs7>(&mut decoded)
+        let bytes = Aes128CbcDec::new_from_slices(secret.as_bytes(), &iv)
+            .map_err(|e| anyhow!("invalid key length: {e}"))?
+            .decrypt_padded::<Pkcs7>(&mut decoded)
             .map_err(|e| anyhow::anyhow!("error decrypt url {e}"))?
             .to_vec();
 
@@ -76,8 +77,9 @@ impl ImageUri {
         buffer.splice(..pos, uri.as_bytes().to_vec());
 
         let iv = [0_u8; 16];
-        let chipertext = Aes128CbcEnc::new(secret.as_bytes().into(), &iv.into())
-            .encrypt_padded_mut::<Pkcs7>(&mut buffer, pos)
+        let chipertext = Aes128CbcEnc::new_from_slices(secret.as_bytes(), &iv)
+            .map_err(|e| anyhow!("invalid key length: {e}"))?
+            .encrypt_padded::<Pkcs7>(&mut buffer, pos)
             .map_err(|e| anyhow!("error encrypt url {e}"))?;
 
         let encoded = general_purpose::URL_SAFE_NO_PAD.encode(chipertext);

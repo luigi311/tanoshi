@@ -7,10 +7,8 @@ use crate::domain::entities::image::Image;
 pub enum ImageCacheRepositoryError {
     #[error("io error: {0}")]
     FileError(#[from] std::io::Error),
-    #[error("io error: {0}")]
-    SerializeError(#[from] bincode::error::EncodeError),
-    #[error("io error: {0}")]
-    DeserializeError(#[from] bincode::error::DecodeError),
+    #[error("serialization error: {0}")]
+    CodecError(#[from] postcard::Error),
     #[error("other error: {0}")]
     Other(String),
 }

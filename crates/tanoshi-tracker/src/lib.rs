@@ -13,6 +13,27 @@ use oauth2::{CsrfToken, PkceCodeVerifier};
 use serde::Deserialize;
 use thiserror::Error;
 
+/// oauth2 v5 tracks which endpoints are configured in the type. Every tracker
+/// configures the auth and token URLs (and nothing else).
+pub type OAuthClient = oauth2::basic::BasicClient<
+    oauth2::EndpointSet,    // auth url
+    oauth2::EndpointNotSet, // device auth url
+    oauth2::EndpointNotSet, // introspection url
+    oauth2::EndpointNotSet, // revocation url
+    oauth2::EndpointSet,    // token url
+>;
+
+/// Build the http client used for token exchanges. Redirects are disabled as
+/// recommended by oauth2 to prevent SSRF via the token endpoint, and a total
+/// timeout keeps a stalled token endpoint from hanging exchanges forever.
+fn oauth_http_client() -> Result<oauth2::reqwest::Client, Error> {
+    Ok(oauth2::reqwest::ClientBuilder::new()
+        .redirect(oauth2::reqwest::redirect::Policy::none())
+        .timeout(std::time::Duration::from_secs(30))
+        .build()
+        .map_err(|e| anyhow::anyhow!("{e}"))?)
+}
+
 #[derive(Error, Debug)]
 pub enum Error {
     #[error("unauthorized")]

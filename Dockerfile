@@ -1,9 +1,11 @@
-FROM ghcr.io/luigi311/tanoshi-builder:sha-4cf682e AS base
+FROM ghcr.io/luigi311/tanoshi-builder:sha-6e8cc9c AS base
 
 # Backend builder
 FROM base AS builder
 
-COPY . .
+# The builder image runs as the non-root 'ubuntu' user; without --chown the
+# copied sources are root-owned and trunk/cargo can't write build output.
+COPY --chown=ubuntu:ubuntu . .
 
 RUN cd crates/tanoshi-web && trunk build --release
 
@@ -11,9 +13,9 @@ RUN cargo build -p tanoshi --release
 
 
 
-FROM ubuntu:24.04 AS runtime
+FROM ubuntu:26.04 AS runtime
 
-RUN apt update && apt upgrade -y && apt install --reinstall -y tini ca-certificates libssl3 libxml2
+RUN apt update && apt upgrade -y && apt install --reinstall -y tini ca-certificates libssl3 libxml2-dev libnettle8t64
 
 WORKDIR /app
 

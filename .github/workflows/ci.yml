@@ -17,11 +17,12 @@ on:
 
 env:
   LLVM_VERSION: 15
-  UBUNTU_DEPS: libssl-dev libarchive-dev build-essential cmake llvm clang libicu-dev 
-    nettle-dev libacl1-dev liblzma-dev libzstd-dev liblz4-dev libbz2-dev 
-    zlib1g-dev libxml2-dev lsb-release wget software-properties-common 
-    libwebkit2gtk-4.1-dev curl libgtk-3-dev libappindicator3-dev patchelf 
-    librsvg2-dev libpango1.0-dev libsoup-3.0-dev libjavascriptcoregtk-4.1-dev 
+  UBUNTU_DEPS:
+    libssl-dev libarchive-dev build-essential cmake llvm clang libicu-dev
+    nettle-dev libacl1-dev liblzma-dev libzstd-dev liblz4-dev libbz2-dev
+    zlib1g-dev libxml2-dev lsb-release wget software-properties-common
+    libwebkit2gtk-4.1-dev curl libgtk-3-dev libappindicator3-dev patchelf
+    librsvg2-dev libpango1.0-dev libsoup-3.0-dev libjavascriptcoregtk-4.1-dev
     libb2-dev
 
 jobs:
@@ -31,11 +32,11 @@ jobs:
       fail-fast: false
       matrix:
         os:
-          - ubuntu-latest
+          - ubuntu-26.04
           #- macos-latest
           - windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
 
@@ -44,17 +45,17 @@ jobs:
       - name: Install deps (ubuntu/MacOS)
         if: ${{ matrix.os != 'windows-latest' }}
         run: |
-          if [ "${{ matrix.os }}" == "ubuntu-latest" ]; then
+          if [ "${{ matrix.os }}" == "ubuntu-26.04" ]; then
             sudo apt-get update && sudo apt-get install -y $UBUNTU_DEPS
           elif [ "${{ matrix.os }}" == "macos-latest" ]; then
             brew install icu4c libarchive bzip2 lz4 zlib expat libiconv
           fi
 
-      - uses: ilammy/setup-nasm@72793074d3c8cdda771dba85f6deafe00623038b
+      - uses: ilammy/setup-nasm@v1
 
       - id: cache-vcpkg
         name: Cache vcpkg (windows)
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         if: ${{ matrix.os == 'windows-latest' }}
         with:
           path: "C:/vcpkg/installed"
@@ -70,14 +71,14 @@ jobs:
           vcpkg install libarchive:x64-windows-static-md
 
       - name: Install LLVM and Clang
-        uses: KyleMayes/install-llvm-action@a7a1a882e2d06ebe05d5bb97c3e1f8c984ae96fc
+        uses: KyleMayes/install-llvm-action@v2
         with:
           version: ${{ env.LLVM_VERSION }}
 
-      - uses: Swatinem/rust-cache@98c8021b550208e191a6a3145459bfc9fb29c4c0
+      - uses: Swatinem/rust-cache@v2
         with:
           key: "${{ matrix.os }}"
-      
+
       - name: Run cargo test
         env:
           # Fix for macos
@@ -86,17 +87,20 @@ jobs:
           cargo test
 
   build-cli:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     permissions:
       contents: write
     container:
-      image: ghcr.io/luigi311/tanoshi-builder:sha-4cf682e
+      image: ghcr.io/luigi311/tanoshi-builder:sha-6e8cc9c
+      # The image defaults to the non-root 'ubuntu' user for devcontainer use;
+      # CI needs root so checkout can write to the runner-owned workspace mount.
+      options: --user root
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
 
-      - uses: Swatinem/rust-cache@98c8021b550208e191a6a3145459bfc9fb29c4c0
+      - uses: Swatinem/rust-cache@v2
 
       - name: Build tanoshi-cli
         shell: bash
@@ -105,14 +109,14 @@ jobs:
         run: cargo build -p tanoshi-cli --release
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: tanoshi-cli
           path: ${{ github.workspace }}/target/release/tanoshi-cli
 
       - name: Upload binaries to GitHub Releases
         if: startsWith(github.ref, 'refs/tags/')
-        uses: svenstaro/upload-release-action@81c65b7cd4de9b2570615ce3aad67a41de5b1a13
+        uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: target/release/tanoshi-cli
@@ -120,21 +124,24 @@ jobs:
           tag: ${{ github.ref }}
 
   build-web:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     container:
-      image: ghcr.io/luigi311/tanoshi-builder:sha-4cf682e
+      image: ghcr.io/luigi311/tanoshi-builder:sha-6e8cc9c
+      # The image defaults to the non-root 'ubuntu' user for devcontainer use;
+      # CI needs root so checkout can write to the runner-owned workspace mount.
+      options: --user root
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
 
-      - uses: Swatinem/rust-cache@98c8021b550208e191a6a3145459bfc9fb29c4c0
+      - uses: Swatinem/rust-cache@v2
 
       - name: Build tanoshi-web
         run: cd crates/tanoshi-web && trunk build --release
 
       - name: Upload tanoshi-web
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: tanoshi-web
           path: crates/tanoshi-web/dist
@@ -149,30 +156,30 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-24.04
+          - os: ubuntu-26.04
             arch: amd64
             type: linux
           - os: windows-latest
             arch: amd64
             type: windows
-          - os: ubuntu-24.04-arm
+          - os: ubuntu-26.04-arm
             arch: aarch64
             type: linux
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
 
       - name: Download dist
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: tanoshi-web
           path: crates/tanoshi-web/dist
-      
+
       - uses: actions-rust-lang/setup-rust-toolchain@02be93da58aa71fb456aa9c43b301149248829d8
 
-      - uses: Swatinem/rust-cache@98c8021b550208e191a6a3145459bfc9fb29c4c0
+      - uses: Swatinem/rust-cache@v2
         with:
           key: "${{ matrix.type }}-${{ matrix.arch }}"
 
@@ -184,15 +191,15 @@ jobs:
         if: ${{ matrix.os == 'macos-latest' }}
         run: brew install icu4c libarchive bzip2 lz4 zlib expat libiconv
 
-      - uses: ilammy/setup-nasm@72793074d3c8cdda771dba85f6deafe00623038b
+      - uses: ilammy/setup-nasm@v1
 
       - name: Install LLVM and Clang
-        uses: KyleMayes/install-llvm-action@a7a1a882e2d06ebe05d5bb97c3e1f8c984ae96fc
+        uses: KyleMayes/install-llvm-action@v2
         with:
           version: ${{ env.LLVM_VERSION }}
 
       - name: Cache vcpkg
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         if: ${{ matrix.type == 'windows' }}
         with:
           path: "C:/vcpkg/installed"
@@ -208,8 +215,8 @@ jobs:
           vcpkg install libarchive:x64-windows-static-md
 
       - name: Install Binstall
-        uses: cargo-bins/cargo-binstall@11f258db84cec40fc56c7b10bfc37c31dd9a3c98
-      
+        uses: cargo-bins/cargo-binstall@main
+
       - name: Install tauri-cli
         run: cargo binstall tauri-cli@2 --no-confirm --locked
 
@@ -239,14 +246,14 @@ jobs:
           mv target/*/tanoshi-app ${{ github.workspace }}/builds/
 
       - name: Upload dist
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: tanoshi-app-${{ matrix.type }}-${{ matrix.arch }}
           path: ${{ github.workspace }}/builds/
 
       - name: Upload binaries to GitHub Releases
         if: startsWith(github.ref, 'refs/tags/')
-        uses: svenstaro/upload-release-action@81c65b7cd4de9b2570615ce3aad67a41de5b1a13
+        uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: ${{ github.workspace }}/builds/*
@@ -267,24 +274,24 @@ jobs:
         include:
           - arch: x86_64
             name: amd64
-            os: ubuntu-24.04
+            os: ubuntu-26.04
           - arch: aarch64
             name: aarch64
-            os: ubuntu-24.04-arm
+            os: ubuntu-26.04-arm
       # Don't fail the whole workflow if one architecture fails
       fail-fast: false
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
 
       - name: Download files
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: tanoshi-app-linux-${{ matrix.name }}
           path: target/release/
 
-      - uses: flatpak/flatpak-github-actions/flatpak-builder@10a3c29f0162516f0f68006be14c92f34bd4fa6c
+      - uses: flatpak/flatpak-github-actions/flatpak-builder@v6
         with:
           bundle: tanoshi.${{ matrix.arch }}.flatpak
           manifest-path: org.luigi311.tanoshi.yml
@@ -293,14 +300,14 @@ jobs:
           upload-artifact: false
 
       - name: Upload dist
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: tanoshi.${{ matrix.arch }}.flatpak
           path: tanoshi.${{ matrix.arch }}.flatpak
 
       - name: Upload binaries to GitHub Releases
         if: startsWith(github.ref, 'refs/tags/')
-        uses: svenstaro/upload-release-action@81c65b7cd4de9b2570615ce3aad67a41de5b1a13
+        uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: tanoshi.${{ matrix.arch }}.flatpak
@@ -313,29 +320,32 @@ jobs:
     needs:
       - build-web
     container:
-      image: ghcr.io/luigi311/tanoshi-builder:sha-4cf682e
+      image: ghcr.io/luigi311/tanoshi-builder:sha-6e8cc9c
+      # The image defaults to the non-root 'ubuntu' user for devcontainer use;
+      # CI needs root so checkout can write to the runner-owned workspace mount.
+      options: --user root
     strategy:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-24.04
+          - os: ubuntu-26.04
             arch: amd64
             type: linux
-          - os: ubuntu-24.04-arm
+          - os: ubuntu-26.04-arm
             arch: aarch64
             type: linux
-    steps:      
-      - uses: actions/checkout@v4
+    steps:
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
 
       - name: Download dist
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: tanoshi-web
           path: crates/tanoshi-web/dist
 
-      - uses: Swatinem/rust-cache@98c8021b550208e191a6a3145459bfc9fb29c4c0
+      - uses: Swatinem/rust-cache@v2
         with:
           key: "${{ matrix.type }}-${{ matrix.arch }}"
 
@@ -346,37 +356,37 @@ jobs:
         run: cargo build -p tanoshi --release
 
       - name: Upload dist
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: tanoshi-${{ matrix.arch }}
           path: ${{ github.workspace }}/target/release/tanoshi
 
   docker:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     permissions:
       packages: write
     needs:
       - build-tanoshi
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
 
       - name: Download dist (AMD64)
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: tanoshi-amd64
           path: linux/amd64
-      
+
       - name: Download dist (AARCH64)
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: tanoshi-aarch64
           path: linux/arm64
 
       - name: Docker meta
         id: docker_meta
-        uses: docker/metadata-action@c1e51972afc2121e065aed6d45c65596fe445f3f
+        uses: docker/metadata-action@v6
         with:
           images: |
             ${{ secrets.DOCKER_USERNAME }}/tanoshi,enable=${{ secrets.DOCKER_USERNAME != '' }}
@@ -392,23 +402,23 @@ jobs:
             type=sha
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@29109295f81e9208d7d86ff1c6c12d2833863392
+        uses: docker/setup-qemu-action@v4
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435
+        uses: docker/setup-buildx-action@v4
 
       - name: Login to DockerHub
         env:
           DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
         if: "${{ env.DOCKER_USERNAME != '' }}"
-        uses: docker/login-action@184bdaa0721073962dff0199f1fb9940f07167d1
+        uses: docker/login-action@v4
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
 
       - name: Login to GitHub Container Registry
         if: "${{ steps.docker_meta.outcome == 'success' }}"
-        uses: docker/login-action@184bdaa0721073962dff0199f1fb9940f07167d1
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -417,7 +427,7 @@ jobs:
       - name: Build
         id: build
         if: "${{ steps.docker_meta.outputs.tags == '' }}"
-        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: Dockerfile.CI
@@ -428,7 +438,7 @@ jobs:
       - name: Build Push
         id: build_push
         if: "${{ steps.docker_meta.outputs.tags != '' }}"
-        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: Dockerfile.CI
@@ -440,6 +450,6 @@ jobs:
       # Echo digest so users can validate their image
       - name: Image digest
         if: "${{ steps.docker_meta.outcome == 'success' }}"
-        env: 
+        env:
           DIGEST: ${{ steps.build_push.outputs.digest }}
         run: echo "$DIGEST"
