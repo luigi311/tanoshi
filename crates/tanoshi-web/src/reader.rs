@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use crate::common::{Fit, ReaderSettings, Spinner, events, snackbar};
-use crate::utils::{document, proxied_image_url, window, AsyncLoader, body, format_number_title};
+use crate::utils::{document, proxied_image_url, window, AsyncLoader, format_number_title};
 use crate::{
     common::{Background, Direction, DisplayMode, ReaderMode},
     query,
@@ -43,8 +43,6 @@ struct ZoomAnchor {
     page_index: usize,
     // where in the element the viewport center was, as a ratio (0..1)
     center_ratio: f64,
-    // viewport height at capture time
-    viewport_h: f64,
 }
 
 pub struct Reader {
@@ -143,7 +141,6 @@ impl Reader {
         Some(ZoomAnchor {
             page_index,
             center_ratio: ratio,
-            viewport_h,
         })
     }
 
