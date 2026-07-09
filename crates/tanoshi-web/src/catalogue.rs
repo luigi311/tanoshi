@@ -95,9 +95,20 @@ impl Catalogue {
                 ..Default::default()
             });
 
-        // If the restored state belongs to a different source, discard
-        // source-specific fields so we don't flash stale data.
-        if catalogue.source_id != source_id {
+        // Consume the migration state on first entry so it isn't restored on
+        // a later revisit. The Cancel button and successful migrate_to both
+        // also call migration::clear().
+        let ms = migration::get();
+        let entering_migrate_mode = ms.as_ref().is_some_and(|s| s.to_source_id == source_id);
+        if entering_migrate_mode {
+            migration::clear();
+        }
+
+        // Discard source-specific fields when the restored state belongs to a
+        // different source (don't flash stale data), or when entering migrate
+        // mode: render() only fetches when cover_list is empty, so a cached
+        // same-source grid would otherwise shadow the prefilled search query.
+        if catalogue.source_id != source_id || entering_migrate_mode {
             catalogue.cover_list = MutableVec::new();
             catalogue.page = Mutable::new(1);
             catalogue.latest = Mutable::new(false);
@@ -108,14 +119,6 @@ impl Catalogue {
         catalogue.source_id = source_id;
 
         let rc = Rc::new(catalogue);
-
-        // Consume the migration state on first entry so it isn't restored on
-        // a later revisit. The Cancel button and successful migrate_to both
-        // also call migration::clear().
-        let ms = migration::get();
-        if ms.as_ref().is_some_and(|s| s.to_source_id == source_id) {
-            migration::clear();
-        }
         rc.migration_state.set(ms);
         rc
     }
