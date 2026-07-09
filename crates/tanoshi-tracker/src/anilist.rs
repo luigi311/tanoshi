@@ -4,14 +4,14 @@ use anyhow::anyhow;
 use async_trait::async_trait;
 use chrono::{Datelike, NaiveDate, NaiveDateTime, NaiveTime};
 use oauth2::{
-    basic::BasicClient, reqwest::async_http_client, AuthUrl, AuthorizationCode, ClientId,
-    ClientSecret, CsrfToken, RedirectUrl, RefreshToken, TokenUrl,
+    basic::BasicClient, AuthUrl, AuthorizationCode, ClientId, ClientSecret, CsrfToken, RedirectUrl,
+    RefreshToken, TokenUrl,
 };
 use reqwest::StatusCode;
 use serde::Deserialize;
 use serde_json::json;
 
-use crate::{Error, Tracker, TrackerManga, TrackerStatus};
+use crate::{oauth_http_client, Error, OAuthClient, Tracker, TrackerManga, TrackerStatus};
 
 use super::{Session, Token};
 
@@ -112,7 +112,9 @@ impl From<Media> for TrackerManga {
 }
 
 pub struct AniList {
-    pub oauth_client: BasicClient,
+    pub oauth_client: OAuthClient,
+    // oauth2's re-exported reqwest, used for token exchanges.
+    oauth_http_client: oauth2::reqwest::Client,
 }
 
 #[async_trait]
@@ -140,7 +142,7 @@ impl Tracker for AniList {
         let token = self
             .oauth_client
             .exchange_code(code)
-            .request_async(async_http_client)
+            .request_async(&self.oauth_http_client)
             .await
             .map_err(|e| anyhow!("{e}"))?;
 
@@ -152,7 +154,7 @@ impl Tracker for AniList {
         let token = self
             .oauth_client
             .exchange_refresh_token(&RefreshToken::new(refresh_token))
-            .request_async(async_http_client)
+            .request_async(&self.oauth_http_client)
             .await
             .map_err(|e| anyhow!("{e}"))?;
         let token_str = serde_json::to_string(&token).map_err(|e| anyhow!("{e}"))?;
@@ -270,16 +272,15 @@ impl AniList {
 
         let redirect_url = RedirectUrl::new(format!("{base_url}/tracker/{NAME}/redirect"))
             .map_err(|e| anyhow!("{e}"))?;
-        let client = BasicClient::new(
-            client_id,
-            Some(client_secret),
-            authorization_url,
-            Some(token_url),
-        )
-        .set_redirect_uri(redirect_url);
+        let client = BasicClient::new(client_id)
+            .set_client_secret(client_secret)
+            .set_auth_uri(authorization_url)
+            .set_token_uri(token_url)
+            .set_redirect_uri(redirect_url);
 
         Ok(Self {
             oauth_client: client,
+            oauth_http_client: oauth_http_client()?,
         })
     }
 
