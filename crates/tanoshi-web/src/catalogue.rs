@@ -7,7 +7,7 @@ use crate::{
     utils::{history, local_storage, window, AsyncLoader},
 };
 use dominator::{clone, events, html, routing, svg, with_node, Dom, EventOptions};
-use futures_signals::signal::{Mutable, SignalExt};
+use futures_signals::signal::{Mutable, Signal, SignalExt};
 use futures_signals::signal_vec::{MutableVec, SignalVecExt};
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::{JsValue, UnwrapThrowExt};
@@ -95,11 +95,28 @@ impl Catalogue {
                 ..Default::default()
             });
 
-        // ensure source_id matches the route when restoring from storage
+        // If the restored state belongs to a different source, discard
+        // source-specific fields so we don't flash stale data.
+        if catalogue.source_id != source_id {
+            catalogue.cover_list = MutableVec::new();
+            catalogue.page = Mutable::new(1);
+            catalogue.latest = Mutable::new(false);
+            catalogue.keyword = Mutable::new(None);
+            catalogue.is_filter = Mutable::new(false);
+        }
+
         catalogue.source_id = source_id;
 
         let rc = Rc::new(catalogue);
-        rc.migration_state.set(migration::get());
+
+        // Consume the migration state on first entry so it isn't restored on
+        // a later revisit. The Cancel button and successful migrate_to both
+        // also call migration::clear().
+        let ms = migration::get();
+        if ms.as_ref().is_some_and(|s| s.to_source_id == source_id) {
+            migration::clear();
+        }
+        rc.migration_state.set(ms);
         rc
     }
 
@@ -181,7 +198,8 @@ impl Catalogue {
             let mut param = vec![];
 
             if let Some(query) = self.keyword.get_cloned() {
-                param.push(format!("query={}", query));
+                let q = urlencoding::encode(&query);
+                param.push(format!("query={}", q));
             };
 
             // if let Ok(filters) = serde_json::to_string(&self.input_list_modal.input_list) {
@@ -365,17 +383,29 @@ impl Catalogue {
         })
     }
 
+    fn is_migrate_mode(&self) -> bool {
+        self.migration_state
+            .get_cloned()
+            .as_ref()
+            .map(|s| s.to_source_id == self.source_id)
+            .unwrap_or(false)
+    }
+
+    fn migrate_mode_signal(&self) -> impl Signal<Item = bool> + use<> {
+        let source_id = self.source_id;
+        self.migration_state
+            .signal_cloned()
+            .map(move |ms| {
+                ms.as_ref()
+                    .map(|s| s.to_source_id == source_id)
+                    .unwrap_or(false)
+            })
+    }
+
     pub fn render_main(catalogue: Rc<Self>) -> Dom {
         use futures_signals::signal::SignalExt;
 
-        let is_migrate_mode_signal = catalogue
-            .migration_state
-            .signal_cloned()
-            .map(clone!(catalogue => move |ms| {
-                ms.as_ref()
-                    .map(|s| s.to_source_id == catalogue.source_id)
-                    .unwrap_or(false)
-            }));
+        let is_migrate_mode_signal = catalogue.migrate_mode_signal();
 
         html!("div", {
             .style("padding", "0.5rem")
@@ -444,9 +474,8 @@ impl Catalogue {
     }
 
     pub fn render(self: Rc<Self>, latest: bool, query: Option<String>) -> Dom {
-        // refresh migration state every time we render
-        self.migration_state.set_neq(migration::get());
-
+        // migration_state is consumed from storage once in new(); don't
+        // re-read storage here or the consumed state would be wiped.
         self.is_search.set_neq(query.is_some());
         self.keyword.set_neq(query);
         self.latest.set_neq(latest);
@@ -470,43 +499,47 @@ impl Catalogue {
                     .class("topbar-spacing")
                 })
             ])
-            .child_signal(self.migration_state.signal_cloned().map({
+            .child_signal(self.migrate_mode_signal().map({
                 let catalogue = self.clone();
-                move |ms| {
-                    let show = ms.as_ref().map(|s| s.to_source_id == catalogue.source_id).unwrap_or(false);
-                    show.then(|| html!("div", {
-                        .style("margin", "0.5rem")
-                        .style("padding", "0.5rem 0.75rem")
-                        .style("border-radius", "0.5rem")
-                        .style("background", "rgba(255,255,255,0.06)")
-                        .style("display", "flex")
-                        .style("justify-content", "space-between")
-                        .style("align-items", "center")
-                        .children(&mut [
-                            html!("div", {
-                                .style("display", "flex")
-                                .style("flex-direction", "column")
-                                .children(&mut [
-                                    html!("span", { .text("Migration mode") }),
-                                    html!("span", {
-                                        .style("font-size", "0.875rem")
-                                        .style("opacity", "0.85")
-                                        .text(ms.as_ref().map(|s| format!("Select the destination manga for: {}", s.from_title)).unwrap_or_default().as_str())
-                                    })
-                                ])
-                            }),
-                            html!("button", {
-                                .text("Cancel")
-                                .event({
-                                    let catalogue = catalogue.clone();
-                                    move |_: events::Click| {
+                move |show| {
+                    show.then(|| {
+                        let from_title = catalogue
+                            .migration_state
+                            .get_cloned()
+                            .map(|s| s.from_title)
+                            .unwrap_or_default();
+
+                        html!("div", {
+                            .style("margin", "0.5rem")
+                            .style("padding", "0.5rem 0.75rem")
+                            .style("border-radius", "0.5rem")
+                            .style("background", "rgba(255,255,255,0.06)")
+                            .style("display", "flex")
+                            .style("justify-content", "space-between")
+                            .style("align-items", "center")
+                            .children(&mut [
+                                html!("div", {
+                                    .style("display", "flex")
+                                    .style("flex-direction", "column")
+                                    .children(&mut [
+                                        html!("span", { .text("Migration mode") }),
+                                        html!("span", {
+                                            .style("font-size", "0.875rem")
+                                            .style("opacity", "0.85")
+                                            .text(format!("Select the destination manga for: {from_title}").as_str())
+                                        })
+                                    ])
+                                }),
+                                html!("button", {
+                                    .text("Cancel")
+                                    .event(clone!(catalogue => move |_: events::Click| {
                                         migration::clear();
                                         catalogue.migration_state.set_neq(None);
-                                    }
+                                    }))
                                 })
-                            })
-                        ])
-                    }))
+                            ])
+                        })
+                    })
                 }
             }))
             .children(&mut [
@@ -532,11 +565,7 @@ impl Catalogue {
     // window.confirm doesn't work in the tauri webview (the dialog plugin
     // replaces it with an async version), so confirmation is an in-app modal.
     pub fn confirm_migration_target(catalogue: Rc<Self>, to_cover: Cover) {
-        let valid = catalogue
-            .migration_state
-            .get_cloned()
-            .is_some_and(|s| s.to_source_id == catalogue.source_id);
-        if valid {
+        if catalogue.is_migrate_mode() {
             catalogue.pending_migration.set(Some(to_cover));
         }
     }

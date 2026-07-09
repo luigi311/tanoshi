@@ -116,8 +116,14 @@ impl SettingsMigrate {
 
             let mut map: BTreeMap<i64, Vec<Cover>> = BTreeMap::new();
             let mut seen: HashSet<i64> = HashSet::new();
-            for category_id in category_ids {
-                match query::fetch_manga_from_favorite(category_id).await {
+
+            let futures: Vec<_> = category_ids
+                .iter()
+                .map(|&category_id| query::fetch_manga_from_favorite(category_id))
+                .collect();
+            let results = futures::future::join_all(futures).await;
+            for result in results {
+                match result {
                     Ok(covers) => {
                         for c in covers {
                             if seen.insert(c.id) {

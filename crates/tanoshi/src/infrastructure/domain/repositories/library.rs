@@ -445,56 +445,75 @@ impl LibraryRepository for LibraryRepositoryImpl {
             .await?;
 
         // Copy read progress onto destination chapters matched by chapter
-        // number, preserving the original read_at. On conflict keep the
+        // number, preserving the original read_at. The scalar subquery
+        // (ORDER BY id LIMIT 1) picks exactly one destination chapter even
+        // when the destination has duplicate chapter numbers; unmatched
+        // chapters resolve to NULL and are filtered out. On conflict keep the
         // furthest progress.
         sqlx::query(
             r#"
         INSERT INTO user_history(user_id, chapter_id, last_page, read_at, is_complete)
-        SELECT uh.user_id, tc.id, uh.last_page, uh.read_at, uh.is_complete
-        FROM user_history uh
-            JOIN chapter fc
-                ON fc.id = uh.chapter_id
-                AND fc.manga_id = ?
-            JOIN chapter tc
-                ON tc.manga_id = ?
-                AND tc.number = fc.number
-        WHERE uh.user_id = ?
+        SELECT user_id, to_chapter_id, last_page, read_at, is_complete
+        FROM (
+            SELECT uh.user_id AS user_id,
+                   (SELECT tc.id FROM chapter tc
+                    WHERE tc.manga_id = ? AND tc.number = fc.number
+                    ORDER BY tc.id LIMIT 1) AS to_chapter_id,
+                   uh.last_page AS last_page,
+                   uh.read_at AS read_at,
+                   uh.is_complete AS is_complete
+            FROM user_history uh
+                JOIN chapter fc
+                    ON fc.id = uh.chapter_id
+                    AND fc.manga_id = ?
+            WHERE uh.user_id = ?
+        )
+        WHERE to_chapter_id IS NOT NULL
         ON CONFLICT(user_id, chapter_id) DO UPDATE SET
             last_page = MAX(user_history.last_page, excluded.last_page),
             read_at = MAX(user_history.read_at, excluded.read_at),
             is_complete = MAX(user_history.is_complete, excluded.is_complete)"#,
         )
-        .bind(from_manga_id)
         .bind(to_manga_id)
+        .bind(from_manga_id)
         .bind(user_id)
         .execute(&mut *tx)
         .await?;
 
         // Fall back to title matching for chapters whose number has no
-        // counterpart in the destination.
+        // counterpart in the destination. Same single-match + NULL-filter
+        // scheme as above.
         sqlx::query(
             r#"
         INSERT INTO user_history(user_id, chapter_id, last_page, read_at, is_complete)
-        SELECT uh.user_id, tc.id, uh.last_page, uh.read_at, uh.is_complete
-        FROM user_history uh
-            JOIN chapter fc
-                ON fc.id = uh.chapter_id
-                AND fc.manga_id = ?
-            JOIN chapter tc
-                ON tc.manga_id = ?
-                AND tc.title = fc.title COLLATE NOCASE
-        WHERE uh.user_id = ?
-            AND NOT EXISTS (
-                SELECT 1 FROM chapter t2 WHERE t2.manga_id = tc.manga_id AND t2.number = fc.number
-            )
+        SELECT user_id, to_chapter_id, last_page, read_at, is_complete
+        FROM (
+            SELECT uh.user_id AS user_id,
+                   (SELECT tc.id FROM chapter tc
+                    WHERE tc.manga_id = ? AND tc.title = fc.title COLLATE NOCASE
+                    ORDER BY tc.id LIMIT 1) AS to_chapter_id,
+                   uh.last_page AS last_page,
+                   uh.read_at AS read_at,
+                   uh.is_complete AS is_complete
+            FROM user_history uh
+                JOIN chapter fc
+                    ON fc.id = uh.chapter_id
+                    AND fc.manga_id = ?
+            WHERE uh.user_id = ?
+                AND NOT EXISTS (
+                    SELECT 1 FROM chapter t2 WHERE t2.manga_id = ? AND t2.number = fc.number
+                )
+        )
+        WHERE to_chapter_id IS NOT NULL
         ON CONFLICT(user_id, chapter_id) DO UPDATE SET
             last_page = MAX(user_history.last_page, excluded.last_page),
             read_at = MAX(user_history.read_at, excluded.read_at),
             is_complete = MAX(user_history.is_complete, excluded.is_complete)"#,
         )
-        .bind(from_manga_id)
         .bind(to_manga_id)
+        .bind(from_manga_id)
         .bind(user_id)
+        .bind(to_manga_id)
         .execute(&mut *tx)
         .await?;
 
