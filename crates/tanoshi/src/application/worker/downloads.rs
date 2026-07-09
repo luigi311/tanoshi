@@ -193,20 +193,24 @@ where
         self.download_dir.join(".pause").exists()
     }
 
-    fn open_or_create_writeble_zip_file<P: AsRef<Path>>(
+    fn open_or_create_writable_zip_file<P: AsRef<Path>>(
         &self,
         manga_path: P,
         archive_path: P,
     ) -> Result<ZipWriter<File>> {
-        match std::fs::OpenOptions::new()
+        if let Ok(file) = std::fs::OpenOptions::new()
             .read(true)
             .write(true)
             .open(&archive_path)
-        { Ok(file) => {
+        {
             return Ok(zip::ZipWriter::new_append(file)?);
-        } _ => { if let Ok(file) = std::fs::create_dir_all(manga_path).and_then(|()| std::fs::File::create(&archive_path)) {
+        }
+
+        if let Ok(file) = std::fs::create_dir_all(manga_path)
+            .and_then(|()| std::fs::File::create(&archive_path))
+        {
             return Ok(zip::ZipWriter::new(file));
-        }}}
+        }
 
         Err(anyhow!("cannot open or create new zip file"))
     }
@@ -269,7 +273,7 @@ where
         // 3. Build/update archive in a temp file
         fs::create_dir_all(&manga_path)?;
         {
-            let mut tmp_zip = self.open_or_create_writeble_zip_file(&manga_path, &tmp)?;
+            let mut tmp_zip = self.open_or_create_writable_zip_file(&manga_path, &tmp)?;
 
             let mut attempts = 0;
             let data = loop {

@@ -226,7 +226,7 @@ impl Config {
     }
 
     pub fn save(&self) -> Result<(), anyhow::Error> {
-        std::fs::write(&self.path, serde_yaml2::to_string(&self)?)?;
+        std::fs::write(&self.path, serde_yaml2::to_string(self)?)?;
 
         Ok(())
     }

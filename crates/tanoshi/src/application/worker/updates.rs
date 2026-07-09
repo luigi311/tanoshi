@@ -16,7 +16,9 @@ use crate::{
     domain::{
         entities::{chapter::Chapter, manga::Manga},
         repositories::{
-            chapter::ChapterRepository, library::LibraryRepository, manga::MangaRepository,
+            chapter::ChapterRepository,
+            library::{LibraryRepository, LibraryRepositoryError},
+            manga::MangaRepository,
         },
     },
     infrastructure::{domain::repositories::user::UserRepositoryImpl, notification::Notification},
@@ -65,6 +67,27 @@ pub struct SourceInfo {
     pub version: String,
     pub icon: String,
     pub nsfw: bool,
+}
+
+/// Forward manga from a library stream into the update-check queue, stopping
+/// early if the receiving side is dropped.
+async fn forward_manga_stream(
+    tx: tokio::sync::mpsc::Sender<Manga>,
+    mut manga_stream: impl futures::Stream<Item = Result<Manga, LibraryRepositoryError>> + Unpin,
+) {
+    while let Some(manga_result) = manga_stream.next().await {
+        match manga_result {
+            Ok(manga) => {
+                if let Err(e) = tx.send(manga).await {
+                    error!("error send update: {e:?}");
+                    break;
+                }
+            }
+            Err(e) => {
+                error!("error: {e:?}");
+            }
+        }
+    }
 }
 
 struct UpdatesWorker<C, M, L>
@@ -135,30 +158,7 @@ where
         let library_repo = self.library_repo.clone();
 
         tokio::spawn(async move {
-            let mut manga_stream = library_repo.get_manga_from_all_users_library_stream();
-
-            while {
-                let manga_opt = manga_stream.next().await;
-                match manga_opt { Some(manga_result) => {
-                    
-                    match manga_result {
-                        Ok(manga) => {
-                            match tx.send(manga).await { Err(e) => {
-                                error!("error send update: {e:?}");
-                                false
-                            } _ => {
-                                true
-                            }}
-                        }
-                        Err(e) => {
-                            error!("error: {e:?}");
-                            true
-                        }
-                    }
-                } _ => {
-                    false
-                }}
-            } {}
+            forward_manga_stream(tx, library_repo.get_manga_from_all_users_library_stream()).await;
         });
     }
 
@@ -188,30 +188,8 @@ where
         let library_repo = self.library_repo.clone();
 
         tokio::spawn(async move {
-            let mut manga_stream = library_repo.get_manga_from_user_library_stream(user_id);
-
-            while {
-                let manga_opt = manga_stream.next().await;
-                match manga_opt { Some(manga_result) => {
-                    
-                    match manga_result {
-                        Ok(manga) => {
-                            match tx.send(manga).await { Err(e) => {
-                                error!("error send update: {e:?}");
-                                false
-                            } _ => {
-                                true
-                            }}
-                        }
-                        Err(e) => {
-                            error!("error: {e:?}");
-                            true
-                        }
-                    }
-                } _ => {
-                    false
-                }}
-            } {}
+            forward_manga_stream(tx, library_repo.get_manga_from_user_library_stream(user_id))
+                .await;
         });
     }
 
@@ -378,33 +356,24 @@ where
 
     async fn clear_cache(&self) -> Result<(), anyhow::Error> {
         let mut read_dir = tokio::fs::read_dir(&self.cache_path).await?;
-        while {
-            let res = read_dir.next_entry().await;
-            match res {
-                Ok(Some(entry)) => {
-                    let meta = entry.metadata().await?;
-                    if let Some(created) = meta
-                        .created()
-                        .ok()
-                        .and_then(|created| created.elapsed().ok())
-                        .map(|elapsed| {
-                            chrono::Duration::from_std(elapsed)
-                                .unwrap_or(chrono::Duration::MAX)
-                        })
-                    {
-                        if created.num_days() >= 10 {
-                            info!("removing {}", entry.path().display());
-                            if let Err(e) = tokio::fs::remove_file(entry.path()).await {
-                                error!("failed to remove {}: {e}", entry.path().display());
-                            }
-                        }
-                    }
-                    true
+        while let Some(entry) = read_dir.next_entry().await? {
+            let age = entry
+                .metadata()
+                .await?
+                .created()
+                .ok()
+                .and_then(|created| created.elapsed().ok())
+                .map(|elapsed| {
+                    chrono::Duration::from_std(elapsed).unwrap_or(chrono::Duration::MAX)
+                });
+
+            if age.is_some_and(|age| age.num_days() >= 10) {
+                info!("removing {}", entry.path().display());
+                if let Err(e) = tokio::fs::remove_file(entry.path()).await {
+                    error!("failed to remove {}: {e}", entry.path().display());
                 }
-                Ok(None) => false,
-                Err(e) => return Err(e.into()),
             }
-        } {}
+        }
 
         Ok(())
     }

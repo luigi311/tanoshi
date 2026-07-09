@@ -414,23 +414,20 @@ impl LibrarySubscriptionRoot {
 
         let stream = stream.filter_map(move |res| async move {
             debug!("update: {res:?}");
-            match res { Ok(update) => {
-                if update.users.contains(&user_id) {
-                    Some(RecentUpdate {
-                        manga_id: update.chapter.manga_id,
-                        chapter_id: update.chapter.id,
-                        manga_title: update.manga.title,
-                        cover_url: update.manga.cover_url,
-                        chapter_title: update.chapter.title,
-                        uploaded: update.chapter.uploaded,
-                        source_id: update.manga.source_id,
-                    })
-                } else {
-                    None
-                }
-            } _ => {
-                None
-            }}
+            let update = res.ok()?;
+            if !update.users.contains(&user_id) {
+                return None;
+            }
+
+            Some(RecentUpdate {
+                manga_id: update.chapter.manga_id,
+                chapter_id: update.chapter.id,
+                manga_title: update.manga.title,
+                cover_url: update.manga.cover_url,
+                chapter_title: update.chapter.title,
+                uploaded: update.chapter.uploaded,
+                source_id: update.manga.source_id,
+            })
         });
 
         Ok(stream)

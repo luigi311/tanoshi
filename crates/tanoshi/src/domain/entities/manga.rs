@@ -1,7 +1,7 @@
 use chrono::NaiveDateTime;
 use tanoshi_lib::prelude::Input;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Manga {
     pub id: i64,
     pub source_id: i64,
@@ -14,24 +14,6 @@ pub struct Manga {
     pub cover_url: String,
     pub date_added: NaiveDateTime,
     pub last_uploaded_at: Option<NaiveDateTime>,
-}
-
-impl Default for Manga {
-    fn default() -> Self {
-        Self {
-            id: 0,
-            source_id: 0,
-            title: String::new(),
-            author: vec![],
-            genre: vec![],
-            status: None,
-            description: None,
-            path: String::new(),
-            cover_url: String::new(),
-            date_added: NaiveDateTime::default(),
-            last_uploaded_at: None,
-        }
-    }
 }
 
 impl From<tanoshi_lib::models::MangaInfo> for Manga {

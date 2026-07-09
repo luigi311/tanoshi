@@ -33,14 +33,14 @@ impl TryFrom<&str> for ImageUri {
                 let regex = format!(r#"\.({})[\/|\\]"#, SUPPORTED_FILES.iter().join("|"));
                 let re = Regex::new(&regex)?;
 
-                match re.find(uri).ok().flatten() { Some(matches) => {
+                if let Ok(Some(matches)) = re.find(uri) {
                     let archive = uri[0..matches.end() - 1].to_owned();
                     let filename = uri[matches.end()..uri.len()].to_owned();
 
                     Self::Archive(archive, filename)
-                } _ => {
+                } else {
                     return Err(anyhow!("invalid file uri"));
-                }}
+                }
             }
         } else {
             return Err(anyhow!("bad uri"));
@@ -88,12 +88,12 @@ impl ImageUri {
     }
 }
 
-impl ToString for ImageUri {
-    fn to_string(&self) -> String {
+impl std::fmt::Display for ImageUri {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ImageUri::Remote(url) => url.to_owned(),
-            ImageUri::File(path) => path.to_owned(),
-            ImageUri::Archive(archive, filename) => format!("{archive}/{filename}"),
+            ImageUri::Remote(url) => write!(f, "{url}"),
+            ImageUri::File(path) => write!(f, "{path}"),
+            ImageUri::Archive(archive, filename) => write!(f, "{archive}/{filename}"),
         }
     }
 }

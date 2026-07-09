@@ -50,23 +50,14 @@ impl ExtensionManager {
 
     pub async fn load_all(&self) -> Result<()> {
         let mut read_dir = tokio::fs::read_dir(&self.dir).await?;
-        while {
-            let entry_opt = read_dir.next_entry().await?;
-            match entry_opt { Some(entry) => {
-                let mut name = format!("{:?}", entry.file_name());
-                name.remove(0);
-                name.remove(name.len() - 1);
-                if name.ends_with(PLUGIN_EXTENSION) {
-                    let load_result = self.load(&name).await;
-                    if let Err(e) = load_result {
-                        error!("failed to load {name}: {e}");
-                    }
-                }
-                true
-            } _ => {
-                false
-            }}
-        } {}
+        while let Some(entry) = read_dir.next_entry().await? {
+            let name = entry.file_name().to_string_lossy().into_owned();
+            if name.ends_with(PLUGIN_EXTENSION)
+                && let Err(e) = self.load(&name).await
+            {
+                error!("failed to load {name}: {e}");
+            }
+        }
         Ok(())
     }
 

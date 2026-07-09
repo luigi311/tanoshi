@@ -186,10 +186,11 @@ impl UserMutationRoot {
         let user_svc = ctx.data::<UserService<UserRepositoryImpl>>()?;
 
         let user_count = user_svc.fetch_all_users().await?.len();
-        if let Ok(claim) = ctx.data::<Claims>() {
-            if user_count > 0 && !claim.is_admin {
-                return Err("Forbidden".into());
-            }
+        if let Ok(claim) = ctx.data::<Claims>()
+            && user_count > 0
+            && !claim.is_admin
+        {
+            return Err("Forbidden".into());
         }
 
         Ok(user_svc

@@ -16,9 +16,7 @@ pub struct ImageRepositoryImpl {
 
 impl ImageRepositoryImpl {
     pub fn new(extension: ExtensionManager) -> Self {
-        Self {
-            extension: extension,
-        }
+        Self { extension }
     }
 }
 
@@ -36,7 +34,7 @@ impl ImageRepository for ImageRepositoryImpl {
         }
 
         // determine content type from the URL
-        let content_type = extract_image_type_from_url(&url);
+        let content_type = extract_image_type_from_url(url);
 
         let bytes = self
             .extension
@@ -103,7 +101,7 @@ impl ImageRepository for ImageRepositoryImpl {
 }
 
 fn extract_image_type_from_url(url: &str) -> String {
-    let extension = url.split('.').last();
+    let extension = url.split('.').next_back();
 
     match extension {
         Some(ext) => match ext.to_lowercase().as_str() {

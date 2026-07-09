@@ -158,10 +158,10 @@ where
         chapter_ids: Vec<i64>,
     ) -> Result<(), DownloadError> {
         for chapter_id in chapter_ids {
-            if let Ok(downloaded_path) = self.repo.get_chapter_downloaded_path(chapter_id).await {
-                if let Err(e) = tokio::fs::remove_file(&downloaded_path).await {
-                    error!("error removing file: {e}");
-                }
+            if let Ok(downloaded_path) = self.repo.get_chapter_downloaded_path(chapter_id).await
+                && let Err(e) = tokio::fs::remove_file(&downloaded_path).await
+            {
+                error!("error removing file: {e}");
             }
 
             self.repo

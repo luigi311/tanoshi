@@ -1,16 +1,11 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, Deserialize, Serialize, PartialEq, Eq)]
 pub enum TriState {
+    #[default]
     Ignored = 0,
     Included = 1,
     Excluded = 2,
-}
-
-impl Default for TriState {
-    fn default() -> Self {
-        Self::Ignored
-    }
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
