@@ -32,7 +32,7 @@ jobs:
       fail-fast: false
       matrix:
         os:
-          - ubuntu-latest
+          - ubuntu-26.04
           #- macos-latest
           - windows-latest
     steps:
@@ -45,7 +45,7 @@ jobs:
       - name: Install deps (ubuntu/MacOS)
         if: ${{ matrix.os != 'windows-latest' }}
         run: |
-          if [ "${{ matrix.os }}" == "ubuntu-latest" ]; then
+          if [ "${{ matrix.os }}" == "ubuntu-26.04" ]; then
             sudo apt-get update && sudo apt-get install -y $UBUNTU_DEPS
           elif [ "${{ matrix.os }}" == "macos-latest" ]; then
             brew install icu4c libarchive bzip2 lz4 zlib expat libiconv
@@ -87,11 +87,11 @@ jobs:
           cargo test
 
   build-cli:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     permissions:
       contents: write
     container:
-      image: ghcr.io/luigi311/tanoshi-builder:sha-4cf682e
+      image: ghcr.io/luigi311/tanoshi-builder:sha-6e8cc9c
     steps:
       - uses: actions/checkout@v7
         with:
@@ -121,9 +121,9 @@ jobs:
           tag: ${{ github.ref }}
 
   build-web:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     container:
-      image: ghcr.io/luigi311/tanoshi-builder:sha-4cf682e
+      image: ghcr.io/luigi311/tanoshi-builder:sha-6e8cc9c
     steps:
       - uses: actions/checkout@v7
         with:
@@ -150,13 +150,13 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-24.04
+          - os: ubuntu-26.04
             arch: amd64
             type: linux
           - os: windows-latest
             arch: amd64
             type: windows
-          - os: ubuntu-24.04-arm
+          - os: ubuntu-26.04-arm
             arch: aarch64
             type: linux
 
@@ -268,10 +268,10 @@ jobs:
         include:
           - arch: x86_64
             name: amd64
-            os: ubuntu-24.04
+            os: ubuntu-26.04
           - arch: aarch64
             name: aarch64
-            os: ubuntu-24.04-arm
+            os: ubuntu-26.04-arm
       # Don't fail the whole workflow if one architecture fails
       fail-fast: false
     steps:
@@ -314,15 +314,15 @@ jobs:
     needs:
       - build-web
     container:
-      image: ghcr.io/luigi311/tanoshi-builder:sha-4cf682e
+      image: ghcr.io/luigi311/tanoshi-builder:sha-6e8cc9c
     strategy:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-24.04
+          - os: ubuntu-26.04
             arch: amd64
             type: linux
-          - os: ubuntu-24.04-arm
+          - os: ubuntu-26.04-arm
             arch: aarch64
             type: linux
     steps:
@@ -353,7 +353,7 @@ jobs:
           path: ${{ github.workspace }}/target/release/tanoshi
 
   docker:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     permissions:
       packages: write
     needs:
