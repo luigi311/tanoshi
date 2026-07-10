@@ -39,11 +39,9 @@ impl InputList {
         let collapse_map: BTreeMap<usize, bool> = input_list
             .iter()
             .enumerate()
-            .filter_map(|(index, input)| {
-                matches!(input, Input::Sort { .. } | Input::Group { .. }).then(|| (index, false))
-            })
+            .filter(|&(_index, input)| matches!(input, Input::Sort { .. } | Input::Group { .. })).map(|(index, _input)| (index, false))
             .collect();
-        info!("{:?}", collapse_map);
+        trace!("{:?}", collapse_map);
         self.collapse.lock_mut().replace_cloned(collapse_map);
         self.input_list.lock_mut().replace_cloned(input_list);
     }
@@ -56,7 +54,7 @@ impl InputList {
     fn collapse_signal(&self, index: usize) -> impl Signal<Item = bool> + use<> {
         self.collapse
             .entries_cloned()
-            .filter_map(move |(i, state)| (index == i && state).then(|| 1))
+            .filter_map(move |(i, state)| (index == i && state).then_some(1))
             .sum()
             .map(|sum| sum == 1)
     }
@@ -71,11 +69,9 @@ impl InputList {
             .style("justify-content", "space-between")
             .event(clone!(input_list, index => move |_: events::Click| {
                 if let Some(index) = index.get() {
-                    let state = match input_list.collapse.lock_ref().get(&index).cloned() { Some(state) => {
-                        state
-                    } _ => {
+                    let Some(state) = input_list.collapse.lock_ref().get(&index).cloned() else {
                         return;
-                    }};
+                    };
                     input_list.collapse.lock_mut().insert(index, !state);
                 }
             }))
@@ -150,7 +146,7 @@ impl InputList {
                             html!("input", {
                                 .attr("id", &name)
                                 .attr("type", "checkbox")
-                                .attr_signal("checked", state.signal().map(|state| state.and_then(|state| state.then(|| "checked"))))
+                                .attr_signal("checked", state.signal().map(|state| state.and_then(|state| state.then_some("checked"))))
                                 .event(clone!(state => move |e: events::Change| {
                                     state.set(e.checked());
                                 }))
@@ -358,7 +354,7 @@ impl InputList {
     {
         let use_modal = input_list.use_modal;
         html!("div", {
-            .style_signal("width", signal::always(use_modal).map(|use_modal| (!use_modal).then(|| "100%")))
+            .style_signal("width", signal::always(use_modal).map(|use_modal| (!use_modal).then_some("100%")))
             .children(&mut [
                 html!("div", {
                     .visible_signal(input_list.show.signal().map(move |show| show && use_modal))
@@ -379,8 +375,8 @@ impl InputList {
                     } else {
                         None
                     }))
-                    .style_signal("max-height", signal::always(use_modal).map(|use_modal| use_modal.then(|| "80%")))
-                    .style_signal("overflow", signal::always(use_modal).map(|use_modal| use_modal.then(|| "auto")))
+                    .style_signal("max-height", signal::always(use_modal).map(|use_modal| use_modal.then_some("80%")))
+                    .style_signal("overflow", signal::always(use_modal).map(|use_modal| use_modal.then_some("auto")))
                     .visible_signal(input_list.first_render.signal().map(|x| !x))
                     .children(&mut[
                         html!("div", {

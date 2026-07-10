@@ -50,23 +50,14 @@ impl ExtensionManager {
 
     pub async fn load_all(&self) -> Result<()> {
         let mut read_dir = tokio::fs::read_dir(&self.dir).await?;
-        while {
-            let entry_opt = read_dir.next_entry().await?;
-            match entry_opt { Some(entry) => {
-                let mut name = format!("{:?}", entry.file_name());
-                name.remove(0);
-                name.remove(name.len() - 1);
-                if name.ends_with(PLUGIN_EXTENSION) {
-                    let load_result = self.load(&name).await;
-                    if let Err(e) = load_result {
-                        error!("failed to load {name}: {e}");
-                    }
-                }
-                true
-            } _ => {
-                false
-            }}
-        } {}
+        while let Some(entry) = read_dir.next_entry().await? {
+            let name = entry.file_name().to_string_lossy().into_owned();
+            if name.ends_with(PLUGIN_EXTENSION)
+                && let Err(e) = self.load(&name).await
+            {
+                error!("failed to load {name}: {e}");
+            }
+        }
         Ok(())
     }
 
@@ -104,7 +95,11 @@ impl ExtensionManager {
         .await?;
 
         let source = self.load_library(&name.to_lowercase())?;
-        self.insert(source).await
+        self.insert(source).await?;
+
+        info!("installed extension {name}");
+
+        Ok(())
     }
 
     fn load_library(&self, name: &str) -> Result<Source> {
@@ -166,12 +161,12 @@ impl ExtensionManager {
             .to_lowercase();
 
         if let Some(preferences) =
-            tokio::fs::read_to_string(self.dir.join(source_name).with_extension("json"))
+            tokio::fs::read_to_string(self.dir.join(&source_name).with_extension("json"))
                 .await
                 .ok()
                 .and_then(|s| serde_json::from_str(&s).ok())
         {
-            info!("set preferences");
+            info!("set preferences for {}", source_name);
             source
                 .extension
                 .get_mut()
@@ -202,6 +197,8 @@ impl ExtensionManager {
                     .join(source.name.to_lowercase())
                     .with_extension(PLUGIN_EXTENSION),
             )?;
+
+            info!("uninstalled extension {source_id} ({})", source.name);
         }
         Ok(())
     }

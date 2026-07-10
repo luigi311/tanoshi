@@ -374,10 +374,10 @@ impl Extension for Local {
     fn get_chapters(&self, path: String) -> Result<Vec<ChapterInfo>> {
         let source_id = self.id;
         let path = PathBuf::from(path);
-        if path.is_file() {
-            if let Some(data) = map_entry_to_chapter(source_id, &path) {
-                return Ok(vec![data]);
-            }
+        if path.is_file()
+            && let Some(data) = map_entry_to_chapter(source_id, &path)
+        {
+            return Ok(vec![data]);
         }
 
         let read_dir = match std::fs::read_dir(&path) {
@@ -393,7 +393,7 @@ impl Extension for Local {
             .filter_map(|entry| map_entry_to_chapter(source_id, &entry.path()))
             .collect();
 
-        data.sort_by(|a, b| a.number.partial_cmp(&b.number).unwrap());
+        data.sort_by(|a, b| a.number.total_cmp(&b.number));
         data.reverse();
 
         Ok(data)

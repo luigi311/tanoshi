@@ -38,13 +38,11 @@ impl TrackerRedirect {
 
     fn fetch_myanimelist_login_end(self: Arc<Self>) {
         let code = self.code.clone();
-        let state = match self.state.clone() { Some(state) => {
-            state
-        } _ => {
+        let Some(state) = self.state.clone() else {
             self.authorization_state
                 .set_neq(AuthorizationState::Failed("no state code".to_string()));
             return;
-        }};
+        };
 
         let tracker_redirect = self.clone();
         self.loader.load(async move {

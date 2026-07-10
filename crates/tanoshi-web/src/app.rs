@@ -74,7 +74,7 @@ impl App {
 
         html!("div", {
             .future(app.server_status.signal_cloned().for_each(|server_status| {
-                info!("server_status: {server_status:?}");
+                trace!("server_status: {server_status:?}");
                 if let Some(server_status) = server_status {
                     if !server_status.activated {
                         info!("server inactivated, go to login");
@@ -85,10 +85,10 @@ impl App {
                     } else if server_status.loggedin {
                         spawn_local(async {
                             loop {
-                                info!("subscribing recent updates");
+                                debug!("subscribing recent updates");
                                 let _ = query::subscribe_recent_updates().await;
 
-                                info!("reconnecting in 30s..");
+                                debug!("reconnecting in 30s..");
                                 TimeoutFuture::new(30_000).await;
                             }
                         });
@@ -98,17 +98,17 @@ impl App {
                 async move {}
             }))
             .child_signal(app.signal().map(clone!(app => move |(route, server_status)| {
-                if server_status.is_none() {
-                    return None;
-                }
+                server_status.as_ref()?;
 
                 match route {
                     Route::Root => {
-                        match LibrarySettings::load(false, false).default_category.get_cloned() { Some(default_category) => {
+                        if let Some(default_category) =
+                            LibrarySettings::load(false, false).default_category.get_cloned()
+                        {
                             routing::go_to_url(&Route::Library(default_category.id).url());
-                        } _ => {
+                        } else {
                             routing::go_to_url(&Route::LibraryList.url());
-                        }}
+                        }
 
                         None
                     }

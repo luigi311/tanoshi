@@ -134,9 +134,7 @@ impl Reader {
             return None;
         }
 
-        let mut ratio = (viewport_center_y - top) / h;
-        if ratio < 0.0 { ratio = 0.0; }
-        if ratio > 1.0 { ratio = 1.0; }
+        let ratio = ((viewport_center_y - top) / h).clamp(0.0, 1.0);
 
         Some(ZoomAnchor {
             page_index,
@@ -206,23 +204,22 @@ impl Reader {
                     this.prev_chapter.set_neq(result.prev);
 
                     // Update the number of pages so the correct page can be loaded
-                    let pages = result.pages.iter().map(|page| (format!("{page}"), PageStatus::Initial)).collect();
+                    let pages = result.pages.iter().map(|page| (page.to_string(), PageStatus::Initial)).collect();
                     this.pages.lock_mut().replace_cloned(pages);
 
                     this.reader_settings.load_by_manga_id(result.manga.id);
 
-                    let page;
-                    match nav {
+                    let page = match nav {
                         Nav::None => {
-                            info!("get current_page {current_page}");
-                            page = match this.reader_settings.reader_mode.get() {
+                            trace!("get current_page {current_page}");
+                            match this.reader_settings.reader_mode.get() {
                                 ReaderMode::Continous => current_page,
                                 ReaderMode::Paged => {
                                     match this.reader_settings.display_mode.get().get() {
                                         // display_mode.get() shouldn't return auto, here to satisfy compiler
                                         DisplayMode::Single | DisplayMode::Auto => current_page,
                                         DisplayMode::Double => {
-                                            if current_page % 2 == 0 {
+                                            if current_page.is_multiple_of(2) {
                                                 current_page
                                             } else {
                                                 current_page - 1
@@ -230,40 +227,35 @@ impl Reader {
                                         }
                                     }
                                 }
-                            };
+                            }
                         },
-                        Nav::Prev => {                            
+                        Nav::Prev => {
                             let len = this.pages.lock_ref().len();
-                            page = match this.reader_settings.reader_mode.get() {
-                                ReaderMode::Continous => len - 1,
+                            match this.reader_settings.reader_mode.get() {
+                                ReaderMode::Continous => len.saturating_sub(1),
                                 ReaderMode::Paged => {
                                     match this.reader_settings.display_mode.get().get() {
                                         // display_mode.get() shouldn't return auto, here to satisfy compiler
-                                        DisplayMode::Single | DisplayMode::Auto => len - 1,
+                                        DisplayMode::Single | DisplayMode::Auto => len.saturating_sub(1),
                                         DisplayMode::Double => {
-                                            if len % 2 == 0 {
-                                                len - 2
+                                            if len.is_multiple_of(2) {
+                                                len.saturating_sub(2)
                                             } else {
-                                                len - 1
+                                                len.saturating_sub(1)
                                             }
                                         }
                                     }
                                 }
-                            };
+                            }
                         },
-                        Nav::Next => {
-                            page = 0;
-                        },
-                    }
+                        Nav::Next => 0,
+                    };
 
-                    info!("set current_page to {page} nav: {nav:?}");
+                    debug!("set current_page to {page} nav: {nav:?}");
                     this.current_page.set_neq(page);
 
                     this.pages_loaded.set(ContinousLoaded::Initial);
 
-                    let pages = result.pages.iter().map(|page| (format!("{page}"), PageStatus::Initial)).collect();
-                    this.pages.lock_mut().replace_cloned(pages);
-                    
                     Self::replace_state_with_url(chapter_id, page + 1);
                 },
                 Err(err) => {
@@ -281,11 +273,9 @@ impl Reader {
             "",
             Some(format!("/chapter/{chapter_id}#{current_page}").as_str()),
         ) {
-            let message = match e.as_string() { Some(msg) => {
-                msg
-            } _ => {
-                "unknown reason".to_string()
-            }};
+            let message = e
+                .as_string()
+                .unwrap_or_else(|| "unknown reason".to_string());
 
             error!("error replace_state_with_url: {message}");
         }
@@ -519,16 +509,21 @@ impl Reader {
                                     .attr_signal("value", this.current_page.signal().map(|p| p.to_string()))
                                     .with_node!(input => {
                                         .event(clone!(this, input => move |_: events::Change| {
-                                            let page = input.value().parse().unwrap_or(0);
-                                            info!("page: {page}");
+                                            let page: usize = input.value().parse().unwrap_or(0);
+                                            debug!("page: {page}");
                                             if matches!(this.reader_settings.reader_mode.get(), ReaderMode::Continous) {
-                                                let page_top =  document()
-                                                    .get_element_by_id(format!("{}", page - 1).as_str())
-                                                    .and_then(|el| el.dyn_into::<web_sys::HtmlElement>().ok())
-                                                    .map(|el| el.offset_top() as f64)
-                                                    .unwrap_or_default();
-        
-                                                info!("scroll to {page_top}");
+                                                // page 0 has no preceding element to anchor on
+                                                let page_top = if page > 0 {
+                                                    document()
+                                                        .get_element_by_id(format!("{}", page - 1).as_str())
+                                                        .and_then(|el| el.dyn_into::<web_sys::HtmlElement>().ok())
+                                                        .map(|el| el.offset_top() as f64)
+                                                        .unwrap_or_default()
+                                                } else {
+                                                    0.0
+                                                };
+
+                                                trace!("scroll to {page_top}");
                                                 window().scroll_to_with_x_and_y(0.0_f64, page_top);
                                             }
                                             this.current_page.set(page);
@@ -618,7 +613,7 @@ impl Reader {
                     .style("margin-bottom", "0.25rem")
                     .style("text-align", "center")
                     .event(clone!(this => move |_: events::Click| {
-                        info!("zoom in");
+                        debug!("zoom in");
                         Self::zoom_to(this.clone(), this.zoom.get() + 0.25);
                     }))
                     .children(&mut [
@@ -653,7 +648,7 @@ impl Reader {
                     .style("margin-bottom", "0.5rem")
                     .style("text-align", "center")
                     .event(clone!(this => move |_: events::Click| {
-                        info!("zoom out");
+                        debug!("zoom out");
                         let zoom = this.zoom.get();
                         let new_zoom = if zoom <= 0.25 {
                             0.25
@@ -727,23 +722,23 @@ impl Reader {
     }
 
     fn go_to_next_page(&self) {
-        match self.next_page.get() { Some(next_page) => {
+        if let Some(next_page) = self.next_page.get() {
             self.current_page.set_neq(next_page);
-        } _ => { match self.next_chapter.get() { Some(next_chapter) => {
+        } else if let Some(next_chapter) = self.next_chapter.get() {
             self.chapter_id.set(next_chapter);
-        } _ => {
-            info!("no next_page or next_chapter");
-        }}}}
+        } else {
+            debug!("no next_page or next_chapter");
+        }
     }
 
     fn go_to_prev_page(&self) {
-        match self.prev_page.get() { Some(prev_page) => {
+        if let Some(prev_page) = self.prev_page.get() {
             self.current_page.set_neq(prev_page);
-        } _ => { match self.prev_chapter.get() { Some(prev_chapter) => {
+        } else if let Some(prev_chapter) = self.prev_chapter.get() {
             self.chapter_id.set(prev_chapter);
-        } _ => {
-            info!("no prev_page or prev_chapter");
-        }}}}
+        } else {
+            debug!("no prev_page or prev_chapter");
+        }
     }
 
     fn render_navigation(this: Rc<Self>) -> Dom {
@@ -840,7 +835,7 @@ impl Reader {
             .style("flex-direction", "column")
             .future(this.pages_loaded.signal_cloned().for_each(clone!(this => move |loaded| {
                 let page = this.current_page.get();
-                info!("page: {page} loaded: {loaded:?}");
+                trace!("page: {page} loaded: {loaded:?}");
                 if page > 0 && matches!(loaded, ContinousLoaded::Loaded) {
                     let page_top =  document()
                         .get_element_by_id(format!("{}", page - 1).as_str())
@@ -848,7 +843,7 @@ impl Reader {
                         .map(|el| el.offset_top() as f64)
                         .unwrap_or_default();
 
-                    info!("scroll to {page_top}");
+                    trace!("scroll to {page_top}");
                     window().scroll_to_with_x_and_y(0.0_f64, page_top);
                     this.pages_loaded.set_neq(ContinousLoaded::Scrolled);
                 }
@@ -865,11 +860,11 @@ impl Reader {
                     .attr_signal("disabled", this.prev_chapter.signal().map(|prev_chapter| if prev_chapter.is_some() { None } else { Some("true") }))
                     .text_signal(this.prev_chapter.signal().map(|prev_chapter| if prev_chapter.is_some() { "Prev Chapter" } else { "No Prev Chapter" }))
                     .event(clone!(this => move |_: events::Click| {
-                        match this.prev_chapter.get() { Some(prev_chapter) => {
+                        if let Some(prev_chapter) = this.prev_chapter.get() {
                             this.chapter_id.set(prev_chapter);
-                        } _ => {
-                            info!("no prev_page or prev_chapter");
-                        }}
+                        } else {
+                            debug!("no prev_page or prev_chapter (vertical)");
+                        }
                     }))
                 })
             ])
@@ -879,8 +874,8 @@ impl Reader {
                         .class_signal("continuous-image-loading", signal::always(status).map(|s| matches!(s, PageStatus::Initial)))
                         .style("margin-left", "auto")
                         .style("margin-right", "auto")
-                        .style_signal("margin-top", this.reader_settings.padding.signal().map(|x| x.then(|| "0.25rem")))
-                        .style_signal("margin-bottom", this.reader_settings.padding.signal().map(|x| x.then(|| "0.25rem")))
+                        .style_signal("margin-top", this.reader_settings.padding.signal().map(|x| x.then_some("0.25rem")))
+                        .style_signal("margin-bottom", this.reader_settings.padding.signal().map(|x| x.then_some("0.25rem")))
                         .attr("id", format!("{index}").as_str())
                         .attr_signal("src", this.image_src_signal(index, 3, 4, page.clone(), status))
                         .style_signal("max-width", this.fit_signal().map(|(fit, zoom)| match fit {
@@ -900,7 +895,7 @@ impl Reader {
                             _ => "auto".to_string(),
                         }))
                         .event(clone!(this, page => move |_: events::Error| {
-                            log::error!("error loading image");
+                            log::error!("error loading image for page {}", index);
                             let mut lock = this.pages.lock_mut();
                             lock.set_cloned(index, (page.clone(), PageStatus::Error));
                         }))
@@ -945,12 +940,12 @@ impl Reader {
                     .attr_signal("disabled", this.next_chapter.signal().map(|next_chapter| if next_chapter.is_some() { None } else { Some("true") }))
                     .text_signal(this.next_chapter.signal().map(|next_chapter| if next_chapter.is_some() { "Next Chapter" } else { "No Next Chapter" }))
                     .event(clone!(this => move |_: events::Click| {
-                        match this.next_chapter.get() { Some(next_chapter) => {
+                        if let Some(next_chapter) = this.next_chapter.get() {
                             this.chapter_id.set(next_chapter);
                             window().scroll_to_with_x_and_y(0.0_f64, 0.0_f64);
-                        } _ => {
-                            info!("no next_page or next_chapter");
-                        }}
+                        } else {
+                            debug!("no next_page or next_chapter (vertical)");
+                        }
                     }))
                 })
             ])
@@ -1030,7 +1025,7 @@ impl Reader {
                         })))
                         .attr_signal("src", this.image_src_signal(index, 2, 3, page.clone(), status))
                         .event(clone!(this, page => move |_: events::Error| {
-                            log::error!("error loading image");
+                            log::error!("error loading image for page {}", index);
                             let mut lock = this.pages.lock_mut();
                             lock.set_cloned(index, (page.clone(), PageStatus::Error));
                         }))
@@ -1104,7 +1099,7 @@ impl Reader {
                         }))
                         .attr_signal("src", this.image_src_signal(index, 2, 4, page.clone(), status))
                         .event(clone!(this, page => move |_: events::Error| {
-                            log::error!("error loading image");
+                            log::error!("error loading image for page {}", index);
                             let mut lock = this.pages.lock_mut();
                             lock.set_cloned(index, (page.clone(), PageStatus::Error));
                         }))
@@ -1128,11 +1123,10 @@ impl Reader {
                                 if index == current_page {
                                     hidden = false;
                                     if current_page > 0 {
-                                        let is_prev_img_landscape = match document().get_element_by_id(format!("{}", current_page - 1).as_str()).and_then(|el| el.dyn_into::<web_sys::HtmlImageElement>().ok()) { Some(prev_img) => {
-                                            prev_img.natural_width() > prev_img.natural_height()
-                                        } _ => {
-                                            false
-                                        }};
+                                        let is_prev_img_landscape = document()
+                                            .get_element_by_id(format!("{}", current_page - 1).as_str())
+                                            .and_then(|el| el.dyn_into::<web_sys::HtmlImageElement>().ok())
+                                            .is_some_and(|prev_img| prev_img.natural_width() > prev_img.natural_height());
                                         let sub = if is_prev_img_landscape || current_page == 1 {
                                             1
                                         } else {
@@ -1141,11 +1135,10 @@ impl Reader {
                                         this.prev_page.set_neq(current_page.checked_sub(sub));
                                     }
                                 } else if index == current_page + 1 {
-                                    let is_prev_img_portrait = match document().get_element_by_id(format!("{current_page}").as_str()).and_then(|el| el.dyn_into::<web_sys::HtmlImageElement>().ok()) { Some(prev_img) => {
-                                        prev_img.natural_width() <= prev_img.natural_height()
-                                    } _ => {
-                                        true
-                                    }};
+                                    let is_prev_img_portrait = document()
+                                        .get_element_by_id(format!("{current_page}").as_str())
+                                        .and_then(|el| el.dyn_into::<web_sys::HtmlImageElement>().ok())
+                                        .is_none_or(|prev_img| prev_img.natural_width() <= prev_img.natural_height());
 
                                     let pages_len = this.pages.lock_ref().len();
                                     if img.natural_width() < img.natural_height() && is_prev_img_portrait {

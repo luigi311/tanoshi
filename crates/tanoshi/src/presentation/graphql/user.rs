@@ -186,10 +186,15 @@ impl UserMutationRoot {
         let user_svc = ctx.data::<UserService<UserRepositoryImpl>>()?;
 
         let user_count = user_svc.fetch_all_users().await?.len();
-        if let Ok(claim) = ctx.data::<Claims>() {
-            if user_count > 0 && !claim.is_admin {
-                return Err("Forbidden".into());
-            }
+        // only the very first user may register unauthenticated; after that
+        // account creation requires an admin token
+        if user_count > 0
+            && !ctx
+                .data::<Claims>()
+                .map(|claim| claim.is_admin)
+                .unwrap_or(false)
+        {
+            return Err("Forbidden".into());
         }
 
         Ok(user_svc

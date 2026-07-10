@@ -1,6 +1,7 @@
 use async_graphql::{Context, InputObject, Object, Result, SimpleObject};
 use chrono::NaiveDateTime;
 
+use crate::domain::entities::tracker::TrackerStatusUpdate;
 use crate::domain::services::tracker::TrackerService;
 use crate::infrastructure::auth::Claims;
 use crate::infrastructure::domain::repositories::tracker::TrackerRepositoryImpl;
@@ -249,11 +250,13 @@ impl TrackingMutationRoot {
                 claims.sub,
                 &tracker,
                 tracker_manga_id,
-                status.status,
-                status.score,
-                status.num_chapters_read,
-                status.start_date,
-                status.finish_date,
+                TrackerStatusUpdate {
+                    status: status.status,
+                    score: status.score,
+                    progress: status.num_chapters_read,
+                    started_at: status.start_date,
+                    completed_at: status.finish_date,
+                },
             )
             .await?;
 

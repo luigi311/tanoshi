@@ -2,7 +2,7 @@ use rand::distr::Alphanumeric;
 use rand::{rng, RngExt};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
-use std::{iter, path::PathBuf};
+use std::path::PathBuf;
 use directories::ProjectDirs;
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -146,11 +146,7 @@ fn default_update_interval() -> u64 {
 
 fn default_secret() -> String {
     let mut rng = rng();
-    let chars = iter::repeat(())
-        .map(|()| rng.sample(Alphanumeric))
-        .take(16)
-        .collect();
-    String::from_utf8(chars).unwrap()
+    (0..16).map(|_| char::from(rng.sample(Alphanumeric))).collect()
 }
 
 fn default_database_path() -> String {
@@ -226,7 +222,7 @@ impl Config {
     }
 
     pub fn save(&self) -> Result<(), anyhow::Error> {
-        std::fs::write(&self.path, serde_yaml2::to_string(&self)?)?;
+        std::fs::write(&self.path, serde_yaml2::to_string(self)?)?;
 
         Ok(())
     }

@@ -36,6 +36,11 @@ type DownloadReceiver = UnboundedReceiver<Command>;
 const MAX_RETRIES: usize = 3;
 const RETRY_DELAY_SECS: u64 = 3;
 
+/// Strip characters that are invalid in file names on common filesystems.
+fn sanitize_filename(name: &str) -> String {
+    name.replace(&['\\', '/', ':', '*', '?', '\"', '<', '>', '|'][..], "")
+}
+
 #[derive(Debug)]
 pub enum Command {
     InsertIntoQueue(i64),
@@ -70,6 +75,7 @@ where
     M: MangaRepository + 'static,
     L: LibraryRepository + 'static,
 {
+    #[allow(clippy::too_many_arguments)]
     pub fn new<P: AsRef<Path>>(
         dir: P,
         chapter_repo: C,
@@ -99,7 +105,7 @@ where
     }
 
     async fn insert_to_queue(&mut self, chapter: &Chapter) -> Result<(), anyhow::Error> {
-        // numbe 1 and greater than 10000 reserved for local source
+        // source ids 10000 and greater are reserved for the local source
         if chapter.source_id >= 10000 {
             anyhow::bail!("local source can't be downloaded");
         }
@@ -142,25 +148,16 @@ where
             .await?;
 
         let source = self.ext.get_source_info(manga.source_id)?;
-        let source_name = source
-            .name
-            .replace(&['\\', '/', ':', '*', '?', '\"', '<', '>', '|'][..], "");
-        let manga_title = manga
-            .title
-            .replace(&['\\', '/', ':', '*', '?', '\"', '<', '>', '|'][..], "");
-        let chapter_title = format!("{} - {}", chapter.number, chapter.title)
-            .replace(&['\\', '/', ':', '*', '?', '\"', '<', '>', '|'][..], "");
+        let source_name = sanitize_filename(&source.name);
+        let manga_title = sanitize_filename(&manga.title);
+        let chapter_title = sanitize_filename(&format!("{} - {}", chapter.number, chapter.title));
 
         let manga_path = self.download_dir.join(&source_name).join(&manga_title);
 
         self.save_manga_info_if_not_exists(&manga_path, &manga)?;
 
         // Remove any leftover temp file from a previous interrupted download
-        let temp_archive = self
-            .download_dir
-                .join(&source_name)
-                .join(&manga_title)
-                .join(format!("{}.temp.cbz", chapter_title));
+        let temp_archive = manga_path.join(format!("{}.temp.cbz", chapter_title));
         if temp_archive.exists() {
             debug!("removing leftover temp archive {}", temp_archive.display());
             fs::remove_file(temp_archive)?;
@@ -193,20 +190,24 @@ where
         self.download_dir.join(".pause").exists()
     }
 
-    fn open_or_create_writeble_zip_file<P: AsRef<Path>>(
+    fn open_or_create_writable_zip_file<P: AsRef<Path>>(
         &self,
         manga_path: P,
         archive_path: P,
     ) -> Result<ZipWriter<File>> {
-        match std::fs::OpenOptions::new()
+        if let Ok(file) = std::fs::OpenOptions::new()
             .read(true)
             .write(true)
             .open(&archive_path)
-        { Ok(file) => {
+        {
             return Ok(zip::ZipWriter::new_append(file)?);
-        } _ => { if let Ok(file) = std::fs::create_dir_all(manga_path).and_then(|()| std::fs::File::create(&archive_path)) {
+        }
+
+        if let Ok(file) = std::fs::create_dir_all(manga_path)
+            .and_then(|()| std::fs::File::create(&archive_path))
+        {
             return Ok(zip::ZipWriter::new(file));
-        }}}
+        }
 
         Err(anyhow!("cannot open or create new zip file"))
     }
@@ -217,7 +218,7 @@ where
             return Ok(());
         }
 
-        info!("creating directory: {}", path.display());
+        debug!("creating directory: {}", path.display());
         std::fs::create_dir_all(manga_path)?;
 
         let manga_info = LocalMangaInfo {
@@ -241,7 +242,7 @@ where
 
     async fn download(&mut self) -> Result<()> {
         let Some(queue) = self.download_repo.get_single_download_queue().await? else {
-            info!("no queue");
+            debug!("no queue");
             return Ok(());
         };
 
@@ -269,7 +270,7 @@ where
         // 3. Build/update archive in a temp file
         fs::create_dir_all(&manga_path)?;
         {
-            let mut tmp_zip = self.open_or_create_writeble_zip_file(&manga_path, &tmp)?;
+            let mut tmp_zip = self.open_or_create_writable_zip_file(&manga_path, &tmp)?;
 
             let mut attempts = 0;
             let data = loop {
@@ -280,7 +281,7 @@ where
                 match results {
                     Ok(bytes) => break bytes,
                     Err(e) => {
-                        error!("failed to download {}, reason: {e}", queue.url);
+                        error!("failed to download {} (attempt {}/{MAX_RETRIES}), reason: {e}", queue.url, attempts + 1);
                     }
                 }
                 attempts += 1;
@@ -291,7 +292,7 @@ where
             };
 
             tmp_zip.start_file(&*filename, SimpleFileOptions::default())?;
-            tmp_zip.write_all(data.to_vec().as_slice())?;
+            tmp_zip.write_all(&data)?;
             tmp_zip.finish()?;
         }
 
@@ -323,11 +324,13 @@ where
             self.download_repo
                 .delete_single_chapter_download_queue(queue.chapter_id)
                 .await?;
+
+            info!("chapter '{}' of '{}' downloaded successfully", queue.chapter_title, queue.manga_title);
         }
 
         // 6. Trigger next download
         if !self.paused().await {
-            self.tx.send(Command::Download).unwrap();
+            let _ = self.tx.send(Command::Download);
         }
 
         Ok(())
@@ -335,7 +338,7 @@ where
 
     pub async fn run(mut self) {
         if !self.paused().await {
-            self.tx.send(Command::Download).unwrap();
+            let _ = self.tx.send(Command::Download);
         }
 
         loop {
@@ -390,11 +393,12 @@ where
                             match chapter_result {
                                 Ok(chapter) => {
                                     let insert_result = self.insert_to_queue(&chapter).await;
-                                    match insert_result { 
+                                    match insert_result {
                                         Err(e) => {
                                             error!("failed to insert queue, reason {e}");
-                                        } Ok(()) => {
-                                            self.tx.send(Command::Download).unwrap();
+                                        }
+                                        Ok(()) => {
+                                            let _ = self.tx.send(Command::Download);
                                         }
                                     }
                                 }
@@ -429,7 +433,7 @@ where
                             if !self.paused().await {
                                 let download_result = self.download().await;
                                 if let Err(e) = download_result {
-                                    error!("{e}");
+                                    error!("download worker error: {e}");
                                 }
                             }
                         }
@@ -444,6 +448,7 @@ pub fn channel() -> (DownloadSender, DownloadReceiver) {
     tokio::sync::mpsc::unbounded_channel::<Command>()
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn start<C, D, M, L, P>(
     dir: P,
     chapter_repo: C,

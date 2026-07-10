@@ -293,7 +293,7 @@ pub async fn subscribe_recent_updates() -> Result<(), Box<dyn Error>> {
                         opts.set_body("no chapter updates");
                     }
 
-                    let _ = Notification::new_with_options(&manga_title, &opts).unwrap_throw();
+                    let _ = Notification::new_with_options(manga_title, &opts).unwrap_throw();
                 }
                 updates.clear();
             }

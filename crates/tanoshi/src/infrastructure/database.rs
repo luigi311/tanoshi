@@ -49,9 +49,12 @@ pub async fn establish_connection(
             warn!("migration {version} was previously applied but has been modified");
         }
         Err(e) => {
+            error!("database migration failed: {e}");
             return Err(e.into());
         }
-        _ => {}
+        _ => {
+            info!("database migrations applied successfully");
+        }
     }
 
     Ok(Pool(pool))

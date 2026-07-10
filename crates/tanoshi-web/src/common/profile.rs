@@ -22,7 +22,7 @@ pub struct Profile {
     gotify_token: Mutable<Option<String>>,
     myanimelist_status: Mutable<bool>,
     anilist_status: Mutable<bool>,
-    notification_cb: Closure<dyn FnMut(JsValue) -> ()>,
+    notification_cb: Closure<dyn FnMut(JsValue)>,
     pub loader: AsyncLoader,
 }
 

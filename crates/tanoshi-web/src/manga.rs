@@ -105,11 +105,10 @@ impl Manga {
 
     fn fetch_detail(manga: Rc<Self>, refresh: bool) {
         manga.loader.load(clone!(manga => async move {
-            if refresh {
-                if let Err(e) = query::refresh_chapters(Some(manga.id.get()), true).await {
+            if refresh
+                && let Err(e) = query::refresh_chapters(Some(manga.id.get()), true).await {
                     snackbar::show(format!("failed to refresh chapter: {e}"));
                 }
-            }
 
             debug!("Fetching manga detail for manga id {} with refresh={}", manga.id.get(), refresh);
             match query::fetch_manga_detail(manga.id.get(), refresh).await {
@@ -360,7 +359,7 @@ impl Manga {
             } else {
                 selected_chapters.insert(chapter.id, ());
             }
-        } else { match manga.timeout.replace(None) { Some(timeout) => {
+        } else if let Some(timeout) = manga.timeout.replace(None) {
             timeout.cancel();
             routing::go_to_url(
                 Route::Chapter(
@@ -371,7 +370,7 @@ impl Manga {
                         else { progress.last_page }
                     ).unwrap_or(0)).url().as_str()
                 );
-        } _ => {}}}
+        }
     }
 
     pub fn render_topbar_edit(manga: Rc<Self>)-> Dom {
@@ -391,7 +390,7 @@ impl Manga {
                     .event(clone!(manga => move |_: events::Click| {
                         let chapters = manga.chapters.lock_ref();
                         let mut selected_chapters = manga.selected_chapters.lock_mut();
-                        if selected_chapters.len() > 0 {
+                        if !selected_chapters.is_empty() {
                             selected_chapters.clear();
                         } else {
                             // Only select visible chapters
@@ -600,8 +599,8 @@ impl Manga {
                     .style("margin-top", "0.5rem")
                     .style("margin-bottom", "0.5rem")
                     .style("align-items", "center")
-                    .style_important_signal("background-color", manga.is_favorite.signal().map(|x| x.then(|| "var(--primary-color)")))
-                    .style_important_signal("color", manga.is_favorite.signal().map(|x| x.then(|| "white")))
+                    .style_important_signal("background-color", manga.is_favorite.signal().map(|x| x.then_some("var(--primary-color)")))
+                    .style_important_signal("color", manga.is_favorite.signal().map(|x| x.then_some("white")))
                     .children(&mut [
                         svg!("svg", {
                             .attr("xmlns", "http://www.w3.org/2000/svg")

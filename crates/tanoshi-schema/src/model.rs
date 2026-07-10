@@ -56,17 +56,12 @@ pub struct Category {
     pub count: i64,
 }
 
-#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
+#[derive(Debug, Clone, Copy, Default, Deserialize, Serialize)]
 pub enum TriState {
+    #[default]
     Ignored = 0,
     Included = 1,
     Excluded = 2,
-}
-
-impl Default for TriState {
-    fn default() -> Self {
-        Self::Ignored
-    }
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -100,12 +95,12 @@ impl From<bool> for InputType {
     }
 }
 
-impl ToString for InputType {
-    fn to_string(&self) -> String {
+impl std::fmt::Display for InputType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            InputType::String(val) => val.to_string(),
-            InputType::Number(val) => val.to_string(),
-            InputType::Boolean(val) => val.to_string(),
+            InputType::String(val) => write!(f, "{val}"),
+            InputType::Number(val) => write!(f, "{val}"),
+            InputType::Boolean(val) => write!(f, "{val}"),
         }
     }
 }

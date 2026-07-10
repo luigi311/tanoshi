@@ -143,7 +143,7 @@ impl SettingsMigrate {
         }));
     }
 
-    fn source_name(sources: &Vec<SourceLite>, source_id: i64) -> String {
+    fn source_name(sources: &[SourceLite], source_id: i64) -> String {
         sources
             .iter()
             .find(|s| s.id == source_id)

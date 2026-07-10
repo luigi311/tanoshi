@@ -46,17 +46,12 @@ impl Default for LibrarySort {
     }
 }
 
-#[derive(Clone, Copy, Deserialize, Serialize)]
+#[derive(Clone, Copy, Deserialize, Serialize, Default)]
 pub enum LibraryFilter {
+    #[default]
     None,
     Read,
     Unread,
-}
-
-impl Default for LibraryFilter {
-    fn default() -> Self {
-        Self::None
-    }
 }
 
 #[allow(dead_code)]
@@ -89,11 +84,12 @@ impl LibrarySettings {
     }
 
     pub fn load(show: bool, use_modal: bool) -> Rc<Self> {
-        let settings = match local_storage().get_item(KEY) { Ok(Some(settings)) => {
-            serde_json::from_str::<Self>(&settings).unwrap_or_default()
-        } _ => {
-            Self::default()
-        }};
+        let settings = local_storage()
+            .get_item(KEY)
+            .ok()
+            .flatten()
+            .map(|settings| serde_json::from_str::<Self>(&settings).unwrap_or_default())
+            .unwrap_or_default();
 
         Rc::new(Self {
             use_modal,
@@ -174,7 +170,7 @@ impl LibrarySettings {
                             .children(&mut [
                                 html!("option", {
                                     .attr("value", "")
-                                    .attr_signal("selected", settings.default_category.signal_cloned().map(|dc| dc.is_none().then(|| "")))
+                                    .attr_signal("selected", settings.default_category.signal_cloned().map(|dc| dc.is_none().then_some("")))
                                     .text("")
                                 })
                             ])
@@ -182,7 +178,7 @@ impl LibrarySettings {
                                 .attr("value", &cat.name)
                                 .attr_signal("selected", settings.default_category.signal_cloned().map(clone!(cat => move |dc| {
                                     if let Some(selected) = dc.map(|dc|dc.name == cat.name) {
-                                        selected.then(|| "")
+                                        selected.then_some("")
                                     } else {
                                         None
                                     }
@@ -193,7 +189,7 @@ impl LibrarySettings {
                                 .event(clone!(settings, select => move |_: events::Change| {
                                     let value = select.value();
                                     let category = settings.categories.lock_ref().iter().find(|cat| cat.name == value ).cloned();
-                                    info!("change {:?}", category);
+                                    debug!("change {:?}", category);
                                     settings.default_category.set(category);
                                 }))
                             })

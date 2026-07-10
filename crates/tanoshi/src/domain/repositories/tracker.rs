@@ -1,9 +1,8 @@
 use async_trait::async_trait;
-use chrono::NaiveDateTime;
 use tanoshi_tracker::{Session, TrackerManga};
 use thiserror::Error;
 
-use crate::domain::entities::tracker::{Token, TrackedManga};
+use crate::domain::entities::tracker::{Token, TrackedManga, TrackerStatusUpdate};
 
 #[derive(Debug, Error)]
 pub enum TrackerRepositoryError {
@@ -81,17 +80,12 @@ pub trait TrackerRepository: Send + Sync {
         tracker_manga_id: i64,
     ) -> Result<TrackerManga, TrackerRepositoryError>;
 
-    #[allow(clippy::too_many_arguments)]
     async fn update_manga_tracking_status(
         &self,
         token: &str,
         tracker: &str,
         tracker_manga_id: i64,
-        status: Option<String>,
-        score: Option<i64>,
-        progress: Option<i64>,
-        started_at: Option<NaiveDateTime>,
-        completed_at: Option<NaiveDateTime>,
+        update: TrackerStatusUpdate,
     ) -> Result<(), TrackerRepositoryError>;
 
     async fn update_tracker_manga_id(

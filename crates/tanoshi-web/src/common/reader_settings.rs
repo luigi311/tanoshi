@@ -10,29 +10,19 @@ use crate::utils::{document, local_storage};
 
 const KEY: &str = "settings:reader";
 
-#[derive(PartialEq, Copy, Clone, Serialize, Deserialize)]
+#[derive(PartialEq, Copy, Clone, Serialize, Deserialize, Default)]
 pub enum ReaderMode {
     Continous,
+    #[default]
     Paged,
 }
 
-impl Default for ReaderMode {
-    fn default() -> Self {
-        ReaderMode::Paged
-    }
-}
-
-#[derive(PartialEq, Copy, Clone, Serialize, Deserialize)]
+#[derive(PartialEq, Copy, Clone, Serialize, Deserialize, Default)]
 pub enum DisplayMode {
+    #[default]
     Single,
     Double,
     Auto,
-}
-
-impl Default for DisplayMode {
-    fn default() -> Self {
-        DisplayMode::Single
-    }
 }
 
 impl DisplayMode {
@@ -64,41 +54,26 @@ impl DisplayMode {
     }
 }
 
-#[derive(PartialEq, Copy, Clone, Serialize, Deserialize)]
+#[derive(PartialEq, Copy, Clone, Serialize, Deserialize, Default)]
 pub enum Direction {
+    #[default]
     LeftToRight,
     RightToLeft,
 }
 
-impl Default for Direction {
-    fn default() -> Self {
-        Direction::LeftToRight
-    }
-}
-
-#[derive(PartialEq, Copy, Clone, Serialize, Deserialize)]
+#[derive(PartialEq, Copy, Clone, Serialize, Deserialize, Default)]
 pub enum Background {
+    #[default]
     White,
     Black,
 }
 
-impl Default for Background {
-    fn default() -> Self {
-        Background::White
-    }
-}
-
-#[derive(PartialEq, Copy, Clone, Serialize, Deserialize)]
+#[derive(PartialEq, Copy, Clone, Serialize, Deserialize, Default)]
 pub enum Fit {
     Height,
     Width,
+    #[default]
     All,
-}
-
-impl Default for Fit {
-    fn default() -> Self {
-        Fit::All
-    }
 }
 
 #[allow(dead_code)]
@@ -141,11 +116,12 @@ impl ReaderSettings {
             key = [key, manga_id.to_string()].join(":");
         }
 
-        let settings = match local_storage().get_item(&key) { Ok(Some(settings)) => {
-            serde_json::from_str::<ReaderSettings>(&settings).unwrap_or_default()
-        } _ => {
-            ReaderSettings::default()
-        }};
+        let settings = local_storage()
+            .get_item(&key)
+            .ok()
+            .flatten()
+            .map(|settings| serde_json::from_str::<ReaderSettings>(&settings).unwrap_or_default())
+            .unwrap_or_default();
 
         Rc::new(ReaderSettings {
             use_modal,
@@ -164,11 +140,10 @@ impl ReaderSettings {
         self.manga_id.replace(manga_id);
 
         let key = [KEY.to_string(), manga_id.to_string()].join(":");
-        let settings = match local_storage().get_item(&key) { Ok(Some(settings)) => {
-            serde_json::from_str::<ReaderSettings>(&settings).unwrap_or_default()
-        } _ => {
+        let Ok(Some(settings)) = local_storage().get_item(&key) else {
             return;
-        }};
+        };
+        let settings = serde_json::from_str::<ReaderSettings>(&settings).unwrap_or_default();
         self.reader_mode.replace(settings.reader_mode.get());
         self.padding.replace(settings.padding.get());
         self.display_mode.replace(settings.display_mode.get());

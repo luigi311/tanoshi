@@ -16,7 +16,9 @@ use crate::{
     domain::{
         entities::{chapter::Chapter, manga::Manga},
         repositories::{
-            chapter::ChapterRepository, library::LibraryRepository, manga::MangaRepository,
+            chapter::ChapterRepository,
+            library::{LibraryRepository, LibraryRepositoryError},
+            manga::MangaRepository,
         },
     },
     infrastructure::{domain::repositories::user::UserRepositoryImpl, notification::Notification},
@@ -67,6 +69,27 @@ pub struct SourceInfo {
     pub nsfw: bool,
 }
 
+/// Forward manga from a library stream into the update-check queue, stopping
+/// early if the receiving side is dropped.
+async fn forward_manga_stream(
+    tx: tokio::sync::mpsc::Sender<Manga>,
+    mut manga_stream: impl futures::Stream<Item = Result<Manga, LibraryRepositoryError>> + Unpin,
+) {
+    while let Some(manga_result) = manga_stream.next().await {
+        match manga_result {
+            Ok(manga) => {
+                if let Err(e) = tx.send(manga).await {
+                    error!("error forwarding manga to update channel: {e:?}");
+                    break;
+                }
+            }
+            Err(e) => {
+                error!("error reading manga from library stream: {e:?}");
+            }
+        }
+    }
+}
+
 struct UpdatesWorker<C, M, L>
 where
     C: ChapterRepository + 'static,
@@ -92,6 +115,7 @@ where
     M: MangaRepository + 'static,
     L: LibraryRepository + 'static,
 {
+    #[allow(clippy::too_many_arguments)]
     fn new<P: AsRef<Path>>(
         period: u64,
         library_repo: L,
@@ -135,30 +159,7 @@ where
         let library_repo = self.library_repo.clone();
 
         tokio::spawn(async move {
-            let mut manga_stream = library_repo.get_manga_from_all_users_library_stream();
-
-            while {
-                let manga_opt = manga_stream.next().await;
-                match manga_opt { Some(manga_result) => {
-                    
-                    match manga_result {
-                        Ok(manga) => {
-                            match tx.send(manga).await { Err(e) => {
-                                error!("error send update: {e:?}");
-                                false
-                            } _ => {
-                                true
-                            }}
-                        }
-                        Err(e) => {
-                            error!("error: {e:?}");
-                            true
-                        }
-                    }
-                } _ => {
-                    false
-                }}
-            } {}
+            forward_manga_stream(tx, library_repo.get_manga_from_all_users_library_stream()).await;
         });
     }
 
@@ -171,11 +172,11 @@ where
         match manga {
             Ok(manga) => {
                 if let Err(e) = tx.send(manga).await {
-                    error!("error send update: {e:?}");
+                    error!("error sending manga {} to update channel: {e:?}", manga_id);
                 }
             }
             Err(e) => {
-                error!("error: {e:?}");
+                error!("error getting manga {manga_id} for update: {e:?}");
             }
         }
     }
@@ -188,30 +189,8 @@ where
         let library_repo = self.library_repo.clone();
 
         tokio::spawn(async move {
-            let mut manga_stream = library_repo.get_manga_from_user_library_stream(user_id);
-
-            while {
-                let manga_opt = manga_stream.next().await;
-                match manga_opt { Some(manga_result) => {
-                    
-                    match manga_result {
-                        Ok(manga) => {
-                            match tx.send(manga).await { Err(e) => {
-                                error!("error send update: {e:?}");
-                                false
-                            } _ => {
-                                true
-                            }}
-                        }
-                        Err(e) => {
-                            error!("error: {e:?}");
-                            true
-                        }
-                    }
-                } _ => {
-                    false
-                }}
-            } {}
+            forward_manga_stream(tx, library_repo.get_manga_from_user_library_stream(user_id))
+                .await;
         });
     }
 
@@ -300,7 +279,11 @@ where
                     chapter,
                     users: users.iter().map(|user| user.id).collect(),
                 }) {
-                    error!("error broadcast new chapter: {e}");
+                    // the send error hands the unsent update back
+                    error!(
+                        "error broadcasting new chapter '{}' for manga '{}': {e}",
+                        e.0.chapter.title, manga.title
+                    );
                 }
             }
 
@@ -367,7 +350,7 @@ where
             info!("new server update found!");
             let message = format!("Tanoshi {} Released\n{}", release.tag_name, release.body);
             if let Err(e) = self.notifier.send_all_to_admins(None, &message).await {
-                error!("failed to send extension update to admin, {e}");
+                error!("failed to send server update notification to admin, {e}");
             }
         } else {
             info!("no tanoshi update found");
@@ -378,33 +361,30 @@ where
 
     async fn clear_cache(&self) -> Result<(), anyhow::Error> {
         let mut read_dir = tokio::fs::read_dir(&self.cache_path).await?;
-        while {
-            let res = read_dir.next_entry().await;
-            match res {
-                Ok(Some(entry)) => {
-                    let meta = entry.metadata().await?;
-                    if let Some(created) = meta
-                        .created()
-                        .ok()
-                        .and_then(|created| created.elapsed().ok())
-                        .map(|elapsed| {
-                            chrono::Duration::from_std(elapsed)
-                                .unwrap_or(chrono::Duration::MAX)
-                        })
-                    {
-                        if created.num_days() >= 10 {
-                            info!("removing {}", entry.path().display());
-                            if let Err(e) = tokio::fs::remove_file(entry.path()).await {
-                                error!("failed to remove {}: {e}", entry.path().display());
-                            }
-                        }
-                    }
-                    true
+        while let Some(entry) = read_dir.next_entry().await? {
+            let meta = match entry.metadata().await {
+                Ok(meta) => meta,
+                Err(e) => {
+                    error!("failed to read metadata of {}: {e}", entry.path().display());
+                    continue;
                 }
-                Ok(None) => false,
-                Err(e) => return Err(e.into()),
+            };
+
+            let age = meta
+                .created()
+                .ok()
+                .and_then(|created| created.elapsed().ok())
+                .map(|elapsed| {
+                    chrono::Duration::from_std(elapsed).unwrap_or(chrono::Duration::MAX)
+                });
+
+            if age.is_some_and(|age| age.num_days() >= 10) {
+                info!("removing {}", entry.path().display());
+                if let Err(e) = tokio::fs::remove_file(entry.path()).await {
+                    error!("failed to remove {}: {e}", entry.path().display());
+                }
             }
-        } {}
+        }
 
         Ok(())
     }
@@ -425,21 +405,21 @@ where
                             self.start_chapter_update_queue_all(manga_tx);
                             let res = self.check_chapter_update(manga_rx).await;
                             if tx.send(res).is_err() {
-                                info!("failed to send chapter update result");
+                                debug!("chapter update result receiver dropped (All)");
                             }
                         },
                         ChapterUpdateCommand::Manga(manga_id, tx) => {
                             self.start_chapter_update_queue_by_manga_id(manga_tx, manga_id).await;
                             let res = self.check_chapter_update(manga_rx).await;
                             if tx.send(res).is_err() {
-                                info!("failed to send chapter update result");
+                                debug!("chapter update result receiver dropped (Manga {manga_id})");
                             }
                         },
                         ChapterUpdateCommand::Library(user_id, tx) => {
                             self.start_chapter_update_queue_by_user_id(manga_tx, user_id);
                             let res = self.check_chapter_update(manga_rx).await;
                             if tx.send(res).is_err() {
-                                info!("failed to send chapter update result");
+                                debug!("chapter update result receiver dropped (Library user {user_id})");
                             }
                         }
                     }
@@ -462,14 +442,14 @@ where
                     info!("periodic updates done in {:?}", Instant::now() - start);
                 }
                 _ = server_update_interval.tick() => {
-                    info!("check server update");
+                    debug!("check server update");
 
                     let check_server_result = self.check_server_update().await;
                     if let Err(e) = check_server_result {
                         error!("failed check server update: {e}");
                     }
 
-                    info!("check extension update");
+                    debug!("check extension update");
 
                     let check_extension_result = self.check_extension_update().await;
                     if let Err(e) = check_extension_result {
@@ -487,6 +467,7 @@ where
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn start<C, M, L, P>(
     period: u64,
     library_repo: L,
