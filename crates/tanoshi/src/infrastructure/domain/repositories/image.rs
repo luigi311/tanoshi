@@ -8,6 +8,7 @@ use crate::domain::{
     entities::image::Image,
     repositories::image::{ImageRepository, ImageRepositoryError},
 };
+use crate::infrastructure::archive::ArchiveReader;
 
 #[derive(Clone)]
 pub struct ImageRepositoryImpl {
@@ -80,14 +81,13 @@ impl ImageRepository for ImageRepositoryImpl {
             .first_or_octet_stream()
             .to_string();
 
-        let source = std::fs::File::open(archive)
-            .map_err(|e| ImageRepositoryError::Other(format!("{e}")))?;
+        let archive = archive.as_ref().to_path_buf();
         let (content_type, data) =
             tokio::task::spawn_blocking(move || -> Result<(String, Vec<u8>), anyhow::Error> {
-                let mut buf: Vec<u8> = vec![];
-                compress_tools::uncompress_archive_file(source, &mut buf, &filename)?;
+                let mut archive = ArchiveReader::open(archive)?;
+                let data = archive.read_file(&filename)?;
 
-                Ok((content_type, buf))
+                Ok((content_type, data))
             })
             .await
             .map_err(|e| ImageRepositoryError::Other(format!("{e}")))?

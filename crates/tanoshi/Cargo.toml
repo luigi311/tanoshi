@@ -93,7 +93,8 @@ futures = { version = "0.3", default-features = false }
 rust-argon2 = "3"
 fancy-regex = { version = "0.18", features = ["std"], default-features = false }
 compress-tools = { version = "0.16", features = ["static"] }
-zip = { version = "8", default-features = false }
+zip = { version = "8", features = ["deflate-flate2-zlib-rs"], default-features = false }
+sevenz-rust2 = { version = "0.21", features = ["ppmd"], default-features = false }
 phf = { version = "0.14", features = ["macros"], default-features = false }
 human-sort = "0.2"
 aes = "0.9"

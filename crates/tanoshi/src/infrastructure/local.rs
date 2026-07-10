@@ -13,6 +13,8 @@ use mime_guess::mime;
 use serde::{Deserialize, Serialize};
 use tanoshi_lib::prelude::{ChapterInfo, Extension, Input, Lang, MangaInfo, SourceInfo};
 
+use crate::infrastructure::archive::ArchiveReader;
+
 // list of supported files, other archive may works but no tested
 pub static SUPPORTED_FILES: phf::Set<&'static str> = phf::phf_set! {
     "cbz",
@@ -59,8 +61,8 @@ fn filter_supported_files_and_folders(entry: Result<DirEntry, std::io::Error>) -
 
 // find first image from an archvie
 fn find_cover_from_archive(path: &Path) -> String {
-    let source = match std::fs::File::open(path) {
-        Ok(file) => file,
+    let mut archive = match ArchiveReader::open(path) {
+        Ok(archive) => archive,
         Err(e) => {
             error!("error open {}, reason {e}", path.display());
             return default_cover_url();
@@ -68,7 +70,7 @@ fn find_cover_from_archive(path: &Path) -> String {
     };
 
     let mut cover_url = default_cover_url();
-    if let Ok(files) = compress_tools::list_archive_files(source) {
+    if let Ok(files) = archive.list_files() {
         for file in files {
             let file = PathBuf::from(&file);
             let res = mime_guess::from_path(&file);
@@ -97,14 +99,9 @@ fn find_cover_from_dir(path: &Path) -> String {
 
 // find details from an archvie
 fn find_details_from_archive(path: &Path) -> Option<Vec<u8>> {
-    if let Ok(source) = std::fs::File::open(path) {
-        let mut data = vec![];
-        if compress_tools::uncompress_archive_file(source, &mut data, "details.json").is_ok() {
-            return Some(data);
-        }
-    }
-
-    None
+    ArchiveReader::open(path)
+        .and_then(|mut archive| archive.read_file("details.json"))
+        .ok()
 }
 
 // find first image from a directory
@@ -174,8 +171,8 @@ fn find_details(path: &Path) -> Option<Vec<u8>> {
 }
 
 pub fn get_pages_from_archive(path: &Path) -> Result<Vec<String>, anyhow::Error> {
-    let source = std::fs::File::open(path)?;
-    match compress_tools::list_archive_files(source) {
+    let mut archive = ArchiveReader::open(path)?;
+    match archive.list_files() {
         Ok(files) => {
             let pages = files
                 .into_iter()
