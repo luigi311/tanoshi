@@ -44,11 +44,7 @@ impl ArchiveReader {
                 sevenz_rust2::ArchiveReader::open(&path, Password::empty())
                     .with_context(|| format!("failed to read 7z archive {}", path.display()))?,
             ),
-            Some("cbr") => {
-                File::open(&path)
-                    .with_context(|| format!("failed to open RAR archive {}", path.display()))?;
-                ArchiveBackend::Rar
-            }
+            Some("cbr") => ArchiveBackend::Rar,
             _ => bail!("unsupported archive format: {}", path.display()),
         };
 
@@ -58,16 +54,20 @@ impl ArchiveReader {
     pub fn list_files(&mut self) -> Result<Vec<String>> {
         match &mut self.backend {
             ArchiveBackend::Zip(archive) => (0..archive.len())
-                .map(|index| {
-                    archive
+                .filter_map(|index| {
+                    let result = archive
                         .by_index(index)
-                        .map(|file| file.name().to_owned())
                         .with_context(|| {
                             format!(
                                 "failed to read entry {index} from ZIP archive {}",
                                 self.path.display()
                             )
-                        })
+                        });
+                    match result {
+                        Ok(file) if file.is_dir() => None,
+                        Ok(file) => Some(Ok(file.name().to_owned())),
+                        Err(err) => Some(Err(err)),
+                    }
                 })
                 .collect(),
             ArchiveBackend::SevenZip(archive) => Ok(archive
@@ -115,7 +115,13 @@ impl ArchiveReader {
                     format!("failed to reopen RAR archive {}", self.path.display())
                 })?;
                 let mut data = Vec::new();
-                compress_tools::uncompress_archive_file(source, &mut data, filename)?;
+                compress_tools::uncompress_archive_file(source, &mut data, filename)
+                    .with_context(|| {
+                        format!(
+                            "failed to read {filename} from RAR archive {}",
+                            self.path.display()
+                        )
+                    })?;
                 Ok(data)
             }
         }
@@ -150,7 +156,10 @@ mod tests {
 
         assert_eq!(files.len(), 36);
         assert!(files.iter().any(|file| file == "SPA00401.JPG"));
-        assert!(!archive.read_file("SPA00401.JPG").unwrap().is_empty());
+        assert_eq!(
+            archive.read_file("SPA00401.JPG").unwrap(),
+            std::fs::read(page_fixture("SPA00401.JPG")).unwrap()
+        );
     }
 
     #[test]
