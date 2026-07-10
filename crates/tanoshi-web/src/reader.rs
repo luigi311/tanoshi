@@ -232,16 +232,16 @@ impl Reader {
                         Nav::Prev => {
                             let len = this.pages.lock_ref().len();
                             match this.reader_settings.reader_mode.get() {
-                                ReaderMode::Continous => len - 1,
+                                ReaderMode::Continous => len.saturating_sub(1),
                                 ReaderMode::Paged => {
                                     match this.reader_settings.display_mode.get().get() {
                                         // display_mode.get() shouldn't return auto, here to satisfy compiler
-                                        DisplayMode::Single | DisplayMode::Auto => len - 1,
+                                        DisplayMode::Single | DisplayMode::Auto => len.saturating_sub(1),
                                         DisplayMode::Double => {
                                             if len.is_multiple_of(2) {
-                                                len - 2
+                                                len.saturating_sub(2)
                                             } else {
-                                                len - 1
+                                                len.saturating_sub(1)
                                             }
                                         }
                                     }
@@ -256,9 +256,6 @@ impl Reader {
 
                     this.pages_loaded.set(ContinousLoaded::Initial);
 
-                    let pages = result.pages.iter().map(|page| (page.to_string(), PageStatus::Initial)).collect();
-                    this.pages.lock_mut().replace_cloned(pages);
-                    
                     Self::replace_state_with_url(chapter_id, page + 1);
                 },
                 Err(err) => {
@@ -512,15 +509,20 @@ impl Reader {
                                     .attr_signal("value", this.current_page.signal().map(|p| p.to_string()))
                                     .with_node!(input => {
                                         .event(clone!(this, input => move |_: events::Change| {
-                                            let page = input.value().parse().unwrap_or(0);
+                                            let page: usize = input.value().parse().unwrap_or(0);
                                             debug!("page: {page}");
                                             if matches!(this.reader_settings.reader_mode.get(), ReaderMode::Continous) {
-                                                let page_top =  document()
-                                                    .get_element_by_id(format!("{}", page - 1).as_str())
-                                                    .and_then(|el| el.dyn_into::<web_sys::HtmlElement>().ok())
-                                                    .map(|el| el.offset_top() as f64)
-                                                    .unwrap_or_default();
-        
+                                                // page 0 has no preceding element to anchor on
+                                                let page_top = if page > 0 {
+                                                    document()
+                                                        .get_element_by_id(format!("{}", page - 1).as_str())
+                                                        .and_then(|el| el.dyn_into::<web_sys::HtmlElement>().ok())
+                                                        .map(|el| el.offset_top() as f64)
+                                                        .unwrap_or_default()
+                                                } else {
+                                                    0.0
+                                                };
+
                                                 trace!("scroll to {page_top}");
                                                 window().scroll_to_with_x_and_y(0.0_f64, page_top);
                                             }

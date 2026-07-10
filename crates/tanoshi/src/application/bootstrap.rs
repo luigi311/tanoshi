@@ -125,37 +125,8 @@ pub async fn bootstrap(config: Config) -> Result<App> {
 
     let notifier = notifier_builder.finish();
 
-    let (chapter_update_receiver, chapter_update_command_tx, update_worker_handle) =
-        worker::updates::start(
-            config.update_interval,
-            library_repo.clone(),
-            manga_repo.clone(),
-            chapter_repo.clone(),
-            extension_manager.clone(),
-            notifier.clone(),
-            config.extension_repository.clone(),
-            &config.cache_path,
-        );
-
-    let (download_sender, download_receiver) = worker::downloads::channel();
-
-    let download_repo = DownloadRepositoryImpl::new(pool.clone());
-    let download_svc = DownloadService::new(download_repo.clone(), download_sender.clone());
-
-    let download_worker_handle = worker::downloads::start(
-        &config.download_path,
-        chapter_repo.clone(),
-        manga_repo.clone(),
-        download_repo.clone(),
-        library_repo.clone(),
-        extension_manager.clone(),
-        notifier.clone(),
-        download_sender.clone(),
-        download_receiver,
-        chapter_update_receiver.resubscribe(),
-        config.auto_download_chapters,
-    );
-
+    // validate tracker configuration before spawning workers so a config
+    // error cannot leave detached workers running against the pool
     let mal_client = if let Some(mal_cfg) = config.myanimelist.as_ref() {
         if let Some(base_url) = config.base_url.as_ref() {
             MyAnimeList::new(
@@ -189,6 +160,37 @@ pub async fn bootstrap(config: Config) -> Result<App> {
     } else {
         None
     };
+
+    let (chapter_update_receiver, chapter_update_command_tx, update_worker_handle) =
+        worker::updates::start(
+            config.update_interval,
+            library_repo.clone(),
+            manga_repo.clone(),
+            chapter_repo.clone(),
+            extension_manager.clone(),
+            notifier.clone(),
+            config.extension_repository.clone(),
+            &config.cache_path,
+        );
+
+    let (download_sender, download_receiver) = worker::downloads::channel();
+
+    let download_repo = DownloadRepositoryImpl::new(pool.clone());
+    let download_svc = DownloadService::new(download_repo.clone(), download_sender.clone());
+
+    let download_worker_handle = worker::downloads::start(
+        &config.download_path,
+        chapter_repo.clone(),
+        manga_repo.clone(),
+        download_repo.clone(),
+        library_repo.clone(),
+        extension_manager.clone(),
+        notifier.clone(),
+        download_sender.clone(),
+        download_receiver,
+        chapter_update_receiver.resubscribe(),
+        config.auto_download_chapters,
+    );
 
     let tracker_repo = TrackerRepositoryImpl::new(pool.clone(), mal_client.clone(), al_client);
     let tracker_svc = TrackerService::new(tracker_repo.clone());

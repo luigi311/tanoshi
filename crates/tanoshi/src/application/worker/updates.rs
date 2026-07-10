@@ -362,9 +362,15 @@ where
     async fn clear_cache(&self) -> Result<(), anyhow::Error> {
         let mut read_dir = tokio::fs::read_dir(&self.cache_path).await?;
         while let Some(entry) = read_dir.next_entry().await? {
-            let age = entry
-                .metadata()
-                .await?
+            let meta = match entry.metadata().await {
+                Ok(meta) => meta,
+                Err(e) => {
+                    error!("failed to read metadata of {}: {e}", entry.path().display());
+                    continue;
+                }
+            };
+
+            let age = meta
                 .created()
                 .ok()
                 .and_then(|created| created.elapsed().ok())

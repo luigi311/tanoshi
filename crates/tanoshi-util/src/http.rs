@@ -89,7 +89,7 @@ unsafe extern "C" {
 
 #[cfg(any(feature = "__test", feature = "host"))]
 pub fn http_request(req: Request) -> Response {
-    use log::debug;
+    use log::{debug, trace};
 
     let agent = ureq::builder().user_agent("Tanoshi/0.1.0").build();
 
@@ -103,16 +103,16 @@ pub fn http_request(req: Request) -> Response {
     }
 
     let res = if let Some(body) = req.body {
-        log::trace!("request => {:?}", request);
+        trace!("request => {:?}", request);
         request.send_string(&body)
     } else {
-        log::trace!("request => {:?}", request);
+        trace!("request => {:?}", request);
         request.call()
     };
 
     match res {
         Ok(response) => {
-            log::trace!("response ok => {:?}", response);
+            trace!("response ok => {:?}", response);
 
             let status = response.status();
             Response {

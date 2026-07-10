@@ -43,11 +43,9 @@ impl<R: Runtime> Plugin<R> for Server {
         }
       };
 
-      // The desktop app has no ctrl-c of its own; the bot loop and workers
-      // end when the webview process exits.
-      if let Some(telegram_bot) = app.telegram_bot {
-        tauri::async_runtime::spawn(telegram_bot);
-      }
+      let mut update_worker_handle = app.update_worker_handle;
+      let mut download_worker_handle = app.download_worker_handle;
+      let telegram_bot_handle = app.telegram_bot.map(tokio::spawn);
 
       let server_fut = app.server_builder.serve(([127, 0, 0, 1], port));
 
@@ -57,15 +55,27 @@ impl<R: Runtime> Plugin<R> for Server {
           _ = server_fut => {
               info!("server shutdown");
           }
-          _ = app.update_worker_handle => {
+          _ = &mut update_worker_handle => {
               warn!("update worker quit unexpectedly");
           }
-          _ = app.download_worker_handle => {
+          _ = &mut download_worker_handle => {
               warn!("download worker quit unexpectedly");
           }
           _ = tokio::signal::ctrl_c() => {
               info!("ctrl+c signal received, shutting down");
           }
+      }
+
+      // stop the remaining tasks before closing the pool they hold clones of;
+      // a finished handle is skipped since its output may already be consumed
+      for handle in [update_worker_handle, download_worker_handle]
+        .into_iter()
+        .chain(telegram_bot_handle)
+      {
+        if !handle.is_finished() {
+          handle.abort();
+          let _ = handle.await;
+        }
       }
 
       app.pool.close().await;

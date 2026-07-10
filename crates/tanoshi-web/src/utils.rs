@@ -157,9 +157,18 @@ pub fn format_number_title(number: f64, title: &str) -> String {
         }
     }
 
-    // remove the chapter number itself
-    if let Some(stripped) = cleaned_title.strip_prefix(&number.to_string()) {
-        cleaned_title = stripped.trim().to_string();
+    // remove the chapter number itself (e.g. "12 - Foo" or "12.0: Foo"), but
+    // only when the whole leading numeric token equals the chapter number and
+    // ends at a boundary, so chapter 1 does not eat the "10" in "10 Years"
+    let token_len = cleaned_title
+        .find(|c: char| !c.is_ascii_digit() && c != '.')
+        .unwrap_or(cleaned_title.len());
+    let at_boundary = cleaned_title[token_len..]
+        .chars()
+        .next()
+        .is_none_or(|c| c.is_whitespace() || c == ':' || c == '-');
+    if at_boundary && cleaned_title[..token_len].parse::<f64>().ok() == Some(number) {
+        cleaned_title = cleaned_title[token_len..].trim().to_string();
     }
 
     // remove a leading separator, e.g. ": Foo" or "- Foo"
