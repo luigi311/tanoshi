@@ -26,16 +26,16 @@ fn main() {
     .plugin(tauri_plugin_fs::init())
     .plugin(Server::new())
     .setup(|app| {
-      let window = app.get_webview_window("main").unwrap();
+      let window = app
+        .get_webview_window("main")
+        .expect("main webview window missing");
 
       // Check if running on Phosh
       if let Ok(session) = env::var("XDG_SESSION_DESKTOP") {
         println!("Session: {session}");
-        if session == "phosh" {
-          // Hide title bar if running on Phosh
-          window.set_decorations(false).unwrap();
-        } else {
-          window.set_decorations(true).unwrap();
+        // Hide title bar if running on Phosh
+        if let Err(e) = window.set_decorations(session != "phosh") {
+          eprintln!("failed to set window decorations: {e}");
         }
       }
       Ok(())
