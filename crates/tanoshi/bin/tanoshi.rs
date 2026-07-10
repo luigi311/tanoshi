@@ -40,21 +40,23 @@ async fn main() -> Result<(), anyhow::Error> {
     let telegram_bot_fut: OptionFuture<_> = app.telegram_bot.into();
     let server_fut = app.server_builder.serve(([0, 0, 0, 0], port));
 
+    info!("server listening on port {port}");
+
     tokio::select! {
         _ = server_fut => {
             info!("server shutdown");
         }
         _ = app.update_worker_handle => {
-            info!("update worker quit");
+            warn!("update worker quit unexpectedly");
         }
         _ = app.download_worker_handle => {
-            info!("download worker quit");
+            warn!("download worker quit unexpectedly");
         }
         Some(()) = telegram_bot_fut => {
-            info!("worker shutdown");
+            info!("telegram bot shutdown");
         }
         _ = tokio::signal::ctrl_c() => {
-            info!("ctrl+c signal");
+            info!("ctrl+c signal received, shutting down");
         }
     }
 

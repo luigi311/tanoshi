@@ -79,12 +79,12 @@ async fn forward_manga_stream(
         match manga_result {
             Ok(manga) => {
                 if let Err(e) = tx.send(manga).await {
-                    error!("error send update: {e:?}");
+                    error!("error forwarding manga to update channel: {e:?}");
                     break;
                 }
             }
             Err(e) => {
-                error!("error: {e:?}");
+                error!("error reading manga from library stream: {e:?}");
             }
         }
     }
@@ -172,11 +172,11 @@ where
         match manga {
             Ok(manga) => {
                 if let Err(e) = tx.send(manga).await {
-                    error!("error send update: {e:?}");
+                    error!("error sending manga {} to update channel: {e:?}", manga_id);
                 }
             }
             Err(e) => {
-                error!("error: {e:?}");
+                error!("error getting manga {manga_id} for update: {e:?}");
             }
         }
     }
@@ -279,7 +279,11 @@ where
                     chapter,
                     users: users.iter().map(|user| user.id).collect(),
                 }) {
-                    error!("error broadcast new chapter: {e}");
+                    // the send error hands the unsent update back
+                    error!(
+                        "error broadcasting new chapter '{}' for manga '{}': {e}",
+                        e.0.chapter.title, manga.title
+                    );
                 }
             }
 
@@ -346,7 +350,7 @@ where
             info!("new server update found!");
             let message = format!("Tanoshi {} Released\n{}", release.tag_name, release.body);
             if let Err(e) = self.notifier.send_all_to_admins(None, &message).await {
-                error!("failed to send extension update to admin, {e}");
+                error!("failed to send server update notification to admin, {e}");
             }
         } else {
             info!("no tanoshi update found");
@@ -395,21 +399,21 @@ where
                             self.start_chapter_update_queue_all(manga_tx);
                             let res = self.check_chapter_update(manga_rx).await;
                             if tx.send(res).is_err() {
-                                info!("failed to send chapter update result");
+                                debug!("chapter update result receiver dropped (All)");
                             }
                         },
                         ChapterUpdateCommand::Manga(manga_id, tx) => {
                             self.start_chapter_update_queue_by_manga_id(manga_tx, manga_id).await;
                             let res = self.check_chapter_update(manga_rx).await;
                             if tx.send(res).is_err() {
-                                info!("failed to send chapter update result");
+                                debug!("chapter update result receiver dropped (Manga {manga_id})");
                             }
                         },
                         ChapterUpdateCommand::Library(user_id, tx) => {
                             self.start_chapter_update_queue_by_user_id(manga_tx, user_id);
                             let res = self.check_chapter_update(manga_rx).await;
                             if tx.send(res).is_err() {
-                                info!("failed to send chapter update result");
+                                debug!("chapter update result receiver dropped (Library user {user_id})");
                             }
                         }
                     }
@@ -432,14 +436,14 @@ where
                     info!("periodic updates done in {:?}", Instant::now() - start);
                 }
                 _ = server_update_interval.tick() => {
-                    info!("check server update");
+                    debug!("check server update");
 
                     let check_server_result = self.check_server_update().await;
                     if let Err(e) = check_server_result {
                         error!("failed check server update: {e}");
                     }
 
-                    info!("check extension update");
+                    debug!("check extension update");
 
                     let check_extension_result = self.check_extension_update().await;
                     if let Err(e) = check_extension_result {

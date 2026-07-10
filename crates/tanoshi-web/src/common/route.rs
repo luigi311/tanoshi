@@ -121,7 +121,7 @@ impl Route {
                                 .strip_prefix('#')
                                 .and_then(|h| h.parse().ok())
                                 .unwrap_or(1);
-                            info!("chapter {id} page {page}");
+                            debug!("chapter {id} page {page}");
                             Route::Chapter(id, page - 1)
                         } else {
                             Route::NotFound

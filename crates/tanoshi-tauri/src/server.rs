@@ -1,4 +1,4 @@
-use log::{error, info};
+use log::{error, info, warn};
 use tauri::{plugin::Plugin, AppHandle, Runtime};
 
 use tanoshi::{application::bootstrap, infrastructure::config::Config};
@@ -51,18 +51,20 @@ impl<R: Runtime> Plugin<R> for Server {
 
       let server_fut = app.server_builder.serve(([127, 0, 0, 1], port));
 
+      info!("server listening on port {port}");
+
       tokio::select! {
           _ = server_fut => {
               info!("server shutdown");
           }
           _ = app.update_worker_handle => {
-              info!("update worker quit");
+              warn!("update worker quit unexpectedly");
           }
           _ = app.download_worker_handle => {
-              info!("download worker quit");
+              warn!("download worker quit unexpectedly");
           }
           _ = tokio::signal::ctrl_c() => {
-              info!("ctrl+c signal");
+              info!("ctrl+c signal received, shutting down");
           }
       }
 

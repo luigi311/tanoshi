@@ -218,7 +218,7 @@ where
             return Ok(());
         }
 
-        info!("creating directory: {}", path.display());
+        debug!("creating directory: {}", path.display());
         std::fs::create_dir_all(manga_path)?;
 
         let manga_info = LocalMangaInfo {
@@ -242,7 +242,7 @@ where
 
     async fn download(&mut self) -> Result<()> {
         let Some(queue) = self.download_repo.get_single_download_queue().await? else {
-            info!("no queue");
+            debug!("no queue");
             return Ok(());
         };
 
@@ -281,7 +281,7 @@ where
                 match results {
                     Ok(bytes) => break bytes,
                     Err(e) => {
-                        error!("failed to download {}, reason: {e}", queue.url);
+                        error!("failed to download {} (attempt {}/{MAX_RETRIES}), reason: {e}", queue.url, attempts + 1);
                     }
                 }
                 attempts += 1;
@@ -324,6 +324,8 @@ where
             self.download_repo
                 .delete_single_chapter_download_queue(queue.chapter_id)
                 .await?;
+
+            info!("chapter '{}' of '{}' downloaded successfully", queue.chapter_title, queue.manga_title);
         }
 
         // 6. Trigger next download
@@ -431,7 +433,7 @@ where
                             if !self.paused().await {
                                 let download_result = self.download().await;
                                 if let Err(e) = download_result {
-                                    error!("{e}");
+                                    error!("download worker error: {e}");
                                 }
                             }
                         }

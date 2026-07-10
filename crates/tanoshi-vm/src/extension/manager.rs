@@ -95,7 +95,11 @@ impl ExtensionManager {
         .await?;
 
         let source = self.load_library(&name.to_lowercase())?;
-        self.insert(source).await
+        self.insert(source).await?;
+
+        info!("installed extension {name}");
+
+        Ok(())
     }
 
     fn load_library(&self, name: &str) -> Result<Source> {
@@ -157,12 +161,12 @@ impl ExtensionManager {
             .to_lowercase();
 
         if let Some(preferences) =
-            tokio::fs::read_to_string(self.dir.join(source_name).with_extension("json"))
+            tokio::fs::read_to_string(self.dir.join(&source_name).with_extension("json"))
                 .await
                 .ok()
                 .and_then(|s| serde_json::from_str(&s).ok())
         {
-            info!("set preferences");
+            info!("set preferences for {}", source_name);
             source
                 .extension
                 .get_mut()
@@ -193,6 +197,8 @@ impl ExtensionManager {
                     .join(source.name.to_lowercase())
                     .with_extension(PLUGIN_EXTENSION),
             )?;
+
+            info!("uninstalled extension {source_id} ({})", source.name);
         }
         Ok(())
     }

@@ -111,7 +111,7 @@ where
                     tracker_token = self.repo.get_user_tracker_token(tracker, user_id).await?;
                 }
                 Err(e) => {
-                    error!("error search manga, retry");
+                    warn!("search manga '{}' on {} failed: {e}", title, tracker);
                     return Err(e.into());
                 }
             }
@@ -168,7 +168,7 @@ where
                                 .await?;
                         }
                         Err(e) => {
-                            error!("error search manga: {e}, retry");
+                            warn!("fetch manga details failed for tracker {}: {e}", manga.tracker);
                             return Err(e.into());
                         }
                     }
@@ -225,7 +225,7 @@ where
                     tracker_token = self.repo.get_user_tracker_token(tracker, user_id).await?;
                 }
                 Err(e) => {
-                    error!("error search manga, retry");
+                    warn!("update tracker status for manga {tracker_manga_id} on {tracker} failed: {e}");
                     return Err(e.into());
                 }
             }

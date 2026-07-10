@@ -161,7 +161,7 @@ where
             if let Ok(downloaded_path) = self.repo.get_chapter_downloaded_path(chapter_id).await
                 && let Err(e) = tokio::fs::remove_file(&downloaded_path).await
             {
-                error!("error removing file: {e}");
+                error!("error removing downloaded file {}: {e}", downloaded_path);
             }
 
             self.repo

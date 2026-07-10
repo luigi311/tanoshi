@@ -103,16 +103,16 @@ pub fn http_request(req: Request) -> Response {
     }
 
     let res = if let Some(body) = req.body {
-        debug!("request => {:?}", request);
+        log::trace!("request => {:?}", request);
         request.send_string(&body)
     } else {
-        debug!("request => {:?}", request);
+        log::trace!("request => {:?}", request);
         request.call()
     };
 
     match res {
         Ok(response) => {
-            debug!("response ok => {:?}", response);
+            log::trace!("response ok => {:?}", response);
 
             let status = response.status();
             Response {

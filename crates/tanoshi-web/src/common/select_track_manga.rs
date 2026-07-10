@@ -224,7 +224,7 @@ impl SelectTrackMangaModal {
                             .style("padding", "0.5rem")
                             .style("border-radius", "0.5rem")
                             .style_signal("border", select.selected_tracker_manga.signal_cloned().map(clone!(manga => move |selected_tracker| {
-                                info!("{selected_tracker:?}");
+                                trace!("{selected_tracker:?}");
                                 selected_tracker.and_then(|selected_tracker| (selected_tracker.tracker == manga.tracker && selected_tracker.tracker_manga_id == manga.tracker_manga_id).then_some("var(--list-group-border)"))
                             })))
                             .children(&mut [
@@ -407,7 +407,7 @@ impl SelectTrackMangaModal {
                                                         .event(clone!(select, el, tracker, tracker_manga_id => move |_: events::Change| {
                                                             let _ = &tracker;
                                                             let value = el.value();
-                                                            info!("status {value}");
+                                                            debug!("status {value}");
                                                             select.update_tracker_status(
                                                                 tracker.tracker.clone(), 
                                                                 tracker_manga_id.clone(),
@@ -437,7 +437,7 @@ impl SelectTrackMangaModal {
                                                         .event(clone!(select, input, tracker, tracker_manga_id => move |_: events::Change| {
                                                             let _ = &tracker;
                                                             if let Ok(value) = input.value().parse::<i64>() {
-                                                                info!("status {value}");
+                                                                debug!("status {value}");
                                                                 select.update_tracker_status(
                                                                     tracker.tracker.clone(), 
                                                                     tracker_manga_id.clone(),
@@ -469,7 +469,7 @@ impl SelectTrackMangaModal {
                                                         .event(clone!(select, input, tracker, tracker_manga_id => move |_: events::Change| {
                                                             if let Ok(value) = input.value().parse::<i64>() {
                                                                 let _ = &tracker;
-                                                                info!("status {value}");
+                                                                debug!("status {value}");
                                                                 select.update_tracker_status(
                                                                     tracker.tracker.clone(), 
                                                                     tracker_manga_id.clone(),
@@ -530,7 +530,7 @@ impl SelectTrackMangaModal {
     }
 
     pub fn render<F>(self: &Rc<Self>, f: F) -> Dom where F: Fn() + Clone + 'static {
-        info!("render select track");
+        debug!("render select track");
         let select = self.clone();
         self.fetch_manga_tracker_status();
         let html_div = html!("div", {

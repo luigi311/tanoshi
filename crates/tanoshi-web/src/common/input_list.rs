@@ -41,7 +41,7 @@ impl InputList {
             .enumerate()
             .filter(|&(_index, input)| matches!(input, Input::Sort { .. } | Input::Group { .. })).map(|(index, _input)| (index, false))
             .collect();
-        info!("{:?}", collapse_map);
+        trace!("{:?}", collapse_map);
         self.collapse.lock_mut().replace_cloned(collapse_map);
         self.input_list.lock_mut().replace_cloned(input_list);
     }

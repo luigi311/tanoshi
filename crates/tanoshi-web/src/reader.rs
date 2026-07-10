@@ -211,7 +211,7 @@ impl Reader {
 
                     let page = match nav {
                         Nav::None => {
-                            info!("get current_page {current_page}");
+                            trace!("get current_page {current_page}");
                             match this.reader_settings.reader_mode.get() {
                                 ReaderMode::Continous => current_page,
                                 ReaderMode::Paged => {
@@ -251,7 +251,7 @@ impl Reader {
                         Nav::Next => 0,
                     };
 
-                    info!("set current_page to {page} nav: {nav:?}");
+                    debug!("set current_page to {page} nav: {nav:?}");
                     this.current_page.set_neq(page);
 
                     this.pages_loaded.set(ContinousLoaded::Initial);
@@ -513,7 +513,7 @@ impl Reader {
                                     .with_node!(input => {
                                         .event(clone!(this, input => move |_: events::Change| {
                                             let page = input.value().parse().unwrap_or(0);
-                                            info!("page: {page}");
+                                            debug!("page: {page}");
                                             if matches!(this.reader_settings.reader_mode.get(), ReaderMode::Continous) {
                                                 let page_top =  document()
                                                     .get_element_by_id(format!("{}", page - 1).as_str())
@@ -521,7 +521,7 @@ impl Reader {
                                                     .map(|el| el.offset_top() as f64)
                                                     .unwrap_or_default();
         
-                                                info!("scroll to {page_top}");
+                                                trace!("scroll to {page_top}");
                                                 window().scroll_to_with_x_and_y(0.0_f64, page_top);
                                             }
                                             this.current_page.set(page);
@@ -611,7 +611,7 @@ impl Reader {
                     .style("margin-bottom", "0.25rem")
                     .style("text-align", "center")
                     .event(clone!(this => move |_: events::Click| {
-                        info!("zoom in");
+                        debug!("zoom in");
                         Self::zoom_to(this.clone(), this.zoom.get() + 0.25);
                     }))
                     .children(&mut [
@@ -646,7 +646,7 @@ impl Reader {
                     .style("margin-bottom", "0.5rem")
                     .style("text-align", "center")
                     .event(clone!(this => move |_: events::Click| {
-                        info!("zoom out");
+                        debug!("zoom out");
                         let zoom = this.zoom.get();
                         let new_zoom = if zoom <= 0.25 {
                             0.25
@@ -725,7 +725,7 @@ impl Reader {
         } else if let Some(next_chapter) = self.next_chapter.get() {
             self.chapter_id.set(next_chapter);
         } else {
-            info!("no next_page or next_chapter");
+            debug!("no next_page or next_chapter");
         }
     }
 
@@ -735,7 +735,7 @@ impl Reader {
         } else if let Some(prev_chapter) = self.prev_chapter.get() {
             self.chapter_id.set(prev_chapter);
         } else {
-            info!("no prev_page or prev_chapter");
+            debug!("no prev_page or prev_chapter");
         }
     }
 
@@ -833,7 +833,7 @@ impl Reader {
             .style("flex-direction", "column")
             .future(this.pages_loaded.signal_cloned().for_each(clone!(this => move |loaded| {
                 let page = this.current_page.get();
-                info!("page: {page} loaded: {loaded:?}");
+                trace!("page: {page} loaded: {loaded:?}");
                 if page > 0 && matches!(loaded, ContinousLoaded::Loaded) {
                     let page_top =  document()
                         .get_element_by_id(format!("{}", page - 1).as_str())
@@ -841,7 +841,7 @@ impl Reader {
                         .map(|el| el.offset_top() as f64)
                         .unwrap_or_default();
 
-                    info!("scroll to {page_top}");
+                    trace!("scroll to {page_top}");
                     window().scroll_to_with_x_and_y(0.0_f64, page_top);
                     this.pages_loaded.set_neq(ContinousLoaded::Scrolled);
                 }
@@ -861,7 +861,7 @@ impl Reader {
                         if let Some(prev_chapter) = this.prev_chapter.get() {
                             this.chapter_id.set(prev_chapter);
                         } else {
-                            info!("no prev_page or prev_chapter");
+                            debug!("no prev_page or prev_chapter (vertical)");
                         }
                     }))
                 })
@@ -893,7 +893,7 @@ impl Reader {
                             _ => "auto".to_string(),
                         }))
                         .event(clone!(this, page => move |_: events::Error| {
-                            log::error!("error loading image");
+                            log::error!("error loading image for page {}", index);
                             let mut lock = this.pages.lock_mut();
                             lock.set_cloned(index, (page.clone(), PageStatus::Error));
                         }))
@@ -942,7 +942,7 @@ impl Reader {
                             this.chapter_id.set(next_chapter);
                             window().scroll_to_with_x_and_y(0.0_f64, 0.0_f64);
                         } else {
-                            info!("no next_page or next_chapter");
+                            debug!("no next_page or next_chapter (vertical)");
                         }
                     }))
                 })
@@ -1023,7 +1023,7 @@ impl Reader {
                         })))
                         .attr_signal("src", this.image_src_signal(index, 2, 3, page.clone(), status))
                         .event(clone!(this, page => move |_: events::Error| {
-                            log::error!("error loading image");
+                            log::error!("error loading image for page {}", index);
                             let mut lock = this.pages.lock_mut();
                             lock.set_cloned(index, (page.clone(), PageStatus::Error));
                         }))
@@ -1097,7 +1097,7 @@ impl Reader {
                         }))
                         .attr_signal("src", this.image_src_signal(index, 2, 4, page.clone(), status))
                         .event(clone!(this, page => move |_: events::Error| {
-                            log::error!("error loading image");
+                            log::error!("error loading image for page {}", index);
                             let mut lock = this.pages.lock_mut();
                             lock.set_cloned(index, (page.clone(), PageStatus::Error));
                         }))

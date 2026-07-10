@@ -42,7 +42,8 @@ impl ImageRepository for ImageRepositoryImpl {
             .await
             .map_err(|e| ImageRepositoryError::Other(format!("{e}")))?;
 
-        debug!("fetched image from extension source_id={source_id}, url={}, content_type={content_type}, size={} bytes", &url, bytes.len());
+        // url.get avoids panicking when byte 80 is not a char boundary
+        debug!("fetched image from extension source_id={source_id}, url='{}...', content_type={content_type}, size={} bytes", url.get(..80).unwrap_or(url), bytes.len());
         Ok(Image {
             content_type,
             data: bytes,

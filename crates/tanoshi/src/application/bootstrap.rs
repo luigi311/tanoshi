@@ -48,14 +48,17 @@ pub struct App {
 }
 
 pub async fn bootstrap(config: Config) -> Result<App> {
+    info!("connecting to database at {}", config.database_path);
     let pool =
         database::establish_connection(&config.database_path, config.create_database).await?;
+    info!("database connected");
 
     let user_repo = UserRepositoryImpl::new(pool.clone());
     let user_svc = UserService::new(user_repo.clone());
 
     let extension_manager = ExtensionManager::new(&config.plugin_path);
 
+    info!("loading extensions from {}", config.plugin_path);
     extension_manager.load_all().await?;
 
     let source_repo = SourceRepositoryImpl::new(extension_manager.clone());
@@ -223,6 +226,8 @@ pub async fn bootstrap(config: Config) -> Result<App> {
     if config.enable_playground {
         server_builder = server_builder.enable_playground();
     }
+
+    info!("bootstrap complete");
 
     Ok(App {
         pool,

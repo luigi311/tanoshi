@@ -189,7 +189,7 @@ impl LibrarySettings {
                                 .event(clone!(settings, select => move |_: events::Change| {
                                     let value = select.value();
                                     let category = settings.categories.lock_ref().iter().find(|cat| cat.name == value ).cloned();
-                                    info!("change {:?}", category);
+                                    debug!("change {:?}", category);
                                     settings.default_category.set(category);
                                 }))
                             })
