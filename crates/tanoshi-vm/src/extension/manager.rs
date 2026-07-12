@@ -1,6 +1,10 @@
 use std::{
     path::{Path, PathBuf},
-    sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard},
+    sync::{
+        Arc, RwLock, RwLockReadGuard, RwLockWriteGuard,
+        atomic::{AtomicU64, Ordering},
+    },
+    time::{SystemTime, UNIX_EPOCH},
 };
 
 use anyhow::{Result, anyhow, bail};
@@ -13,6 +17,51 @@ use crate::{
     PLUGIN_EXTENSION,
     prelude::{Source, SourceEntry},
 };
+
+const STAGED_LIBRARY_PREFIX: &str = ".tanoshi-staged-";
+const INSTALL_TEMP_PREFIX: &str = ".tanoshi-install-";
+static UNIQUE_PATH_COUNTER: AtomicU64 = AtomicU64::new(0);
+
+fn is_managed_library_name(name: &str) -> bool {
+    name.starts_with(STAGED_LIBRARY_PREFIX) || name.starts_with(INSTALL_TEMP_PREFIX)
+}
+
+fn cleanup_managed_libraries(dir: &Path) {
+    let current_process_marker = format!("-{}-", std::process::id());
+    let entries = match std::fs::read_dir(dir) {
+        Ok(entries) => entries,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return,
+        Err(error) => {
+            warn!(
+                "failed to scan {} for stale extension files: {error}",
+                dir.display()
+            );
+            return;
+        }
+    };
+
+    for entry in entries.flatten() {
+        let path = entry.path();
+        let Some(name) = path.file_name().and_then(|name| name.to_str()) else {
+            continue;
+        };
+        if !is_managed_library_name(name) {
+            continue;
+        }
+        if name.contains(&current_process_marker) {
+            continue;
+        }
+
+        if let Err(error) = std::fs::remove_file(&path)
+            && error.kind() != std::io::ErrorKind::NotFound
+        {
+            warn!(
+                "failed to remove stale extension file {}: {error}",
+                path.display()
+            );
+        }
+    }
+}
 
 #[derive(Clone)]
 pub struct ExtensionManager {
@@ -34,10 +83,61 @@ pub fn dummy_source_info(id: i64) -> SourceInfo {
 
 impl ExtensionManager {
     pub fn new<P: AsRef<Path>>(extension_dir: P) -> Self {
+        let dir = PathBuf::new().join(extension_dir);
+        cleanup_managed_libraries(&dir);
         Self {
-            dir: PathBuf::new().join(extension_dir),
+            dir,
             extensions: Arc::new(RwLock::new(FnvHashMap::default())),
         }
+    }
+
+    fn unique_managed_path(&self, source_path: &Path, prefix: &str) -> Result<PathBuf> {
+        let file_name = source_path
+            .file_name()
+            .ok_or_else(|| anyhow!("extension path has no file name"))?
+            .to_string_lossy();
+        let timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|duration| duration.as_nanos())
+            .unwrap_or_default();
+        let counter = UNIQUE_PATH_COUNTER.fetch_add(1, Ordering::Relaxed);
+        let name = format!(
+            "{prefix}{}-{timestamp}-{counter}-{file_name}",
+            std::process::id()
+        );
+        Ok(source_path.parent().unwrap_or(&self.dir).join(name))
+    }
+
+    fn stage_library(&self, plugin_path: &Path) -> Result<PathBuf> {
+        let staged_path = self.unique_managed_path(plugin_path, STAGED_LIBRARY_PREFIX)?;
+        if let Err(error) = std::fs::copy(plugin_path, &staged_path) {
+            let _ = std::fs::remove_file(&staged_path);
+            return Err(error.into());
+        }
+        Ok(staged_path)
+    }
+
+    fn cleanup_staged_library(path: &Path) {
+        if let Err(error) = std::fs::remove_file(path)
+            && error.kind() != std::io::ErrorKind::NotFound
+        {
+            warn!(
+                "failed to remove staged extension library {}: {error}",
+                path.display()
+            );
+        }
+    }
+
+    async fn replace_plugin_file(&self, temporary_path: &Path, plugin_path: &Path) -> Result<()> {
+        #[cfg(target_os = "windows")]
+        match tokio::fs::remove_file(plugin_path).await {
+            Ok(()) => {}
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(error) => return Err(error.into()),
+        }
+
+        tokio::fs::rename(temporary_path, plugin_path).await?;
+        Ok(())
     }
 
     fn read(&self) -> Result<RwLockReadGuard<'_, FnvHashMap<i64, Arc<SourceEntry>>>> {
@@ -73,6 +173,7 @@ impl ExtensionManager {
         while let Some(entry) = read_dir.next_entry().await? {
             let name = entry.file_name().to_string_lossy().into_owned();
             if name.ends_with(PLUGIN_EXTENSION)
+                && !is_managed_library_name(&name)
                 && let Err(e) = self.load(&name).await
             {
                 error!("failed to load {name}: {e}");
@@ -105,14 +206,23 @@ impl ExtensionManager {
         info!("downloading {source_file_url}");
 
         let contents = reqwest::get(&source_file_url).await?.bytes().await?;
+        let plugin_path = self
+            .dir
+            .join(name.to_lowercase())
+            .with_extension(PLUGIN_EXTENSION);
+        let temporary_path = self.unique_managed_path(&plugin_path, INSTALL_TEMP_PREFIX)?;
 
-        tokio::fs::write(
-            self.dir
-                .join(name.to_lowercase())
-                .with_extension(PLUGIN_EXTENSION),
-            contents,
-        )
-        .await?;
+        if let Err(error) = tokio::fs::write(&temporary_path, contents).await {
+            Self::cleanup_staged_library(&temporary_path);
+            return Err(error.into());
+        }
+        if let Err(error) = self
+            .replace_plugin_file(&temporary_path, &plugin_path)
+            .await
+        {
+            Self::cleanup_staged_library(&temporary_path);
+            return Err(error);
+        }
 
         let source = self.load_library(&name.to_lowercase())?;
         self.insert(source).await?;
@@ -123,51 +233,62 @@ impl ExtensionManager {
     }
 
     fn load_library(&self, name: &str) -> Result<Source> {
-        let library_path = PathBuf::new()
-            .join(&self.dir)
-            .join(name)
-            .with_extension(PLUGIN_EXTENSION);
-        info!("load {:?}", library_path.display());
+        let plugin_path = self.dir.join(name).with_extension(PLUGIN_EXTENSION);
+        let staged_path = self.stage_library(&plugin_path)?;
+        info!(
+            "load {:?} from {:?}",
+            staged_path.display(),
+            plugin_path.display()
+        );
 
         #[cfg(target_os = "macos")]
-        if let Err(e) = std::process::Command::new("install_name_tool")
-            .current_dir(library_path.parent().unwrap())
+        if let Err(error) = std::process::Command::new("install_name_tool")
+            .current_dir(staged_path.parent().unwrap())
             .arg("-id")
             .arg("''")
-            .arg(library_path.file_name().unwrap())
+            .arg(staged_path.file_name().unwrap())
             .output()
         {
-            error!("failed to run install_name_tool: {e}");
+            error!("failed to run install_name_tool: {error}");
         }
 
-        unsafe {
-            let library = Library::new(&library_path)?;
+        let result = (|| -> Result<Source> {
+            unsafe {
+                let library = Library::new(&staged_path)?;
 
-            let decl = library
-                .get::<*mut PluginDeclaration>(b"plugin_declaration\0")?
-                .read();
+                let decl = library
+                    .get::<*mut PluginDeclaration>(b"plugin_declaration\0")?
+                    .read();
 
-            if decl.rustc_version != tanoshi_lib::RUSTC_VERSION {
-                bail!(
-                    "Version mismatch: extension.rustc_version={} != tanoshi_lib.rustc_version={}",
-                    decl.rustc_version,
-                    tanoshi_lib::RUSTC_VERSION,
-                );
+                if decl.rustc_version != tanoshi_lib::RUSTC_VERSION {
+                    bail!(
+                        "Version mismatch: extension.rustc_version={} != tanoshi_lib.rustc_version={}",
+                        decl.rustc_version,
+                        tanoshi_lib::RUSTC_VERSION,
+                    );
+                }
+
+                if decl.core_version != tanoshi_lib::LIB_VERSION {
+                    bail!(
+                        "Version mismatch: extension.lib_version={} != tanoshi_lib.lib_version={}",
+                        decl.core_version,
+                        tanoshi_lib::LIB_VERSION
+                    );
+                }
+
+                let mut registrar = Source::new(library, decl.rustc_version, decl.core_version)
+                    .with_loaded_library_path(staged_path.clone())
+                    .with_plugin_path(plugin_path);
+                (decl.register)(&mut registrar);
+
+                Ok(registrar)
             }
+        })();
 
-            if decl.core_version != tanoshi_lib::LIB_VERSION {
-                bail!(
-                    "Version mismatch: extension.lib_version={} != tanoshi_lib::lib_version={}",
-                    decl.core_version,
-                    tanoshi_lib::LIB_VERSION
-                );
-            }
-
-            let mut registrar = Source::new(library, decl.rustc_version, decl.core_version);
-            (decl.register)(&mut registrar);
-
-            Ok(registrar)
+        if result.is_err() {
+            Self::cleanup_staged_library(&staged_path);
         }
+        result
     }
 
     pub async fn load(&self, name: &str) -> Result<()> {
@@ -198,17 +319,30 @@ impl ExtensionManager {
 
     pub async fn insert(&self, source: Source) -> Result<()> {
         let entry = Arc::new(source.into_entry()?);
-        self.write()?.insert(entry.source_id, entry);
+        let source_id = entry.source_id;
+        let replaced = {
+            let mut sources = self.write()?;
+            sources.insert(source_id, entry)
+        };
+        drop(replaced);
         Ok(())
     }
 
     pub async fn unload(&self, source_id: i64) -> Result<()> {
-        if let Some(entry) = self.write()?.remove(&source_id) {
-            std::fs::remove_file(
-                self.dir
-                    .join(entry.source_name().to_lowercase())
-                    .with_extension(PLUGIN_EXTENSION),
-            )?;
+        let entry = {
+            let mut sources = self.write()?;
+            sources.remove(&source_id)
+        };
+        if let Some(entry) = entry {
+            if let Some(plugin_path) = entry.plugin_path()
+                && let Err(error) = std::fs::remove_file(plugin_path)
+                && error.kind() != std::io::ErrorKind::NotFound
+            {
+                return Err(anyhow!(
+                    "failed to remove extension {}: {error}",
+                    plugin_path.display()
+                ));
+            }
 
             info!(
                 "uninstalled extension {source_id} ({})",
