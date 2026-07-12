@@ -1,19 +1,23 @@
 use std::{
-    path::{Path, PathBuf}, sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard}
+    path::{Path, PathBuf},
+    sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard},
 };
 
-use anyhow::{anyhow, bail, Result};
+use anyhow::{Result, anyhow, bail};
 use bytes::Bytes;
 use fnv::FnvHashMap;
 use libloading::Library;
-use tanoshi_lib::prelude::{Input, PluginDeclaration, SourceInfo, Lang};
+use tanoshi_lib::prelude::{Input, Lang, PluginDeclaration, SourceInfo};
 
-use crate::{prelude::Source, PLUGIN_EXTENSION};
+use crate::{
+    PLUGIN_EXTENSION,
+    prelude::{Source, SourceEntry},
+};
 
 #[derive(Clone)]
 pub struct ExtensionManager {
     dir: PathBuf,
-    extensions: Arc<RwLock<FnvHashMap<i64, Source>>>,
+    extensions: Arc<RwLock<FnvHashMap<i64, Arc<SourceEntry>>>>,
 }
 
 pub fn dummy_source_info(id: i64) -> SourceInfo {
@@ -36,16 +40,32 @@ impl ExtensionManager {
         }
     }
 
-    fn read(&self) -> Result<RwLockReadGuard<'_, FnvHashMap<i64, Source>>> {
+    fn read(&self) -> Result<RwLockReadGuard<'_, FnvHashMap<i64, Arc<SourceEntry>>>> {
         self.extensions
             .read()
             .map_err(|e| anyhow!("failed to lock read: {e}"))
     }
 
-    fn write(&self) -> Result<RwLockWriteGuard<'_, FnvHashMap<i64, Source>>> {
+    fn write(&self) -> Result<RwLockWriteGuard<'_, FnvHashMap<i64, Arc<SourceEntry>>>> {
         self.extensions
             .write()
             .map_err(|e| anyhow!("failed to lock write: {e}"))
+    }
+
+    fn entry(&self, source_id: i64) -> Result<Arc<SourceEntry>> {
+        self.read()?
+            .get(&source_id)
+            .cloned()
+            .ok_or_else(|| anyhow!("no such source"))
+    }
+
+    async fn call_blocking<T, F>(&self, source_id: i64, call: F) -> Result<T>
+    where
+        T: Send + 'static,
+        F: FnOnce(&dyn tanoshi_lib::prelude::Extension) -> Result<T> + Send + 'static,
+    {
+        let entry = self.entry(source_id)?;
+        tokio::task::spawn_blocking(move || entry.with_extension(call)).await?
     }
 
     pub async fn load_all(&self) -> Result<()> {
@@ -66,11 +86,11 @@ impl ExtensionManager {
     }
 
     pub async fn list(&self) -> Result<Vec<SourceInfo>> {
-        Ok(self
-            .read()?
-            .values()
-            .filter_map(|s| s.extension.get().map(|s| s.get_source_info()))
-            .collect())
+        let entries = self.read()?.values().cloned().collect::<Vec<_>>();
+        entries
+            .into_iter()
+            .map(|entry| entry.source_info())
+            .collect()
     }
 
     pub async fn install(&self, repo_url: &str, name: &str) -> Result<()> {
@@ -177,28 +197,23 @@ impl ExtensionManager {
     }
 
     pub async fn insert(&self, source: Source) -> Result<()> {
-        let info = source
-            .extension
-            .get()
-            .map(|s| s.get_source_info())
-            .ok_or_else(|| anyhow!("error"))?;
-        self.write()?.insert(info.id, source);
+        let entry = Arc::new(source.into_entry()?);
+        self.write()?.insert(entry.source_id, entry);
         Ok(())
     }
 
     pub async fn unload(&self, source_id: i64) -> Result<()> {
-        if let Some(source) = self
-            .write()?
-            .remove(&source_id)
-            .and_then(|s| s.extension.get().map(|s| s.get_source_info()))
-        {
+        if let Some(entry) = self.write()?.remove(&source_id) {
             std::fs::remove_file(
                 self.dir
-                    .join(source.name.to_lowercase())
+                    .join(entry.source_name().to_lowercase())
                     .with_extension(PLUGIN_EXTENSION),
             )?;
 
-            info!("uninstalled extension {source_id} ({})", source.name);
+            info!(
+                "uninstalled extension {source_id} ({})",
+                entry.source_name()
+            );
         }
         Ok(())
     }
@@ -208,21 +223,19 @@ impl ExtensionManager {
     }
 
     pub fn get_version(&self, source_id: i64) -> Result<(String, String)> {
-        let lock = self.read()?;
-        let source = lock
+        let sources = self.read()?;
+        let source = sources
             .get(&source_id)
             .ok_or_else(|| anyhow!("no such source"))?;
-        Ok((source.rustc_version.clone(), source.lib_version.clone()))
+        let rustc_version = source.rustc_version.clone();
+        let lib_version = source.lib_version.clone();
+        Ok((rustc_version, lib_version))
     }
 
     pub fn get_source_info(&self, source_id: i64) -> Result<SourceInfo> {
-        let  binding = self.read()?;
-        // Do not error if source_entry doesnt work
-        let source_entry: Result<&Source> = binding.get(&source_id).ok_or_else(|| anyhow!("no such source"));
-
-        if let Some(entry) = source_entry.ok().and_then(|s| s.extension.get()) {
-            let extension =  entry.get_source_info();
-            Ok(extension)
+        let entry = self.read()?.get(&source_id).cloned();
+        if let Some(entry) = entry {
+            entry.source_info()
         } else {
             println!("Returning dummy source info");
             Ok(dummy_source_info(source_id))
@@ -230,36 +243,20 @@ impl ExtensionManager {
     }
 
     pub fn filter_list(&self, source_id: i64) -> Result<Vec<Input>> {
-        Ok(self
-            .read()?
-            .get(&source_id)
-            .ok_or_else(|| anyhow!("no such source"))?
-            .extension
-            .get()
-            .ok_or_else(|| anyhow!("uninitiated"))?
-            .filter_list())
+        let entry = self.entry(source_id)?;
+        entry.with_extension(|extension| Ok(extension.filter_list()))
     }
 
     pub fn get_preferences(&self, source_id: i64) -> Result<Vec<Input>> {
-        self.read()?
-            .get(&source_id)
-            .ok_or_else(|| anyhow!("no such source"))?
-            .extension
-            .get()
-            .ok_or_else(|| anyhow!("uninitiated"))?
-            .get_preferences()
+        let entry = self.entry(source_id)?;
+        entry.with_extension(|extension| extension.get_preferences())
     }
 
     pub async fn set_preferences(&self, source_id: i64, preferences: Vec<Input>) -> Result<()> {
-        self.write()?
-            .get_mut(&source_id)
-            .ok_or_else(|| anyhow!("no such source"))?
-            .extension
-            .get_mut()
-            .ok_or_else(|| anyhow!("uninitiated"))?
-            .set_preferences(preferences.clone())?;
+        let entry = self.entry(source_id)?;
+        entry.with_extension_mut(|extension| extension.set_preferences(preferences.clone()))?;
 
-        let source_info = self.get_source_info(source_id)?;
+        let source_info = entry.source_info()?;
         tokio::fs::write(
             self.dir
                 .join(source_info.name.to_lowercase())
@@ -276,19 +273,10 @@ impl ExtensionManager {
         source_id: i64,
         page: i64,
     ) -> Result<Vec<tanoshi_lib::prelude::MangaInfo>> {
-        let extensions = self.extensions.clone();
-        tokio::task::spawn_blocking(move || {
-            extensions
-                .read()
-                .map_err(|e| anyhow!("failed to lock read: {e}"))?
-                .get(&source_id)
-                .ok_or_else(|| anyhow!("no such source"))?
-                .extension
-                .get()
-                .ok_or_else(|| anyhow!("uninitiated"))?
-                .get_popular_manga(page)
+        self.call_blocking(source_id, move |extension| {
+            extension.get_popular_manga(page)
         })
-        .await?
+        .await
     }
 
     pub async fn get_latest_manga(
@@ -296,19 +284,8 @@ impl ExtensionManager {
         source_id: i64,
         page: i64,
     ) -> Result<Vec<tanoshi_lib::prelude::MangaInfo>> {
-        let extensions = self.extensions.clone();
-        tokio::task::spawn_blocking(move || {
-            extensions
-                .read()
-                .map_err(|e| anyhow!("failed to lock read: {e}"))?
-                .get(&source_id)
-                .ok_or_else(|| anyhow!("no such source"))?
-                .extension
-                .get()
-                .ok_or_else(|| anyhow!("uninitiated"))?
-                .get_latest_manga(page)
-        })
-        .await?
+        self.call_blocking(source_id, move |extension| extension.get_latest_manga(page))
+            .await
     }
 
     pub async fn search_manga(
@@ -318,19 +295,10 @@ impl ExtensionManager {
         query: Option<String>,
         filters: Option<Vec<Input>>,
     ) -> Result<Vec<tanoshi_lib::prelude::MangaInfo>> {
-        let extensions = self.extensions.clone();
-        tokio::task::spawn_blocking(move || {
-            extensions
-                .read()
-                .map_err(|e| anyhow!("failed to lock read: {e}"))?
-                .get(&source_id)
-                .ok_or_else(|| anyhow!("no such source"))?
-                .extension
-                .get()
-                .ok_or_else(|| anyhow!("uninitiated"))?
-                .search_manga(page, query, filters)
+        self.call_blocking(source_id, move |extension| {
+            extension.search_manga(page, query, filters)
         })
-        .await?
+        .await
     }
 
     pub async fn get_manga_detail(
@@ -338,19 +306,8 @@ impl ExtensionManager {
         source_id: i64,
         path: String,
     ) -> Result<tanoshi_lib::prelude::MangaInfo> {
-        let extensions = self.extensions.clone();
-        tokio::task::spawn_blocking(move || {
-            extensions
-                .read()
-                .map_err(|e| anyhow!("failed to lock read: {e}"))?
-                .get(&source_id)
-                .ok_or_else(|| anyhow!("no such source"))?
-                .extension
-                .get()
-                .ok_or_else(|| anyhow!("uninitiated"))?
-                .get_manga_detail(path)
-        })
-        .await?
+        self.call_blocking(source_id, move |extension| extension.get_manga_detail(path))
+            .await
     }
 
     pub async fn get_chapters(
@@ -358,54 +315,17 @@ impl ExtensionManager {
         source_id: i64,
         path: String,
     ) -> Result<Vec<tanoshi_lib::prelude::ChapterInfo>> {
-        let extensions = self.extensions.clone();
-        tokio::task::spawn_blocking(move || {
-            extensions
-                .read()
-                .map_err(|e| anyhow!("failed to lock read: {e}"))?
-                .get(&source_id)
-                .ok_or_else(|| anyhow!("no such source"))?
-                .extension
-                .get()
-                .ok_or_else(|| anyhow!("uninitiated"))?
-                .get_chapters(path)
-        })
-        .await?
+        self.call_blocking(source_id, move |extension| extension.get_chapters(path))
+            .await
     }
 
     pub async fn get_pages(&self, source_id: i64, path: String) -> Result<Vec<String>> {
-        let extensions = self.extensions.clone();
-        tokio::task::spawn_blocking(move || {
-            extensions
-                .read()
-                .map_err(|e| anyhow!("failed to lock read: {e}"))?
-                .get(&source_id)
-                .ok_or_else(|| anyhow!("no such source"))?
-                .extension
-                .get()
-                .ok_or_else(|| anyhow!("uninitiated"))?
-                .get_pages(path)
-        })
-        .await?
+        self.call_blocking(source_id, move |extension| extension.get_pages(path))
+            .await
     }
 
-    pub async fn get_image_bytes(
-        &self,
-        source_id: i64,
-        url: String,
-    ) -> Result<Bytes> {
-        let extensions = self.extensions.clone();
-        tokio::task::spawn_blocking(move || {
-            extensions
-                .read()
-                .map_err(|e| anyhow!("failed to lock read: {e}"))?
-                .get(&source_id)
-                .ok_or_else(|| anyhow!("no such source"))?
-                .extension
-                .get()
-                .ok_or_else(|| anyhow!("uninitiated"))?
-                .get_image_bytes(url)
-        })
-        .await?
+    pub async fn get_image_bytes(&self, source_id: i64, url: String) -> Result<Bytes> {
+        self.call_blocking(source_id, move |extension| extension.get_image_bytes(url))
+            .await
     }
 }
