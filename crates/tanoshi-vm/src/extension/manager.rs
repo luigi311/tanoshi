@@ -1,7 +1,7 @@
 use std::{
     path::{Path, PathBuf},
     sync::{
-        Arc, RwLock, RwLockReadGuard, RwLockWriteGuard,
+        Arc, Mutex as StdMutex, RwLock, RwLockReadGuard, RwLockWriteGuard,
         atomic::{AtomicU64, Ordering},
     },
     time::{SystemTime, UNIX_EPOCH},
@@ -12,6 +12,7 @@ use bytes::Bytes;
 use fnv::FnvHashMap;
 use libloading::Library;
 use tanoshi_lib::prelude::{Input, Lang, PluginDeclaration, SourceInfo};
+use tokio::sync::Mutex as AsyncMutex;
 
 use crate::{
     PLUGIN_EXTENSION,
@@ -24,6 +25,15 @@ static UNIQUE_PATH_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 fn is_managed_library_name(name: &str) -> bool {
     name.starts_with(STAGED_LIBRARY_PREFIX) || name.starts_with(INSTALL_TEMP_PREFIX)
+}
+
+fn normalize_plugin_name(name: &str) -> String {
+    let name = Path::new(name)
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or(name);
+    let extension = format!(".{PLUGIN_EXTENSION}");
+    name.strip_suffix(&extension).unwrap_or(name).to_lowercase()
 }
 
 fn cleanup_managed_libraries(dir: &Path) {
@@ -67,6 +77,7 @@ fn cleanup_managed_libraries(dir: &Path) {
 pub struct ExtensionManager {
     dir: PathBuf,
     extensions: Arc<RwLock<FnvHashMap<i64, Arc<SourceEntry>>>>,
+    lifecycle_locks: Arc<StdMutex<FnvHashMap<String, Arc<AsyncMutex<()>>>>>,
 }
 
 pub fn dummy_source_info(id: i64) -> SourceInfo {
@@ -88,7 +99,19 @@ impl ExtensionManager {
         Self {
             dir,
             extensions: Arc::new(RwLock::new(FnvHashMap::default())),
+            lifecycle_locks: Arc::new(StdMutex::new(FnvHashMap::default())),
         }
+    }
+
+    fn lifecycle_lock(&self, name: &str) -> Result<Arc<AsyncMutex<()>>> {
+        let mut locks = self
+            .lifecycle_locks
+            .lock()
+            .map_err(|error| anyhow!("failed to lock plugin lifecycle map: {error}"))?;
+        Ok(locks
+            .entry(normalize_plugin_name(name))
+            .or_insert_with(|| Arc::new(AsyncMutex::new(())))
+            .clone())
     }
 
     fn unique_managed_path(&self, source_path: &Path, prefix: &str) -> Result<PathBuf> {
@@ -195,27 +218,27 @@ impl ExtensionManager {
     }
 
     pub async fn install(&self, repo_url: &str, name: &str) -> Result<()> {
+        let plugin_name = normalize_plugin_name(name);
         let source_file_url = format!(
             "{}/{}/{}.{}",
             repo_url,
             env!("TARGET"),
-            name.to_lowercase(),
+            plugin_name,
             PLUGIN_EXTENSION
         );
 
         info!("downloading {source_file_url}");
 
         let contents = reqwest::get(&source_file_url).await?.bytes().await?;
-        let plugin_path = self
-            .dir
-            .join(name.to_lowercase())
-            .with_extension(PLUGIN_EXTENSION);
+        let plugin_path = self.dir.join(&plugin_name).with_extension(PLUGIN_EXTENSION);
         let temporary_path = self.unique_managed_path(&plugin_path, INSTALL_TEMP_PREFIX)?;
 
         if let Err(error) = tokio::fs::write(&temporary_path, contents).await {
             Self::cleanup_staged_library(&temporary_path);
             return Err(error.into());
         }
+        let lifecycle_lock = self.lifecycle_lock(&plugin_name)?;
+        let _lifecycle_guard = lifecycle_lock.lock_owned().await;
         if let Err(error) = self
             .replace_plugin_file(&temporary_path, &plugin_path)
             .await
@@ -224,7 +247,7 @@ impl ExtensionManager {
             return Err(error);
         }
 
-        let source = self.load_library(&name.to_lowercase())?;
+        let source = self.load_library(&plugin_name)?;
         self.insert(source).await?;
 
         info!("installed extension {name}");
@@ -292,7 +315,10 @@ impl ExtensionManager {
     }
 
     pub async fn load(&self, name: &str) -> Result<()> {
-        let mut source = self.load_library(name)?;
+        let plugin_name = normalize_plugin_name(name);
+        let lifecycle_lock = self.lifecycle_lock(&plugin_name)?;
+        let _lifecycle_guard = lifecycle_lock.lock_owned().await;
+        let mut source = self.load_library(&plugin_name)?;
         let source_name = source
             .extension
             .get()
@@ -329,6 +355,18 @@ impl ExtensionManager {
     }
 
     pub async fn unload(&self, source_id: i64) -> Result<()> {
+        let entry = self.entry(source_id).ok();
+        let Some(entry) = entry else {
+            return Ok(());
+        };
+        let plugin_name = entry
+            .plugin_path()
+            .and_then(|path| path.file_name())
+            .and_then(|name| name.to_str())
+            .map(normalize_plugin_name)
+            .unwrap_or_else(|| normalize_plugin_name(entry.source_name()));
+        let lifecycle_lock = self.lifecycle_lock(&plugin_name)?;
+        let _lifecycle_guard = lifecycle_lock.lock_owned().await;
         let entry = {
             let mut sources = self.write()?;
             sources.remove(&source_id)
