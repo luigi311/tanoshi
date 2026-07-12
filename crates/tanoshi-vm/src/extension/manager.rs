@@ -21,10 +21,13 @@ use crate::{
 
 const STAGED_LIBRARY_PREFIX: &str = ".tanoshi-staged-";
 const INSTALL_TEMP_PREFIX: &str = ".tanoshi-install-";
+const INSTALL_BACKUP_PREFIX: &str = ".tanoshi-backup-";
 static UNIQUE_PATH_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 fn is_managed_library_name(name: &str) -> bool {
-    name.starts_with(STAGED_LIBRARY_PREFIX) || name.starts_with(INSTALL_TEMP_PREFIX)
+    name.starts_with(STAGED_LIBRARY_PREFIX)
+        || name.starts_with(INSTALL_TEMP_PREFIX)
+        || name.starts_with(INSTALL_BACKUP_PREFIX)
 }
 
 fn normalize_plugin_name(name: &str) -> String {
@@ -71,6 +74,10 @@ fn cleanup_managed_libraries(dir: &Path) {
             );
         }
     }
+}
+
+struct PluginFileReplacement {
+    backup_path: Option<PathBuf>,
 }
 
 #[derive(Clone)]
@@ -140,26 +147,61 @@ impl ExtensionManager {
         Ok(staged_path)
     }
 
-    fn cleanup_staged_library(path: &Path) {
+    fn cleanup_managed_file(path: &Path) {
         if let Err(error) = std::fs::remove_file(path)
             && error.kind() != std::io::ErrorKind::NotFound
         {
             warn!(
-                "failed to remove staged extension library {}: {error}",
+                "failed to remove managed extension file {}: {error}",
                 path.display()
             );
         }
     }
 
-    async fn replace_plugin_file(&self, temporary_path: &Path, plugin_path: &Path) -> Result<()> {
-        #[cfg(target_os = "windows")]
+    async fn replace_plugin_file(
+        &self,
+        temporary_path: &Path,
+        plugin_path: &Path,
+    ) -> Result<PluginFileReplacement> {
+        let backup_path = match tokio::fs::metadata(plugin_path).await {
+            Ok(_) => {
+                let backup_path = self.unique_managed_path(plugin_path, INSTALL_BACKUP_PREFIX)?;
+                tokio::fs::rename(plugin_path, &backup_path).await?;
+                Some(backup_path)
+            }
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => None,
+            Err(error) => return Err(error.into()),
+        };
+
+        if let Err(error) = tokio::fs::rename(temporary_path, plugin_path).await {
+            if let Some(backup_path) = backup_path.as_ref()
+                && let Err(restore_error) = tokio::fs::rename(backup_path, plugin_path).await
+            {
+                return Err(anyhow!(
+                    "failed to replace extension {}: {error}; failed to restore the previous file: {restore_error}",
+                    plugin_path.display()
+                ));
+            }
+            return Err(error.into());
+        }
+
+        Ok(PluginFileReplacement { backup_path })
+    }
+
+    async fn rollback_plugin_file(
+        &self,
+        plugin_path: &Path,
+        replacement: PluginFileReplacement,
+    ) -> Result<()> {
         match tokio::fs::remove_file(plugin_path).await {
             Ok(()) => {}
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
             Err(error) => return Err(error.into()),
         }
 
-        tokio::fs::rename(temporary_path, plugin_path).await?;
+        if let Some(backup_path) = replacement.backup_path {
+            tokio::fs::rename(backup_path, plugin_path).await?;
+        }
         Ok(())
     }
 
@@ -234,21 +276,50 @@ impl ExtensionManager {
         let temporary_path = self.unique_managed_path(&plugin_path, INSTALL_TEMP_PREFIX)?;
 
         if let Err(error) = tokio::fs::write(&temporary_path, contents).await {
-            Self::cleanup_staged_library(&temporary_path);
+            Self::cleanup_managed_file(&temporary_path);
             return Err(error.into());
         }
         let lifecycle_lock = self.lifecycle_lock(&plugin_name)?;
         let _lifecycle_guard = lifecycle_lock.lock_owned().await;
-        if let Err(error) = self
+
+        let source = match self.load_library_from_path(&temporary_path, plugin_path.clone()) {
+            Ok(source) => source,
+            Err(error) => {
+                Self::cleanup_managed_file(&temporary_path);
+                return Err(error);
+            }
+        };
+        let entry = match source.into_entry() {
+            Ok(entry) => Arc::new(entry),
+            Err(error) => {
+                Self::cleanup_managed_file(&temporary_path);
+                return Err(error);
+            }
+        };
+        let replacement = match self
             .replace_plugin_file(&temporary_path, &plugin_path)
             .await
         {
-            Self::cleanup_staged_library(&temporary_path);
+            Ok(replacement) => replacement,
+            Err(error) => {
+                Self::cleanup_managed_file(&temporary_path);
+                return Err(error);
+            }
+        };
+
+        if let Err(error) = self.insert_entry(entry) {
+            if let Err(rollback_error) = self.rollback_plugin_file(&plugin_path, replacement).await
+            {
+                return Err(anyhow!(
+                    "failed to register extension: {error}; failed to restore the previous file: {rollback_error}"
+                ));
+            }
             return Err(error);
         }
 
-        let source = self.load_library(&plugin_name)?;
-        self.insert(source).await?;
+        if let Some(backup_path) = replacement.backup_path {
+            Self::cleanup_managed_file(&backup_path);
+        }
 
         info!("installed extension {name}");
 
@@ -257,7 +328,11 @@ impl ExtensionManager {
 
     fn load_library(&self, name: &str) -> Result<Source> {
         let plugin_path = self.dir.join(name).with_extension(PLUGIN_EXTENSION);
-        let staged_path = self.stage_library(&plugin_path)?;
+        self.load_library_from_path(&plugin_path, plugin_path.clone())
+    }
+
+    fn load_library_from_path(&self, source_path: &Path, plugin_path: PathBuf) -> Result<Source> {
+        let staged_path = self.stage_library(source_path)?;
         info!(
             "load {:?} from {:?}",
             staged_path.display(),
@@ -309,7 +384,7 @@ impl ExtensionManager {
         })();
 
         if result.is_err() {
-            Self::cleanup_staged_library(&staged_path);
+            Self::cleanup_managed_file(&staged_path);
         }
         result
     }
@@ -344,7 +419,10 @@ impl ExtensionManager {
     }
 
     pub async fn insert(&self, source: Source) -> Result<()> {
-        let entry = Arc::new(source.into_entry()?);
+        self.insert_entry(Arc::new(source.into_entry()?))
+    }
+
+    fn insert_entry(&self, entry: Arc<SourceEntry>) -> Result<()> {
         let source_id = entry.source_id;
         let replaced = {
             let mut sources = self.write()?;
