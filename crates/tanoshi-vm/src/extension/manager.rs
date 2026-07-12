@@ -39,6 +39,15 @@ fn normalize_plugin_name(name: &str) -> String {
     name.strip_suffix(&extension).unwrap_or(name).to_lowercase()
 }
 
+fn entry_plugin_name(entry: &SourceEntry) -> String {
+    entry
+        .plugin_path()
+        .and_then(|path| path.file_name())
+        .and_then(|name| name.to_str())
+        .map(normalize_plugin_name)
+        .unwrap_or_else(|| normalize_plugin_name(entry.source_name()))
+}
+
 fn cleanup_managed_libraries(dir: &Path) {
     let current_process_marker = format!("-{}-", std::process::id());
     let entries = match std::fs::read_dir(dir) {
@@ -415,11 +424,14 @@ impl ExtensionManager {
                 .ok_or_else(|| anyhow!("not initiated"))?
                 .set_preferences(preferences)?;
         }
-        self.insert(source).await
+        self.insert_entry(Arc::new(source.into_entry()?))
     }
 
     pub async fn insert(&self, source: Source) -> Result<()> {
-        self.insert_entry(Arc::new(source.into_entry()?))
+        let entry = Arc::new(source.into_entry()?);
+        let lifecycle_lock = self.lifecycle_lock(&entry_plugin_name(&entry))?;
+        let _lifecycle_guard = lifecycle_lock.lock_owned().await;
+        self.insert_entry(entry)
     }
 
     fn insert_entry(&self, entry: Arc<SourceEntry>) -> Result<()> {
@@ -433,24 +445,24 @@ impl ExtensionManager {
     }
 
     pub async fn unload(&self, source_id: i64) -> Result<()> {
-        let entry = self.entry(source_id).ok();
-        let Some(entry) = entry else {
-            return Ok(());
-        };
-        let plugin_name = entry
-            .plugin_path()
-            .and_then(|path| path.file_name())
-            .and_then(|name| name.to_str())
-            .map(normalize_plugin_name)
-            .unwrap_or_else(|| normalize_plugin_name(entry.source_name()));
-        let lifecycle_lock = self.lifecycle_lock(&plugin_name)?;
-        let _lifecycle_guard = lifecycle_lock.lock_owned().await;
-        let entry = {
+        loop {
+            let entry = match self.read()?.get(&source_id).cloned() {
+                Some(entry) => entry,
+                None => return Ok(()),
+            };
+            let plugin_name = entry_plugin_name(&entry);
+            let lifecycle_lock = self.lifecycle_lock(&plugin_name)?;
+            let _lifecycle_guard = lifecycle_lock.lock_owned().await;
             let mut sources = self.write()?;
-            sources.remove(&source_id)
-        };
-        if let Some(entry) = entry {
-            if let Some(plugin_path) = entry.plugin_path()
+            let Some(entry) = sources.get(&source_id).cloned() else {
+                return Ok(());
+            };
+            if entry_plugin_name(&entry) != plugin_name {
+                continue;
+            }
+
+            let plugin_path = entry.plugin_path().map(Path::to_path_buf);
+            if let Some(plugin_path) = plugin_path.as_deref()
                 && let Err(error) = std::fs::remove_file(plugin_path)
                 && error.kind() != std::io::ErrorKind::NotFound
             {
@@ -460,12 +472,14 @@ impl ExtensionManager {
                 ));
             }
 
+            sources.remove(&source_id);
+            drop(sources);
             info!(
                 "uninstalled extension {source_id} ({})",
                 entry.source_name()
             );
+            return Ok(());
         }
-        Ok(())
     }
 
     pub async fn remove(&self, source_id: i64) -> Result<()> {
