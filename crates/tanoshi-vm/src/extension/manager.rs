@@ -262,10 +262,10 @@ impl ExtensionManager {
 
     pub async fn list(&self) -> Result<Vec<SourceInfo>> {
         let entries = self.read()?.values().cloned().collect::<Vec<_>>();
-        entries
+        Ok(entries
             .into_iter()
-            .map(|entry| entry.source_info())
-            .collect()
+            .map(|entry| entry.source_info.clone())
+            .collect())
     }
 
     pub async fn install(&self, repo_url: &str, name: &str) -> Result<()> {
@@ -499,7 +499,7 @@ impl ExtensionManager {
     pub fn get_source_info(&self, source_id: i64) -> Result<SourceInfo> {
         let entry = self.read()?.get(&source_id).cloned();
         if let Some(entry) = entry {
-            entry.source_info()
+            Ok(entry.source_info.clone())
         } else {
             println!("Returning dummy source info");
             Ok(dummy_source_info(source_id))
