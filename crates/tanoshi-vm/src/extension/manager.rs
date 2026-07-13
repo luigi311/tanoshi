@@ -27,6 +27,7 @@ const DEFAULT_MAX_CONCURRENT_CALLS: usize = 8;
 const DEFAULT_ADMISSION_TIMEOUT: Duration = Duration::from_secs(1);
 const DEFAULT_METADATA_TIMEOUT: Duration = Duration::from_secs(30);
 const DEFAULT_IMAGE_TIMEOUT: Duration = Duration::from_secs(120);
+const MIN_EXTENSION_TIMEOUT: Duration = Duration::from_millis(1);
 
 fn is_managed_library_name(name: &str) -> bool {
     name.starts_with(STAGED_LIBRARY_PREFIX)
@@ -153,6 +154,27 @@ impl ExtensionManager {
                 tokio::sync::Semaphore::MAX_PERMITS,
                 tokio::sync::Semaphore::MAX_PERMITS
             );
+        }
+        if options.admission_timeout.is_zero() {
+            warn!(
+                "configured extension admission timeout is zero; using {:?} instead",
+                MIN_EXTENSION_TIMEOUT
+            );
+            options.admission_timeout = MIN_EXTENSION_TIMEOUT;
+        }
+        if options.metadata_timeout.is_zero() {
+            warn!(
+                "configured extension metadata timeout is zero; using {:?} instead",
+                MIN_EXTENSION_TIMEOUT
+            );
+            options.metadata_timeout = MIN_EXTENSION_TIMEOUT;
+        }
+        if options.image_timeout.is_zero() {
+            warn!(
+                "configured extension image timeout is zero; using {:?} instead",
+                MIN_EXTENSION_TIMEOUT
+            );
+            options.image_timeout = MIN_EXTENSION_TIMEOUT;
         }
         let dir = PathBuf::new().join(extension_dir);
         cleanup_managed_libraries(&dir);
