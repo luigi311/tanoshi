@@ -128,6 +128,7 @@ impl Source {
     }
 
     pub(crate) fn into_entry(self, max_concurrent_calls: usize) -> Result<SourceEntry> {
+        let max_concurrent_calls = max_concurrent_calls.max(1);
         let source_info = self
             .extension
             .get()
