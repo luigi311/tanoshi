@@ -4,7 +4,7 @@ use std::{
         Arc, Mutex as StdMutex, RwLock, RwLockReadGuard, RwLockWriteGuard,
         atomic::{AtomicU64, Ordering},
     },
-    time::{SystemTime, UNIX_EPOCH},
+    time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
 use anyhow::{Result, anyhow, bail};
@@ -12,7 +12,7 @@ use bytes::Bytes;
 use fnv::FnvHashMap;
 use libloading::Library;
 use tanoshi_lib::prelude::{Input, Lang, PluginDeclaration, SourceInfo};
-use tokio::sync::Mutex as AsyncMutex;
+use tokio::sync::{Mutex as AsyncMutex, OwnedSemaphorePermit};
 
 use crate::{
     PLUGIN_EXTENSION,
@@ -23,6 +23,11 @@ const STAGED_LIBRARY_PREFIX: &str = ".tanoshi-staged-";
 const INSTALL_TEMP_PREFIX: &str = ".tanoshi-install-";
 const INSTALL_BACKUP_PREFIX: &str = ".tanoshi-backup-";
 static UNIQUE_PATH_COUNTER: AtomicU64 = AtomicU64::new(0);
+pub const DEFAULT_MAX_CONCURRENT_CALLS: usize = 8;
+pub const DEFAULT_ADMISSION_TIMEOUT: Duration = Duration::from_secs(1);
+pub const DEFAULT_METADATA_TIMEOUT: Duration = Duration::from_secs(30);
+pub const DEFAULT_IMAGE_TIMEOUT: Duration = Duration::from_secs(120);
+const MIN_EXTENSION_TIMEOUT: Duration = Duration::from_millis(1);
 
 fn is_managed_library_name(name: &str) -> bool {
     name.starts_with(STAGED_LIBRARY_PREFIX)
@@ -89,11 +94,31 @@ struct PluginFileReplacement {
     backup_path: Option<PathBuf>,
 }
 
+#[derive(Clone, Copy, Debug)]
+pub struct ExtensionManagerOptions {
+    pub max_concurrent_calls: usize,
+    pub admission_timeout: Duration,
+    pub metadata_timeout: Duration,
+    pub image_timeout: Duration,
+}
+
+impl Default for ExtensionManagerOptions {
+    fn default() -> Self {
+        Self {
+            max_concurrent_calls: DEFAULT_MAX_CONCURRENT_CALLS,
+            admission_timeout: DEFAULT_ADMISSION_TIMEOUT,
+            metadata_timeout: DEFAULT_METADATA_TIMEOUT,
+            image_timeout: DEFAULT_IMAGE_TIMEOUT,
+        }
+    }
+}
+
 #[derive(Clone)]
 pub struct ExtensionManager {
     dir: PathBuf,
     extensions: Arc<RwLock<FnvHashMap<i64, Arc<SourceEntry>>>>,
     lifecycle_locks: Arc<StdMutex<FnvHashMap<String, Arc<AsyncMutex<()>>>>>,
+    options: ExtensionManagerOptions,
 }
 
 pub fn dummy_source_info(id: i64) -> SourceInfo {
@@ -110,12 +135,54 @@ pub fn dummy_source_info(id: i64) -> SourceInfo {
 
 impl ExtensionManager {
     pub fn new<P: AsRef<Path>>(extension_dir: P) -> Self {
+        Self::new_with_options(extension_dir, ExtensionManagerOptions::default())
+    }
+
+    pub fn new_with_options<P: AsRef<Path>>(
+        extension_dir: P,
+        mut options: ExtensionManagerOptions,
+    ) -> Self {
+        let configured_max_concurrent_calls = options.max_concurrent_calls;
+        options.max_concurrent_calls =
+            configured_max_concurrent_calls.clamp(1, tokio::sync::Semaphore::MAX_PERMITS);
+        if configured_max_concurrent_calls == 0 {
+            warn!("configured extension concurrency is zero; using one call per source instead");
+        } else if configured_max_concurrent_calls > tokio::sync::Semaphore::MAX_PERMITS {
+            warn!(
+                "configured extension concurrency {} exceeds Tokio's maximum {}; using {} instead",
+                configured_max_concurrent_calls,
+                tokio::sync::Semaphore::MAX_PERMITS,
+                tokio::sync::Semaphore::MAX_PERMITS
+            );
+        }
+        if options.admission_timeout.is_zero() {
+            warn!(
+                "configured extension admission timeout is zero; using {:?} instead",
+                MIN_EXTENSION_TIMEOUT
+            );
+            options.admission_timeout = MIN_EXTENSION_TIMEOUT;
+        }
+        if options.metadata_timeout.is_zero() {
+            warn!(
+                "configured extension metadata timeout is zero; using {:?} instead",
+                MIN_EXTENSION_TIMEOUT
+            );
+            options.metadata_timeout = MIN_EXTENSION_TIMEOUT;
+        }
+        if options.image_timeout.is_zero() {
+            warn!(
+                "configured extension image timeout is zero; using {:?} instead",
+                MIN_EXTENSION_TIMEOUT
+            );
+            options.image_timeout = MIN_EXTENSION_TIMEOUT;
+        }
         let dir = PathBuf::new().join(extension_dir);
         cleanup_managed_libraries(&dir);
         Self {
             dir,
             extensions: Arc::new(RwLock::new(FnvHashMap::default())),
             lifecycle_locks: Arc::new(StdMutex::new(FnvHashMap::default())),
+            options,
         }
     }
 
@@ -233,13 +300,120 @@ impl ExtensionManager {
             .ok_or_else(|| anyhow!("no such source"))
     }
 
-    async fn call_blocking<T, F>(&self, source_id: i64, call: F) -> Result<T>
+    async fn acquire_permit(
+        &self,
+        entry: &Arc<SourceEntry>,
+        operation: &'static str,
+    ) -> Result<OwnedSemaphorePermit> {
+        let source_id = entry.source_id;
+        let source_name = entry.source_name().to_owned();
+        match tokio::time::timeout(
+            self.options.admission_timeout,
+            entry.limiter.clone().acquire_owned(),
+        )
+        .await
+        {
+            Ok(Ok(permit)) => Ok(permit),
+            Ok(Err(error)) => {
+                error!(
+                    "EXTENSION ADMISSION ERROR: source_id={source_id} source={source_name:?} operation={operation} limiter unavailable: {error}"
+                );
+                bail!(
+                    "[extension-admission] source {source_id} ({source_name}) cannot accept {operation}: {error}"
+                );
+            }
+            Err(_) => {
+                error!(
+                    "EXTENSION SATURATION: source_id={source_id} source={source_name:?} operation={operation} exceeded the {}-call limit; request rejected after {:?}",
+                    self.options.max_concurrent_calls, self.options.admission_timeout
+                );
+                bail!(
+                    "[extension-saturated] source {source_id} ({source_name}) is busy; {operation} admission timed out after {:?}",
+                    self.options.admission_timeout
+                );
+            }
+        }
+    }
+
+    async fn call_blocking<T, F>(
+        &self,
+        source_id: i64,
+        operation: &'static str,
+        timeout: Duration,
+        call: F,
+    ) -> Result<T>
     where
         T: Send + 'static,
         F: FnOnce(&dyn tanoshi_lib::prelude::Extension) -> Result<T> + Send + 'static,
     {
         let entry = self.entry(source_id)?;
-        tokio::task::spawn_blocking(move || entry.with_extension(call)).await?
+        self.call_blocking_entry(entry, operation, timeout, call)
+            .await
+    }
+
+    async fn call_blocking_entry<T, F>(
+        &self,
+        entry: Arc<SourceEntry>,
+        operation: &'static str,
+        timeout: Duration,
+        call: F,
+    ) -> Result<T>
+    where
+        T: Send + 'static,
+        F: FnOnce(&dyn tanoshi_lib::prelude::Extension) -> Result<T> + Send + 'static,
+    {
+        self.call_blocking_with(entry, operation, timeout, move |entry| {
+            entry.with_extension(call)
+        })
+        .await
+    }
+
+    async fn call_blocking_mut_entry<T, F>(
+        &self,
+        entry: Arc<SourceEntry>,
+        operation: &'static str,
+        timeout: Duration,
+        call: F,
+    ) -> Result<T>
+    where
+        T: Send + 'static,
+        F: FnOnce(&mut dyn tanoshi_lib::prelude::Extension) -> Result<T> + Send + 'static,
+    {
+        self.call_blocking_with(entry, operation, timeout, move |entry| {
+            entry.with_extension_mut(call)
+        })
+        .await
+    }
+
+    async fn call_blocking_with<T, F>(
+        &self,
+        entry: Arc<SourceEntry>,
+        operation: &'static str,
+        timeout: Duration,
+        invoke: F,
+    ) -> Result<T>
+    where
+        T: Send + 'static,
+        F: FnOnce(&SourceEntry) -> Result<T> + Send + 'static,
+    {
+        let permit = self.acquire_permit(&entry, operation).await?;
+        let source_id = entry.source_id;
+        let source_name = entry.source_name().to_owned();
+        let task = tokio::task::spawn_blocking(move || {
+            let _permit = permit;
+            invoke(&entry)
+        });
+        match tokio::time::timeout(timeout, task).await {
+            Ok(result) => result?,
+            Err(_) => {
+                error!(
+                    "EXTENSION TIMEOUT: source_id={source_id} source={source_name:?} operation={operation} exceeded {timeout:?}; native call may still be running and its permit remains held"
+                );
+                bail!(
+                    "[extension-timeout] source {source_id} ({source_name}) {operation} exceeded {timeout:?}; native call may still be running"
+                );
+            }
+        }
     }
 
     pub async fn load_all(&self) -> Result<()> {
@@ -298,7 +472,7 @@ impl ExtensionManager {
                 return Err(error);
             }
         };
-        let entry = match source.into_entry() {
+        let entry = match source.into_entry(self.options.max_concurrent_calls) {
             Ok(entry) => Arc::new(entry),
             Err(error) => {
                 Self::cleanup_managed_file(&temporary_path);
@@ -402,14 +576,11 @@ impl ExtensionManager {
         let plugin_name = normalize_plugin_name(name);
         let lifecycle_lock = self.lifecycle_lock(&plugin_name)?;
         let _lifecycle_guard = lifecycle_lock.lock_owned().await;
-        let mut source = self.load_library(&plugin_name)?;
-        let source_name = source
-            .extension
-            .get()
-            .ok_or_else(|| anyhow!("not initiated"))?
-            .get_source_info()
-            .name
-            .to_lowercase();
+        let entry = Arc::new(
+            self.load_library(&plugin_name)?
+                .into_entry(self.options.max_concurrent_calls)?,
+        );
+        let source_name = entry.source_info.name.to_lowercase();
 
         if let Some(preferences) =
             tokio::fs::read_to_string(self.dir.join(&source_name).with_extension("json"))
@@ -418,17 +589,19 @@ impl ExtensionManager {
                 .and_then(|s| serde_json::from_str(&s).ok())
         {
             info!("set preferences for {}", source_name);
-            source
-                .extension
-                .get_mut()
-                .ok_or_else(|| anyhow!("not initiated"))?
-                .set_preferences(preferences)?;
+            self.call_blocking_mut_entry(
+                entry.clone(),
+                "load_preferences",
+                self.options.metadata_timeout,
+                move |extension| extension.set_preferences(preferences),
+            )
+            .await?;
         }
-        self.insert_entry(Arc::new(source.into_entry()?))
+        self.insert_entry(entry)
     }
 
     pub async fn insert(&self, source: Source) -> Result<()> {
-        let entry = Arc::new(source.into_entry()?);
+        let entry = Arc::new(source.into_entry(self.options.max_concurrent_calls)?);
         let lifecycle_lock = self.lifecycle_lock(&entry_plugin_name(&entry))?;
         let _lifecycle_guard = lifecycle_lock.lock_owned().await;
         self.insert_entry(entry)
@@ -506,25 +679,42 @@ impl ExtensionManager {
         }
     }
 
-    pub fn filter_list(&self, source_id: i64) -> Result<Vec<Input>> {
+    pub async fn filter_list(&self, source_id: i64) -> Result<Vec<Input>> {
         let entry = self.entry(source_id)?;
-        entry.with_extension(|extension| Ok(extension.filter_list()))
+        self.call_blocking_entry(
+            entry,
+            "filter_list",
+            self.options.metadata_timeout,
+            |extension| Ok(extension.filter_list()),
+        )
+        .await
     }
 
-    pub fn get_preferences(&self, source_id: i64) -> Result<Vec<Input>> {
+    pub async fn get_preferences(&self, source_id: i64) -> Result<Vec<Input>> {
         let entry = self.entry(source_id)?;
-        entry.with_extension(|extension| extension.get_preferences())
+        self.call_blocking_entry(
+            entry,
+            "get_preferences",
+            self.options.metadata_timeout,
+            |extension| extension.get_preferences(),
+        )
+        .await
     }
 
     pub async fn set_preferences(&self, source_id: i64, preferences: Vec<Input>) -> Result<()> {
         let entry = self.entry(source_id)?;
-        entry.with_extension_mut(|extension| extension.set_preferences(preferences.clone()))?;
+        let source_name = entry.source_info.name.to_lowercase();
+        let extension_preferences = preferences.clone();
+        self.call_blocking_mut_entry(
+            entry,
+            "set_preferences",
+            self.options.metadata_timeout,
+            move |extension| extension.set_preferences(extension_preferences),
+        )
+        .await?;
 
-        let source_info = entry.source_info()?;
         tokio::fs::write(
-            self.dir
-                .join(source_info.name.to_lowercase())
-                .with_extension("json"),
+            self.dir.join(source_name).with_extension("json"),
             serde_json::to_string_pretty(&preferences)?,
         )
         .await?;
@@ -537,9 +727,12 @@ impl ExtensionManager {
         source_id: i64,
         page: i64,
     ) -> Result<Vec<tanoshi_lib::prelude::MangaInfo>> {
-        self.call_blocking(source_id, move |extension| {
-            extension.get_popular_manga(page)
-        })
+        self.call_blocking(
+            source_id,
+            "get_popular_manga",
+            self.options.metadata_timeout,
+            move |extension| extension.get_popular_manga(page),
+        )
         .await
     }
 
@@ -548,8 +741,13 @@ impl ExtensionManager {
         source_id: i64,
         page: i64,
     ) -> Result<Vec<tanoshi_lib::prelude::MangaInfo>> {
-        self.call_blocking(source_id, move |extension| extension.get_latest_manga(page))
-            .await
+        self.call_blocking(
+            source_id,
+            "get_latest_manga",
+            self.options.metadata_timeout,
+            move |extension| extension.get_latest_manga(page),
+        )
+        .await
     }
 
     pub async fn search_manga(
@@ -559,9 +757,12 @@ impl ExtensionManager {
         query: Option<String>,
         filters: Option<Vec<Input>>,
     ) -> Result<Vec<tanoshi_lib::prelude::MangaInfo>> {
-        self.call_blocking(source_id, move |extension| {
-            extension.search_manga(page, query, filters)
-        })
+        self.call_blocking(
+            source_id,
+            "search_manga",
+            self.options.metadata_timeout,
+            move |extension| extension.search_manga(page, query, filters),
+        )
         .await
     }
 
@@ -570,8 +771,13 @@ impl ExtensionManager {
         source_id: i64,
         path: String,
     ) -> Result<tanoshi_lib::prelude::MangaInfo> {
-        self.call_blocking(source_id, move |extension| extension.get_manga_detail(path))
-            .await
+        self.call_blocking(
+            source_id,
+            "get_manga_detail",
+            self.options.metadata_timeout,
+            move |extension| extension.get_manga_detail(path),
+        )
+        .await
     }
 
     pub async fn get_chapters(
@@ -579,17 +785,32 @@ impl ExtensionManager {
         source_id: i64,
         path: String,
     ) -> Result<Vec<tanoshi_lib::prelude::ChapterInfo>> {
-        self.call_blocking(source_id, move |extension| extension.get_chapters(path))
-            .await
+        self.call_blocking(
+            source_id,
+            "get_chapters",
+            self.options.metadata_timeout,
+            move |extension| extension.get_chapters(path),
+        )
+        .await
     }
 
     pub async fn get_pages(&self, source_id: i64, path: String) -> Result<Vec<String>> {
-        self.call_blocking(source_id, move |extension| extension.get_pages(path))
-            .await
+        self.call_blocking(
+            source_id,
+            "get_pages",
+            self.options.metadata_timeout,
+            move |extension| extension.get_pages(path),
+        )
+        .await
     }
 
     pub async fn get_image_bytes(&self, source_id: i64, url: String) -> Result<Bytes> {
-        self.call_blocking(source_id, move |extension| extension.get_image_bytes(url))
-            .await
+        self.call_blocking(
+            source_id,
+            "get_image_bytes",
+            self.options.image_timeout,
+            move |extension| extension.get_image_bytes(url),
+        )
+        .await
     }
 }
