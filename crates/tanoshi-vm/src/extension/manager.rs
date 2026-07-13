@@ -362,24 +362,10 @@ impl ExtensionManager {
         T: Send + 'static,
         F: FnOnce(&dyn tanoshi_lib::prelude::Extension) -> Result<T> + Send + 'static,
     {
-        let permit = self.acquire_permit(&entry, operation).await?;
-        let source_id = entry.source_id;
-        let source_name = entry.source_name().to_owned();
-        let task = tokio::task::spawn_blocking(move || {
-            let _permit = permit;
+        self.call_blocking_with(entry, operation, timeout, move |entry| {
             entry.with_extension(call)
-        });
-        match tokio::time::timeout(timeout, task).await {
-            Ok(result) => result?,
-            Err(_) => {
-                error!(
-                    "EXTENSION TIMEOUT: source_id={source_id} source={source_name:?} operation={operation} exceeded {timeout:?}; native call may still be running and its permit remains held"
-                );
-                bail!(
-                    "[extension-timeout] source {source_id} ({source_name}) {operation} exceeded {timeout:?}; native call may still be running"
-                );
-            }
-        }
+        })
+        .await
     }
 
     async fn call_blocking_mut_entry<T, F>(
@@ -393,12 +379,29 @@ impl ExtensionManager {
         T: Send + 'static,
         F: FnOnce(&mut dyn tanoshi_lib::prelude::Extension) -> Result<T> + Send + 'static,
     {
+        self.call_blocking_with(entry, operation, timeout, move |entry| {
+            entry.with_extension_mut(call)
+        })
+        .await
+    }
+
+    async fn call_blocking_with<T, F>(
+        &self,
+        entry: Arc<SourceEntry>,
+        operation: &'static str,
+        timeout: Duration,
+        invoke: F,
+    ) -> Result<T>
+    where
+        T: Send + 'static,
+        F: FnOnce(&SourceEntry) -> Result<T> + Send + 'static,
+    {
         let permit = self.acquire_permit(&entry, operation).await?;
         let source_id = entry.source_id;
         let source_name = entry.source_name().to_owned();
         let task = tokio::task::spawn_blocking(move || {
             let _permit = permit;
-            entry.with_extension_mut(call)
+            invoke(&entry)
         });
         match tokio::time::timeout(timeout, task).await {
             Ok(result) => result?,
