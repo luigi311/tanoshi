@@ -141,9 +141,18 @@ impl ExtensionManager {
         extension_dir: P,
         mut options: ExtensionManagerOptions,
     ) -> Self {
-        if options.max_concurrent_calls == 0 {
+        let configured_max_concurrent_calls = options.max_concurrent_calls;
+        options.max_concurrent_calls =
+            configured_max_concurrent_calls.clamp(1, tokio::sync::Semaphore::MAX_PERMITS);
+        if configured_max_concurrent_calls == 0 {
             warn!("configured extension concurrency is zero; using one call per source instead");
-            options.max_concurrent_calls = 1;
+        } else if configured_max_concurrent_calls > tokio::sync::Semaphore::MAX_PERMITS {
+            warn!(
+                "configured extension concurrency {} exceeds Tokio's maximum {}; using {} instead",
+                configured_max_concurrent_calls,
+                tokio::sync::Semaphore::MAX_PERMITS,
+                tokio::sync::Semaphore::MAX_PERMITS
+            );
         }
         let dir = PathBuf::new().join(extension_dir);
         cleanup_managed_libraries(&dir);
