@@ -64,13 +64,16 @@ impl Source {
     }
 
     async fn filters(&self, ctx: &Context<'_>) -> Result<InputList> {
-        let filters = ctx.data::<ExtensionManager>()?.filter_list(self.id)?;
+        let filters = ctx.data::<ExtensionManager>()?.filter_list(self.id).await?;
 
         Ok(InputList(filters))
     }
 
     async fn preferences(&self, ctx: &Context<'_>) -> Result<InputList> {
-        let preferences = ctx.data::<ExtensionManager>()?.get_preferences(self.id)?;
+        let preferences = ctx
+            .data::<ExtensionManager>()?
+            .get_preferences(self.id)
+            .await?;
 
         Ok(InputList(preferences))
     }

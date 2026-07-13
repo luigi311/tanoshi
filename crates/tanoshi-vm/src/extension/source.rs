@@ -1,12 +1,13 @@
 use std::{
     path::{Path, PathBuf},
-    sync::RwLock,
+    sync::{Arc, RwLock},
 };
 
 use anyhow::{Result, anyhow};
 use libloading::Library;
 use once_cell::sync::OnceCell;
 use tanoshi_lib::prelude::{Extension, SourceInfo};
+use tokio::sync::Semaphore;
 
 pub(crate) struct LoadedLibrary {
     library: Option<Library>,
@@ -46,6 +47,7 @@ pub struct SourceEntry {
     // Keep the extension before the library. Struct fields are dropped in
     // declaration order, so the extension is destroyed before its library.
     pub(crate) extension: RwLock<Box<dyn Extension>>,
+    pub(crate) limiter: Arc<Semaphore>,
     #[allow(dead_code)]
     pub(crate) library: Option<LoadedLibrary>,
     pub(crate) plugin_path: Option<PathBuf>,
@@ -73,10 +75,6 @@ impl SourceEntry {
             anyhow!("source {} write lock is poisoned: {error}", self.source_id)
         })?;
         call(extension.as_mut())
-    }
-
-    pub(crate) fn source_info(&self) -> Result<SourceInfo> {
-        self.with_extension(|extension| Ok(extension.get_source_info()))
     }
 
     pub(crate) fn source_name(&self) -> &str {
@@ -129,7 +127,7 @@ impl Source {
         self
     }
 
-    pub(crate) fn into_entry(self) -> Result<SourceEntry> {
+    pub(crate) fn into_entry(self, max_concurrent_calls: usize) -> Result<SourceEntry> {
         let source_info = self
             .extension
             .get()
@@ -151,6 +149,7 @@ impl Source {
             source_id,
             source_info,
             extension: RwLock::new(extension),
+            limiter: Arc::new(Semaphore::new(max_concurrent_calls)),
             library,
             plugin_path,
             rustc_version,
