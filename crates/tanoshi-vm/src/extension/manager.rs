@@ -1,19 +1,99 @@
 use std::{
-    path::{Path, PathBuf}, sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard}
+    path::{Path, PathBuf},
+    sync::{
+        Arc, Mutex as StdMutex, RwLock, RwLockReadGuard, RwLockWriteGuard,
+        atomic::{AtomicU64, Ordering},
+    },
+    time::{SystemTime, UNIX_EPOCH},
 };
 
-use anyhow::{anyhow, bail, Result};
+use anyhow::{Result, anyhow, bail};
 use bytes::Bytes;
 use fnv::FnvHashMap;
 use libloading::Library;
-use tanoshi_lib::prelude::{Input, PluginDeclaration, SourceInfo, Lang};
+use tanoshi_lib::prelude::{Input, Lang, PluginDeclaration, SourceInfo};
+use tokio::sync::Mutex as AsyncMutex;
 
-use crate::{prelude::Source, PLUGIN_EXTENSION};
+use crate::{
+    PLUGIN_EXTENSION,
+    prelude::{Source, SourceEntry},
+};
+
+const STAGED_LIBRARY_PREFIX: &str = ".tanoshi-staged-";
+const INSTALL_TEMP_PREFIX: &str = ".tanoshi-install-";
+const INSTALL_BACKUP_PREFIX: &str = ".tanoshi-backup-";
+static UNIQUE_PATH_COUNTER: AtomicU64 = AtomicU64::new(0);
+
+fn is_managed_library_name(name: &str) -> bool {
+    name.starts_with(STAGED_LIBRARY_PREFIX)
+        || name.starts_with(INSTALL_TEMP_PREFIX)
+        || name.starts_with(INSTALL_BACKUP_PREFIX)
+}
+
+fn normalize_plugin_name(name: &str) -> String {
+    let name = Path::new(name)
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or(name);
+    let extension = format!(".{PLUGIN_EXTENSION}");
+    name.strip_suffix(&extension).unwrap_or(name).to_lowercase()
+}
+
+fn entry_plugin_name(entry: &SourceEntry) -> String {
+    entry
+        .plugin_path()
+        .and_then(|path| path.file_name())
+        .and_then(|name| name.to_str())
+        .map(normalize_plugin_name)
+        .unwrap_or_else(|| normalize_plugin_name(entry.source_name()))
+}
+
+fn cleanup_managed_libraries(dir: &Path) {
+    let current_process_marker = format!("-{}-", std::process::id());
+    let entries = match std::fs::read_dir(dir) {
+        Ok(entries) => entries,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return,
+        Err(error) => {
+            warn!(
+                "failed to scan {} for stale extension files: {error}",
+                dir.display()
+            );
+            return;
+        }
+    };
+
+    for entry in entries.flatten() {
+        let path = entry.path();
+        let Some(name) = path.file_name().and_then(|name| name.to_str()) else {
+            continue;
+        };
+        if !is_managed_library_name(name) {
+            continue;
+        }
+        if name.contains(&current_process_marker) {
+            continue;
+        }
+
+        if let Err(error) = std::fs::remove_file(&path)
+            && error.kind() != std::io::ErrorKind::NotFound
+        {
+            warn!(
+                "failed to remove stale extension file {}: {error}",
+                path.display()
+            );
+        }
+    }
+}
+
+struct PluginFileReplacement {
+    backup_path: Option<PathBuf>,
+}
 
 #[derive(Clone)]
 pub struct ExtensionManager {
     dir: PathBuf,
-    extensions: Arc<RwLock<FnvHashMap<i64, Source>>>,
+    extensions: Arc<RwLock<FnvHashMap<i64, Arc<SourceEntry>>>>,
+    lifecycle_locks: Arc<StdMutex<FnvHashMap<String, Arc<AsyncMutex<()>>>>>,
 }
 
 pub fn dummy_source_info(id: i64) -> SourceInfo {
@@ -30,22 +110,136 @@ pub fn dummy_source_info(id: i64) -> SourceInfo {
 
 impl ExtensionManager {
     pub fn new<P: AsRef<Path>>(extension_dir: P) -> Self {
+        let dir = PathBuf::new().join(extension_dir);
+        cleanup_managed_libraries(&dir);
         Self {
-            dir: PathBuf::new().join(extension_dir),
+            dir,
             extensions: Arc::new(RwLock::new(FnvHashMap::default())),
+            lifecycle_locks: Arc::new(StdMutex::new(FnvHashMap::default())),
         }
     }
 
-    fn read(&self) -> Result<RwLockReadGuard<'_, FnvHashMap<i64, Source>>> {
+    fn lifecycle_lock(&self, name: &str) -> Result<Arc<AsyncMutex<()>>> {
+        let mut locks = self
+            .lifecycle_locks
+            .lock()
+            .map_err(|error| anyhow!("failed to lock plugin lifecycle map: {error}"))?;
+        Ok(locks
+            .entry(normalize_plugin_name(name))
+            .or_insert_with(|| Arc::new(AsyncMutex::new(())))
+            .clone())
+    }
+
+    fn unique_managed_path(&self, source_path: &Path, prefix: &str) -> Result<PathBuf> {
+        let file_name = source_path
+            .file_name()
+            .ok_or_else(|| anyhow!("extension path has no file name"))?
+            .to_string_lossy();
+        let timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|duration| duration.as_nanos())
+            .unwrap_or_default();
+        let counter = UNIQUE_PATH_COUNTER.fetch_add(1, Ordering::Relaxed);
+        let name = format!(
+            "{prefix}{}-{timestamp}-{counter}-{file_name}",
+            std::process::id()
+        );
+        Ok(source_path.parent().unwrap_or(&self.dir).join(name))
+    }
+
+    fn stage_library(&self, plugin_path: &Path) -> Result<PathBuf> {
+        let staged_path = self.unique_managed_path(plugin_path, STAGED_LIBRARY_PREFIX)?;
+        if let Err(error) = std::fs::copy(plugin_path, &staged_path) {
+            let _ = std::fs::remove_file(&staged_path);
+            return Err(error.into());
+        }
+        Ok(staged_path)
+    }
+
+    fn cleanup_managed_file(path: &Path) {
+        if let Err(error) = std::fs::remove_file(path)
+            && error.kind() != std::io::ErrorKind::NotFound
+        {
+            warn!(
+                "failed to remove managed extension file {}: {error}",
+                path.display()
+            );
+        }
+    }
+
+    async fn replace_plugin_file(
+        &self,
+        temporary_path: &Path,
+        plugin_path: &Path,
+    ) -> Result<PluginFileReplacement> {
+        let backup_path = match tokio::fs::metadata(plugin_path).await {
+            Ok(_) => {
+                let backup_path = self.unique_managed_path(plugin_path, INSTALL_BACKUP_PREFIX)?;
+                tokio::fs::rename(plugin_path, &backup_path).await?;
+                Some(backup_path)
+            }
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => None,
+            Err(error) => return Err(error.into()),
+        };
+
+        if let Err(error) = tokio::fs::rename(temporary_path, plugin_path).await {
+            if let Some(backup_path) = backup_path.as_ref()
+                && let Err(restore_error) = tokio::fs::rename(backup_path, plugin_path).await
+            {
+                return Err(anyhow!(
+                    "failed to replace extension {}: {error}; failed to restore the previous file: {restore_error}",
+                    plugin_path.display()
+                ));
+            }
+            return Err(error.into());
+        }
+
+        Ok(PluginFileReplacement { backup_path })
+    }
+
+    async fn rollback_plugin_file(
+        &self,
+        plugin_path: &Path,
+        replacement: PluginFileReplacement,
+    ) -> Result<()> {
+        match tokio::fs::remove_file(plugin_path).await {
+            Ok(()) => {}
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(error) => return Err(error.into()),
+        }
+
+        if let Some(backup_path) = replacement.backup_path {
+            tokio::fs::rename(backup_path, plugin_path).await?;
+        }
+        Ok(())
+    }
+
+    fn read(&self) -> Result<RwLockReadGuard<'_, FnvHashMap<i64, Arc<SourceEntry>>>> {
         self.extensions
             .read()
             .map_err(|e| anyhow!("failed to lock read: {e}"))
     }
 
-    fn write(&self) -> Result<RwLockWriteGuard<'_, FnvHashMap<i64, Source>>> {
+    fn write(&self) -> Result<RwLockWriteGuard<'_, FnvHashMap<i64, Arc<SourceEntry>>>> {
         self.extensions
             .write()
             .map_err(|e| anyhow!("failed to lock write: {e}"))
+    }
+
+    fn entry(&self, source_id: i64) -> Result<Arc<SourceEntry>> {
+        self.read()?
+            .get(&source_id)
+            .cloned()
+            .ok_or_else(|| anyhow!("no such source"))
+    }
+
+    async fn call_blocking<T, F>(&self, source_id: i64, call: F) -> Result<T>
+    where
+        T: Send + 'static,
+        F: FnOnce(&dyn tanoshi_lib::prelude::Extension) -> Result<T> + Send + 'static,
+    {
+        let entry = self.entry(source_id)?;
+        tokio::task::spawn_blocking(move || entry.with_extension(call)).await?
     }
 
     pub async fn load_all(&self) -> Result<()> {
@@ -53,6 +247,7 @@ impl ExtensionManager {
         while let Some(entry) = read_dir.next_entry().await? {
             let name = entry.file_name().to_string_lossy().into_owned();
             if name.ends_with(PLUGIN_EXTENSION)
+                && !is_managed_library_name(&name)
                 && let Err(e) = self.load(&name).await
             {
                 error!("failed to load {name}: {e}");
@@ -66,36 +261,74 @@ impl ExtensionManager {
     }
 
     pub async fn list(&self) -> Result<Vec<SourceInfo>> {
-        Ok(self
-            .read()?
-            .values()
-            .filter_map(|s| s.extension.get().map(|s| s.get_source_info()))
+        let entries = self.read()?.values().cloned().collect::<Vec<_>>();
+        Ok(entries
+            .into_iter()
+            .map(|entry| entry.source_info.clone())
             .collect())
     }
 
     pub async fn install(&self, repo_url: &str, name: &str) -> Result<()> {
+        let plugin_name = normalize_plugin_name(name);
         let source_file_url = format!(
             "{}/{}/{}.{}",
             repo_url,
             env!("TARGET"),
-            name.to_lowercase(),
+            plugin_name,
             PLUGIN_EXTENSION
         );
 
         info!("downloading {source_file_url}");
 
         let contents = reqwest::get(&source_file_url).await?.bytes().await?;
+        let plugin_path = self.dir.join(&plugin_name).with_extension(PLUGIN_EXTENSION);
+        let temporary_path = self.unique_managed_path(&plugin_path, INSTALL_TEMP_PREFIX)?;
 
-        tokio::fs::write(
-            self.dir
-                .join(name.to_lowercase())
-                .with_extension(PLUGIN_EXTENSION),
-            contents,
-        )
-        .await?;
+        if let Err(error) = tokio::fs::write(&temporary_path, contents).await {
+            Self::cleanup_managed_file(&temporary_path);
+            return Err(error.into());
+        }
+        let lifecycle_lock = self.lifecycle_lock(&plugin_name)?;
+        let _lifecycle_guard = lifecycle_lock.lock_owned().await;
 
-        let source = self.load_library(&name.to_lowercase())?;
-        self.insert(source).await?;
+        let source = match self.load_library_from_path(&temporary_path, plugin_path.clone()) {
+            Ok(source) => source,
+            Err(error) => {
+                Self::cleanup_managed_file(&temporary_path);
+                return Err(error);
+            }
+        };
+        let entry = match source.into_entry() {
+            Ok(entry) => Arc::new(entry),
+            Err(error) => {
+                Self::cleanup_managed_file(&temporary_path);
+                return Err(error);
+            }
+        };
+        let replacement = match self
+            .replace_plugin_file(&temporary_path, &plugin_path)
+            .await
+        {
+            Ok(replacement) => replacement,
+            Err(error) => {
+                Self::cleanup_managed_file(&temporary_path);
+                return Err(error);
+            }
+        };
+
+        if let Err(error) = self.insert_entry(entry) {
+            if let Err(rollback_error) = self.rollback_plugin_file(&plugin_path, replacement).await
+            {
+                return Err(anyhow!(
+                    "failed to register extension: {error}; failed to restore the previous file: {rollback_error}"
+                ));
+            }
+            return Err(error);
+        }
+
+        if let Some(backup_path) = replacement.backup_path {
+            Self::cleanup_managed_file(&backup_path);
+        }
 
         info!("installed extension {name}");
 
@@ -103,55 +336,73 @@ impl ExtensionManager {
     }
 
     fn load_library(&self, name: &str) -> Result<Source> {
-        let library_path = PathBuf::new()
-            .join(&self.dir)
-            .join(name)
-            .with_extension(PLUGIN_EXTENSION);
-        info!("load {:?}", library_path.display());
+        let plugin_path = self.dir.join(name).with_extension(PLUGIN_EXTENSION);
+        self.load_library_from_path(&plugin_path, plugin_path.clone())
+    }
+
+    fn load_library_from_path(&self, source_path: &Path, plugin_path: PathBuf) -> Result<Source> {
+        let staged_path = self.stage_library(source_path)?;
+        info!(
+            "load {:?} from {:?}",
+            staged_path.display(),
+            plugin_path.display()
+        );
 
         #[cfg(target_os = "macos")]
-        if let Err(e) = std::process::Command::new("install_name_tool")
-            .current_dir(library_path.parent().unwrap())
+        if let Err(error) = std::process::Command::new("install_name_tool")
+            .current_dir(staged_path.parent().unwrap())
             .arg("-id")
             .arg("''")
-            .arg(library_path.file_name().unwrap())
+            .arg(staged_path.file_name().unwrap())
             .output()
         {
-            error!("failed to run install_name_tool: {e}");
+            error!("failed to run install_name_tool: {error}");
         }
 
-        unsafe {
-            let library = Library::new(&library_path)?;
+        let result = (|| -> Result<Source> {
+            unsafe {
+                let library = Library::new(&staged_path)?;
 
-            let decl = library
-                .get::<*mut PluginDeclaration>(b"plugin_declaration\0")?
-                .read();
+                let decl = library
+                    .get::<*mut PluginDeclaration>(b"plugin_declaration\0")?
+                    .read();
 
-            if decl.rustc_version != tanoshi_lib::RUSTC_VERSION {
-                bail!(
-                    "Version mismatch: extension.rustc_version={} != tanoshi_lib.rustc_version={}",
-                    decl.rustc_version,
-                    tanoshi_lib::RUSTC_VERSION,
-                );
+                if decl.rustc_version != tanoshi_lib::RUSTC_VERSION {
+                    bail!(
+                        "Version mismatch: extension.rustc_version={} != tanoshi_lib.rustc_version={}",
+                        decl.rustc_version,
+                        tanoshi_lib::RUSTC_VERSION,
+                    );
+                }
+
+                if decl.core_version != tanoshi_lib::LIB_VERSION {
+                    bail!(
+                        "Version mismatch: extension.lib_version={} != tanoshi_lib.lib_version={}",
+                        decl.core_version,
+                        tanoshi_lib::LIB_VERSION
+                    );
+                }
+
+                let mut registrar = Source::new(library, decl.rustc_version, decl.core_version)
+                    .with_loaded_library_path(staged_path.clone())
+                    .with_plugin_path(plugin_path);
+                (decl.register)(&mut registrar);
+
+                Ok(registrar)
             }
+        })();
 
-            if decl.core_version != tanoshi_lib::LIB_VERSION {
-                bail!(
-                    "Version mismatch: extension.lib_version={} != tanoshi_lib::lib_version={}",
-                    decl.core_version,
-                    tanoshi_lib::LIB_VERSION
-                );
-            }
-
-            let mut registrar = Source::new(library, decl.rustc_version, decl.core_version);
-            (decl.register)(&mut registrar);
-
-            Ok(registrar)
+        if result.is_err() {
+            Self::cleanup_managed_file(&staged_path);
         }
+        result
     }
 
     pub async fn load(&self, name: &str) -> Result<()> {
-        let mut source = self.load_library(name)?;
+        let plugin_name = normalize_plugin_name(name);
+        let lifecycle_lock = self.lifecycle_lock(&plugin_name)?;
+        let _lifecycle_guard = lifecycle_lock.lock_owned().await;
+        let mut source = self.load_library(&plugin_name)?;
         let source_name = source
             .extension
             .get()
@@ -173,34 +424,62 @@ impl ExtensionManager {
                 .ok_or_else(|| anyhow!("not initiated"))?
                 .set_preferences(preferences)?;
         }
-        self.insert(source).await
+        self.insert_entry(Arc::new(source.into_entry()?))
     }
 
     pub async fn insert(&self, source: Source) -> Result<()> {
-        let info = source
-            .extension
-            .get()
-            .map(|s| s.get_source_info())
-            .ok_or_else(|| anyhow!("error"))?;
-        self.write()?.insert(info.id, source);
+        let entry = Arc::new(source.into_entry()?);
+        let lifecycle_lock = self.lifecycle_lock(&entry_plugin_name(&entry))?;
+        let _lifecycle_guard = lifecycle_lock.lock_owned().await;
+        self.insert_entry(entry)
+    }
+
+    fn insert_entry(&self, entry: Arc<SourceEntry>) -> Result<()> {
+        let source_id = entry.source_id;
+        let replaced = {
+            let mut sources = self.write()?;
+            sources.insert(source_id, entry)
+        };
+        drop(replaced);
         Ok(())
     }
 
     pub async fn unload(&self, source_id: i64) -> Result<()> {
-        if let Some(source) = self
-            .write()?
-            .remove(&source_id)
-            .and_then(|s| s.extension.get().map(|s| s.get_source_info()))
-        {
-            std::fs::remove_file(
-                self.dir
-                    .join(source.name.to_lowercase())
-                    .with_extension(PLUGIN_EXTENSION),
-            )?;
+        loop {
+            let entry = match self.read()?.get(&source_id).cloned() {
+                Some(entry) => entry,
+                None => return Ok(()),
+            };
+            let plugin_name = entry_plugin_name(&entry);
+            let lifecycle_lock = self.lifecycle_lock(&plugin_name)?;
+            let _lifecycle_guard = lifecycle_lock.lock_owned().await;
+            let mut sources = self.write()?;
+            let Some(entry) = sources.get(&source_id).cloned() else {
+                return Ok(());
+            };
+            if entry_plugin_name(&entry) != plugin_name {
+                continue;
+            }
 
-            info!("uninstalled extension {source_id} ({})", source.name);
+            let plugin_path = entry.plugin_path().map(Path::to_path_buf);
+            if let Some(plugin_path) = plugin_path.as_deref()
+                && let Err(error) = std::fs::remove_file(plugin_path)
+                && error.kind() != std::io::ErrorKind::NotFound
+            {
+                return Err(anyhow!(
+                    "failed to remove extension {}: {error}",
+                    plugin_path.display()
+                ));
+            }
+
+            sources.remove(&source_id);
+            drop(sources);
+            info!(
+                "uninstalled extension {source_id} ({})",
+                entry.source_name()
+            );
+            return Ok(());
         }
-        Ok(())
     }
 
     pub async fn remove(&self, source_id: i64) -> Result<()> {
@@ -208,21 +487,19 @@ impl ExtensionManager {
     }
 
     pub fn get_version(&self, source_id: i64) -> Result<(String, String)> {
-        let lock = self.read()?;
-        let source = lock
+        let sources = self.read()?;
+        let source = sources
             .get(&source_id)
             .ok_or_else(|| anyhow!("no such source"))?;
-        Ok((source.rustc_version.clone(), source.lib_version.clone()))
+        let rustc_version = source.rustc_version.clone();
+        let lib_version = source.lib_version.clone();
+        Ok((rustc_version, lib_version))
     }
 
     pub fn get_source_info(&self, source_id: i64) -> Result<SourceInfo> {
-        let  binding = self.read()?;
-        // Do not error if source_entry doesnt work
-        let source_entry: Result<&Source> = binding.get(&source_id).ok_or_else(|| anyhow!("no such source"));
-
-        if let Some(entry) = source_entry.ok().and_then(|s| s.extension.get()) {
-            let extension =  entry.get_source_info();
-            Ok(extension)
+        let entry = self.read()?.get(&source_id).cloned();
+        if let Some(entry) = entry {
+            Ok(entry.source_info.clone())
         } else {
             println!("Returning dummy source info");
             Ok(dummy_source_info(source_id))
@@ -230,36 +507,20 @@ impl ExtensionManager {
     }
 
     pub fn filter_list(&self, source_id: i64) -> Result<Vec<Input>> {
-        Ok(self
-            .read()?
-            .get(&source_id)
-            .ok_or_else(|| anyhow!("no such source"))?
-            .extension
-            .get()
-            .ok_or_else(|| anyhow!("uninitiated"))?
-            .filter_list())
+        let entry = self.entry(source_id)?;
+        entry.with_extension(|extension| Ok(extension.filter_list()))
     }
 
     pub fn get_preferences(&self, source_id: i64) -> Result<Vec<Input>> {
-        self.read()?
-            .get(&source_id)
-            .ok_or_else(|| anyhow!("no such source"))?
-            .extension
-            .get()
-            .ok_or_else(|| anyhow!("uninitiated"))?
-            .get_preferences()
+        let entry = self.entry(source_id)?;
+        entry.with_extension(|extension| extension.get_preferences())
     }
 
     pub async fn set_preferences(&self, source_id: i64, preferences: Vec<Input>) -> Result<()> {
-        self.write()?
-            .get_mut(&source_id)
-            .ok_or_else(|| anyhow!("no such source"))?
-            .extension
-            .get_mut()
-            .ok_or_else(|| anyhow!("uninitiated"))?
-            .set_preferences(preferences.clone())?;
+        let entry = self.entry(source_id)?;
+        entry.with_extension_mut(|extension| extension.set_preferences(preferences.clone()))?;
 
-        let source_info = self.get_source_info(source_id)?;
+        let source_info = entry.source_info()?;
         tokio::fs::write(
             self.dir
                 .join(source_info.name.to_lowercase())
@@ -276,19 +537,10 @@ impl ExtensionManager {
         source_id: i64,
         page: i64,
     ) -> Result<Vec<tanoshi_lib::prelude::MangaInfo>> {
-        let extensions = self.extensions.clone();
-        tokio::task::spawn_blocking(move || {
-            extensions
-                .read()
-                .map_err(|e| anyhow!("failed to lock read: {e}"))?
-                .get(&source_id)
-                .ok_or_else(|| anyhow!("no such source"))?
-                .extension
-                .get()
-                .ok_or_else(|| anyhow!("uninitiated"))?
-                .get_popular_manga(page)
+        self.call_blocking(source_id, move |extension| {
+            extension.get_popular_manga(page)
         })
-        .await?
+        .await
     }
 
     pub async fn get_latest_manga(
@@ -296,19 +548,8 @@ impl ExtensionManager {
         source_id: i64,
         page: i64,
     ) -> Result<Vec<tanoshi_lib::prelude::MangaInfo>> {
-        let extensions = self.extensions.clone();
-        tokio::task::spawn_blocking(move || {
-            extensions
-                .read()
-                .map_err(|e| anyhow!("failed to lock read: {e}"))?
-                .get(&source_id)
-                .ok_or_else(|| anyhow!("no such source"))?
-                .extension
-                .get()
-                .ok_or_else(|| anyhow!("uninitiated"))?
-                .get_latest_manga(page)
-        })
-        .await?
+        self.call_blocking(source_id, move |extension| extension.get_latest_manga(page))
+            .await
     }
 
     pub async fn search_manga(
@@ -318,19 +559,10 @@ impl ExtensionManager {
         query: Option<String>,
         filters: Option<Vec<Input>>,
     ) -> Result<Vec<tanoshi_lib::prelude::MangaInfo>> {
-        let extensions = self.extensions.clone();
-        tokio::task::spawn_blocking(move || {
-            extensions
-                .read()
-                .map_err(|e| anyhow!("failed to lock read: {e}"))?
-                .get(&source_id)
-                .ok_or_else(|| anyhow!("no such source"))?
-                .extension
-                .get()
-                .ok_or_else(|| anyhow!("uninitiated"))?
-                .search_manga(page, query, filters)
+        self.call_blocking(source_id, move |extension| {
+            extension.search_manga(page, query, filters)
         })
-        .await?
+        .await
     }
 
     pub async fn get_manga_detail(
@@ -338,19 +570,8 @@ impl ExtensionManager {
         source_id: i64,
         path: String,
     ) -> Result<tanoshi_lib::prelude::MangaInfo> {
-        let extensions = self.extensions.clone();
-        tokio::task::spawn_blocking(move || {
-            extensions
-                .read()
-                .map_err(|e| anyhow!("failed to lock read: {e}"))?
-                .get(&source_id)
-                .ok_or_else(|| anyhow!("no such source"))?
-                .extension
-                .get()
-                .ok_or_else(|| anyhow!("uninitiated"))?
-                .get_manga_detail(path)
-        })
-        .await?
+        self.call_blocking(source_id, move |extension| extension.get_manga_detail(path))
+            .await
     }
 
     pub async fn get_chapters(
@@ -358,54 +579,17 @@ impl ExtensionManager {
         source_id: i64,
         path: String,
     ) -> Result<Vec<tanoshi_lib::prelude::ChapterInfo>> {
-        let extensions = self.extensions.clone();
-        tokio::task::spawn_blocking(move || {
-            extensions
-                .read()
-                .map_err(|e| anyhow!("failed to lock read: {e}"))?
-                .get(&source_id)
-                .ok_or_else(|| anyhow!("no such source"))?
-                .extension
-                .get()
-                .ok_or_else(|| anyhow!("uninitiated"))?
-                .get_chapters(path)
-        })
-        .await?
+        self.call_blocking(source_id, move |extension| extension.get_chapters(path))
+            .await
     }
 
     pub async fn get_pages(&self, source_id: i64, path: String) -> Result<Vec<String>> {
-        let extensions = self.extensions.clone();
-        tokio::task::spawn_blocking(move || {
-            extensions
-                .read()
-                .map_err(|e| anyhow!("failed to lock read: {e}"))?
-                .get(&source_id)
-                .ok_or_else(|| anyhow!("no such source"))?
-                .extension
-                .get()
-                .ok_or_else(|| anyhow!("uninitiated"))?
-                .get_pages(path)
-        })
-        .await?
+        self.call_blocking(source_id, move |extension| extension.get_pages(path))
+            .await
     }
 
-    pub async fn get_image_bytes(
-        &self,
-        source_id: i64,
-        url: String,
-    ) -> Result<Bytes> {
-        let extensions = self.extensions.clone();
-        tokio::task::spawn_blocking(move || {
-            extensions
-                .read()
-                .map_err(|e| anyhow!("failed to lock read: {e}"))?
-                .get(&source_id)
-                .ok_or_else(|| anyhow!("no such source"))?
-                .extension
-                .get()
-                .ok_or_else(|| anyhow!("uninitiated"))?
-                .get_image_bytes(url)
-        })
-        .await?
+    pub async fn get_image_bytes(&self, source_id: i64, url: String) -> Result<Bytes> {
+        self.call_blocking(source_id, move |extension| extension.get_image_bytes(url))
+            .await
     }
 }
