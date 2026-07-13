@@ -19,10 +19,10 @@ async fn main() {
     let source_info = bus.get_source_info(source_id).unwrap();
     println!("{:?}", source_info);
 
-    let prefs = bus.get_preferences(source_id).unwrap();
+    let prefs = bus.get_preferences(source_id).await.unwrap();
     println!("{:?}", prefs);
 
-    let mut filters = bus.filter_list(source_id).unwrap();
+    let mut filters = bus.filter_list(source_id).await.unwrap();
     println!("{:?}", filters);
 
     for filter in filters.iter_mut() {

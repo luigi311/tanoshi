@@ -7,11 +7,15 @@
 use anyhow::Result;
 use futures::future::BoxFuture;
 use futures::FutureExt;
+use std::time::Duration;
 use tokio::task::JoinHandle;
 
 use tanoshi_notifier::{gotify::Gotify, pushover::Pushover, telegram::Telegram};
 use tanoshi_tracker::{AniList, MyAnimeList};
-use tanoshi_vm::{extension::ExtensionManager, prelude::Source};
+use tanoshi_vm::{
+    extension::{ExtensionManager, ExtensionManagerOptions},
+    prelude::Source,
+};
 
 use crate::{
     application::worker,
@@ -56,7 +60,15 @@ pub async fn bootstrap(config: Config) -> Result<App> {
     let user_repo = UserRepositoryImpl::new(pool.clone());
     let user_svc = UserService::new(user_repo.clone());
 
-    let extension_manager = ExtensionManager::new(&config.plugin_path);
+    let extension_manager = ExtensionManager::new_with_options(
+        &config.plugin_path,
+        ExtensionManagerOptions {
+            max_concurrent_calls: config.extension.max_concurrent_calls_per_source,
+            admission_timeout: Duration::from_millis(config.extension.admission_timeout_ms),
+            metadata_timeout: Duration::from_secs(config.extension.metadata_timeout_secs),
+            image_timeout: Duration::from_secs(config.extension.image_timeout_secs),
+        },
+    );
 
     info!("loading extensions from {}", config.plugin_path);
     extension_manager.load_all().await?;

@@ -47,6 +47,29 @@ pub enum LocalFolders {
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct ExtensionConfig {
+    #[serde(default = "default_extension_max_concurrent_calls")]
+    pub max_concurrent_calls_per_source: usize,
+    #[serde(default = "default_extension_admission_timeout_ms")]
+    pub admission_timeout_ms: u64,
+    #[serde(default = "default_extension_metadata_timeout_secs")]
+    pub metadata_timeout_secs: u64,
+    #[serde(default = "default_extension_image_timeout_secs")]
+    pub image_timeout_secs: u64,
+}
+
+impl Default for ExtensionConfig {
+    fn default() -> Self {
+        Self {
+            max_concurrent_calls_per_source: default_extension_max_concurrent_calls(),
+            admission_timeout_ms: default_extension_admission_timeout_ms(),
+            metadata_timeout_secs: default_extension_metadata_timeout_secs(),
+            image_timeout_secs: default_extension_image_timeout_secs(),
+        }
+    }
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct Config {
     #[serde(skip)]
     path: PathBuf,
@@ -68,6 +91,8 @@ pub struct Config {
     pub auto_download_chapters: bool,
     #[serde(default = "default_plugin_path")]
     pub plugin_path: String,
+    #[serde(default)]
+    pub extension: ExtensionConfig,
     #[serde(default = "default_local_folders")]
     pub local_path: LocalFolders,
     #[serde(default = "default_download_path")]
@@ -96,6 +121,7 @@ impl Default for Config {
             update_interval: default_update_interval(),
             auto_download_chapters: false,
             plugin_path: default_plugin_path(),
+            extension: ExtensionConfig::default(),
             local_path: default_local_folders(),
             download_path: default_download_path(),
             cache_path: default_cache_path(),
@@ -142,6 +168,22 @@ fn default_extension_repository() -> String {
 
 fn default_update_interval() -> u64 {
     3600
+}
+
+fn default_extension_max_concurrent_calls() -> usize {
+    8
+}
+
+fn default_extension_admission_timeout_ms() -> u64 {
+    1000
+}
+
+fn default_extension_metadata_timeout_secs() -> u64 {
+    30
+}
+
+fn default_extension_image_timeout_secs() -> u64 {
+    120
 }
 
 fn default_secret() -> String {
