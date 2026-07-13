@@ -23,10 +23,10 @@ const STAGED_LIBRARY_PREFIX: &str = ".tanoshi-staged-";
 const INSTALL_TEMP_PREFIX: &str = ".tanoshi-install-";
 const INSTALL_BACKUP_PREFIX: &str = ".tanoshi-backup-";
 static UNIQUE_PATH_COUNTER: AtomicU64 = AtomicU64::new(0);
-const DEFAULT_MAX_CONCURRENT_CALLS: usize = 8;
-const DEFAULT_ADMISSION_TIMEOUT: Duration = Duration::from_secs(1);
-const DEFAULT_METADATA_TIMEOUT: Duration = Duration::from_secs(30);
-const DEFAULT_IMAGE_TIMEOUT: Duration = Duration::from_secs(120);
+pub const DEFAULT_MAX_CONCURRENT_CALLS: usize = 8;
+pub const DEFAULT_ADMISSION_TIMEOUT: Duration = Duration::from_secs(1);
+pub const DEFAULT_METADATA_TIMEOUT: Duration = Duration::from_secs(30);
+pub const DEFAULT_IMAGE_TIMEOUT: Duration = Duration::from_secs(120);
 const MIN_EXTENSION_TIMEOUT: Duration = Duration::from_millis(1);
 
 fn is_managed_library_name(name: &str) -> bool {

@@ -4,6 +4,10 @@ use serde::{Deserialize, Serialize};
 use std::path::Path;
 use std::path::PathBuf;
 use directories::ProjectDirs;
+use tanoshi_vm::extension::manager::{
+    DEFAULT_ADMISSION_TIMEOUT, DEFAULT_IMAGE_TIMEOUT, DEFAULT_MAX_CONCURRENT_CALLS,
+    DEFAULT_METADATA_TIMEOUT,
+};
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct TelegramConfig {
@@ -171,19 +175,19 @@ fn default_update_interval() -> u64 {
 }
 
 fn default_extension_max_concurrent_calls() -> usize {
-    8
+    DEFAULT_MAX_CONCURRENT_CALLS
 }
 
 fn default_extension_admission_timeout_ms() -> u64 {
-    1000
+    DEFAULT_ADMISSION_TIMEOUT.as_millis() as u64
 }
 
 fn default_extension_metadata_timeout_secs() -> u64 {
-    30
+    DEFAULT_METADATA_TIMEOUT.as_secs()
 }
 
 fn default_extension_image_timeout_secs() -> u64 {
-    120
+    DEFAULT_IMAGE_TIMEOUT.as_secs()
 }
 
 fn default_secret() -> String {
