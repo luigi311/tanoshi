@@ -234,20 +234,18 @@ where
 
     async fn start_chapter_update_queue_by_manga_id(
         &self,
-        tx: tokio::sync::mpsc::Sender<Manga>,
+        tx: &tokio::sync::mpsc::Sender<Manga>,
         manga_id: i64,
-    ) {
-        let manga = self.manga_repo.get_manga_by_id(manga_id).await;
-        match manga {
-            Ok(manga) => {
-                if let Err(e) = tx.send(manga).await {
-                    error!("error sending manga {} to update channel: {e:?}", manga_id);
-                }
-            }
-            Err(e) => {
-                error!("error getting manga {manga_id} for update: {e:?}");
-            }
-        }
+    ) -> Result<(), anyhow::Error> {
+        let manga = self
+            .manga_repo
+            .get_manga_by_id(manga_id)
+            .await
+            .map_err(|error| anyhow::anyhow!("failed to get manga {manga_id} for update: {error}"))?;
+        tx.send(manga)
+            .await
+            .map_err(|error| anyhow::anyhow!("failed to queue manga {manga_id} for update: {error}"))?;
+        Ok(())
     }
 
     fn start_chapter_update_queue_by_user_id(
@@ -317,6 +315,13 @@ where
 
         if let Some(error) = first_error {
             return Err(error);
+        }
+
+        if run_summary.failed > 0 || run_summary.skipped > 0 {
+            return Err(anyhow::anyhow!(
+                "update run {run_kind} completed with {} failed and {} skipped manga",
+                run_summary.failed, run_summary.skipped
+            ));
         }
 
         Ok(())
@@ -595,9 +600,17 @@ where
                             }
                         },
                         ChapterUpdateCommand::Manga(manga_id, tx) => {
-                            self.start_chapter_update_queue_by_manga_id(manga_tx, manga_id).await;
-                            let run_kind = format!("manual-manga:{manga_id}");
-                            let res = self.check_chapter_update(manga_rx, &run_kind).await;
+                            let queue_result = self
+                                .start_chapter_update_queue_by_manga_id(&manga_tx, manga_id)
+                                .await;
+                            drop(manga_tx);
+                            let res = match queue_result {
+                                Ok(()) => {
+                                    let run_kind = format!("manual-manga:{manga_id}");
+                                    self.check_chapter_update(manga_rx, &run_kind).await
+                                }
+                                Err(error) => Err(error),
+                            };
                             if tx.send(res).is_err() {
                                 debug!("chapter update result receiver dropped (Manga {manga_id})");
                             }
