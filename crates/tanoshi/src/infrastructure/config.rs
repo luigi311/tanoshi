@@ -91,6 +91,8 @@ pub struct Config {
     pub secret: String,
     #[serde(default = "default_update_interval")]
     pub update_interval: u64,
+    #[serde(default = "default_max_concurrent_update_sources")]
+    pub max_concurrent_update_sources: usize,
     #[serde(default)]
     pub auto_download_chapters: bool,
     #[serde(default = "default_plugin_path")]
@@ -123,6 +125,7 @@ impl Default for Config {
             create_database: default_create_database(),
             secret: default_secret(),
             update_interval: default_update_interval(),
+            max_concurrent_update_sources: default_max_concurrent_update_sources(),
             auto_download_chapters: false,
             plugin_path: default_plugin_path(),
             extension: ExtensionConfig::default(),
@@ -172,6 +175,10 @@ fn default_extension_repository() -> String {
 
 fn default_update_interval() -> u64 {
     3600
+}
+
+fn default_max_concurrent_update_sources() -> usize {
+    2
 }
 
 fn default_extension_max_concurrent_calls() -> usize {

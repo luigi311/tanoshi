@@ -3,6 +3,7 @@ use std::{
     fmt::Display,
     path::{Path, PathBuf},
     str::FromStr,
+    time::Duration,
 };
 
 use futures::StreamExt;
@@ -10,13 +11,13 @@ use rayon::prelude::*;
 use serde::Deserialize;
 
 use tanoshi_lib::prelude::Version;
-use tanoshi_vm::extension::ExtensionManager;
+use tanoshi_vm::extension::{ExtensionError, ExtensionManager};
 
 use crate::{
     domain::{
         entities::{chapter::Chapter, manga::Manga},
         repositories::{
-            chapter::ChapterRepository,
+            chapter::{ChapterRepository, ChapterRepositoryError},
             library::{LibraryRepository, LibraryRepositoryError},
             manga::MangaRepository,
         },
@@ -27,6 +28,65 @@ use tokio::{
     task::JoinHandle,
     time::{self, Instant},
 };
+
+const SOURCE_UPDATE_FAILURE_THRESHOLD: usize = 3;
+const UPDATE_HTTP_CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
+const UPDATE_HTTP_TIMEOUT: Duration = Duration::from_secs(30);
+
+#[derive(Clone, Copy)]
+enum MangaUpdateOutcome {
+    Success,
+    ItemFailure,
+    SourceFailure,
+}
+
+#[derive(Debug, Default)]
+struct SourceUpdateSummary {
+    checked: usize,
+    succeeded: usize,
+    failed: usize,
+    skipped: usize,
+}
+
+struct SourceUpdateResult {
+    summary: SourceUpdateSummary,
+    error: Option<anyhow::Error>,
+}
+
+fn is_operational_source_failure(error: &anyhow::Error) -> bool {
+    error
+        .chain()
+        .any(|cause| cause.downcast_ref::<ExtensionError>().is_some())
+        || error.chain().any(|cause| {
+            cause
+                .downcast_ref::<reqwest::Error>()
+                .is_some_and(|error| {
+                    error.is_connect()
+                        || error.is_request()
+                        || error.is_status()
+                        || error.is_timeout()
+                })
+        })
+}
+
+fn handle_chapter_repository_error(
+    manga: &Manga,
+    operation: &'static str,
+    error: ChapterRepositoryError,
+) -> Result<MangaUpdateOutcome, anyhow::Error> {
+    error!(
+        "error {operation} for {}, source {}, reason: {error}",
+        manga.title, manga.source_id
+    );
+    if matches!(&error, ChapterRepositoryError::DbError(_)) {
+        Err(anyhow::anyhow!(
+            "chapter repository {operation} failed for manga {}: {error}",
+            manga.id
+        ))
+    } else {
+        Ok(MangaUpdateOutcome::ItemFailure)
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct ChapterUpdate {
@@ -97,6 +157,7 @@ where
     L: LibraryRepository + 'static,
 {
     period: u64,
+    max_concurrent_sources: usize,
     client: reqwest::Client,
     library_repo: L,
     manga_repo: M,
@@ -118,6 +179,7 @@ where
     #[allow(clippy::too_many_arguments)]
     fn new<P: AsRef<Path>>(
         period: u64,
+        max_concurrent_sources: usize,
         library_repo: L,
         manga_repo: M,
         chapter_repo: C,
@@ -134,13 +196,21 @@ where
             period
         };
         info!("periodic updates every {period} seconds");
+        let max_concurrent_sources = max_concurrent_sources.max(1);
+        info!("updating up to {max_concurrent_sources} sources concurrently");
+        let client = reqwest::Client::builder()
+            .connect_timeout(UPDATE_HTTP_CONNECT_TIMEOUT)
+            .timeout(UPDATE_HTTP_TIMEOUT)
+            .build()
+            .expect("failed to build update worker HTTP client");
 
         let (command_tx, command_rx) = flume::bounded(0);
 
         (
             Self {
                 period,
-                client: reqwest::Client::new(),
+                max_concurrent_sources,
+                client,
                 library_repo,
                 manga_repo,
                 chapter_repo,
@@ -165,20 +235,18 @@ where
 
     async fn start_chapter_update_queue_by_manga_id(
         &self,
-        tx: tokio::sync::mpsc::Sender<Manga>,
+        tx: &tokio::sync::mpsc::Sender<Manga>,
         manga_id: i64,
-    ) {
-        let manga = self.manga_repo.get_manga_by_id(manga_id).await;
-        match manga {
-            Ok(manga) => {
-                if let Err(e) = tx.send(manga).await {
-                    error!("error sending manga {} to update channel: {e:?}", manga_id);
-                }
-            }
-            Err(e) => {
-                error!("error getting manga {manga_id} for update: {e:?}");
-            }
-        }
+    ) -> Result<(), anyhow::Error> {
+        let manga = self
+            .manga_repo
+            .get_manga_by_id(manga_id)
+            .await
+            .map_err(|error| anyhow::anyhow!("failed to get manga {manga_id} for update: {error}"))?;
+        tx.send(manga)
+            .await
+            .map_err(|error| anyhow::anyhow!("failed to queue manga {manga_id} for update: {error}"))?;
+        Ok(())
     }
 
     fn start_chapter_update_queue_by_user_id(
@@ -197,100 +265,249 @@ where
     async fn check_chapter_update(
         &self,
         mut rx: tokio::sync::mpsc::Receiver<Manga>,
+        run_kind: &str,
     ) -> Result<(), anyhow::Error> {
+        let mut mangas_by_source: HashMap<i64, Vec<Manga>> = HashMap::new();
         while let Some(manga) = rx.recv().await {
-            debug!("Checking updates: {}", manga.title);
+            mangas_by_source
+                .entry(manga.source_id)
+                .or_default()
+                .push(manga);
+        }
 
-            let chapters: Vec<Chapter> = match self
-                .extensions
-                .get_chapters(manga.source_id, manga.path.clone())
-                .await
-            {
-                Ok(chapters) => chapters
-                    .into_par_iter()
-                    .map(|ch| {
-                        let mut c: Chapter = ch.into();
-                        c.manga_id = manga.id;
-                        c
-                    })
-                    .collect(),
-                Err(e) => {
-                    error!("error fetch new chapters for {}, source {}, reason: {e}", manga.title, manga.source_id);
-                    continue;
+        let mut source_updates = futures::stream::iter(mangas_by_source)
+            .map(|(source_id, mangas)| async move {
+                let result = self.check_source_updates(source_id, mangas).await;
+                (source_id, result)
+            })
+            .buffer_unordered(self.max_concurrent_sources);
+        let mut first_error = None;
+        let mut source_summaries = Vec::new();
+
+        while let Some((source_id, result)) = source_updates.next().await {
+            source_summaries.push((source_id, result.summary));
+            if let Some(error) = result.error {
+                error!("update scan stopped for source {source_id}: {error}");
+                if first_error.is_none() {
+                    first_error = Some(error);
+                }
+            }
+        }
+
+        source_summaries.sort_unstable_by_key(|(source_id, _)| *source_id);
+        let mut run_summary = SourceUpdateSummary::default();
+        for (source_id, summary) in source_summaries {
+            info!(
+                "UPDATE SOURCE SUMMARY: mode={run_kind} source_id={source_id} checked={} succeeded={} failed={} skipped={}",
+                summary.checked, summary.succeeded, summary.failed, summary.skipped
+            );
+            run_summary.checked += summary.checked;
+            run_summary.succeeded += summary.succeeded;
+            run_summary.failed += summary.failed;
+            run_summary.skipped += summary.skipped;
+        }
+        info!(
+            "UPDATE RUN SUMMARY: mode={run_kind} checked={} succeeded={} failed={} skipped={}",
+            run_summary.checked,
+            run_summary.succeeded,
+            run_summary.failed,
+            run_summary.skipped
+        );
+
+        if let Some(error) = first_error {
+            return Err(error);
+        }
+
+        Ok(())
+    }
+
+    async fn check_source_updates(
+        &self,
+        source_id: i64,
+        mangas: Vec<Manga>,
+    ) -> SourceUpdateResult {
+        let manga_count = mangas.len();
+        let mut consecutive_failures = 0;
+        let mut summary = SourceUpdateSummary::default();
+
+        for (index, manga) in mangas.into_iter().enumerate() {
+            summary.checked += 1;
+            let outcome = match self.check_manga_update(manga).await {
+                Ok(outcome) => outcome,
+                Err(error) => {
+                    summary.failed += 1;
+                    summary.skipped = manga_count.saturating_sub(index + 1);
+                    return SourceUpdateResult {
+                        summary,
+                        error: Some(error),
+                    };
                 }
             };
-
-            self.chapter_repo.insert_chapters(&chapters).await?;
-
-            let chapter_paths: Vec<String> = chapters.into_par_iter().map(|c| c.path).collect();
-
-            if !chapter_paths.is_empty() {
-                let chapters_to_delete: Vec<i64> = self
-                    .chapter_repo
-                    .get_chapters_not_in_source(manga.source_id, manga.id, &chapter_paths)
-                    .await?
-                    .iter()
-                    .map(|c| c.id)
-                    .collect();
-
-                if !chapters_to_delete.is_empty() {
-                    self.chapter_repo
-                        .delete_chapter_by_ids(&chapters_to_delete)
-                        .await?;
+            match outcome {
+                MangaUpdateOutcome::Success => {
+                    summary.succeeded += 1;
+                    consecutive_failures = 0;
                 }
-            }
-
-            let last_uploaded_chapter = manga.last_uploaded_at.unwrap_or_default();
-
-            let chapters: Vec<Chapter> = self
-                .chapter_repo
-                .get_chapters_by_manga_id(manga.id, None, None, false)
-                .await?
-                .into_par_iter()
-                .filter(|chapter| chapter.uploaded > last_uploaded_chapter)
-                .collect();
-
-            if chapters.is_empty() {
-                debug!("{} has no new chapters", manga.title);
-            } else {
-                info!("{} has {} new chapters", manga.title, chapters.len());
-            }
-
-            let users = self
-                .library_repo
-                .get_users_by_manga_id(manga.id)
-                .await
-                .unwrap_or_default();
-
-            for chapter in chapters {
-                for user in &users {
-                    self.notifier
-                        .send_chapter_notification(
-                            user.id,
-                            &manga.title,
-                            &chapter.title,
-                            chapter.id,
-                        )
-                        .await?;
+                MangaUpdateOutcome::ItemFailure => {
+                    summary.failed += 1;
+                    consecutive_failures = 0;
                 }
-
-                if let Err(e) = self.broadcast_tx.send(ChapterUpdate {
-                    manga: manga.clone(),
-                    chapter,
-                    users: users.iter().map(|user| user.id).collect(),
-                }) {
-                    // the send error hands the unsent update back
-                    error!(
-                        "error broadcasting new chapter '{}' for manga '{}': {e}",
-                        e.0.chapter.title, manga.title
-                    );
+                MangaUpdateOutcome::SourceFailure => {
+                    summary.failed += 1;
+                    consecutive_failures += 1;
+                    if consecutive_failures >= SOURCE_UPDATE_FAILURE_THRESHOLD {
+                        let skipped = manga_count.saturating_sub(index + 1);
+                        summary.skipped = skipped;
+                        error!(
+                            "UPDATE SOURCE CIRCUIT OPEN: source_id={source_id} consecutive_operational_failures={consecutive_failures}; skipping {skipped} remaining manga for this run"
+                        );
+                        break;
+                    }
                 }
             }
 
             tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
         }
 
-        Ok(())
+        SourceUpdateResult {
+            summary,
+            error: None,
+        }
+    }
+
+    async fn check_manga_update(&self, manga: Manga) -> Result<MangaUpdateOutcome, anyhow::Error> {
+        debug!("Checking updates: {}", manga.title);
+
+        let chapters: Vec<Chapter> = match self
+            .extensions
+            .get_chapters(manga.source_id, manga.path.clone())
+            .await
+        {
+            Ok(chapters) => chapters
+                .into_par_iter()
+                .map(|ch| {
+                    let mut c: Chapter = ch.into();
+                    c.manga_id = manga.id;
+                    c
+                })
+                .collect(),
+            Err(e) => {
+                error!("error fetch new chapters for {}, source {}, reason: {e}", manga.title, manga.source_id);
+                return Ok(if is_operational_source_failure(&e) {
+                    MangaUpdateOutcome::SourceFailure
+                } else {
+                    MangaUpdateOutcome::ItemFailure
+                });
+            }
+        };
+
+        if let Err(error) = self.chapter_repo.insert_chapters(&chapters).await {
+            return handle_chapter_repository_error(&manga, "insert_chapters", error);
+        }
+
+        let chapter_paths: Vec<String> = chapters.into_par_iter().map(|c| c.path).collect();
+
+        if !chapter_paths.is_empty() {
+            let chapters_not_in_source = match self
+                .chapter_repo
+                .get_chapters_not_in_source(manga.source_id, manga.id, &chapter_paths)
+                .await
+            {
+                Ok(chapters) => chapters,
+                Err(error) => {
+                    return handle_chapter_repository_error(
+                        &manga,
+                        "get_chapters_not_in_source",
+                        error,
+                    );
+                }
+            };
+            let chapters_to_delete: Vec<i64> = chapters_not_in_source
+                .iter()
+                .map(|c| c.id)
+                .collect();
+
+            if !chapters_to_delete.is_empty() {
+                if let Err(error) = self
+                    .chapter_repo
+                    .delete_chapter_by_ids(&chapters_to_delete)
+                    .await
+                {
+                    return handle_chapter_repository_error(
+                        &manga,
+                        "delete_chapter_by_ids",
+                        error,
+                    );
+                }
+            }
+        }
+
+        let last_uploaded_chapter = manga.last_uploaded_at.unwrap_or_default();
+
+        let chapters = match self
+            .chapter_repo
+            .get_chapters_by_manga_id(manga.id, None, None, false)
+            .await
+        {
+            Ok(chapters) => chapters,
+            Err(error) => {
+                return handle_chapter_repository_error(
+                    &manga,
+                    "get_chapters_by_manga_id",
+                    error,
+                );
+            }
+        };
+        let chapters: Vec<Chapter> = chapters
+            .into_par_iter()
+            .filter(|chapter| chapter.uploaded > last_uploaded_chapter)
+            .collect();
+
+        if chapters.is_empty() {
+            debug!("{} has no new chapters", manga.title);
+        } else {
+            info!("{} has {} new chapters", manga.title, chapters.len());
+        }
+
+        let users = self
+            .library_repo
+            .get_users_by_manga_id(manga.id)
+            .await
+            .unwrap_or_default();
+
+        for chapter in chapters {
+            for user in &users {
+                if let Err(error) = self
+                    .notifier
+                    .send_chapter_notification(
+                        user.id,
+                        &manga.title,
+                        &chapter.title,
+                        chapter.id,
+                    )
+                    .await
+                {
+                    error!(
+                        "failed to notify user {} about chapter '{}' of '{}': {error}",
+                        user.id, chapter.title, manga.title
+                    );
+                }
+            }
+
+            if let Err(e) = self.broadcast_tx.send(ChapterUpdate {
+                manga: manga.clone(),
+                chapter,
+                users: users.iter().map(|user| user.id).collect(),
+            }) {
+                // the send error hands the unsent update back
+                error!(
+                    "error broadcasting new chapter '{}' for manga '{}': {e}",
+                    e.0.chapter.title, manga.title
+                );
+            }
+        }
+
+        Ok(MangaUpdateOutcome::Success)
     }
 
     async fn check_extension_update(&self) -> Result<(), anyhow::Error> {
@@ -403,21 +620,31 @@ where
                     match cmd {
                         ChapterUpdateCommand::All(tx) => {
                             self.start_chapter_update_queue_all(manga_tx);
-                            let res = self.check_chapter_update(manga_rx).await;
+                            let res = self.check_chapter_update(manga_rx, "manual-all").await;
                             if tx.send(res).is_err() {
                                 debug!("chapter update result receiver dropped (All)");
                             }
                         },
                         ChapterUpdateCommand::Manga(manga_id, tx) => {
-                            self.start_chapter_update_queue_by_manga_id(manga_tx, manga_id).await;
-                            let res = self.check_chapter_update(manga_rx).await;
+                            let queue_result = self
+                                .start_chapter_update_queue_by_manga_id(&manga_tx, manga_id)
+                                .await;
+                            drop(manga_tx);
+                            let res = match queue_result {
+                                Ok(()) => {
+                                    let run_kind = format!("manual-manga:{manga_id}");
+                                    self.check_chapter_update(manga_rx, &run_kind).await
+                                }
+                                Err(error) => Err(error),
+                            };
                             if tx.send(res).is_err() {
                                 debug!("chapter update result receiver dropped (Manga {manga_id})");
                             }
                         },
                         ChapterUpdateCommand::Library(user_id, tx) => {
                             self.start_chapter_update_queue_by_user_id(manga_tx, user_id);
-                            let res = self.check_chapter_update(manga_rx).await;
+                            let run_kind = format!("manual-library:{user_id}");
+                            let res = self.check_chapter_update(manga_rx, &run_kind).await;
                             if tx.send(res).is_err() {
                                 debug!("chapter update result receiver dropped (Library user {user_id})");
                             }
@@ -434,7 +661,8 @@ where
                     let (manga_tx, manga_rx) = tokio::sync::mpsc::channel(1);
                     self.start_chapter_update_queue_all(manga_tx);
                     
-                    let check_chapter_result = self.check_chapter_update(manga_rx).await;
+                    let check_chapter_result =
+                        self.check_chapter_update(manga_rx, "periodic").await;
                     if let Err(e) = check_chapter_result {
                         error!("failed check chapter update: {e}");
                     }
@@ -470,6 +698,7 @@ where
 #[allow(clippy::too_many_arguments)]
 pub fn start<C, M, L, P>(
     period: u64,
+    max_concurrent_sources: usize,
     library_repo: L,
     manga_repo: M,
     chapter_repo: C,
@@ -491,6 +720,7 @@ where
     let (broadcast_tx, broadcast_rx) = tokio::sync::broadcast::channel(10);
     let (worker, command_tx) = UpdatesWorker::new(
         period,
+        max_concurrent_sources,
         library_repo,
         manga_repo,
         chapter_repo,
