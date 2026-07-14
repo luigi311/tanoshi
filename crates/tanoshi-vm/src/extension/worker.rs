@@ -182,6 +182,8 @@ struct WorkerProcess {
     stdout: AsyncBufReader<ChildStdout>,
     next_request_id: u64,
     source_info: WorkerSourceInfo,
+    rustc_version: String,
+    lib_version: String,
 }
 
 pub(crate) struct WorkerClient {
@@ -224,24 +226,28 @@ impl WorkerClient {
         *guard = Some(preferences);
     }
 
-    pub(crate) async fn start(&self) -> Result<WorkerSourceInfo> {
+    pub(crate) async fn start(&self) -> Result<(WorkerSourceInfo, String, String)> {
         let mut process = self.process.lock().await;
         if self.stopped.load(Ordering::Acquire) {
             bail!("extension worker is shut down");
         }
         if process.is_none() {
-            let (worker, source_info) =
+            let (worker, source_info, rustc_version, lib_version) =
                 tokio::time::timeout(self.startup_timeout, self.spawn_process())
                     .await
                     .context("extension worker startup timed out")??;
             *process = Some(worker);
-            return Ok(source_info);
+            return Ok((source_info, rustc_version, lib_version));
         }
 
         let Some(process) = process.as_mut() else {
             unreachable!("worker process was inserted above");
         };
-        Ok(process.source_info.clone())
+        Ok((
+            process.source_info.clone(),
+            process.rustc_version.clone(),
+            process.lib_version.clone(),
+        ))
     }
 
     pub(crate) async fn request(
@@ -283,7 +289,7 @@ impl WorkerClient {
                 _ = &mut shutdown => return Err(WorkerCallError::Stopped),
             };
             match result {
-                Ok(Ok((worker, _))) => *process_guard = Some(worker),
+                Ok(Ok((worker, _, _, _))) => *process_guard = Some(worker),
                 Ok(Err(error)) => return Err(WorkerCallError::Crashed(error.to_string())),
                 Err(_) => return Err(WorkerCallError::QueueTimeout),
             }
@@ -389,7 +395,7 @@ impl WorkerClient {
         }
     }
 
-    async fn spawn_process(&self) -> Result<(WorkerProcess, WorkerSourceInfo)> {
+    async fn spawn_process(&self) -> Result<(WorkerProcess, WorkerSourceInfo, String, String)> {
         let mut child = Command::new(&self.worker_path)
             .arg(WORKER_MODE_FLAG)
             .arg("--plugin")
@@ -428,17 +434,20 @@ impl WorkerClient {
                 languages: tanoshi_lib::prelude::Lang::All,
                 nsfw: false,
             },
+            rustc_version: String::new(),
+            lib_version: String::new(),
         };
 
         let response = read_frame_async::<_, WorkerResponse>(&mut worker.stdout)
             .await
             .context("failed to read extension worker readiness")?;
-        let source_info = match response {
+        let (source_info, rustc_version, lib_version) = match response {
             WorkerResponse::Ready {
                 protocol_version,
                 source_info,
-                ..
-            } if protocol_version == PROTOCOL_VERSION => source_info,
+                rustc_version,
+                lib_version,
+            } if protocol_version == PROTOCOL_VERSION => (source_info, rustc_version, lib_version),
             WorkerResponse::Ready {
                 protocol_version, ..
             } => {
@@ -453,13 +462,15 @@ impl WorkerClient {
             }
         };
         worker.source_info = source_info.clone();
+        worker.rustc_version = rustc_version.clone();
+        worker.lib_version = lib_version.clone();
 
         if let Err(error) = self.apply_startup_preferences(&mut worker).await {
             terminate_process(&mut worker).await;
             return Err(error);
         }
 
-        Ok((worker, source_info))
+        Ok((worker, source_info, rustc_version, lib_version))
     }
 
     /// Re-applies the saved preferences to a freshly spawned worker before it

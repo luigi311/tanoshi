@@ -1008,8 +1008,8 @@ impl ExtensionManager {
             self.options.metadata_timeout,
             Some(staged_path.clone()),
         );
-        let source_info = match worker.start().await {
-            Ok(source_info) => source_info,
+        let (source_info, rustc_version, lib_version) = match worker.start().await {
+            Ok(metadata) => metadata,
             Err(error) => {
                 worker.shutdown().await;
                 return Err(anyhow!(
@@ -1024,8 +1024,8 @@ impl ExtensionManager {
             worker,
             self.options.max_concurrent_calls,
             plugin_path,
-            tanoshi_lib::RUSTC_VERSION.to_string(),
-            tanoshi_lib::LIB_VERSION.to_string(),
+            rustc_version,
+            lib_version,
         )))
     }
 
