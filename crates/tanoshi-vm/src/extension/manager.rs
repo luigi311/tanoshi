@@ -219,6 +219,46 @@ struct ExtensionCall {
     quarantine_on_panic: bool,
 }
 
+#[derive(Debug)]
+pub enum ExtensionError {
+    MissingSource,
+    Operational {
+        kind: &'static str,
+        message: String,
+    },
+}
+
+impl ExtensionError {
+    fn operational(kind: &'static str, message: impl Into<String>) -> Self {
+        Self::Operational {
+            kind,
+            message: message.into(),
+        }
+    }
+}
+
+impl std::fmt::Display for ExtensionError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::MissingSource => formatter.write_str("no such source"),
+            Self::Operational { kind, message } => write!(formatter, "[{kind}] {message}"),
+        }
+    }
+}
+
+impl std::error::Error for ExtensionError {}
+
+fn missing_source_error() -> anyhow::Error {
+    anyhow::Error::new(ExtensionError::MissingSource)
+}
+
+fn operational_extension_error(
+    kind: &'static str,
+    message: impl Into<String>,
+) -> anyhow::Error {
+    anyhow::Error::new(ExtensionError::operational(kind, message))
+}
+
 #[derive(Clone, Copy, Debug)]
 pub struct ExtensionManagerOptions {
     pub max_concurrent_calls: usize,
@@ -424,7 +464,7 @@ impl ExtensionManager {
         self.read()?
             .get(&source_id)
             .cloned()
-            .ok_or_else(|| anyhow!("no such source"))
+            .ok_or_else(missing_source_error)
     }
 
     async fn acquire_permit(
@@ -449,19 +489,25 @@ impl ExtensionManager {
                 error!(
                     "EXTENSION ADMISSION ERROR: source_id={source_id} source={source_name:?} operation={operation} limiter unavailable: {error}"
                 );
-                bail!(
-                    "[extension-admission] source {source_id} ({source_name}) cannot accept {operation}: {error}"
-                );
+                Err(operational_extension_error(
+                    "extension-admission",
+                    format!(
+                        "source {source_id} ({source_name}) cannot accept {operation}: {error}"
+                    ),
+                ))
             }
             Err(_) => {
                 error!(
                     "EXTENSION SATURATION: source_id={source_id} source={source_name:?} operation={operation} exceeded the {}-call limit; request rejected after {:?}",
                     self.options.max_concurrent_calls, self.options.admission_timeout
                 );
-                bail!(
-                    "[extension-saturated] source {source_id} ({source_name}) is busy; {operation} admission timed out after {:?}",
-                    self.options.admission_timeout
-                );
+                Err(operational_extension_error(
+                    "extension-saturated",
+                    format!(
+                        "source {source_id} ({source_name}) is busy; {operation} admission timed out after {:?}",
+                        self.options.admission_timeout
+                    ),
+                ))
             }
         }
     }
@@ -479,17 +525,23 @@ impl ExtensionManager {
                 error!(
                     "EXTENSION CIRCUIT OPEN: source_id={source_id} source={source_name:?} operation={operation} has {abandoned_calls} timed-out native calls still running; rejecting new work"
                 );
-                bail!(
-                    "[extension-circuit-open] source {source_id} ({source_name}) has {abandoned_calls} timed-out native calls still running; replace or restart the source before retrying {operation}"
-                );
+                Err(operational_extension_error(
+                    "extension-circuit-open",
+                    format!(
+                        "source {source_id} ({source_name}) has {abandoned_calls} timed-out native calls still running; replace or restart the source before retrying {operation}"
+                    ),
+                ))
             }
             SourceAdmission::Quarantined => {
                 error!(
                     "EXTENSION QUARANTINED: source_id={source_id} source={source_name:?} operation={operation}; rejecting new work until replacement or reload"
                 );
-                bail!(
-                    "[extension-quarantined] source {source_id} ({source_name}) is quarantined; replace or reload the extension before retrying {operation}"
-                );
+                Err(operational_extension_error(
+                    "extension-quarantined",
+                    format!(
+                        "source {source_id} ({source_name}) is quarantined; replace or reload the extension before retrying {operation}"
+                    ),
+                ))
             }
         }
     }
@@ -603,8 +655,11 @@ impl ExtensionManager {
                             "EXTENSION QUARANTINED: source_id={source_id} source={task_source_name:?} operation={operation}; replace or reload the extension before retrying"
                         );
                     }
-                    Err(anyhow!(
-                        "[extension-panicked] source {source_id} ({task_source_name}) {operation} panicked: {message}"
+                    Err(operational_extension_error(
+                        "extension-panicked",
+                        format!(
+                            "source {source_id} ({task_source_name}) {operation} panicked: {message}"
+                        ),
                     ))
                 }
             };
@@ -633,9 +688,12 @@ impl ExtensionManager {
                             "EXTENSION QUARANTINED: source_id={source_id} source={source_name:?} operation={operation}; replace or reload the extension before retrying"
                         );
                     }
-                    bail!(
-                        "[extension-panicked] source {source_id} ({source_name}) {operation} panicked"
-                    );
+                    return Err(operational_extension_error(
+                        "extension-panicked",
+                        format!(
+                            "source {source_id} ({source_name}) {operation} panicked"
+                        ),
+                    ));
                 }
                 bail!(
                     "[extension-cancelled] source {source_id} ({source_name}) {operation} task was cancelled"
@@ -657,9 +715,12 @@ impl ExtensionManager {
                 error!(
                     "EXTENSION TIMEOUT: source_id={source_id} source={source_name:?} operation={operation} exceeded {timeout:?}; native call may still be running and its permit remains held"
                 );
-                bail!(
-                    "[extension-timeout] source {source_id} ({source_name}) {operation} exceeded {timeout:?}; native call may still be running"
-                );
+                return Err(operational_extension_error(
+                    "extension-timeout",
+                    format!(
+                        "source {source_id} ({source_name}) {operation} exceeded {timeout:?}; native call may still be running"
+                    ),
+                ));
             }
         }
     }
@@ -710,13 +771,19 @@ impl ExtensionManager {
                 error!(
                     "EXTENSION WORKER SUPERVISOR PANIC: source_id={source_id} source={source_name:?} operation={operation}"
                 );
-                bail!(
-                    "[extension-worker-supervisor] source {source_id} ({source_name}) {operation} supervisor panicked"
-                );
+                Err(operational_extension_error(
+                    "extension-worker-supervisor",
+                    format!(
+                        "source {source_id} ({source_name}) {operation} supervisor panicked"
+                    ),
+                ))
             }
-            Err(error) => bail!(
-                "[extension-worker-supervisor] source {source_id} ({source_name}) {operation} supervisor was cancelled: {error}"
-            ),
+            Err(error) => Err(operational_extension_error(
+                "extension-worker-supervisor",
+                format!(
+                    "source {source_id} ({source_name}) {operation} supervisor was cancelled: {error}"
+                ),
+            )),
         }
     }
 
@@ -749,8 +816,11 @@ impl ExtensionManager {
                     error!(
                         "EXTENSION WORKER PROTOCOL ERROR: source_id={source_id} source={source_name:?} operation={operation} response={error}"
                     );
-                    anyhow!(
-                        "[extension-worker-protocol] source {source_id} ({source_name}) {operation} returned an invalid response: {error}"
+                    operational_extension_error(
+                        "extension-worker-protocol",
+                        format!(
+                            "source {source_id} ({source_name}) {operation} returned an invalid response: {error}"
+                        ),
                     )
                 })?;
                 health.record_success();
@@ -768,8 +838,11 @@ impl ExtensionManager {
                 warn!(
                     "EXTENSION WORKER BUSY: source_id={source_id} source={source_name:?} operation={operation} spent {timeout:?} waiting behind earlier calls; the worker was not disturbed"
                 );
-                Err(anyhow!(
-                    "[extension-worker-busy] source {source_id} ({source_name}) is busy; {operation} timed out after {timeout:?} waiting for earlier calls"
+                Err(operational_extension_error(
+                    "extension-worker-busy",
+                    format!(
+                        "source {source_id} ({source_name}) is busy; {operation} timed out after {timeout:?} waiting for earlier calls"
+                    ),
                 ))
             }
             // The source was unloaded or replaced mid-call; the retired
@@ -818,9 +891,12 @@ impl ExtensionManager {
                 } else {
                     "extension-worker-crashed"
                 };
-                bail!(
-                    "[{error_kind}] source {source_id} ({source_name}) {operation} failed: {message}"
-                );
+                Err(operational_extension_error(
+                    error_kind,
+                    format!(
+                        "source {source_id} ({source_name}) {operation} failed: {message}"
+                    ),
+                ))
             }
         }
     }
@@ -1212,7 +1288,7 @@ impl ExtensionManager {
         let sources = self.read()?;
         let source = sources
             .get(&source_id)
-            .ok_or_else(|| anyhow!("no such source"))?;
+            .ok_or_else(missing_source_error)?;
         let rustc_version = source.rustc_version.clone();
         let lib_version = source.lib_version.clone();
         Ok((rustc_version, lib_version))
@@ -1287,7 +1363,7 @@ impl ExtensionManager {
         let _lifecycle_guard = lifecycle_lock.lock_owned().await;
         let entry = self
             .entry_for_plugin(&plugin_name)?
-            .ok_or_else(|| anyhow!("no such source"))?;
+            .ok_or_else(missing_source_error)?;
         let source_name = entry.source_info.name.to_lowercase();
         let extension_preferences = preferences.clone();
         self.call_blocking_mut_entry(
