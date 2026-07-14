@@ -379,14 +379,21 @@ where
 
         for chapter in chapters {
             for user in &users {
-                self.notifier
+                if let Err(error) = self
+                    .notifier
                     .send_chapter_notification(
                         user.id,
                         &manga.title,
                         &chapter.title,
                         chapter.id,
                     )
-                    .await?;
+                    .await
+                {
+                    error!(
+                        "failed to notify user {} about chapter '{}' of '{}': {error}",
+                        user.id, chapter.title, manga.title
+                    );
+                }
             }
 
             if let Err(e) = self.broadcast_tx.send(ChapterUpdate {
