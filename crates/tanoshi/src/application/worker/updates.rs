@@ -318,13 +318,6 @@ where
             return Err(error);
         }
 
-        if run_summary.failed > 0 || run_summary.skipped > 0 {
-            return Err(anyhow::anyhow!(
-                "update run {run_kind} completed with {} failed and {} skipped manga",
-                run_summary.failed, run_summary.skipped
-            ));
-        }
-
         Ok(())
     }
 
