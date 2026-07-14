@@ -42,15 +42,11 @@ fn main() -> Result<(), anyhow::Error> {
         unsafe { std::env::set_var("TANOSHI_EXTENSION_WORKER", executable) };
     }
 
-    run_server()
-}
-
-#[tokio::main]
-async fn run_server() -> Result<(), anyhow::Error> {
-    if let Ok(rust_log) = std::env::var("RUST_LOG") {
-        info!("rust_log: {rust_log}");
-    } else if let Ok(tanoshi_log) = std::env::var("TANOSHI_LOG") {
-        info!("tanoshi_log: {tanoshi_log}");
+    let rust_log = std::env::var("RUST_LOG").ok();
+    let tanoshi_log = std::env::var("TANOSHI_LOG").ok();
+    if rust_log.is_none()
+        && let Some(tanoshi_log) = tanoshi_log.as_deref()
+    {
         // TODO: Audit that the environment access only happens in single-threaded code.
         unsafe {
             std::env::set_var(
@@ -62,6 +58,17 @@ async fn run_server() -> Result<(), anyhow::Error> {
 
     env_logger::init();
 
+    if let Some(rust_log) = rust_log {
+        info!("rust_log: {rust_log}");
+    } else if let Some(tanoshi_log) = tanoshi_log {
+        info!("tanoshi_log: {tanoshi_log}");
+    }
+
+    run_server()
+}
+
+#[tokio::main]
+async fn run_server() -> Result<(), anyhow::Error> {
     let opts: Opts = Opts::parse();
     let config = Config::open(opts.config)?;
 
