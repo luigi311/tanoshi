@@ -3,6 +3,7 @@ use std::{
     fmt::Display,
     path::{Path, PathBuf},
     str::FromStr,
+    time::Duration,
 };
 
 use futures::StreamExt;
@@ -29,6 +30,8 @@ use tokio::{
 };
 
 const SOURCE_UPDATE_FAILURE_THRESHOLD: usize = 3;
+const UPDATE_HTTP_CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
+const UPDATE_HTTP_TIMEOUT: Duration = Duration::from_secs(30);
 
 #[derive(Clone, Copy)]
 enum MangaUpdateOutcome {
@@ -181,6 +184,11 @@ where
         info!("periodic updates every {period} seconds");
         let max_concurrent_sources = max_concurrent_sources.max(1);
         info!("updating up to {max_concurrent_sources} sources concurrently");
+        let client = reqwest::Client::builder()
+            .connect_timeout(UPDATE_HTTP_CONNECT_TIMEOUT)
+            .timeout(UPDATE_HTTP_TIMEOUT)
+            .build()
+            .expect("failed to build update worker HTTP client");
 
         let (command_tx, command_rx) = flume::bounded(0);
 
@@ -188,7 +196,7 @@ where
             Self {
                 period,
                 max_concurrent_sources,
-                client: reqwest::Client::new(),
+                client,
                 library_repo,
                 manga_repo,
                 chapter_repo,
