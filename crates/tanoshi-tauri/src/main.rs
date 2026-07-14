@@ -4,14 +4,48 @@
 )]
 
 extern crate log;
-use std::env;
+use std::{env, ffi::OsString, path::PathBuf};
 use tauri::Manager;
 
 mod server;
 
 use crate::server::Server;
 
+fn run_as_extension_worker() -> bool {
+  let mut args = env::args_os();
+  let _program = args.next();
+  if args.next() != Some(OsString::from("--tanoshi-extension-worker")) {
+    return false;
+  }
+
+  let plugin_path = match (args.next(), args.next(), args.next()) {
+    (Some(flag), Some(path), None) if flag == OsString::from("--plugin") => PathBuf::from(path),
+    _ => {
+      eprintln!("usage: tanoshi-app --tanoshi-extension-worker --plugin <path>");
+      std::process::exit(2);
+    }
+  };
+
+  if let Err(error) = tanoshi_vm::extension::worker::run_worker(plugin_path) {
+    eprintln!("extension worker failed: {error:#}");
+    std::process::exit(1);
+  }
+  true
+}
+
 fn main() {
+  if run_as_extension_worker() {
+    return;
+  }
+
+  if env::var_os("TANOSHI_EXTENSION_WORKER").is_none() {
+    if let Ok(executable) = env::current_exe() {
+      // Set this before Tauri starts any threads so bundled applications can
+      // supervise workers with their own executable.
+      unsafe { env::set_var("TANOSHI_EXTENSION_WORKER", executable) };
+    }
+  }
+
   env_logger::init();
 
   tauri::Builder::default()
