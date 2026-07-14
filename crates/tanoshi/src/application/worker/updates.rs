@@ -28,6 +28,49 @@ use tokio::{
     time::{self, Instant},
 };
 
+const SOURCE_UPDATE_FAILURE_THRESHOLD: usize = 3;
+
+#[derive(Clone, Copy)]
+enum MangaUpdateOutcome {
+    Success,
+    ItemFailure,
+    SourceFailure,
+}
+
+fn is_operational_source_failure(error: &anyhow::Error) -> bool {
+    const OPERATIONAL_ERROR_PREFIXES: &[&str] = &[
+        "[extension-admission]",
+        "[extension-circuit-open]",
+        "[extension-panicked]",
+        "[extension-quarantined]",
+        "[extension-saturated]",
+        "[extension-timeout]",
+        "[extension-worker-busy]",
+        "[extension-worker-crashed]",
+        "[extension-worker-protocol]",
+        "[extension-worker-supervisor]",
+        "[extension-worker-timeout]",
+    ];
+
+    let message = error.to_string();
+    OPERATIONAL_ERROR_PREFIXES
+        .iter()
+        .any(|prefix| message.starts_with(prefix))
+        || error
+            .chain()
+            .any(|cause| cause.to_string() == "no such source")
+        || error.chain().any(|cause| {
+            cause
+                .downcast_ref::<reqwest::Error>()
+                .is_some_and(|error| {
+                    error.is_connect()
+                        || error.is_request()
+                        || error.is_status()
+                        || error.is_timeout()
+                })
+        })
+}
+
 #[derive(Debug, Clone)]
 pub struct ChapterUpdate {
     pub manga: Manga,
@@ -213,7 +256,7 @@ where
 
         let mut source_updates = futures::stream::iter(mangas_by_source)
             .map(|(source_id, mangas)| async move {
-                let result = self.check_source_updates(mangas).await;
+                let result = self.check_source_updates(source_id, mangas).await;
                 (source_id, result)
             })
             .buffer_unordered(self.max_concurrent_sources);
@@ -235,16 +278,38 @@ where
         Ok(())
     }
 
-    async fn check_source_updates(&self, mangas: Vec<Manga>) -> Result<(), anyhow::Error> {
-        for manga in mangas {
-            self.check_manga_update(manga).await?;
+    async fn check_source_updates(
+        &self,
+        source_id: i64,
+        mangas: Vec<Manga>,
+    ) -> Result<(), anyhow::Error> {
+        let manga_count = mangas.len();
+        let mut consecutive_failures = 0;
+
+        for (index, manga) in mangas.into_iter().enumerate() {
+            match self.check_manga_update(manga).await? {
+                MangaUpdateOutcome::Success | MangaUpdateOutcome::ItemFailure => {
+                    consecutive_failures = 0;
+                }
+                MangaUpdateOutcome::SourceFailure => {
+                    consecutive_failures += 1;
+                    if consecutive_failures >= SOURCE_UPDATE_FAILURE_THRESHOLD {
+                        let skipped = manga_count.saturating_sub(index + 1);
+                        error!(
+                            "UPDATE SOURCE CIRCUIT OPEN: source_id={source_id} consecutive_operational_failures={consecutive_failures}; skipping {skipped} remaining manga for this run"
+                        );
+                        break;
+                    }
+                }
+            }
+
             tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
         }
 
         Ok(())
     }
 
-    async fn check_manga_update(&self, manga: Manga) -> Result<(), anyhow::Error> {
+    async fn check_manga_update(&self, manga: Manga) -> Result<MangaUpdateOutcome, anyhow::Error> {
         debug!("Checking updates: {}", manga.title);
 
         let chapters: Vec<Chapter> = match self
@@ -262,7 +327,11 @@ where
                 .collect(),
             Err(e) => {
                 error!("error fetch new chapters for {}, source {}, reason: {e}", manga.title, manga.source_id);
-                return Ok(());
+                return Ok(if is_operational_source_failure(&e) {
+                    MangaUpdateOutcome::SourceFailure
+                } else {
+                    MangaUpdateOutcome::ItemFailure
+                });
             }
         };
 
@@ -333,7 +402,7 @@ where
             }
         }
 
-        Ok(())
+        Ok(MangaUpdateOutcome::Success)
     }
 
     async fn check_extension_update(&self) -> Result<(), anyhow::Error> {
