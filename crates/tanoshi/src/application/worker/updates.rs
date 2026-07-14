@@ -11,13 +11,13 @@ use rayon::prelude::*;
 use serde::Deserialize;
 
 use tanoshi_lib::prelude::Version;
-use tanoshi_vm::extension::ExtensionManager;
+use tanoshi_vm::extension::{ExtensionError, ExtensionManager};
 
 use crate::{
     domain::{
         entities::{chapter::Chapter, manga::Manga},
         repositories::{
-            chapter::ChapterRepository,
+            chapter::{ChapterRepository, ChapterRepositoryError},
             library::{LibraryRepository, LibraryRepositoryError},
             manga::MangaRepository,
         },
@@ -54,27 +54,9 @@ struct SourceUpdateResult {
 }
 
 fn is_operational_source_failure(error: &anyhow::Error) -> bool {
-    const OPERATIONAL_ERROR_PREFIXES: &[&str] = &[
-        "[extension-admission]",
-        "[extension-circuit-open]",
-        "[extension-panicked]",
-        "[extension-quarantined]",
-        "[extension-saturated]",
-        "[extension-timeout]",
-        "[extension-worker-busy]",
-        "[extension-worker-crashed]",
-        "[extension-worker-protocol]",
-        "[extension-worker-supervisor]",
-        "[extension-worker-timeout]",
-    ];
-
-    let message = error.to_string();
-    OPERATIONAL_ERROR_PREFIXES
-        .iter()
-        .any(|prefix| message.starts_with(prefix))
-        || error
-            .chain()
-            .any(|cause| cause.to_string() == "no such source")
+    error
+        .chain()
+        .any(|cause| cause.downcast_ref::<ExtensionError>().is_some())
         || error.chain().any(|cause| {
             cause
                 .downcast_ref::<reqwest::Error>()
@@ -85,6 +67,25 @@ fn is_operational_source_failure(error: &anyhow::Error) -> bool {
                         || error.is_timeout()
                 })
         })
+}
+
+fn handle_chapter_repository_error(
+    manga: &Manga,
+    operation: &'static str,
+    error: ChapterRepositoryError,
+) -> Result<MangaUpdateOutcome, anyhow::Error> {
+    error!(
+        "error {operation} for {}, source {}, reason: {error}",
+        manga.title, manga.source_id
+    );
+    if matches!(&error, ChapterRepositoryError::DbError(_)) {
+        Err(anyhow::anyhow!(
+            "chapter repository {operation} failed for manga {}: {error}",
+            manga.id
+        ))
+    } else {
+        Ok(MangaUpdateOutcome::ItemFailure)
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -407,32 +408,64 @@ where
             }
         };
 
-        self.chapter_repo.insert_chapters(&chapters).await?;
+        if let Err(error) = self.chapter_repo.insert_chapters(&chapters).await {
+            return handle_chapter_repository_error(&manga, "insert_chapters", error);
+        }
 
         let chapter_paths: Vec<String> = chapters.into_par_iter().map(|c| c.path).collect();
 
         if !chapter_paths.is_empty() {
-            let chapters_to_delete: Vec<i64> = self
+            let chapters_not_in_source = match self
                 .chapter_repo
                 .get_chapters_not_in_source(manga.source_id, manga.id, &chapter_paths)
-                .await?
+                .await
+            {
+                Ok(chapters) => chapters,
+                Err(error) => {
+                    return handle_chapter_repository_error(
+                        &manga,
+                        "get_chapters_not_in_source",
+                        error,
+                    );
+                }
+            };
+            let chapters_to_delete: Vec<i64> = chapters_not_in_source
                 .iter()
                 .map(|c| c.id)
                 .collect();
 
             if !chapters_to_delete.is_empty() {
-                self.chapter_repo
+                if let Err(error) = self
+                    .chapter_repo
                     .delete_chapter_by_ids(&chapters_to_delete)
-                    .await?;
+                    .await
+                {
+                    return handle_chapter_repository_error(
+                        &manga,
+                        "delete_chapter_by_ids",
+                        error,
+                    );
+                }
             }
         }
 
         let last_uploaded_chapter = manga.last_uploaded_at.unwrap_or_default();
 
-        let chapters: Vec<Chapter> = self
+        let chapters = match self
             .chapter_repo
             .get_chapters_by_manga_id(manga.id, None, None, false)
-            .await?
+            .await
+        {
+            Ok(chapters) => chapters,
+            Err(error) => {
+                return handle_chapter_repository_error(
+                    &manga,
+                    "get_chapters_by_manga_id",
+                    error,
+                );
+            }
+        };
+        let chapters: Vec<Chapter> = chapters
             .into_par_iter()
             .filter(|chapter| chapter.uploaded > last_uploaded_chapter)
             .collect();
