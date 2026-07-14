@@ -783,20 +783,21 @@ impl ExtensionManager {
                 ))
             }
             Err(error) => {
-                let (kind, message) = match error {
+                let (kind, message, quarantine) = match error {
                     WorkerCallError::Timeout => (
                         "TIMEOUT",
                         format!("exceeded {timeout:?}; the worker was terminated"),
+                        false,
                     ),
-                    WorkerCallError::Crashed(message) => ("CRASH", message),
+                    WorkerCallError::Crashed(message) => ("CRASH", message, quarantine_on_panic),
                     WorkerCallError::Remote { kind, message } => {
-                        ("PANIC", format!("{kind:?}: {message}"))
+                        ("PANIC", format!("{kind:?}: {message}"), quarantine_on_panic)
                     }
                     WorkerCallError::QueueTimeout | WorkerCallError::Stopped => {
                         unreachable!("handled above")
                     }
                 };
-                let quarantined = if quarantine_on_panic {
+                let quarantined = if quarantine {
                     health.quarantine();
                     true
                 } else {
