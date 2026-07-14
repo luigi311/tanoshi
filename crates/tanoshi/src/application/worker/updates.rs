@@ -40,6 +40,19 @@ enum MangaUpdateOutcome {
     SourceFailure,
 }
 
+#[derive(Debug, Default)]
+struct SourceUpdateSummary {
+    checked: usize,
+    succeeded: usize,
+    failed: usize,
+    skipped: usize,
+}
+
+struct SourceUpdateResult {
+    summary: SourceUpdateSummary,
+    error: Option<anyhow::Error>,
+}
+
 fn is_operational_source_failure(error: &anyhow::Error) -> bool {
     const OPERATIONAL_ERROR_PREFIXES: &[&str] = &[
         "[extension-admission]",
@@ -253,6 +266,7 @@ where
     async fn check_chapter_update(
         &self,
         mut rx: tokio::sync::mpsc::Receiver<Manga>,
+        run_kind: &str,
     ) -> Result<(), anyhow::Error> {
         let mut mangas_by_source: HashMap<i64, Vec<Manga>> = HashMap::new();
         while let Some(manga) = rx.recv().await {
@@ -269,15 +283,37 @@ where
             })
             .buffer_unordered(self.max_concurrent_sources);
         let mut first_error = None;
+        let mut source_summaries = Vec::new();
 
         while let Some((source_id, result)) = source_updates.next().await {
-            if let Err(error) = result {
+            source_summaries.push((source_id, result.summary));
+            if let Some(error) = result.error {
                 error!("update scan stopped for source {source_id}: {error}");
                 if first_error.is_none() {
                     first_error = Some(error);
                 }
             }
         }
+
+        source_summaries.sort_unstable_by_key(|(source_id, _)| *source_id);
+        let mut run_summary = SourceUpdateSummary::default();
+        for (source_id, summary) in source_summaries {
+            info!(
+                "UPDATE SOURCE SUMMARY: mode={run_kind} source_id={source_id} checked={} succeeded={} failed={} skipped={}",
+                summary.checked, summary.succeeded, summary.failed, summary.skipped
+            );
+            run_summary.checked += summary.checked;
+            run_summary.succeeded += summary.succeeded;
+            run_summary.failed += summary.failed;
+            run_summary.skipped += summary.skipped;
+        }
+        info!(
+            "UPDATE RUN SUMMARY: mode={run_kind} checked={} succeeded={} failed={} skipped={}",
+            run_summary.checked,
+            run_summary.succeeded,
+            run_summary.failed,
+            run_summary.skipped
+        );
 
         if let Some(error) = first_error {
             return Err(error);
@@ -290,19 +326,39 @@ where
         &self,
         source_id: i64,
         mangas: Vec<Manga>,
-    ) -> Result<(), anyhow::Error> {
+    ) -> SourceUpdateResult {
         let manga_count = mangas.len();
         let mut consecutive_failures = 0;
+        let mut summary = SourceUpdateSummary::default();
 
         for (index, manga) in mangas.into_iter().enumerate() {
-            match self.check_manga_update(manga).await? {
-                MangaUpdateOutcome::Success | MangaUpdateOutcome::ItemFailure => {
+            summary.checked += 1;
+            let outcome = match self.check_manga_update(manga).await {
+                Ok(outcome) => outcome,
+                Err(error) => {
+                    summary.failed += 1;
+                    summary.skipped = manga_count.saturating_sub(index + 1);
+                    return SourceUpdateResult {
+                        summary,
+                        error: Some(error),
+                    };
+                }
+            };
+            match outcome {
+                MangaUpdateOutcome::Success => {
+                    summary.succeeded += 1;
+                    consecutive_failures = 0;
+                }
+                MangaUpdateOutcome::ItemFailure => {
+                    summary.failed += 1;
                     consecutive_failures = 0;
                 }
                 MangaUpdateOutcome::SourceFailure => {
+                    summary.failed += 1;
                     consecutive_failures += 1;
                     if consecutive_failures >= SOURCE_UPDATE_FAILURE_THRESHOLD {
                         let skipped = manga_count.saturating_sub(index + 1);
+                        summary.skipped = skipped;
                         error!(
                             "UPDATE SOURCE CIRCUIT OPEN: source_id={source_id} consecutive_operational_failures={consecutive_failures}; skipping {skipped} remaining manga for this run"
                         );
@@ -314,7 +370,10 @@ where
             tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
         }
 
-        Ok(())
+        SourceUpdateResult {
+            summary,
+            error: None,
+        }
     }
 
     async fn check_manga_update(&self, manga: Manga) -> Result<MangaUpdateOutcome, anyhow::Error> {
@@ -530,21 +589,23 @@ where
                     match cmd {
                         ChapterUpdateCommand::All(tx) => {
                             self.start_chapter_update_queue_all(manga_tx);
-                            let res = self.check_chapter_update(manga_rx).await;
+                            let res = self.check_chapter_update(manga_rx, "manual-all").await;
                             if tx.send(res).is_err() {
                                 debug!("chapter update result receiver dropped (All)");
                             }
                         },
                         ChapterUpdateCommand::Manga(manga_id, tx) => {
                             self.start_chapter_update_queue_by_manga_id(manga_tx, manga_id).await;
-                            let res = self.check_chapter_update(manga_rx).await;
+                            let run_kind = format!("manual-manga:{manga_id}");
+                            let res = self.check_chapter_update(manga_rx, &run_kind).await;
                             if tx.send(res).is_err() {
                                 debug!("chapter update result receiver dropped (Manga {manga_id})");
                             }
                         },
                         ChapterUpdateCommand::Library(user_id, tx) => {
                             self.start_chapter_update_queue_by_user_id(manga_tx, user_id);
-                            let res = self.check_chapter_update(manga_rx).await;
+                            let run_kind = format!("manual-library:{user_id}");
+                            let res = self.check_chapter_update(manga_rx, &run_kind).await;
                             if tx.send(res).is_err() {
                                 debug!("chapter update result receiver dropped (Library user {user_id})");
                             }
@@ -561,7 +622,8 @@ where
                     let (manga_tx, manga_rx) = tokio::sync::mpsc::channel(1);
                     self.start_chapter_update_queue_all(manga_tx);
                     
-                    let check_chapter_result = self.check_chapter_update(manga_rx).await;
+                    let check_chapter_result =
+                        self.check_chapter_update(manga_rx, "periodic").await;
                     if let Err(e) = check_chapter_result {
                         error!("failed check chapter update: {e}");
                     }
