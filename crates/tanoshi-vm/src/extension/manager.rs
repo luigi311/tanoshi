@@ -1,4 +1,5 @@
 use std::{
+    future::Future,
     panic::AssertUnwindSafe,
     path::{Path, PathBuf},
     sync::{
@@ -23,7 +24,7 @@ use super::source::{
     SOURCE_MAX_ABANDONED_CALLS, SourceAdmission, SourceHealth, panic_payload_message,
 };
 use super::worker::{
-    WorkerCallError, WorkerClient, WorkerRequest, WorkerValue, resolve_worker_path,
+    WorkerCallError, WorkerClient, WorkerErrorKind, WorkerRequest, WorkerValue, resolve_worker_path,
 };
 
 const STAGED_LIBRARY_PREFIX: &str = ".tanoshi-staged-";
@@ -209,6 +210,13 @@ fn cleanup_managed_libraries(dir: &Path) {
 
 struct PluginFileReplacement {
     backup_path: Option<PathBuf>,
+}
+
+#[derive(Clone, Copy)]
+struct ExtensionCall {
+    operation: &'static str,
+    timeout: Duration,
+    quarantine_on_panic: bool,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -489,79 +497,62 @@ impl ExtensionManager {
     async fn call_blocking<T, F>(
         &self,
         source_id: i64,
-        operation: &'static str,
-        timeout: Duration,
+        call: ExtensionCall,
         request: WorkerRequest,
         decode: impl FnOnce(WorkerValue) -> Result<T> + Send + 'static,
-        call: F,
+        invoke: F,
     ) -> Result<T>
     where
         T: Send + 'static,
         F: FnOnce(&dyn tanoshi_lib::prelude::Extension) -> Result<T> + Send + 'static,
     {
         let entry = self.entry(source_id)?;
-        self.call_blocking_entry(entry, operation, timeout, request, decode, call)
+        self.call_blocking_entry(entry, call, request, decode, invoke)
             .await
     }
 
     async fn call_blocking_entry<T, F, D>(
         &self,
         entry: Arc<SourceEntry>,
-        operation: &'static str,
-        timeout: Duration,
+        call: ExtensionCall,
         request: WorkerRequest,
         decode: D,
-        call: F,
+        invoke: F,
     ) -> Result<T>
     where
         T: Send + 'static,
         F: FnOnce(&dyn tanoshi_lib::prelude::Extension) -> Result<T> + Send + 'static,
         D: FnOnce(WorkerValue) -> Result<T> + Send + 'static,
     {
-        self.call_blocking_with(
-            entry,
-            operation,
-            timeout,
-            false,
-            request,
-            decode,
-            move |entry| entry.with_extension(call),
-        )
+        self.call_blocking_with(entry, call, request, decode, move |entry| {
+            entry.with_extension(invoke)
+        })
         .await
     }
 
     async fn call_blocking_mut_entry<T, F, D>(
         &self,
         entry: Arc<SourceEntry>,
-        operation: &'static str,
-        timeout: Duration,
+        call: ExtensionCall,
         request: WorkerRequest,
         decode: D,
-        call: F,
+        invoke: F,
     ) -> Result<T>
     where
         T: Send + 'static,
         F: FnOnce(&mut dyn tanoshi_lib::prelude::Extension) -> Result<T> + Send + 'static,
         D: FnOnce(WorkerValue) -> Result<T> + Send + 'static,
     {
-        self.call_blocking_with(
-            entry,
-            operation,
-            timeout,
-            true,
-            request,
-            decode,
-            move |entry| entry.with_extension_mut(call),
-        )
+        self.call_blocking_with(entry, call, request, decode, move |entry| {
+            entry.with_extension_mut(invoke)
+        })
         .await
     }
 
     async fn call_blocking_with<T, F, D>(
         &self,
         entry: Arc<SourceEntry>,
-        operation: &'static str,
-        timeout: Duration,
-        quarantine_on_panic: bool,
+        call: ExtensionCall,
         request: WorkerRequest,
         decode: D,
         invoke: F,
@@ -571,19 +562,15 @@ impl ExtensionManager {
         F: FnOnce(&SourceEntry) -> Result<T> + Send + 'static,
         D: FnOnce(WorkerValue) -> Result<T> + Send + 'static,
     {
+        let ExtensionCall {
+            operation,
+            timeout,
+            quarantine_on_panic,
+        } = call;
         let permit = self.acquire_permit(&entry, operation).await?;
         if let Some(worker) = entry.worker() {
             return self
-                .call_worker(
-                    entry,
-                    operation,
-                    timeout,
-                    quarantine_on_panic,
-                    worker,
-                    permit,
-                    request,
-                    decode,
-                )
+                .call_worker(entry, call, worker, permit, request, decode)
                 .await;
         }
 
@@ -680,9 +667,7 @@ impl ExtensionManager {
     async fn call_worker<T, D>(
         &self,
         entry: Arc<SourceEntry>,
-        operation: &'static str,
-        timeout: Duration,
-        quarantine_on_panic: bool,
+        call: ExtensionCall,
         worker: Arc<WorkerClient>,
         permit: OwnedSemaphorePermit,
         request: WorkerRequest,
@@ -692,6 +677,66 @@ impl ExtensionManager {
         T: Send + 'static,
         D: FnOnce(WorkerValue) -> Result<T> + Send + 'static,
     {
+        let join_source_id = entry.source_id;
+        let join_source_name = entry.source_name().to_owned();
+        let join_operation = call.operation;
+        // The supervisor task, rather than the caller future, owns the permit
+        // and IPC transaction. If an HTTP request or other caller is
+        // cancelled, the supervisor still drains the matching response (or
+        // terminates the worker at the deadline) before releasing either.
+        Self::await_worker_supervisor(
+            join_source_id,
+            join_source_name,
+            join_operation,
+            Self::call_worker_inner(entry, call, worker, permit, request, decode),
+        )
+        .await
+    }
+
+    async fn await_worker_supervisor<T, F>(
+        source_id: i64,
+        source_name: String,
+        operation: &'static str,
+        future: F,
+    ) -> Result<T>
+    where
+        T: Send + 'static,
+        F: Future<Output = Result<T>> + Send + 'static,
+    {
+        let task = tokio::spawn(future);
+        match task.await {
+            Ok(result) => result,
+            Err(error) if error.is_panic() => {
+                error!(
+                    "EXTENSION WORKER SUPERVISOR PANIC: source_id={source_id} source={source_name:?} operation={operation}"
+                );
+                bail!(
+                    "[extension-worker-supervisor] source {source_id} ({source_name}) {operation} supervisor panicked"
+                );
+            }
+            Err(error) => bail!(
+                "[extension-worker-supervisor] source {source_id} ({source_name}) {operation} supervisor was cancelled: {error}"
+            ),
+        }
+    }
+
+    async fn call_worker_inner<T, D>(
+        entry: Arc<SourceEntry>,
+        call: ExtensionCall,
+        worker: Arc<WorkerClient>,
+        permit: OwnedSemaphorePermit,
+        request: WorkerRequest,
+        decode: D,
+    ) -> Result<T>
+    where
+        T: Send + 'static,
+        D: FnOnce(WorkerValue) -> Result<T> + Send + 'static,
+    {
+        let ExtensionCall {
+            operation,
+            timeout,
+            quarantine_on_panic,
+        } = call;
         let source_id = entry.source_id;
         let source_name = entry.source_name().to_owned();
         let health = entry.health.clone();
@@ -711,6 +756,32 @@ impl ExtensionManager {
                 health.record_success();
                 Ok(value)
             }
+            Err(WorkerCallError::Remote {
+                kind: WorkerErrorKind::Operation,
+                message,
+            }) => Err(anyhow!(
+                "[extension-error] source {source_id} ({source_name}) {operation} failed: {message}"
+            )),
+            // The request never reached the worker, so it says nothing about
+            // the source's health; the head-of-line call reports for both.
+            Err(WorkerCallError::QueueTimeout) => {
+                warn!(
+                    "EXTENSION WORKER BUSY: source_id={source_id} source={source_name:?} operation={operation} spent {timeout:?} waiting behind earlier calls; the worker was not disturbed"
+                );
+                Err(anyhow!(
+                    "[extension-worker-busy] source {source_id} ({source_name}) is busy; {operation} timed out after {timeout:?} waiting for earlier calls"
+                ))
+            }
+            // The source was unloaded or replaced mid-call; the retired
+            // entry's health no longer matters.
+            Err(WorkerCallError::Stopped) => {
+                warn!(
+                    "EXTENSION WORKER STOPPED: source_id={source_id} source={source_name:?} operation={operation} was interrupted because the source was unloaded or replaced"
+                );
+                Err(anyhow!(
+                    "[extension-stopped] source {source_id} ({source_name}) {operation} was interrupted because the source was unloaded or replaced"
+                ))
+            }
             Err(error) => {
                 let (kind, message) = match error {
                     WorkerCallError::Timeout => (
@@ -718,15 +789,11 @@ impl ExtensionManager {
                         format!("exceeded {timeout:?}; the worker was terminated"),
                     ),
                     WorkerCallError::Crashed(message) => ("CRASH", message),
-                    WorkerCallError::Remote { kind, message }
-                        if kind == super::worker::WorkerErrorKind::Operation =>
-                    {
-                        return Err(anyhow!(
-                            "[extension-error] source {source_id} ({source_name}) {operation} failed: {message}"
-                        ));
-                    }
                     WorkerCallError::Remote { kind, message } => {
                         ("PANIC", format!("{kind:?}: {message}"))
+                    }
+                    WorkerCallError::QueueTimeout | WorkerCallError::Stopped => {
+                        unreachable!("handled above")
                     }
                 };
                 let quarantined = if quarantine_on_panic {
@@ -820,6 +887,13 @@ impl ExtensionManager {
             worker.shutdown().await;
         }
         drop(validation_entry);
+
+        // Resolve the current registration before mutating the plugin file.
+        // Keep its staged worker serving until the replacement is ready, then
+        // pause it only for the map swap below.
+        let previous = self.entry_for_plugin(&plugin_name)?;
+        let previous_worker = previous.as_ref().and_then(|entry| entry.worker());
+
         let replacement = match self
             .replace_plugin_file(&temporary_path, &plugin_path)
             .await
@@ -848,14 +922,51 @@ impl ExtensionManager {
             }
         };
 
-        if let Err(error) = self.insert_entry(entry) {
+        if let Err(error) = self.apply_saved_preferences(&entry).await {
+            if let Some(worker) = entry.worker() {
+                worker.shutdown().await;
+            }
             if let Err(rollback_error) = self.rollback_plugin_file(&plugin_path, replacement).await
             {
                 return Err(anyhow!(
-                    "failed to register extension: {error}; failed to restore the previous file: {rollback_error}"
+                    "failed to apply saved preferences to the installed extension: {error}; failed to restore the previous file: {rollback_error}"
                 ));
             }
             return Err(error);
+        }
+
+        // Only pause the previous worker for this plugin right before the
+        // atomic map swap below, so it keeps serving calls through the new
+        // worker's spawn, validation, and preference replay above. A
+        // failure past this point resumes the same staged worker,
+        // preserving the previous registration.
+        if let Some(worker) = previous_worker.as_ref() {
+            worker.pause().await;
+        }
+
+        let retired = match self.replace_plugin_entry(entry.clone(), previous.as_ref()) {
+            Ok(retired) => retired,
+            Err(error) => {
+                if let Some(worker) = entry.worker() {
+                    worker.shutdown().await;
+                }
+                if let Some(worker) = previous_worker.as_ref() {
+                    worker.resume();
+                }
+                if let Err(rollback_error) =
+                    self.rollback_plugin_file(&plugin_path, replacement).await
+                {
+                    return Err(anyhow!(
+                        "failed to register extension: {error}; failed to restore the previous file: {rollback_error}"
+                    ));
+                }
+                return Err(error);
+            }
+        };
+        for entry in retired {
+            if let Some(worker) = entry.worker() {
+                worker.shutdown().await;
+            }
         }
 
         if let Some(backup_path) = replacement.backup_path {
@@ -917,6 +1028,41 @@ impl ExtensionManager {
         )))
     }
 
+    /// Applies the source's persisted preferences to a freshly loaded entry
+    /// before it is published in the source map.
+    async fn apply_saved_preferences(&self, entry: &Arc<SourceEntry>) -> Result<()> {
+        let source_name = entry.source_info.name.to_lowercase();
+        let Some(preferences) =
+            tokio::fs::read_to_string(self.dir.join(&source_name).with_extension("json"))
+                .await
+                .ok()
+                .and_then(|s| serde_json::from_str::<Vec<Input>>(&s).ok())
+        else {
+            return Ok(());
+        };
+
+        info!("set preferences for {source_name}");
+        let saved_preferences = preferences.clone();
+        self.call_blocking_mut_entry(
+            entry.clone(),
+            ExtensionCall {
+                operation: "load_preferences",
+                timeout: self.options.metadata_timeout,
+                quarantine_on_panic: true,
+            },
+            WorkerRequest::SetPreferences {
+                preferences: preferences.clone(),
+            },
+            decode_unit,
+            move |extension| extension.set_preferences(preferences),
+        )
+        .await?;
+        if let Some(worker) = entry.worker() {
+            worker.set_startup_preferences(saved_preferences);
+        }
+        Ok(())
+    }
+
     pub async fn load(&self, name: &str) -> Result<()> {
         let plugin_name = normalize_plugin_name(name);
         let lifecycle_lock = self.lifecycle_lock(&plugin_name)?;
@@ -925,45 +1071,71 @@ impl ExtensionManager {
         let entry = self
             .load_worker_from_path(&plugin_path, plugin_path.clone())
             .await?;
-        let source_name = entry.source_info.name.to_lowercase();
 
-        if let Some(preferences) =
-            tokio::fs::read_to_string(self.dir.join(&source_name).with_extension("json"))
-                .await
-                .ok()
-                .and_then(|s| serde_json::from_str::<Vec<Input>>(&s).ok())
-        {
-            info!("set preferences for {}", source_name);
-            self.call_blocking_mut_entry(
-                entry.clone(),
-                "load_preferences",
-                self.options.metadata_timeout,
-                WorkerRequest::SetPreferences {
-                    preferences: preferences.clone(),
-                },
-                decode_unit,
-                move |extension| extension.set_preferences(preferences),
-            )
-            .await?;
+        if let Err(error) = self.apply_saved_preferences(&entry).await {
+            if let Some(worker) = entry.worker() {
+                worker.shutdown().await;
+            }
+            return Err(error);
         }
-        self.insert_entry(entry)
+        let replaced = self.insert_entry(entry)?;
+        if let Some(worker) = replaced.as_ref().and_then(|entry| entry.worker()) {
+            worker.shutdown().await;
+        }
+        Ok(())
     }
 
     pub async fn insert(&self, source: Source) -> Result<()> {
         let entry = Arc::new(source.into_entry(self.options.max_concurrent_calls)?);
         let lifecycle_lock = self.lifecycle_lock(&entry_plugin_name(&entry))?;
         let _lifecycle_guard = lifecycle_lock.lock_owned().await;
-        self.insert_entry(entry)
+        let replaced = self.insert_entry(entry)?;
+        if let Some(worker) = replaced.as_ref().and_then(|entry| entry.worker()) {
+            worker.shutdown().await;
+        }
+        Ok(())
     }
 
-    fn insert_entry(&self, entry: Arc<SourceEntry>) -> Result<()> {
+    fn insert_entry(&self, entry: Arc<SourceEntry>) -> Result<Option<Arc<SourceEntry>>> {
         let source_id = entry.source_id;
-        let replaced = {
+        Ok({
             let mut sources = self.write()?;
             sources.insert(source_id, entry)
-        };
-        drop(replaced);
-        Ok(())
+        })
+    }
+
+    fn entry_for_plugin(&self, plugin_name: &str) -> Result<Option<Arc<SourceEntry>>> {
+        Ok(self
+            .read()?
+            .values()
+            .find(|entry| entry_plugin_name(entry) == plugin_name)
+            .cloned())
+    }
+
+    fn replace_plugin_entry(
+        &self,
+        entry: Arc<SourceEntry>,
+        previous: Option<&Arc<SourceEntry>>,
+    ) -> Result<Vec<Arc<SourceEntry>>> {
+        let mut retired = Vec::new();
+        let mut sources = self.write()?;
+
+        if let Some(previous) = previous
+            && sources
+                .get(&previous.source_id)
+                .is_some_and(|current| Arc::ptr_eq(current, previous))
+            && let Some(previous) = sources.remove(&previous.source_id)
+        {
+            retired.push(previous);
+        }
+
+        if let Some(replaced) = sources.insert(entry.source_id, entry)
+            && !retired.iter().any(|entry| Arc::ptr_eq(entry, &replaced))
+        {
+            retired.push(replaced);
+        }
+
+        Ok(retired)
     }
 
     pub async fn unload(&self, source_id: i64) -> Result<()> {
@@ -975,30 +1147,52 @@ impl ExtensionManager {
             let plugin_name = entry_plugin_name(&entry);
             let lifecycle_lock = self.lifecycle_lock(&plugin_name)?;
             let _lifecycle_guard = lifecycle_lock.lock_owned().await;
-            let (entry, removed) = {
-                let mut sources = self.write()?;
-                let Some(entry) = sources.get(&source_id).cloned() else {
-                    return Ok(());
-                };
-                if entry_plugin_name(&entry) != plugin_name {
-                    continue;
-                }
-
-                let plugin_path = entry.plugin_path().map(Path::to_path_buf);
-                if let Some(plugin_path) = plugin_path.as_deref()
-                    && let Err(error) = std::fs::remove_file(plugin_path)
-                    && error.kind() != std::io::ErrorKind::NotFound
-                {
-                    return Err(anyhow!(
-                        "failed to remove extension {}: {error}",
-                        plugin_path.display()
-                    ));
-                }
-
-                let removed = sources.remove(&source_id);
-                (entry, removed)
+            let Some(entry) = self.read()?.get(&source_id).cloned() else {
+                return Ok(());
             };
-            if let Some(worker) = removed.as_ref().and_then(|entry| entry.worker()) {
+            if entry_plugin_name(&entry) != plugin_name {
+                continue;
+            }
+
+            let worker = entry.worker();
+            if let Some(worker) = worker.as_ref() {
+                // Keep the registration present but stopped until physical
+                // deletion succeeds. If deletion fails, resume this worker so
+                // the Phase 1 unload-failure behavior remains transactional.
+                worker.pause().await;
+            }
+
+            if let Some(plugin_path) = entry.plugin_path()
+                && let Err(error) = std::fs::remove_file(plugin_path)
+                && error.kind() != std::io::ErrorKind::NotFound
+            {
+                if let Some(worker) = worker.as_ref() {
+                    worker.resume();
+                }
+                return Err(anyhow!(
+                    "failed to remove extension {}: {error}",
+                    plugin_path.display()
+                ));
+            }
+
+            let removed = {
+                let mut sources = self.write()?;
+                if sources
+                    .get(&source_id)
+                    .is_some_and(|current| Arc::ptr_eq(current, &entry))
+                {
+                    sources.remove(&source_id)
+                } else {
+                    None
+                }
+            };
+            if removed.is_none() {
+                if let Some(worker) = worker.as_ref() {
+                    worker.shutdown().await;
+                }
+                continue;
+            }
+            if let Some(worker) = worker {
                 worker.shutdown().await;
             }
             info!(
@@ -1037,8 +1231,11 @@ impl ExtensionManager {
         let entry = self.entry(source_id)?;
         self.call_blocking_entry(
             entry,
-            "filter_list",
-            self.options.metadata_timeout,
+            ExtensionCall {
+                operation: "filter_list",
+                timeout: self.options.metadata_timeout,
+                quarantine_on_panic: false,
+            },
             WorkerRequest::FilterList,
             decode_inputs,
             |extension| Ok(extension.filter_list()),
@@ -1050,8 +1247,11 @@ impl ExtensionManager {
         let entry = self.entry(source_id)?;
         self.call_blocking_entry(
             entry,
-            "get_preferences",
-            self.options.metadata_timeout,
+            ExtensionCall {
+                operation: "get_preferences",
+                timeout: self.options.metadata_timeout,
+                quarantine_on_panic: false,
+            },
             WorkerRequest::GetPreferences,
             decode_inputs,
             |extension| extension.get_preferences(),
@@ -1060,13 +1260,42 @@ impl ExtensionManager {
     }
 
     pub async fn set_preferences(&self, source_id: i64, preferences: Vec<Input>) -> Result<()> {
-        let entry = self.entry(source_id)?;
+        let initial_entry = self.entry(source_id)?;
+        let plugin_name = entry_plugin_name(&initial_entry);
+        drop(initial_entry);
+
+        // The task owns the lifecycle guard so caller cancellation cannot
+        // let an install pass the save while its worker request is still in
+        // flight. Dropping the JoinHandle detaches rather than cancels it.
+        let manager = self.clone();
+        let task = tokio::spawn(async move {
+            manager
+                .set_preferences_for_plugin(plugin_name, preferences)
+                .await
+        });
+        task.await
+            .map_err(|error| anyhow!("preference save task failed: {error}"))?
+    }
+
+    async fn set_preferences_for_plugin(
+        &self,
+        plugin_name: String,
+        preferences: Vec<Input>,
+    ) -> Result<()> {
+        let lifecycle_lock = self.lifecycle_lock(&plugin_name)?;
+        let _lifecycle_guard = lifecycle_lock.lock_owned().await;
+        let entry = self
+            .entry_for_plugin(&plugin_name)?
+            .ok_or_else(|| anyhow!("no such source"))?;
         let source_name = entry.source_info.name.to_lowercase();
         let extension_preferences = preferences.clone();
         self.call_blocking_mut_entry(
-            entry,
-            "set_preferences",
-            self.options.metadata_timeout,
+            entry.clone(),
+            ExtensionCall {
+                operation: "set_preferences",
+                timeout: self.options.metadata_timeout,
+                quarantine_on_panic: true,
+            },
             WorkerRequest::SetPreferences {
                 preferences: extension_preferences.clone(),
             },
@@ -1074,6 +1303,9 @@ impl ExtensionManager {
             move |extension| extension.set_preferences(extension_preferences),
         )
         .await?;
+        if let Some(worker) = entry.worker() {
+            worker.set_startup_preferences(preferences.clone());
+        }
 
         tokio::fs::write(
             self.dir.join(source_name).with_extension("json"),
@@ -1091,8 +1323,11 @@ impl ExtensionManager {
     ) -> Result<Vec<tanoshi_lib::prelude::MangaInfo>> {
         self.call_blocking(
             source_id,
-            "get_popular_manga",
-            self.options.metadata_timeout,
+            ExtensionCall {
+                operation: "get_popular_manga",
+                timeout: self.options.metadata_timeout,
+                quarantine_on_panic: false,
+            },
             WorkerRequest::GetPopularManga { page },
             decode_manga_list,
             move |extension| extension.get_popular_manga(page),
@@ -1107,8 +1342,11 @@ impl ExtensionManager {
     ) -> Result<Vec<tanoshi_lib::prelude::MangaInfo>> {
         self.call_blocking(
             source_id,
-            "get_latest_manga",
-            self.options.metadata_timeout,
+            ExtensionCall {
+                operation: "get_latest_manga",
+                timeout: self.options.metadata_timeout,
+                quarantine_on_panic: false,
+            },
             WorkerRequest::GetLatestManga { page },
             decode_manga_list,
             move |extension| extension.get_latest_manga(page),
@@ -1125,8 +1363,11 @@ impl ExtensionManager {
     ) -> Result<Vec<tanoshi_lib::prelude::MangaInfo>> {
         self.call_blocking(
             source_id,
-            "search_manga",
-            self.options.metadata_timeout,
+            ExtensionCall {
+                operation: "search_manga",
+                timeout: self.options.metadata_timeout,
+                quarantine_on_panic: false,
+            },
             WorkerRequest::SearchManga {
                 page,
                 query: query.clone(),
@@ -1145,8 +1386,11 @@ impl ExtensionManager {
     ) -> Result<tanoshi_lib::prelude::MangaInfo> {
         self.call_blocking(
             source_id,
-            "get_manga_detail",
-            self.options.metadata_timeout,
+            ExtensionCall {
+                operation: "get_manga_detail",
+                timeout: self.options.metadata_timeout,
+                quarantine_on_panic: false,
+            },
             WorkerRequest::GetMangaDetail { path: path.clone() },
             decode_manga,
             move |extension| extension.get_manga_detail(path),
@@ -1161,8 +1405,11 @@ impl ExtensionManager {
     ) -> Result<Vec<tanoshi_lib::prelude::ChapterInfo>> {
         self.call_blocking(
             source_id,
-            "get_chapters",
-            self.options.metadata_timeout,
+            ExtensionCall {
+                operation: "get_chapters",
+                timeout: self.options.metadata_timeout,
+                quarantine_on_panic: false,
+            },
             WorkerRequest::GetChapters { path: path.clone() },
             decode_chapters,
             move |extension| extension.get_chapters(path),
@@ -1173,8 +1420,11 @@ impl ExtensionManager {
     pub async fn get_pages(&self, source_id: i64, path: String) -> Result<Vec<String>> {
         self.call_blocking(
             source_id,
-            "get_pages",
-            self.options.metadata_timeout,
+            ExtensionCall {
+                operation: "get_pages",
+                timeout: self.options.metadata_timeout,
+                quarantine_on_panic: false,
+            },
             WorkerRequest::GetPages { path: path.clone() },
             decode_pages,
             move |extension| extension.get_pages(path),
@@ -1185,12 +1435,188 @@ impl ExtensionManager {
     pub async fn get_image_bytes(&self, source_id: i64, url: String) -> Result<Bytes> {
         self.call_blocking(
             source_id,
-            "get_image_bytes",
-            self.options.image_timeout,
+            ExtensionCall {
+                operation: "get_image_bytes",
+                timeout: self.options.image_timeout,
+                quarantine_on_panic: false,
+            },
             WorkerRequest::GetImageBytes { url: url.clone() },
             decode_image,
             move |extension| extension.get_image_bytes(url),
         )
         .await
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{
+        future::Future,
+        sync::{
+            Arc,
+            atomic::{AtomicUsize, Ordering},
+        },
+        task::{Context, Poll, Waker},
+        time::Duration,
+    };
+
+    use anyhow::{Result, bail};
+    use bytes::Bytes;
+    use tanoshi_lib::prelude::{ChapterInfo, Extension, Input, Lang, MangaInfo, SourceInfo};
+    use tokio::sync::{Semaphore, oneshot};
+
+    use crate::prelude::Source;
+
+    use super::{ExtensionManager, UNIQUE_PATH_COUNTER};
+
+    struct PreferenceExtension {
+        source_id: i64,
+        calls: Arc<AtomicUsize>,
+    }
+
+    impl Extension for PreferenceExtension {
+        fn get_source_info(&self) -> SourceInfo {
+            SourceInfo {
+                id: self.source_id,
+                name: "Race Source".to_string(),
+                url: String::new(),
+                version: "test",
+                icon: "",
+                languages: Lang::All,
+                nsfw: false,
+            }
+        }
+
+        fn set_preferences(&mut self, _preferences: Vec<Input>) -> Result<()> {
+            self.calls.fetch_add(1, Ordering::Relaxed);
+            Ok(())
+        }
+
+        fn get_popular_manga(&self, _page: i64) -> Result<Vec<MangaInfo>> {
+            bail!("unused test operation")
+        }
+
+        fn get_latest_manga(&self, _page: i64) -> Result<Vec<MangaInfo>> {
+            bail!("unused test operation")
+        }
+
+        fn search_manga(
+            &self,
+            _page: i64,
+            _query: Option<String>,
+            _filters: Option<Vec<Input>>,
+        ) -> Result<Vec<MangaInfo>> {
+            bail!("unused test operation")
+        }
+
+        fn get_manga_detail(&self, _path: String) -> Result<MangaInfo> {
+            bail!("unused test operation")
+        }
+
+        fn get_chapters(&self, _path: String) -> Result<Vec<ChapterInfo>> {
+            bail!("unused test operation")
+        }
+
+        fn get_pages(&self, _path: String) -> Result<Vec<String>> {
+            bail!("unused test operation")
+        }
+
+        fn get_image_bytes(&self, _url: String) -> Result<Bytes> {
+            bail!("unused test operation")
+        }
+    }
+
+    fn preference_entry(
+        source_id: i64,
+        calls: Arc<AtomicUsize>,
+        plugin_path: &std::path::Path,
+    ) -> Arc<crate::prelude::SourceEntry> {
+        Arc::new(
+            Source::from(Box::new(PreferenceExtension { source_id, calls }))
+                .with_plugin_path(plugin_path.to_path_buf())
+                .into_entry(1)
+                .unwrap(),
+        )
+    }
+
+    #[tokio::test]
+    async fn cancelled_caller_does_not_drop_supervised_resources() {
+        let semaphore = Arc::new(Semaphore::new(1));
+        let permit = semaphore.clone().acquire_owned().await.unwrap();
+        let (started_tx, started_rx) = oneshot::channel();
+        let (release_tx, release_rx) = oneshot::channel();
+
+        let caller = tokio::spawn(ExtensionManager::await_worker_supervisor(
+            1,
+            "test source".to_string(),
+            "test_operation",
+            async move {
+                let _ = started_tx.send(());
+                let _ = release_rx.await;
+                drop(permit);
+                Ok(())
+            },
+        ));
+        started_rx.await.unwrap();
+        caller.abort();
+        assert!(caller.await.unwrap_err().is_cancelled());
+
+        assert!(
+            tokio::time::timeout(Duration::from_millis(20), semaphore.clone().acquire_owned(),)
+                .await
+                .is_err(),
+            "caller cancellation released the supervised permit early"
+        );
+
+        release_tx.send(()).unwrap();
+        let recovered_permit =
+            tokio::time::timeout(Duration::from_secs(1), semaphore.acquire_owned())
+                .await
+                .expect("supervised permit was not released after completion")
+                .unwrap();
+        drop(recovered_permit);
+    }
+
+    #[tokio::test]
+    async fn preference_save_waits_for_install_and_targets_replacement_entry() {
+        let test_id = UNIQUE_PATH_COUNTER.fetch_add(1, Ordering::Relaxed);
+        let dir = std::env::temp_dir().join(format!(
+            "tanoshi-vm-preference-install-race-{}-{test_id}",
+            std::process::id()
+        ));
+        std::fs::create_dir_all(&dir).unwrap();
+
+        let manager = ExtensionManager::new(&dir);
+        let plugin_path = dir.join("race.so");
+        let old_calls = Arc::new(AtomicUsize::new(0));
+        let old_entry = preference_entry(1, old_calls.clone(), &plugin_path);
+        manager.insert_entry(old_entry.clone()).unwrap();
+
+        let lifecycle_lock = manager.lifecycle_lock("race").unwrap();
+        let lifecycle_guard = lifecycle_lock.lock_owned().await;
+        let preferences = vec![Input::Text {
+            name: "token".to_string(),
+            state: Some("new value".to_string()),
+        }];
+        let mut preference_save = Box::pin(manager.set_preferences(1, preferences));
+        let mut context = Context::from_waker(Waker::noop());
+        assert!(
+            matches!(preference_save.as_mut().poll(&mut context), Poll::Pending),
+            "preference save did not wait for the plugin lifecycle lock"
+        );
+
+        let new_calls = Arc::new(AtomicUsize::new(0));
+        let new_entry = preference_entry(2, new_calls.clone(), &plugin_path);
+        manager
+            .replace_plugin_entry(new_entry, Some(&old_entry))
+            .unwrap();
+        drop(lifecycle_guard);
+
+        preference_save.await.unwrap();
+        assert_eq!(old_calls.load(Ordering::Relaxed), 0);
+        assert_eq!(new_calls.load(Ordering::Relaxed), 1);
+        assert!(dir.join("race source.json").is_file());
+
+        std::fs::remove_dir_all(dir).unwrap();
     }
 }

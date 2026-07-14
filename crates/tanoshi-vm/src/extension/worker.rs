@@ -2,7 +2,7 @@ use std::{
     io::{self, BufReader, BufWriter, Read, Write},
     path::{Path, PathBuf},
     process::Stdio,
-    sync::Arc,
+    sync::{Arc, Mutex as StdMutex},
     time::Duration,
 };
 
@@ -14,6 +14,7 @@ use tokio::{
     io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt, BufReader as AsyncBufReader},
     process::{Child, ChildStdin, ChildStdout, Command},
     sync::{Mutex, Notify},
+    time::Instant,
 };
 
 use super::{Source, SourceEntry, source::panic_payload_message};
@@ -142,7 +143,14 @@ impl WorkerSourceInfo {
 
 #[derive(Debug)]
 pub(crate) enum WorkerCallError {
+    /// The worker held the request past the deadline and was terminated.
     Timeout,
+    /// The deadline expired while earlier calls still occupied the worker
+    /// stream; the worker itself was left untouched.
+    QueueTimeout,
+    /// The client was explicitly shut down because its source was unloaded
+    /// or replaced.
+    Stopped,
     Crashed(String),
     Remote {
         kind: WorkerErrorKind,
@@ -154,6 +162,10 @@ impl std::fmt::Display for WorkerCallError {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Timeout => formatter.write_str("extension worker request timed out"),
+            Self::QueueTimeout => {
+                formatter.write_str("extension worker is busy with earlier calls")
+            }
+            Self::Stopped => formatter.write_str("extension worker was shut down"),
             Self::Crashed(message) => write!(formatter, "extension worker exited: {message}"),
             Self::Remote { kind, message } => {
                 write!(formatter, "extension worker returned {kind:?}: {message}")
@@ -180,6 +192,9 @@ pub(crate) struct WorkerClient {
     stopped: AtomicBool,
     process: Mutex<Option<WorkerProcess>>,
     shutdown: Notify,
+    // Saved preferences to re-apply whenever a replacement worker spawns, so
+    // a respawned worker never serves requests with default preferences.
+    startup_preferences: StdMutex<Option<Vec<Input>>>,
 }
 
 impl WorkerClient {
@@ -197,7 +212,16 @@ impl WorkerClient {
             stopped: AtomicBool::new(false),
             process: Mutex::new(None),
             shutdown: Notify::new(),
+            startup_preferences: StdMutex::new(None),
         })
+    }
+
+    pub(crate) fn set_startup_preferences(&self, preferences: Vec<Input>) {
+        let mut guard = match self.startup_preferences.lock() {
+            Ok(guard) => guard,
+            Err(poisoned) => poisoned.into_inner(),
+        };
+        *guard = Some(preferences);
     }
 
     pub(crate) async fn start(&self) -> Result<WorkerSourceInfo> {
@@ -206,7 +230,10 @@ impl WorkerClient {
             bail!("extension worker is shut down");
         }
         if process.is_none() {
-            let (worker, source_info) = self.spawn_process().await?;
+            let (worker, source_info) =
+                tokio::time::timeout(self.startup_timeout, self.spawn_process())
+                    .await
+                    .context("extension worker startup timed out")??;
             *process = Some(worker);
             return Ok(source_info);
         }
@@ -222,20 +249,48 @@ impl WorkerClient {
         request: WorkerRequest,
         timeout: Duration,
     ) -> std::result::Result<WorkerValue, WorkerCallError> {
-        let mut process_guard = self.process.lock().await;
+        // The deadline covers the wait for the per-source stream as well as
+        // the request itself, so a caller never waits longer than its own
+        // timeout behind earlier calls.
+        let deadline = Instant::now() + timeout;
+        // Register interest in shutdown before checking `stopped` so a
+        // shutdown between the check and the select cannot be missed.
+        let shutdown = self.shutdown.notified();
+        tokio::pin!(shutdown);
+        shutdown.as_mut().enable();
         if self.stopped.load(Ordering::Acquire) {
-            return Err(WorkerCallError::Crashed(
-                "extension worker is shut down".to_string(),
-            ));
+            return Err(WorkerCallError::Stopped);
+        }
+
+        let mut process_guard = tokio::select! {
+            guard = tokio::time::timeout_at(deadline, self.process.lock()) => match guard {
+                Ok(guard) => guard,
+                Err(_) => return Err(WorkerCallError::QueueTimeout),
+            },
+            _ = &mut shutdown => return Err(WorkerCallError::Stopped),
+        };
+        if self.stopped.load(Ordering::Acquire) {
+            return Err(WorkerCallError::Stopped);
         }
         if process_guard.is_none() {
-            match self.spawn_process().await {
-                Ok((worker, _)) => *process_guard = Some(worker),
-                Err(error) => {
-                    self.stopped.store(true, Ordering::Release);
-                    return Err(WorkerCallError::Crashed(error.to_string()));
-                }
+            // Respawn after an earlier failure. Repeated failures are bounded
+            // by the source's health policy: once the entry is quarantined,
+            // admission stops before another spawn is attempted.
+            let spawn = tokio::time::timeout_at(deadline, self.spawn_process());
+            tokio::pin!(spawn);
+            let result = tokio::select! {
+                result = &mut spawn => result,
+                _ = &mut shutdown => return Err(WorkerCallError::Stopped),
+            };
+            match result {
+                Ok(Ok((worker, _))) => *process_guard = Some(worker),
+                Ok(Err(error)) => return Err(WorkerCallError::Crashed(error.to_string())),
+                Err(_) => return Err(WorkerCallError::QueueTimeout),
             }
+        }
+        if Instant::now() >= deadline {
+            // The spawned or running worker stays usable for later callers.
+            return Err(WorkerCallError::QueueTimeout);
         }
 
         let process = process_guard
@@ -245,38 +300,27 @@ impl WorkerClient {
         process.next_request_id = process.next_request_id.wrapping_add(1);
         let envelope = WorkerRequestEnvelope { id, request };
 
-        if let Err(error) = write_frame_async(&mut process.stdin, &envelope).await {
-            self.stopped.store(true, Ordering::Release);
-            terminate_process(process).await;
-            *process_guard = None;
-            return Err(WorkerCallError::Crashed(error.to_string()));
-        }
-
         let response = tokio::select! {
-            response = tokio::time::timeout(
-                timeout,
-                read_frame_async::<_, WorkerResponse>(&mut process.stdout),
-            ) => match response {
+            response = tokio::time::timeout_at(deadline, async {
+                write_frame_async(&mut process.stdin, &envelope).await?;
+                read_frame_async::<_, WorkerResponse>(&mut process.stdout).await
+            }) => match response {
             Ok(Ok(response)) => response,
             Ok(Err(error)) => {
-                self.stopped.store(true, Ordering::Release);
                 terminate_process(process).await;
                 *process_guard = None;
                 return Err(WorkerCallError::Crashed(error.to_string()));
             }
             Err(_) => {
-                self.stopped.store(true, Ordering::Release);
                 terminate_process(process).await;
                 *process_guard = None;
                 return Err(WorkerCallError::Timeout);
             }
             },
-            _ = self.shutdown.notified() => {
+            _ = &mut shutdown => {
                 terminate_process(process).await;
                 *process_guard = None;
-                return Err(WorkerCallError::Crashed(
-                    "extension worker was shut down".to_string(),
-                ));
+                return Err(WorkerCallError::Stopped);
             }
         };
 
@@ -296,7 +340,6 @@ impl WorkerClient {
             | WorkerResponse::Error {
                 id: response_id, ..
             } => {
-                self.stopped.store(true, Ordering::Release);
                 terminate_process(process).await;
                 *process_guard = None;
                 Err(WorkerCallError::Crashed(format!(
@@ -313,7 +356,7 @@ impl WorkerClient {
         }
     }
 
-    pub(crate) async fn shutdown(&self) {
+    pub(crate) async fn pause(&self) {
         self.stopped.store(true, Ordering::Release);
         self.shutdown.notify_waiters();
         let mut process = self.process.lock().await;
@@ -321,6 +364,14 @@ impl WorkerClient {
             terminate_process(process).await;
         }
         *process = None;
+    }
+
+    pub(crate) fn resume(&self) {
+        self.stopped.store(false, Ordering::Release);
+    }
+
+    pub(crate) async fn shutdown(&self) {
+        self.pause().await;
         self.cleanup_path();
     }
 
@@ -379,21 +430,15 @@ impl WorkerClient {
             },
         };
 
-        let response = tokio::time::timeout(
-            self.startup_timeout,
-            read_frame_async::<_, WorkerResponse>(&mut worker.stdout),
-        )
-        .await
-        .context("extension worker readiness timed out")??;
-        match response {
+        let response = read_frame_async::<_, WorkerResponse>(&mut worker.stdout)
+            .await
+            .context("failed to read extension worker readiness")?;
+        let source_info = match response {
             WorkerResponse::Ready {
                 protocol_version,
                 source_info,
                 ..
-            } if protocol_version == PROTOCOL_VERSION => {
-                worker.source_info = source_info.clone();
-                Ok((worker, source_info))
-            }
+            } if protocol_version == PROTOCOL_VERSION => source_info,
             WorkerResponse::Ready {
                 protocol_version, ..
             } => {
@@ -405,6 +450,54 @@ impl WorkerClient {
             other => {
                 terminate_process(&mut worker).await;
                 bail!("extension worker did not send readiness: {other:?}");
+            }
+        };
+        worker.source_info = source_info.clone();
+
+        if let Err(error) = self.apply_startup_preferences(&mut worker).await {
+            terminate_process(&mut worker).await;
+            return Err(error);
+        }
+
+        Ok((worker, source_info))
+    }
+
+    /// Re-applies the saved preferences to a freshly spawned worker before it
+    /// serves any request.
+    async fn apply_startup_preferences(&self, worker: &mut WorkerProcess) -> Result<()> {
+        let preferences = match self.startup_preferences.lock() {
+            Ok(guard) => guard.clone(),
+            Err(poisoned) => poisoned.into_inner().clone(),
+        };
+        let Some(preferences) = preferences else {
+            return Ok(());
+        };
+
+        let id = worker.next_request_id;
+        worker.next_request_id = worker.next_request_id.wrapping_add(1);
+        let envelope = WorkerRequestEnvelope {
+            id,
+            request: WorkerRequest::SetPreferences { preferences },
+        };
+        let response = async {
+            write_frame_async(&mut worker.stdin, &envelope).await?;
+            read_frame_async::<_, WorkerResponse>(&mut worker.stdout).await
+        }
+        .await
+        .context("failed to apply saved preferences to the extension worker")?;
+
+        match response {
+            WorkerResponse::Result {
+                id: response_id,
+                value: WorkerValue::Unit,
+            } if response_id == id => Ok(()),
+            WorkerResponse::Error { kind, message, .. } => {
+                bail!("extension worker rejected saved preferences ({kind:?}): {message}")
+            }
+            other => {
+                bail!(
+                    "extension worker sent an unexpected response to saved preferences: {other:?}"
+                )
             }
         }
     }
@@ -442,6 +535,12 @@ pub(crate) fn resolve_worker_path() -> PathBuf {
 }
 
 pub fn run_worker(plugin_path: PathBuf) -> Result<()> {
+    // The host binaries skip their own logger setup in worker mode, so give
+    // worker-side log output a stderr logger of its own; stderr is inherited
+    // by the host process.
+    let _ = env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info"))
+        .try_init();
+
     let entry = load_worker_entry(&plugin_path)?;
     let mut input = BufReader::new(io::stdin().lock());
     let mut output = BufWriter::new(io::stdout().lock());
