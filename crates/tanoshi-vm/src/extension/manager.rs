@@ -1,8 +1,9 @@
 use std::{
+    panic::AssertUnwindSafe,
     path::{Path, PathBuf},
     sync::{
         Arc, Mutex as StdMutex, RwLock, RwLockReadGuard, RwLockWriteGuard,
-        atomic::{AtomicU64, Ordering},
+        atomic::{AtomicU8, AtomicU64, Ordering},
     },
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
@@ -10,8 +11,7 @@ use std::{
 use anyhow::{Result, anyhow, bail};
 use bytes::Bytes;
 use fnv::FnvHashMap;
-use libloading::Library;
-use tanoshi_lib::prelude::{Input, Lang, PluginDeclaration, SourceInfo};
+use tanoshi_lib::prelude::{ChapterInfo, Input, Lang, MangaInfo, SourceInfo};
 use tokio::sync::{Mutex as AsyncMutex, OwnedSemaphorePermit};
 
 use crate::{
@@ -19,15 +19,79 @@ use crate::{
     prelude::{Source, SourceEntry},
 };
 
+use super::source::{
+    SOURCE_MAX_ABANDONED_CALLS, SourceAdmission, SourceHealth, panic_payload_message,
+};
+use super::worker::{
+    WorkerCallError, WorkerClient, WorkerRequest, WorkerValue, resolve_worker_path,
+};
+
 const STAGED_LIBRARY_PREFIX: &str = ".tanoshi-staged-";
 const INSTALL_TEMP_PREFIX: &str = ".tanoshi-install-";
 const INSTALL_BACKUP_PREFIX: &str = ".tanoshi-backup-";
+const CALL_RUNNING: u8 = 0;
+const CALL_ABANDONED: u8 = 1;
+const CALL_COMPLETE: u8 = 2;
 static UNIQUE_PATH_COUNTER: AtomicU64 = AtomicU64::new(0);
 pub const DEFAULT_MAX_CONCURRENT_CALLS: usize = 8;
 pub const DEFAULT_ADMISSION_TIMEOUT: Duration = Duration::from_secs(1);
 pub const DEFAULT_METADATA_TIMEOUT: Duration = Duration::from_secs(30);
 pub const DEFAULT_IMAGE_TIMEOUT: Duration = Duration::from_secs(120);
 const MIN_EXTENSION_TIMEOUT: Duration = Duration::from_millis(1);
+
+struct AbandonedCallTracker {
+    state: AtomicU8,
+    health: Arc<SourceHealth>,
+}
+
+impl AbandonedCallTracker {
+    fn new(health: Arc<SourceHealth>) -> Arc<Self> {
+        Arc::new(Self {
+            state: AtomicU8::new(CALL_RUNNING),
+            health,
+        })
+    }
+
+    fn mark_abandoned(&self) -> Option<usize> {
+        self.state
+            .compare_exchange(
+                CALL_RUNNING,
+                CALL_ABANDONED,
+                Ordering::AcqRel,
+                Ordering::Acquire,
+            )
+            .ok()
+            .map(|_| self.health.start_abandoned_call())
+    }
+
+    fn complete(&self) {
+        if self
+            .state
+            .compare_exchange(
+                CALL_RUNNING,
+                CALL_COMPLETE,
+                Ordering::AcqRel,
+                Ordering::Acquire,
+            )
+            .is_ok()
+        {
+            return;
+        }
+
+        if self
+            .state
+            .compare_exchange(
+                CALL_ABANDONED,
+                CALL_COMPLETE,
+                Ordering::AcqRel,
+                Ordering::Acquire,
+            )
+            .is_ok()
+        {
+            self.health.complete_abandoned_call();
+        }
+    }
+}
 
 fn is_managed_library_name(name: &str) -> bool {
     name.starts_with(STAGED_LIBRARY_PREFIX)
@@ -51,6 +115,59 @@ fn entry_plugin_name(entry: &SourceEntry) -> String {
         .and_then(|name| name.to_str())
         .map(normalize_plugin_name)
         .unwrap_or_else(|| normalize_plugin_name(entry.source_name()))
+}
+
+fn unexpected_worker_value(expected: &str, value: WorkerValue) -> anyhow::Error {
+    anyhow!("expected {expected} response, got {value:?}")
+}
+
+fn decode_unit(value: WorkerValue) -> Result<()> {
+    match value {
+        WorkerValue::Unit => Ok(()),
+        value => Err(unexpected_worker_value("unit", value)),
+    }
+}
+
+fn decode_inputs(value: WorkerValue) -> Result<Vec<Input>> {
+    match value {
+        WorkerValue::Inputs(value) => Ok(value),
+        value => Err(unexpected_worker_value("inputs", value)),
+    }
+}
+
+fn decode_manga_list(value: WorkerValue) -> Result<Vec<MangaInfo>> {
+    match value {
+        WorkerValue::MangaList(value) => Ok(value),
+        value => Err(unexpected_worker_value("manga list", value)),
+    }
+}
+
+fn decode_manga(value: WorkerValue) -> Result<MangaInfo> {
+    match value {
+        WorkerValue::Manga(value) => Ok(value),
+        value => Err(unexpected_worker_value("manga", value)),
+    }
+}
+
+fn decode_chapters(value: WorkerValue) -> Result<Vec<ChapterInfo>> {
+    match value {
+        WorkerValue::Chapters(value) => Ok(value),
+        value => Err(unexpected_worker_value("chapters", value)),
+    }
+}
+
+fn decode_pages(value: WorkerValue) -> Result<Vec<String>> {
+    match value {
+        WorkerValue::Pages(value) => Ok(value),
+        value => Err(unexpected_worker_value("pages", value)),
+    }
+}
+
+fn decode_image(value: WorkerValue) -> Result<Bytes> {
+    match value {
+        WorkerValue::Image { bytes } => Ok(Bytes::from(bytes)),
+        value => Err(unexpected_worker_value("image", value)),
+    }
 }
 
 fn cleanup_managed_libraries(dir: &Path) {
@@ -119,6 +236,7 @@ pub struct ExtensionManager {
     extensions: Arc<RwLock<FnvHashMap<i64, Arc<SourceEntry>>>>,
     lifecycle_locks: Arc<StdMutex<FnvHashMap<String, Arc<AsyncMutex<()>>>>>,
     options: ExtensionManagerOptions,
+    worker_path: PathBuf,
 }
 
 pub fn dummy_source_info(id: i64) -> SourceInfo {
@@ -183,6 +301,7 @@ impl ExtensionManager {
             extensions: Arc::new(RwLock::new(FnvHashMap::default())),
             lifecycle_locks: Arc::new(StdMutex::new(FnvHashMap::default())),
             options,
+            worker_path: resolve_worker_path(),
         }
     }
 
@@ -305,6 +424,7 @@ impl ExtensionManager {
         entry: &Arc<SourceEntry>,
         operation: &'static str,
     ) -> Result<OwnedSemaphorePermit> {
+        self.ensure_source_available(entry, operation)?;
         let source_id = entry.source_id;
         let source_name = entry.source_name().to_owned();
         match tokio::time::timeout(
@@ -313,7 +433,10 @@ impl ExtensionManager {
         )
         .await
         {
-            Ok(Ok(permit)) => Ok(permit),
+            Ok(Ok(permit)) => {
+                self.ensure_source_available(entry, operation)?;
+                Ok(permit)
+            }
             Ok(Err(error)) => {
                 error!(
                     "EXTENSION ADMISSION ERROR: source_id={source_id} source={source_name:?} operation={operation} limiter unavailable: {error}"
@@ -335,11 +458,41 @@ impl ExtensionManager {
         }
     }
 
+    fn ensure_source_available(
+        &self,
+        entry: &Arc<SourceEntry>,
+        operation: &'static str,
+    ) -> Result<()> {
+        let source_id = entry.source_id;
+        let source_name = entry.source_name();
+        match entry.health.admission() {
+            SourceAdmission::Allowed => Ok(()),
+            SourceAdmission::CircuitOpen { abandoned_calls } => {
+                error!(
+                    "EXTENSION CIRCUIT OPEN: source_id={source_id} source={source_name:?} operation={operation} has {abandoned_calls} timed-out native calls still running; rejecting new work"
+                );
+                bail!(
+                    "[extension-circuit-open] source {source_id} ({source_name}) has {abandoned_calls} timed-out native calls still running; replace or restart the source before retrying {operation}"
+                );
+            }
+            SourceAdmission::Quarantined => {
+                error!(
+                    "EXTENSION QUARANTINED: source_id={source_id} source={source_name:?} operation={operation}; rejecting new work until replacement or reload"
+                );
+                bail!(
+                    "[extension-quarantined] source {source_id} ({source_name}) is quarantined; replace or reload the extension before retrying {operation}"
+                );
+            }
+        }
+    }
+
     async fn call_blocking<T, F>(
         &self,
         source_id: i64,
         operation: &'static str,
         timeout: Duration,
+        request: WorkerRequest,
+        decode: impl FnOnce(WorkerValue) -> Result<T> + Send + 'static,
         call: F,
     ) -> Result<T>
     where
@@ -347,70 +500,258 @@ impl ExtensionManager {
         F: FnOnce(&dyn tanoshi_lib::prelude::Extension) -> Result<T> + Send + 'static,
     {
         let entry = self.entry(source_id)?;
-        self.call_blocking_entry(entry, operation, timeout, call)
+        self.call_blocking_entry(entry, operation, timeout, request, decode, call)
             .await
     }
 
-    async fn call_blocking_entry<T, F>(
+    async fn call_blocking_entry<T, F, D>(
         &self,
         entry: Arc<SourceEntry>,
         operation: &'static str,
         timeout: Duration,
+        request: WorkerRequest,
+        decode: D,
         call: F,
     ) -> Result<T>
     where
         T: Send + 'static,
         F: FnOnce(&dyn tanoshi_lib::prelude::Extension) -> Result<T> + Send + 'static,
+        D: FnOnce(WorkerValue) -> Result<T> + Send + 'static,
     {
-        self.call_blocking_with(entry, operation, timeout, move |entry| {
-            entry.with_extension(call)
-        })
+        self.call_blocking_with(
+            entry,
+            operation,
+            timeout,
+            false,
+            request,
+            decode,
+            move |entry| entry.with_extension(call),
+        )
         .await
     }
 
-    async fn call_blocking_mut_entry<T, F>(
+    async fn call_blocking_mut_entry<T, F, D>(
         &self,
         entry: Arc<SourceEntry>,
         operation: &'static str,
         timeout: Duration,
+        request: WorkerRequest,
+        decode: D,
         call: F,
     ) -> Result<T>
     where
         T: Send + 'static,
         F: FnOnce(&mut dyn tanoshi_lib::prelude::Extension) -> Result<T> + Send + 'static,
+        D: FnOnce(WorkerValue) -> Result<T> + Send + 'static,
     {
-        self.call_blocking_with(entry, operation, timeout, move |entry| {
-            entry.with_extension_mut(call)
-        })
+        self.call_blocking_with(
+            entry,
+            operation,
+            timeout,
+            true,
+            request,
+            decode,
+            move |entry| entry.with_extension_mut(call),
+        )
         .await
     }
 
-    async fn call_blocking_with<T, F>(
+    async fn call_blocking_with<T, F, D>(
         &self,
         entry: Arc<SourceEntry>,
         operation: &'static str,
         timeout: Duration,
+        quarantine_on_panic: bool,
+        request: WorkerRequest,
+        decode: D,
         invoke: F,
     ) -> Result<T>
     where
         T: Send + 'static,
         F: FnOnce(&SourceEntry) -> Result<T> + Send + 'static,
+        D: FnOnce(WorkerValue) -> Result<T> + Send + 'static,
     {
         let permit = self.acquire_permit(&entry, operation).await?;
+        if let Some(worker) = entry.worker() {
+            return self
+                .call_worker(
+                    entry,
+                    operation,
+                    timeout,
+                    quarantine_on_panic,
+                    worker,
+                    permit,
+                    request,
+                    decode,
+                )
+                .await;
+        }
+
+        drop(request);
+        drop(decode);
         let source_id = entry.source_id;
         let source_name = entry.source_name().to_owned();
+        let health = entry.health.clone();
+        let task_health = health.clone();
+        let task_source_name = source_name.clone();
+        let tracker = AbandonedCallTracker::new(health.clone());
+        let task_tracker = tracker.clone();
         let task = tokio::task::spawn_blocking(move || {
             let _permit = permit;
-            invoke(&entry)
+            let result = match std::panic::catch_unwind(AssertUnwindSafe(|| invoke(&entry))) {
+                Ok(result) => result,
+                Err(payload) => {
+                    let message = panic_payload_message(&*payload);
+                    let quarantined = if quarantine_on_panic {
+                        task_health.quarantine();
+                        true
+                    } else {
+                        task_health.record_read_panic()
+                    };
+                    error!(
+                        "EXTENSION PANIC: source_id={source_id} source={task_source_name:?} operation={operation} payload={message:?}"
+                    );
+                    if quarantined {
+                        error!(
+                            "EXTENSION QUARANTINED: source_id={source_id} source={task_source_name:?} operation={operation}; replace or reload the extension before retrying"
+                        );
+                    }
+                    Err(anyhow!(
+                        "[extension-panicked] source {source_id} ({task_source_name}) {operation} panicked: {message}"
+                    ))
+                }
+            };
+            task_tracker.complete();
+            result
         });
         match tokio::time::timeout(timeout, task).await {
-            Ok(result) => result?,
+            Ok(Ok(Ok(value))) => {
+                health.record_success();
+                Ok(value)
+            }
+            Ok(Ok(Err(error))) => Err(error),
+            Ok(Err(join_error)) => {
+                if join_error.is_panic() {
+                    let quarantined = if quarantine_on_panic {
+                        health.quarantine();
+                        true
+                    } else {
+                        health.record_read_panic()
+                    };
+                    error!(
+                        "EXTENSION PANIC: source_id={source_id} source={source_name:?} operation={operation} blocking task panicked outside the extension boundary"
+                    );
+                    if quarantined {
+                        error!(
+                            "EXTENSION QUARANTINED: source_id={source_id} source={source_name:?} operation={operation}; replace or reload the extension before retrying"
+                        );
+                    }
+                    bail!(
+                        "[extension-panicked] source {source_id} ({source_name}) {operation} panicked"
+                    );
+                }
+                bail!(
+                    "[extension-cancelled] source {source_id} ({source_name}) {operation} task was cancelled"
+                );
+            }
             Err(_) => {
+                health.record_timeout();
+                let abandoned_calls = tracker.mark_abandoned();
+                if let Some(abandoned_calls) = abandoned_calls {
+                    error!(
+                        "EXTENSION ABANDONED CALL: source_id={source_id} source={source_name:?} operation={operation} remains active after timeout; abandoned_calls={abandoned_calls}"
+                    );
+                    if abandoned_calls >= SOURCE_MAX_ABANDONED_CALLS {
+                        error!(
+                            "EXTENSION CIRCUIT OPEN: source_id={source_id} source={source_name:?} operation={operation}; {abandoned_calls} timed-out native calls remain active and future calls are rejected"
+                        );
+                    }
+                }
                 error!(
                     "EXTENSION TIMEOUT: source_id={source_id} source={source_name:?} operation={operation} exceeded {timeout:?}; native call may still be running and its permit remains held"
                 );
                 bail!(
                     "[extension-timeout] source {source_id} ({source_name}) {operation} exceeded {timeout:?}; native call may still be running"
+                );
+            }
+        }
+    }
+
+    async fn call_worker<T, D>(
+        &self,
+        entry: Arc<SourceEntry>,
+        operation: &'static str,
+        timeout: Duration,
+        quarantine_on_panic: bool,
+        worker: Arc<WorkerClient>,
+        permit: OwnedSemaphorePermit,
+        request: WorkerRequest,
+        decode: D,
+    ) -> Result<T>
+    where
+        T: Send + 'static,
+        D: FnOnce(WorkerValue) -> Result<T> + Send + 'static,
+    {
+        let source_id = entry.source_id;
+        let source_name = entry.source_name().to_owned();
+        let health = entry.health.clone();
+        let result = worker.request(request, timeout).await;
+        drop(permit);
+
+        match result {
+            Ok(value) => {
+                let value = decode(value).map_err(|error| {
+                    error!(
+                        "EXTENSION WORKER PROTOCOL ERROR: source_id={source_id} source={source_name:?} operation={operation} response={error}"
+                    );
+                    anyhow!(
+                        "[extension-worker-protocol] source {source_id} ({source_name}) {operation} returned an invalid response: {error}"
+                    )
+                })?;
+                health.record_success();
+                Ok(value)
+            }
+            Err(error) => {
+                let (kind, message) = match error {
+                    WorkerCallError::Timeout => (
+                        "TIMEOUT",
+                        format!("exceeded {timeout:?}; the worker was terminated"),
+                    ),
+                    WorkerCallError::Crashed(message) => ("CRASH", message),
+                    WorkerCallError::Remote { kind, message }
+                        if kind == super::worker::WorkerErrorKind::Operation =>
+                    {
+                        return Err(anyhow!(
+                            "[extension-error] source {source_id} ({source_name}) {operation} failed: {message}"
+                        ));
+                    }
+                    WorkerCallError::Remote { kind, message } => {
+                        ("PANIC", format!("{kind:?}: {message}"))
+                    }
+                };
+                let quarantined = if quarantine_on_panic {
+                    health.quarantine();
+                    true
+                } else {
+                    health.record_failure()
+                };
+                error!(
+                    "EXTENSION WORKER {kind}: source_id={source_id} source={source_name:?} operation={operation} {message}"
+                );
+                if quarantined {
+                    error!(
+                        "EXTENSION QUARANTINED: source_id={source_id} source={source_name:?} operation={operation}; replace or reload the extension before retrying"
+                    );
+                }
+                let error_kind = if kind == "TIMEOUT" {
+                    "extension-worker-timeout"
+                } else if kind == "PANIC" {
+                    "extension-panicked"
+                } else {
+                    "extension-worker-crashed"
+                };
+                bail!(
+                    "[{error_kind}] source {source_id} ({source_name}) {operation} failed: {message}"
                 );
             }
         }
@@ -465,20 +806,20 @@ impl ExtensionManager {
         let lifecycle_lock = self.lifecycle_lock(&plugin_name)?;
         let _lifecycle_guard = lifecycle_lock.lock_owned().await;
 
-        let source = match self.load_library_from_path(&temporary_path, plugin_path.clone()) {
-            Ok(source) => source,
+        let validation_entry = match self
+            .load_worker_from_path(&temporary_path, plugin_path.clone())
+            .await
+        {
+            Ok(entry) => entry,
             Err(error) => {
                 Self::cleanup_managed_file(&temporary_path);
                 return Err(error);
             }
         };
-        let entry = match source.into_entry(self.options.max_concurrent_calls) {
-            Ok(entry) => Arc::new(entry),
-            Err(error) => {
-                Self::cleanup_managed_file(&temporary_path);
-                return Err(error);
-            }
-        };
+        if let Some(worker) = validation_entry.worker() {
+            worker.shutdown().await;
+        }
+        drop(validation_entry);
         let replacement = match self
             .replace_plugin_file(&temporary_path, &plugin_path)
             .await
@@ -486,6 +827,23 @@ impl ExtensionManager {
             Ok(replacement) => replacement,
             Err(error) => {
                 Self::cleanup_managed_file(&temporary_path);
+                return Err(error);
+            }
+        };
+
+        let entry = match self
+            .load_worker_from_path(&plugin_path, plugin_path.clone())
+            .await
+        {
+            Ok(entry) => entry,
+            Err(error) => {
+                if let Err(rollback_error) =
+                    self.rollback_plugin_file(&plugin_path, replacement).await
+                {
+                    return Err(anyhow!(
+                        "failed to load the installed extension: {error}; failed to restore the previous file: {rollback_error}"
+                    ));
+                }
                 return Err(error);
             }
         };
@@ -509,12 +867,11 @@ impl ExtensionManager {
         Ok(())
     }
 
-    fn load_library(&self, name: &str) -> Result<Source> {
-        let plugin_path = self.dir.join(name).with_extension(PLUGIN_EXTENSION);
-        self.load_library_from_path(&plugin_path, plugin_path.clone())
-    }
-
-    fn load_library_from_path(&self, source_path: &Path, plugin_path: PathBuf) -> Result<Source> {
+    async fn load_worker_from_path(
+        &self,
+        source_path: &Path,
+        plugin_path: PathBuf,
+    ) -> Result<Arc<SourceEntry>> {
         let staged_path = self.stage_library(source_path)?;
         info!(
             "load {:?} from {:?}",
@@ -533,66 +890,58 @@ impl ExtensionManager {
             error!("failed to run install_name_tool: {error}");
         }
 
-        let result = (|| -> Result<Source> {
-            unsafe {
-                let library = Library::new(&staged_path)?;
-
-                let decl = library
-                    .get::<*mut PluginDeclaration>(b"plugin_declaration\0")?
-                    .read();
-
-                if decl.rustc_version != tanoshi_lib::RUSTC_VERSION {
-                    bail!(
-                        "Version mismatch: extension.rustc_version={} != tanoshi_lib.rustc_version={}",
-                        decl.rustc_version,
-                        tanoshi_lib::RUSTC_VERSION,
-                    );
-                }
-
-                if decl.core_version != tanoshi_lib::LIB_VERSION {
-                    bail!(
-                        "Version mismatch: extension.lib_version={} != tanoshi_lib.lib_version={}",
-                        decl.core_version,
-                        tanoshi_lib::LIB_VERSION
-                    );
-                }
-
-                let mut registrar = Source::new(library, decl.rustc_version, decl.core_version)
-                    .with_loaded_library_path(staged_path.clone())
-                    .with_plugin_path(plugin_path);
-                (decl.register)(&mut registrar);
-
-                Ok(registrar)
+        let worker = WorkerClient::new(
+            staged_path.clone(),
+            self.worker_path.clone(),
+            self.options.metadata_timeout,
+            Some(staged_path.clone()),
+        );
+        let source_info = match worker.start().await {
+            Ok(source_info) => source_info,
+            Err(error) => {
+                worker.shutdown().await;
+                return Err(anyhow!(
+                    "failed to start extension worker for {}: {error}",
+                    plugin_path.display()
+                ));
             }
-        })();
+        };
 
-        if result.is_err() {
-            Self::cleanup_managed_file(&staged_path);
-        }
-        result
+        Ok(Arc::new(SourceEntry::from_worker(
+            source_info,
+            worker,
+            self.options.max_concurrent_calls,
+            plugin_path,
+            tanoshi_lib::RUSTC_VERSION.to_string(),
+            tanoshi_lib::LIB_VERSION.to_string(),
+        )))
     }
 
     pub async fn load(&self, name: &str) -> Result<()> {
         let plugin_name = normalize_plugin_name(name);
         let lifecycle_lock = self.lifecycle_lock(&plugin_name)?;
         let _lifecycle_guard = lifecycle_lock.lock_owned().await;
-        let entry = Arc::new(
-            self.load_library(&plugin_name)?
-                .into_entry(self.options.max_concurrent_calls)?,
-        );
+        let plugin_path = self.dir.join(&plugin_name).with_extension(PLUGIN_EXTENSION);
+        let entry = self
+            .load_worker_from_path(&plugin_path, plugin_path.clone())
+            .await?;
         let source_name = entry.source_info.name.to_lowercase();
 
         if let Some(preferences) =
             tokio::fs::read_to_string(self.dir.join(&source_name).with_extension("json"))
                 .await
                 .ok()
-                .and_then(|s| serde_json::from_str(&s).ok())
+                .and_then(|s| serde_json::from_str::<Vec<Input>>(&s).ok())
         {
             info!("set preferences for {}", source_name);
             self.call_blocking_mut_entry(
                 entry.clone(),
                 "load_preferences",
                 self.options.metadata_timeout,
+                WorkerRequest::SetPreferences {
+                    preferences: preferences.clone(),
+                },
+                decode_unit,
                 move |extension| extension.set_preferences(preferences),
             )
             .await?;
@@ -626,27 +975,32 @@ impl ExtensionManager {
             let plugin_name = entry_plugin_name(&entry);
             let lifecycle_lock = self.lifecycle_lock(&plugin_name)?;
             let _lifecycle_guard = lifecycle_lock.lock_owned().await;
-            let mut sources = self.write()?;
-            let Some(entry) = sources.get(&source_id).cloned() else {
-                return Ok(());
+            let (entry, removed) = {
+                let mut sources = self.write()?;
+                let Some(entry) = sources.get(&source_id).cloned() else {
+                    return Ok(());
+                };
+                if entry_plugin_name(&entry) != plugin_name {
+                    continue;
+                }
+
+                let plugin_path = entry.plugin_path().map(Path::to_path_buf);
+                if let Some(plugin_path) = plugin_path.as_deref()
+                    && let Err(error) = std::fs::remove_file(plugin_path)
+                    && error.kind() != std::io::ErrorKind::NotFound
+                {
+                    return Err(anyhow!(
+                        "failed to remove extension {}: {error}",
+                        plugin_path.display()
+                    ));
+                }
+
+                let removed = sources.remove(&source_id);
+                (entry, removed)
             };
-            if entry_plugin_name(&entry) != plugin_name {
-                continue;
+            if let Some(worker) = removed.as_ref().and_then(|entry| entry.worker()) {
+                worker.shutdown().await;
             }
-
-            let plugin_path = entry.plugin_path().map(Path::to_path_buf);
-            if let Some(plugin_path) = plugin_path.as_deref()
-                && let Err(error) = std::fs::remove_file(plugin_path)
-                && error.kind() != std::io::ErrorKind::NotFound
-            {
-                return Err(anyhow!(
-                    "failed to remove extension {}: {error}",
-                    plugin_path.display()
-                ));
-            }
-
-            sources.remove(&source_id);
-            drop(sources);
             info!(
                 "uninstalled extension {source_id} ({})",
                 entry.source_name()
@@ -685,6 +1039,8 @@ impl ExtensionManager {
             entry,
             "filter_list",
             self.options.metadata_timeout,
+            WorkerRequest::FilterList,
+            decode_inputs,
             |extension| Ok(extension.filter_list()),
         )
         .await
@@ -696,6 +1052,8 @@ impl ExtensionManager {
             entry,
             "get_preferences",
             self.options.metadata_timeout,
+            WorkerRequest::GetPreferences,
+            decode_inputs,
             |extension| extension.get_preferences(),
         )
         .await
@@ -709,6 +1067,10 @@ impl ExtensionManager {
             entry,
             "set_preferences",
             self.options.metadata_timeout,
+            WorkerRequest::SetPreferences {
+                preferences: extension_preferences.clone(),
+            },
+            decode_unit,
             move |extension| extension.set_preferences(extension_preferences),
         )
         .await?;
@@ -731,6 +1093,8 @@ impl ExtensionManager {
             source_id,
             "get_popular_manga",
             self.options.metadata_timeout,
+            WorkerRequest::GetPopularManga { page },
+            decode_manga_list,
             move |extension| extension.get_popular_manga(page),
         )
         .await
@@ -745,6 +1109,8 @@ impl ExtensionManager {
             source_id,
             "get_latest_manga",
             self.options.metadata_timeout,
+            WorkerRequest::GetLatestManga { page },
+            decode_manga_list,
             move |extension| extension.get_latest_manga(page),
         )
         .await
@@ -761,6 +1127,12 @@ impl ExtensionManager {
             source_id,
             "search_manga",
             self.options.metadata_timeout,
+            WorkerRequest::SearchManga {
+                page,
+                query: query.clone(),
+                filters: filters.clone(),
+            },
+            decode_manga_list,
             move |extension| extension.search_manga(page, query, filters),
         )
         .await
@@ -775,6 +1147,8 @@ impl ExtensionManager {
             source_id,
             "get_manga_detail",
             self.options.metadata_timeout,
+            WorkerRequest::GetMangaDetail { path: path.clone() },
+            decode_manga,
             move |extension| extension.get_manga_detail(path),
         )
         .await
@@ -789,6 +1163,8 @@ impl ExtensionManager {
             source_id,
             "get_chapters",
             self.options.metadata_timeout,
+            WorkerRequest::GetChapters { path: path.clone() },
+            decode_chapters,
             move |extension| extension.get_chapters(path),
         )
         .await
@@ -799,6 +1175,8 @@ impl ExtensionManager {
             source_id,
             "get_pages",
             self.options.metadata_timeout,
+            WorkerRequest::GetPages { path: path.clone() },
+            decode_pages,
             move |extension| extension.get_pages(path),
         )
         .await
@@ -809,6 +1187,8 @@ impl ExtensionManager {
             source_id,
             "get_image_bytes",
             self.options.image_timeout,
+            WorkerRequest::GetImageBytes { url: url.clone() },
+            decode_image,
             move |extension| extension.get_image_bytes(url),
         )
         .await
