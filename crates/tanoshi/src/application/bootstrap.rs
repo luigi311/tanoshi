@@ -176,6 +176,7 @@ pub async fn bootstrap(config: Config) -> Result<App> {
     let (chapter_update_receiver, chapter_update_command_tx, update_worker_handle) =
         worker::updates::start(
             config.update_interval,
+            config.max_concurrent_update_sources,
             library_repo.clone(),
             manga_repo.clone(),
             chapter_repo.clone(),
