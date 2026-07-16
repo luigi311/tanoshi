@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::rc::Rc;
 
 use crate::common::{Fit, ReaderSettings, Spinner, events, snackbar};
@@ -15,7 +16,7 @@ use gloo_timers::callback::Timeout;
 use wasm_bindgen::prelude::Closure;
 use wasm_bindgen::{JsCast, JsValue, UnwrapThrowExt};
 use wasm_bindgen_futures::spawn_local;
-use web_sys::{HtmlImageElement, HtmlInputElement};
+use web_sys::{HtmlImageElement, HtmlInputElement, IntersectionObserver, IntersectionObserverEntry};
 
 #[derive(Debug)]
 enum Nav {
@@ -63,6 +64,9 @@ pub struct Reader {
     loader: Rc<AsyncLoader>,
     spinner: Rc<Spinner>,
     timeout: Mutable<Option<Timeout>>,
+    completion_sent: Mutable<bool>,
+    end_observer: RefCell<Option<IntersectionObserver>>,
+    end_observer_callback: RefCell<Option<Closure<dyn FnMut(js_sys::Array, IntersectionObserver)>>>,
     is_zooming: Mutable<bool>,
     source_id: Mutable<i64>,
 }
@@ -92,6 +96,9 @@ impl Reader {
             loader,
             spinner,
             timeout: Mutable::new(None),
+            completion_sent: Mutable::new(false),
+            end_observer: RefCell::new(None),
+            end_observer_callback: RefCell::new(None),
             is_zooming: Mutable::new(false),
             source_id: Mutable::new(0),
         })
@@ -192,6 +199,10 @@ impl Reader {
 
     fn fetch_detail(this: Rc<Self>, chapter_id: i64, nav: Nav) {
         let current_page = this.current_page.get_cloned();
+        this.timeout.set(None);
+        this.completion_sent.set(false);
+        this.pages.lock_mut().clear();
+        this.pages_loaded.set(ContinousLoaded::Initial);
         this.spinner.set_active(true);
         this.loader.load(clone!(this => async move {
             match query::fetch_chapter(chapter_id).await {
@@ -283,18 +294,26 @@ impl Reader {
 
     fn update_page_read(this: Rc<Self>, page: usize) {
         let chapter_id = this.chapter_id.get();
-        
+
         let pages_len = this.pages.lock_ref().len();
+        if pages_len == 0 {
+            return;
+        }
+
+        let reader_mode = this.reader_settings.reader_mode.get();
         let page = if matches!(this.reader_settings.reader_mode.get(), ReaderMode::Paged) && matches!(this.reader_settings.display_mode.get().get(), DisplayMode::Double) && page + 2 == pages_len {
             page + 1
         } else {
             page
         };
-        
-        let is_complete = page + 1 == pages_len;
+
+        let is_complete = matches!(reader_mode, ReaderMode::Paged) && page + 1 == pages_len;
 
         Self::replace_state_with_url(chapter_id, page + 1);
-        
+
+        if this.completion_sent.get() {
+            return;
+        }
 
         let timeout = Timeout::new(500, move || {
             spawn_local(async move {
@@ -308,6 +327,92 @@ impl Reader {
         });
             
         this.timeout.set(Some(timeout));
+    }
+
+    fn sentinel_is_in_view() -> bool {
+        let Some(sentinel) = document().get_element_by_id("chapter-end-sentinel") else {
+            return false;
+        };
+
+        let rect = sentinel.get_bounding_client_rect();
+        rect.top() < Self::viewport_h() && rect.bottom() > 0.0
+    }
+
+    fn maybe_complete_chapter(this: Rc<Self>) {
+        if !matches!(this.reader_settings.reader_mode.get(), ReaderMode::Continous)
+            || !this
+                .pages
+                .lock_ref()
+                .last()
+                .is_some_and(|(_, status)| matches!(*status, PageStatus::Loaded))
+            || !Self::sentinel_is_in_view()
+        {
+            return;
+        }
+
+        Self::complete_chapter(this);
+    }
+
+    fn complete_chapter(this: Rc<Self>) {
+        let Some(page) = this.pages.lock_ref().len().checked_sub(1) else {
+            return;
+        };
+
+        if this.completion_sent.get() {
+            return;
+        }
+
+        let chapter_id = this.chapter_id.get();
+        this.completion_sent.set(true);
+        // A terminal update must not be cancelled by a pending debounced progress update.
+        this.timeout.set(None);
+        Self::replace_state_with_url(chapter_id, page + 1);
+
+        spawn_local(clone!(this => async move {
+            if let Err(err) = query::update_page_read_at(chapter_id, page as i64, true).await {
+                if this.chapter_id.get() == chapter_id {
+                    this.completion_sent.set(false);
+                }
+                snackbar::show(format!("{err}"));
+            }
+        }));
+    }
+
+    fn observe_end_sentinel(this: Rc<Self>, sentinel: web_sys::HtmlElement) {
+        if let Some(observer) = this.end_observer.borrow_mut().take() {
+            observer.disconnect();
+        }
+        this.end_observer_callback.borrow_mut().take();
+
+        let weak_reader = Rc::downgrade(&this);
+        let callback = Closure::wrap(Box::new(
+            move |entries: js_sys::Array, _observer: IntersectionObserver| {
+                let is_intersecting = entries.iter().any(|entry| {
+                    entry
+                        .dyn_into::<IntersectionObserverEntry>()
+                        .ok()
+                        .is_some_and(|entry| entry.is_intersecting())
+                });
+
+                if is_intersecting {
+                    if let Some(this) = weak_reader.upgrade() {
+                        Self::maybe_complete_chapter(this);
+                    }
+                }
+            },
+        ) as Box<dyn FnMut(js_sys::Array, IntersectionObserver)>);
+
+        let observer = match IntersectionObserver::new(callback.as_ref().unchecked_ref()) {
+            Ok(observer) => observer,
+            Err(err) => {
+                error!("failed to observe chapter end sentinel: {err:?}");
+                return;
+            }
+        };
+
+        observer.observe(sentinel.unchecked_ref());
+        *this.end_observer_callback.borrow_mut() = Some(callback);
+        *this.end_observer.borrow_mut() = Some(observer);
     }
 
     pub fn render_topbar(this: Rc<Self>) -> Dom {
@@ -907,6 +1012,7 @@ impl Reader {
                                 let mut lock = this.pages.lock_mut();
                                 lock.set_cloned(index, (page.clone(), PageStatus::Loaded));
                             }
+                            Self::maybe_complete_chapter(this.clone());
                         }))
                         .event(clone!(this => move |_: events::Click| {
                             this.is_bar_visible.set_neq(!this.is_bar_visible.get());
@@ -931,6 +1037,16 @@ impl Reader {
                 }
             )))
             .children(&mut [
+                html!("div" => web_sys::HtmlElement, {
+                    .attr("id", "chapter-end-sentinel")
+                    .attr("aria-hidden", "true")
+                    .style("width", "100%")
+                    .style("height", "1px")
+                    .style("flex-shrink", "0")
+                    .after_inserted(clone!(this => move |sentinel| {
+                        Self::observe_end_sentinel(this, sentinel);
+                    }))
+                }),
                 html!("button", {
                     .style("width", "100%")
                     .style("height", "5rem")
@@ -977,6 +1093,8 @@ impl Reader {
                         }
                     }
                 }
+
+                Self::maybe_complete_chapter(this.clone());
 
                 let is_last_page = pages_len == this.current_page.get() + 1;
                 if !(is_last_page && page_no == 0) {
@@ -1286,6 +1404,10 @@ impl Reader {
 
 impl Drop for Reader {
     fn drop(&mut self) {
+        if let Some(observer) = self.end_observer.borrow_mut().take() {
+            observer.disconnect();
+        }
+        self.end_observer_callback.borrow_mut().take();
         document().body().map(|body| body.style().set_property("background-color", "var(--background-color)"));
     }
 }

@@ -55,6 +55,8 @@ features = [
     "HtmlImageElement",
     "HtmlOptionElement",
     "HtmlSelectElement",
+    "IntersectionObserver",
+    "IntersectionObserverEntry",
     "Location",
     "MediaQueryList",
     "MediaQueryListEvent",
