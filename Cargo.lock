@@ -6459,10 +6459,12 @@ dependencies = [
  "clap",
  "env_logger",
  "log",
+ "rustix",
  "serde",
  "serde_json",
  "tanoshi-lib",
  "tanoshi-vm",
+ "tempfile",
  "tokio",
 ]
 

@@ -83,13 +83,21 @@ fn empty_input_does_not_publish_an_empty_index() {
 }
 
 #[test]
-fn bundled_worker_load_failure_preserves_previous_index() {
+fn bundled_worker_load_failure_preserves_previous_repository() {
     let workspace = Workspace::new();
     workspace.broken_plugin();
     let index = workspace.index_path();
     fs::create_dir_all(index.parent().unwrap()).unwrap();
     let previous_index = r#"[{"id":123,"name":"Previous source"}]"#;
     fs::write(&index, previous_index).unwrap();
+    let binary = index
+        .parent()
+        .unwrap()
+        .join(format!("broken.{PLUGIN_EXTENSION}"));
+    fs::write(&binary, b"previous plugin binary").unwrap();
+    let unrelated = workspace.0.join("output").join("another-target");
+    fs::create_dir(&unrelated).unwrap();
+    fs::write(unrelated.join("plugin"), b"another platform").unwrap();
 
     let stderr = failure_stderr(workspace.command().output().unwrap());
     assert!(stderr.contains("failed to load broken"), "{stderr}");
@@ -99,7 +107,14 @@ fn bundled_worker_load_failure_preserves_previous_index() {
         stderr.contains("failed to read extension worker readiness"),
         "{stderr}"
     );
-    assert_eq!(fs::read_to_string(index).unwrap(), previous_index);
+    assert_eq!(fs::read_to_string(&index).unwrap(), previous_index);
+    assert_eq!(fs::read(binary).unwrap(), b"previous plugin binary");
+    assert_eq!(
+        fs::read(unrelated.join("plugin")).unwrap(),
+        b"another platform"
+    );
+    assert_eq!(fs::read_dir(index.parent().unwrap()).unwrap().count(), 2);
+    assert_eq!(fs::read_dir(workspace.0.join("output")).unwrap().count(), 2);
 }
 
 #[test]
@@ -119,4 +134,5 @@ fn explicit_worker_override_is_respected_and_failure_is_fatal() {
     assert!(stderr.contains("missing-worker"), "{stderr}");
     assert!(stderr.contains("source index was not written"), "{stderr}");
     assert!(!workspace.index_path().exists());
+    assert_eq!(fs::read_dir(workspace.0.join("output")).unwrap().count(), 0);
 }
