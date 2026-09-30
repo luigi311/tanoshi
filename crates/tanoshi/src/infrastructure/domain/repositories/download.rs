@@ -232,6 +232,8 @@ impl DownloadRepository for DownloadRepositoryImpl {
     async fn get_single_download_queue(
         &self,
     ) -> Result<Option<DownloadQueue>, DownloadRepositoryError> {
+        // Keep fully downloaded chapters eligible until their archive has been
+        // finalized and their queue rows deleted, including across restarts.
         let data = sqlx::query(
             r#"SELECT 
                     id,
@@ -246,8 +248,8 @@ impl DownloadRepository for DownloadRepositoryImpl {
                     priority,
                     date_added 
                 FROM download_queue
-                WHERE downloaded IS NOT true
-                ORDER BY priority ASC, date_added ASC, chapter_id ASC, rank ASC
+                ORDER BY priority ASC, date_added ASC, chapter_id ASC,
+                    downloaded IS true ASC, rank ASC
                 LIMIT 1"#,
         )
         .fetch_optional(&self.pool as &SqlitePool)
@@ -308,6 +310,18 @@ impl DownloadRepository for DownloadRepositoryImpl {
         Ok(data)
     }
 
+    async fn reset_chapter_download_progress(
+        &self,
+        chapter_id: i64,
+    ) -> Result<(), DownloadRepositoryError> {
+        sqlx::query("UPDATE download_queue SET downloaded = false WHERE chapter_id = ?")
+            .bind(chapter_id)
+            .execute(&self.pool as &SqlitePool)
+            .await?;
+
+        Ok(())
+    }
+
     async fn get_download_queue(
         &self,
         chapter_ids: &[i64],
@@ -320,7 +334,7 @@ impl DownloadRepository for DownloadRepositoryImpl {
             dq.manga_title, 
             dq.chapter_id,
             dq.chapter_title, 
-            SUM(dq.downloaded),
+            COALESCE(SUM(dq.downloaded), 0),
             COUNT(1),
             dq.priority
         FROM download_queue dq"#

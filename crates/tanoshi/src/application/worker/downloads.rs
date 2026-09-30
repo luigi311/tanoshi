@@ -2,7 +2,8 @@ use crate::{
     domain::{
         entities::{chapter::Chapter, download::DownloadQueue, manga::Manga},
         repositories::{
-            chapter::ChapterRepository, download::DownloadRepository, library::LibraryRepository, manga::MangaRepository
+            chapter::ChapterRepository, download::DownloadRepository, library::LibraryRepository,
+            manga::MangaRepository,
         },
     },
     infrastructure::{
@@ -10,31 +11,35 @@ use crate::{
         notification::Notification,
     },
 };
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use chrono::Utc;
 use reqwest::Url;
 use std::{
     fs::{self, File},
-    io::Write,
+    io::{ErrorKind, Write},
     path::{Path, PathBuf},
 };
 use tanoshi_vm::extension::ExtensionManager;
-use zip::{write::SimpleFileOptions, ZipWriter};
+use zip::{ZipArchive, ZipWriter, result::ZipError, write::SimpleFileOptions};
 
 use tokio::{
     sync::mpsc::{UnboundedReceiver, UnboundedSender},
     task::JoinHandle,
-    time::{sleep, Duration},
+    time::{Duration, Instant, sleep, sleep_until},
 };
 
 use super::updates::ChapterUpdateReceiver;
 
+#[cfg(test)]
+#[path = "downloads_tests.rs"]
+mod tests;
+
 pub type DownloadSender = UnboundedSender<Command>;
 type DownloadReceiver = UnboundedReceiver<Command>;
 
-
 const MAX_RETRIES: usize = 3;
 const RETRY_DELAY_SECS: u64 = 3;
+const QUEUE_RETRY_DELAY: Duration = Duration::from_secs(30);
 
 /// Strip characters that are invalid in file names on common filesystems.
 fn sanitize_filename(name: &str) -> String {
@@ -62,7 +67,6 @@ where
     library_repo: L,
     ext: ExtensionManager,
     _notifier: Notification<UserRepositoryImpl>,
-    tx: DownloadSender,
     rx: DownloadReceiver,
     chapter_update_receiver: ChapterUpdateReceiver,
     auto_download_chapter: bool,
@@ -84,7 +88,6 @@ where
         library_repo: L,
         ext: ExtensionManager,
         notifier: Notification<UserRepositoryImpl>,
-        download_sender: DownloadSender,
         download_receiver: DownloadReceiver,
         chapter_update_receiver: ChapterUpdateReceiver,
         auto_download_chapter: bool,
@@ -97,7 +100,6 @@ where
             library_repo,
             ext,
             _notifier: notifier,
-            tx: download_sender,
             rx: download_receiver,
             chapter_update_receiver,
             auto_download_chapter,
@@ -190,26 +192,54 @@ where
         self.download_dir.join(".pause").exists()
     }
 
-    fn open_or_create_writable_zip_file<P: AsRef<Path>>(
+    fn open_archive(path: &Path) -> Result<Option<ZipArchive<File>>> {
+        match File::open(path) {
+            Ok(file) => Ok(Some(ZipArchive::new(file)?)),
+            Err(error) if error.kind() == ErrorKind::NotFound => Ok(None),
+            Err(error) => Err(error.into()),
+        }
+    }
+
+    async fn restart_chapter(&self, queue: &DownloadQueue, tmp: &Path) -> Result<()> {
+        warn!(
+            "restarting interrupted download for chapter {} of {}",
+            queue.chapter_title, queue.manga_title
+        );
+        // Reset the database first so another interruption cannot leave completed
+        // pages pointing at an archive that has already been removed.
+        self.download_repo
+            .reset_chapter_download_progress(queue.chapter_id)
+            .await?;
+        match fs::remove_file(tmp) {
+            Ok(()) => Ok(()),
+            Err(error) if error.kind() == ErrorKind::NotFound => Ok(()),
+            Err(error) => Err(error.into()),
+        }
+    }
+
+    async fn finish_chapter(
         &self,
-        manga_path: P,
-        archive_path: P,
-    ) -> Result<ZipWriter<File>> {
-        if let Ok(file) = std::fs::OpenOptions::new()
-            .read(true)
-            .write(true)
-            .open(&archive_path)
-        {
-            return Ok(zip::ZipWriter::new_append(file)?);
+        queue: &DownloadQueue,
+        tmp: &Path,
+        archive_path: &Path,
+    ) -> Result<()> {
+        if tmp.exists() {
+            fs::rename(tmp, archive_path)?;
         }
-
-        if let Ok(file) = std::fs::create_dir_all(manga_path)
-            .and_then(|()| std::fs::File::create(&archive_path))
-        {
-            return Ok(zip::ZipWriter::new(file));
-        }
-
-        Err(anyhow!("cannot open or create new zip file"))
+        self.download_repo
+            .update_chapter_downloaded_path(
+                queue.chapter_id,
+                Some(archive_path.display().to_string()),
+            )
+            .await?;
+        self.download_repo
+            .delete_single_chapter_download_queue(queue.chapter_id)
+            .await?;
+        info!(
+            "chapter '{}' of '{}' downloaded successfully",
+            queue.chapter_title, queue.manga_title
+        );
+        Ok(())
     }
 
     fn save_manga_info_if_not_exists(&self, manga_path: &PathBuf, manga: &Manga) -> Result<()> {
@@ -240,109 +270,150 @@ where
         Ok(())
     }
 
-    async fn download(&mut self) -> Result<()> {
+    // Returns whether there was work, including recovery or finalization.
+    async fn download(&mut self) -> Result<bool> {
         let Some(queue) = self.download_repo.get_single_download_queue().await? else {
-            debug!("no queue");
-            return Ok(());
+            return Ok(false);
         };
+        let progress = self
+            .download_repo
+            .get_download_queue(&[queue.chapter_id])
+            .await?;
+        let Some(progress) = progress.first() else {
+            // The chapter may have been removed while we were reading it.
+            return Ok(true);
+        };
+        let complete = progress.downloaded == progress.total;
+        let manga_path = self
+            .download_dir
+            .join(&queue.source_name)
+            .join(&queue.manga_title);
+        let archive_path = manga_path.join(format!("{}.cbz", queue.chapter_title));
+        let tmp = manga_path.join(format!("{}.temp.cbz", queue.chapter_title));
 
-        debug!("got {}", queue.url);
+        // A completed queue may have been interrupted before or after the rename.
+        // Never use an older final archive to resume a partially downloaded chapter.
+        let archive = match Self::open_archive(&tmp).and_then(|archive| {
+            if archive.is_none() && complete {
+                Self::open_archive(&archive_path)
+            } else {
+                Ok(archive)
+            }
+        }) {
+            Ok(archive) => archive,
+            Err(error)
+                if matches!(
+                    error.downcast_ref::<ZipError>(),
+                    Some(ZipError::InvalidArchive(_))
+                ) =>
+            {
+                self.restart_chapter(&queue, &tmp).await?;
+                return Ok(true);
+            }
+            Err(error) => return Err(error),
+        };
+        if archive.as_ref().map_or(0, |archive| archive.len()) < progress.downloaded as usize {
+            drop(archive);
+            self.restart_chapter(&queue, &tmp).await?;
+            return Ok(true);
+        }
+        if complete {
+            drop(archive);
+            self.finish_chapter(&queue, &tmp, &archive_path).await?;
+            return Ok(true);
+        }
 
         let url = Url::parse(&queue.url)?;
-
         let filename = format!(
             "{:04}_{}",
             queue.rank,
             url.path_segments()
                 .and_then(Iterator::last)
-                .map(ToString::to_string)
                 .ok_or_else(|| anyhow!("no filename"))?
         );
-
-        let manga_path = self
-            .download_dir
-            .join(&queue.source_name)
-            .join(&queue.manga_title);
-
-        let archive_path = manga_path.join(format!("{}.cbz", queue.chapter_title));
-        let tmp = manga_path.join(format!("{}.temp.cbz", queue.chapter_title));
-
-        // 3. Build/update archive in a temp file
-        fs::create_dir_all(&manga_path)?;
-        {
-            let mut tmp_zip = self.open_or_create_writable_zip_file(&manga_path, &tmp)?;
-
+        // If the app stopped after writing the page but before updating SQLite,
+        // keep the existing entry instead of appending a duplicate.
+        let already_written = archive
+            .as_ref()
+            .is_some_and(|archive| archive.file_names().any(|name| name == filename));
+        let append = archive.is_some();
+        drop(archive);
+        if !already_written {
             let mut attempts = 0;
             let data = loop {
-                let results = self
+                match self
                     .ext
                     .get_image_bytes(queue.source_id, url.to_string())
-                    .await;
-                match results {
+                    .await
+                {
                     Ok(bytes) => break bytes,
-                    Err(e) => {
-                        error!("failed to download {} (attempt {}/{MAX_RETRIES}), reason: {e}", queue.url, attempts + 1);
+                    Err(error) => {
+                        error!(
+                            "failed to download {} (attempt {}/{MAX_RETRIES}), reason: {error}",
+                            queue.url,
+                            attempts + 1
+                        );
                     }
                 }
                 attempts += 1;
                 if attempts >= MAX_RETRIES {
-                    return Err(anyhow!("failed to download {url} after {MAX_RETRIES} attempts"));
+                    return Err(anyhow!(
+                        "failed to download {url} after {MAX_RETRIES} attempts"
+                    ));
                 }
                 sleep(Duration::from_secs(RETRY_DELAY_SECS)).await;
             };
 
-            tmp_zip.start_file(&*filename, SimpleFileOptions::default())?;
-            tmp_zip.write_all(&data)?;
-            tmp_zip.finish()?;
+            // Append and finish together, without holding the writer across a
+            // network await or task cancellation. A hard exit during this write
+            // is handled by archive recovery on the next run.
+            fs::create_dir_all(&manga_path)?;
+            let mut zip = if append {
+                ZipWriter::new_append(fs::OpenOptions::new().read(true).write(true).open(&tmp)?)?
+            } else {
+                ZipWriter::new(File::create(&tmp)?)
+            };
+            zip.start_file(&filename, SimpleFileOptions::default())?;
+            zip.write_all(&data)?;
+            zip.finish()?.sync_all()?;
         }
 
-        // 4. Mark page complete and possibly chapter complete
         self.download_repo
             .mark_single_download_queue_as_completed(queue.id)
             .await?;
-
         if self
             .download_repo
             .get_single_chapter_download_status(queue.chapter_id)
-            .await
-            .unwrap_or_default()
+            .await?
         {
-            // 5. Atomically replace the archive
-            if tmp.exists() {
-                fs::rename(tmp, &archive_path)?;
-            } else {
-                error!("temporary file {} does not exist", tmp.display());
-            }
-
-            self.download_repo
-                .update_chapter_downloaded_path(
-                    queue.chapter_id,
-                    Some(archive_path.display().to_string()),
-                )
-                .await?;
-
-            self.download_repo
-                .delete_single_chapter_download_queue(queue.chapter_id)
-                .await?;
-
-            info!("chapter '{}' of '{}' downloaded successfully", queue.chapter_title, queue.manga_title);
+            self.finish_chapter(&queue, &tmp, &archive_path).await?;
         }
-
-        // 6. Trigger next download
-        if !self.paused().await {
-            let _ = self.tx.send(Command::Download);
-        }
-
-        Ok(())
+        Ok(true)
     }
 
     pub async fn run(mut self) {
-        if !self.paused().await {
-            let _ = self.tx.send(Command::Download);
-        }
-
+        let mut next_download = Some(Instant::now());
         loop {
             tokio::select! {
+                _ = async {
+                    match next_download {
+                        Some(deadline) => sleep_until(deadline).await,
+                        None => std::future::pending().await,
+                    }
+                } => {
+                    next_download = if self.paused().await {
+                        None
+                    } else {
+                        match self.download().await {
+                            Ok(true) => Some(Instant::now()),
+                            Ok(false) => None,
+                            Err(error) => {
+                                error!("download worker error: {error}; retrying in {} seconds", QUEUE_RETRY_DELAY.as_secs());
+                                Some(Instant::now() + QUEUE_RETRY_DELAY)
+                            }
+                        }
+                    };
+                }
                 Ok(chapter) = self.chapter_update_receiver.recv() => {
                     if self.auto_download_chapter {
                         let manga = self.manga_repo.get_manga_by_id(chapter.chapter.manga_id).await;
@@ -378,7 +449,7 @@ where
                             Err(e) => {
                                 error!("failed to insert queue, reason {e}");
                             } Ok(()) => {
-                                let _ = self.tx.send(Command::Download);
+                                next_download.get_or_insert_with(Instant::now);
                             }
                         }
                     }
@@ -398,7 +469,7 @@ where
                                             error!("failed to insert queue, reason {e}");
                                         }
                                         Ok(()) => {
-                                            let _ = self.tx.send(Command::Download);
+                                            next_download.get_or_insert_with(Instant::now);
                                         }
                                     }
                                 }
@@ -420,7 +491,7 @@ where
                                             error!("failed to insert queue, reason {e}");
                                         }
                                         Ok(()) => {
-                                            let _ = self.tx.send(Command::Download);
+                                            next_download.get_or_insert_with(Instant::now);
                                         }
                                     }
                                 }
@@ -430,12 +501,7 @@ where
                             }
                         }
                         Command::Download => {
-                            if !self.paused().await {
-                                let download_result = self.download().await;
-                                if let Err(e) = download_result {
-                                    error!("download worker error: {e}");
-                                }
-                            }
+                            next_download = Some(Instant::now());
                         }
                     }
                 }
@@ -457,7 +523,6 @@ pub fn start<C, D, M, L, P>(
     library_repo: L,
     ext: ExtensionManager,
     notifier: Notification<UserRepositoryImpl>,
-    download_sender: DownloadSender,
     download_receiver: DownloadReceiver,
     chapter_update_receiver: ChapterUpdateReceiver,
     auto_download_chapter: bool,
@@ -477,7 +542,6 @@ where
         library_repo,
         ext,
         notifier,
-        download_sender,
         download_receiver,
         chapter_update_receiver,
         auto_download_chapter,

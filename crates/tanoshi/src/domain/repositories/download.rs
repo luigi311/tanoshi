@@ -68,6 +68,11 @@ pub trait DownloadRepository: Send + Sync {
         id: i64,
     ) -> Result<(), DownloadRepositoryError>;
 
+    async fn reset_chapter_download_progress(
+        &self,
+        chapter_id: i64,
+    ) -> Result<(), DownloadRepositoryError>;
+
     async fn get_download_queue_last_priority(
         &self,
     ) -> Result<Option<i64>, DownloadRepositoryError>;

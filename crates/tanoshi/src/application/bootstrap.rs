@@ -199,7 +199,6 @@ pub async fn bootstrap(config: Config) -> Result<App> {
         library_repo.clone(),
         extension_manager.clone(),
         notifier.clone(),
-        download_sender.clone(),
         download_receiver,
         chapter_update_receiver.resubscribe(),
         config.auto_download_chapters,
