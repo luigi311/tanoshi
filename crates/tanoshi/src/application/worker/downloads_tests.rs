@@ -169,19 +169,45 @@ impl Fixture {
     }
 
     fn write_archive(&self, chapter: i64, pages: usize, temporary: bool) {
+        self.write_archive_with_options(chapter, pages, temporary, SimpleFileOptions::default());
+    }
+
+    fn write_archive_with_options(
+        &self,
+        chapter: i64,
+        pages: usize,
+        temporary: bool,
+        options: SimpleFileOptions,
+    ) {
         let path = self.archive_path(chapter, temporary);
         fs::create_dir_all(path.parent().unwrap()).unwrap();
         let mut zip = ZipWriter::new(File::create(path).unwrap());
         for rank in 0..pages {
-            zip.start_file(
-                format!("{rank:04}_{rank}.jpg"),
-                SimpleFileOptions::default(),
-            )
-            .unwrap();
+            zip.start_file(format!("{rank:04}_{rank}.jpg"), options)
+                .unwrap();
             zip.write_all(format!("https://example.test/{chapter}/{rank}.jpg").as_bytes())
                 .unwrap();
         }
         zip.finish().unwrap();
+    }
+
+    fn corrupt_archive_page(&self, chapter: i64, temporary: bool) {
+        let path = self.archive_path(chapter, temporary);
+        let mut zip = ZipArchive::new(File::open(&path).unwrap()).unwrap();
+        let start = zip.by_index(0).unwrap().data_start().unwrap() as usize;
+        drop(zip);
+        let mut data = fs::read(&path).unwrap();
+        data[start] ^= 0xff;
+        fs::write(&path, data).unwrap();
+
+        // The directory and entry names survive, but reading the page fails.
+        let mut zip = ZipArchive::new(File::open(path).unwrap()).unwrap();
+        assert!(
+            zip.by_index(0)
+                .unwrap()
+                .read_to_end(&mut Vec::new())
+                .is_err()
+        );
     }
 
     async fn mark_pages(&self, chapter: i64, pages: i64) {
@@ -265,6 +291,65 @@ async fn restart_recovers_missing_or_incomplete_archive() {
         fixture.drain(&mut worker).await;
         assert_eq!(fixture.calls.lock().unwrap().len(), 3);
     }
+}
+
+#[tokio::test]
+async fn restart_recovers_damaged_pages_with_intact_archive_directory() {
+    for compression in [
+        zip::CompressionMethod::Stored,
+        zip::CompressionMethod::Deflated,
+    ] {
+        for (completed_pages, archived_pages, temporary) in
+            [(0, 1, true), (1, 1, true), (2, 2, true), (2, 2, false)]
+        {
+            let fixture = Fixture::new().await;
+            fixture.write_archive_with_options(
+                1,
+                archived_pages,
+                temporary,
+                SimpleFileOptions::default().compression_method(compression),
+            );
+            fixture.corrupt_archive_page(1, temporary);
+            fixture.mark_pages(1, completed_pages).await;
+            let (mut worker, _) = fixture.worker(None).await;
+
+            assert!(worker.download().await.unwrap());
+            let queue = fixture.repo.get_download_queue(&[]).await.unwrap();
+            assert_eq!(
+                (queue[0].chapter_id, queue[0].downloaded, queue[0].priority),
+                (1, 0, 11)
+            );
+            assert!(!fixture.archive_path(1, true).exists());
+            assert!(fixture.calls.lock().unwrap().is_empty());
+            fixture.drain(&mut worker).await;
+            assert_eq!(fixture.calls.lock().unwrap().len(), 3);
+        }
+    }
+}
+
+#[tokio::test]
+async fn retry_revalidates_archive_after_failed_database_update() {
+    let fixture = Fixture::new().await;
+    let (mut worker, _) = fixture.worker(None).await;
+    assert!(worker.download().await.unwrap());
+
+    // Fail after appending the next page, leaving the queue partially complete.
+    sqlx::query("CREATE TRIGGER fail_download_update BEFORE UPDATE OF downloaded ON download_queue WHEN NEW.chapter_id = 1 AND NEW.rank = 1 BEGIN SELECT RAISE(ABORT, 'temporary database failure'); END")
+        .execute(&fixture.pool).await.unwrap();
+    assert!(worker.download().await.is_err());
+    sqlx::query("DROP TRIGGER fail_download_update")
+        .execute(&fixture.pool)
+        .await
+        .unwrap();
+    fixture.corrupt_archive_page(1, true);
+
+    // The retry must inspect the contents again before trusting either page.
+    assert!(worker.download().await.unwrap());
+    let queue = fixture.repo.get_download_queue(&[]).await.unwrap();
+    assert_eq!(queue[0].downloaded, 0);
+    assert!(!fixture.archive_path(1, true).exists());
+    fixture.drain(&mut worker).await;
+    assert_eq!(fixture.calls.lock().unwrap().len(), 5);
 }
 
 #[tokio::test]

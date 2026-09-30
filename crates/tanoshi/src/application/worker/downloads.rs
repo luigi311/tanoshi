@@ -70,6 +70,7 @@ where
     rx: DownloadReceiver,
     chapter_update_receiver: ChapterUpdateReceiver,
     auto_download_chapter: bool,
+    validated_chapter: Option<i64>,
 }
 
 impl<C, D, M, L> DownloadWorker<C, D, M, L>
@@ -103,6 +104,7 @@ where
             rx: download_receiver,
             chapter_update_receiver,
             auto_download_chapter,
+            validated_chapter: None,
         }
     }
 
@@ -111,6 +113,8 @@ where
         if chapter.source_id >= 10000 {
             anyhow::bail!("local source can't be downloaded");
         }
+
+        self.validated_chapter = None;
 
         let existing_path = self
             .download_repo
@@ -192,9 +196,33 @@ where
         self.download_dir.join(".pause").exists()
     }
 
-    fn open_archive(path: &Path) -> Result<Option<ZipArchive<File>>> {
+    fn open_archive(path: &Path, validate: bool) -> Result<Option<ZipArchive<File>>> {
         match File::open(path) {
-            Ok(file) => Ok(Some(ZipArchive::new(file)?)),
+            Ok(file) => {
+                let mut archive = ZipArchive::new(file)?;
+                if validate {
+                    // Reading through EOF checks both decompression and CRC; a
+                    // readable directory alone does not guarantee intact pages.
+                    for index in 0..archive.len() {
+                        let mut page = archive.by_index(index)?;
+                        if let Err(error) = std::io::copy(&mut page, &mut std::io::sink()) {
+                            if matches!(
+                                error.kind(),
+                                ErrorKind::InvalidData
+                                    | ErrorKind::InvalidInput
+                                    | ErrorKind::UnexpectedEof
+                            ) {
+                                return Err(ZipError::InvalidArchive(
+                                    format!("damaged page {}: {error}", page.name()).into(),
+                                )
+                                .into());
+                            }
+                            return Err(error.into());
+                        }
+                    }
+                }
+                Ok(Some(archive))
+            }
             Err(error) if error.kind() == ErrorKind::NotFound => Ok(None),
             Err(error) => Err(error.into()),
         }
@@ -272,6 +300,9 @@ where
 
     // Returns whether there was work, including recovery or finalization.
     async fn download(&mut self) -> Result<bool> {
+        // Reuse validation only across successful downloads. A failed write
+        // may leave damaged entries, so every error forces a fresh check.
+        let validated_chapter = self.validated_chapter.take();
         let Some(queue) = self.download_repo.get_single_download_queue().await? else {
             return Ok(false);
         };
@@ -293,13 +324,14 @@ where
 
         // A completed queue may have been interrupted before or after the rename.
         // Never use an older final archive to resume a partially downloaded chapter.
-        let archive = match Self::open_archive(&tmp).and_then(|archive| {
-            if archive.is_none() && complete {
-                Self::open_archive(&archive_path)
-            } else {
-                Ok(archive)
-            }
-        }) {
+        let archive = match Self::open_archive(&tmp, validated_chapter != Some(queue.chapter_id))
+            .and_then(|archive| {
+                if archive.is_none() && complete {
+                    Self::open_archive(&archive_path, true)
+                } else {
+                    Ok(archive)
+                }
+            }) {
             Ok(archive) => archive,
             Err(error)
                 if matches!(
@@ -387,6 +419,8 @@ where
             .await?
         {
             self.finish_chapter(&queue, &tmp, &archive_path).await?;
+        } else {
+            self.validated_chapter = Some(queue.chapter_id);
         }
         Ok(true)
     }
