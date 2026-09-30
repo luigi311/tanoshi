@@ -11,6 +11,7 @@ use std::{
 use tanoshi_lib::prelude::{ChapterInfo, Extension, Input, Lang, MangaInfo, SourceInfo};
 use tanoshi_vm::prelude::Source;
 
+use crate::domain::services::download::DownloadService;
 use crate::infrastructure::{
     database::establish_connection,
     domain::repositories::{
@@ -29,7 +30,7 @@ type Worker = DownloadWorker<
 
 type ImageHandler = Arc<dyn Fn(String) -> Result<Bytes> + Send + Sync>;
 
-struct TestExtension(ImageHandler);
+struct TestExtension(ImageHandler, Vec<String>);
 
 impl Extension for TestExtension {
     fn get_source_info(&self) -> SourceInfo {
@@ -65,7 +66,7 @@ impl Extension for TestExtension {
         unreachable!()
     }
     fn get_pages(&self, _: String) -> Result<Vec<String>> {
-        unreachable!()
+        Ok(self.1.clone())
     }
     fn get_image_bytes(&self, url: String) -> Result<Bytes> {
         self.0(url)
@@ -130,18 +131,27 @@ impl Fixture {
     }
 
     async fn worker(&self, handler: Option<ImageHandler>) -> (Worker, DownloadSender) {
+        self.worker_with_pages(handler, vec![]).await
+    }
+
+    async fn worker_with_pages(
+        &self,
+        handler: Option<ImageHandler>,
+        pages: Vec<String>,
+    ) -> (Worker, DownloadSender) {
         let ext = ExtensionManager::new(self.dir.join("plugins"));
         let calls = self.calls.clone();
-        ext.insert(Source::from(Box::new(TestExtension(Arc::new(
-            move |url| {
+        ext.insert(Source::from(Box::new(TestExtension(
+            Arc::new(move |url| {
                 calls.lock().unwrap().push(url.clone());
                 if let Some(handler) = &handler {
                     handler(url)
                 } else {
                     Ok(Bytes::from(url))
                 }
-            },
-        )))))
+            }),
+            pages,
+        ))))
         .await
         .unwrap();
         let (tx, rx) = channel();
@@ -393,6 +403,236 @@ async fn restart_finalizes_completed_chapters_before_and_after_rename() {
         fixture.drain(&mut worker).await;
         assert_eq!(fixture.calls.lock().unwrap().len(), 1);
     }
+}
+
+#[tokio::test]
+async fn cancellation_removes_all_chapters_when_worker_channel_is_closed() {
+    let fixture = Fixture::new().await;
+    let (worker, tx) = fixture.worker(None).await;
+    drop(worker);
+    let service = DownloadService::new(fixture.repo.clone(), tx);
+
+    service
+        .remove_chapters_from_queue(vec![1, 2])
+        .await
+        .unwrap();
+    assert!(
+        fixture
+            .repo
+            .get_download_queue(&[])
+            .await
+            .unwrap()
+            .is_empty()
+    );
+}
+
+#[tokio::test]
+async fn cancellation_cleans_partial_archives_while_paused() {
+    let fixture = Fixture::new().await;
+    fixture.write_archive(1, 1, true);
+    fixture.mark_pages(1, 1).await;
+    // Cancellation must preserve any previous completed archive.
+    fixture.write_archive(1, 2, false);
+    let final_path = fixture.archive_path(1, false);
+    let final_contents = fs::read(&final_path).unwrap();
+    let tmp = fixture.archive_path(1, true);
+    fs::write(fixture.dir.join(".pause"), b"").unwrap();
+    let (worker, tx) = fixture.worker(None).await;
+    let service = DownloadService::new(fixture.repo.clone(), tx);
+    let handle = tokio::spawn(worker.run());
+
+    // Include a chapter without an archive, a repeated id, and an unknown id.
+    service
+        .remove_chapters_from_queue(vec![1, 2, 1, 999])
+        .await
+        .unwrap();
+    assert!(
+        fixture
+            .repo
+            .get_download_queue(&[])
+            .await
+            .unwrap()
+            .is_empty()
+    );
+    let result = tokio::time::timeout(Duration::from_secs(5), async {
+        while tmp.exists() {
+            sleep(Duration::from_millis(10)).await;
+        }
+    })
+    .await;
+    handle.abort();
+    let _ = handle.await;
+    result.unwrap();
+    assert_eq!(fs::read(final_path).unwrap(), final_contents);
+    assert!(fixture.calls.lock().unwrap().is_empty());
+}
+
+#[tokio::test]
+async fn cancellation_during_image_request_cleans_archive_and_continues_queue() {
+    for completed_pages in [0, 1] {
+        let fixture = Fixture::new().await;
+        if completed_pages > 0 {
+            fixture.write_archive(1, completed_pages, true);
+            fixture.mark_pages(1, completed_pages as i64).await;
+        }
+        let tmp = fixture.archive_path(1, true);
+        let request_tmp = tmp.clone();
+        let sender = Arc::new(Mutex::new(None::<DownloadSender>));
+        let request_sender = sender.clone();
+        let repo = fixture.repo.clone();
+        let runtime = tokio::runtime::Handle::current();
+        let (worker, tx) = fixture
+            .worker(Some(Arc::new(move |url| {
+                if url.ends_with(&format!("/1/{completed_pages}.jpg")) {
+                    let tx = request_sender.lock().unwrap().as_ref().unwrap().clone();
+                    let service = DownloadService::new(repo.clone(), tx);
+                    runtime.block_on(service.remove_chapters_from_queue(vec![1]))?;
+                    // The worker waits until the request finishes before cleanup.
+                    assert_eq!(request_tmp.exists(), completed_pages > 0);
+                }
+                Ok(Bytes::from(url))
+            })))
+            .await;
+        *sender.lock().unwrap() = Some(tx);
+        let handle = tokio::spawn(worker.run());
+        let result = tokio::time::timeout(Duration::from_secs(5), async {
+            while tmp.exists()
+                || !fixture
+                    .repo
+                    .get_download_queue(&[])
+                    .await
+                    .unwrap()
+                    .is_empty()
+            {
+                sleep(Duration::from_millis(10)).await;
+            }
+        })
+        .await;
+        handle.abort();
+        let _ = handle.await;
+        result.unwrap();
+
+        assert!(!fixture.archive_path(1, false).exists());
+        let cancelled_path: Option<String> =
+            sqlx::query_scalar("SELECT downloaded_path FROM chapter WHERE id = 1")
+                .fetch_one(&fixture.pool)
+                .await
+                .unwrap();
+        assert_eq!(cancelled_path, None);
+        assert_eq!(
+            fixture.repo.get_chapter_downloaded_path(2).await.unwrap(),
+            fixture.archive_path(2, false).to_str().unwrap()
+        );
+        assert_eq!(fixture.calls.lock().unwrap().len(), 2);
+    }
+}
+
+#[tokio::test]
+async fn cancellation_cleanup_preserves_requeued_chapter() {
+    let fixture = Fixture::new().await;
+    let cancelled = fixture
+        .repo
+        .get_download_queue(&[1])
+        .await
+        .unwrap()
+        .remove(0);
+    let first = fixture
+        .repo
+        .get_single_download_queue()
+        .await
+        .unwrap()
+        .unwrap();
+    let mut second = first.clone();
+    second.rank = 1;
+    second.url = "https://example.test/1/1.jpg".into();
+    fixture
+        .repo
+        .delete_download_queue_by_chapter_id(1)
+        .await
+        .unwrap();
+    fixture
+        .repo
+        .insert_download_queue(&[first, second])
+        .await
+        .unwrap();
+    fixture.write_archive(1, 1, true);
+    fixture.mark_pages(1, 1).await;
+    let tmp = fixture.archive_path(1, true);
+    let contents = fs::read(&tmp).unwrap();
+    let (mut worker, _) = fixture.worker(None).await;
+
+    worker.cleanup_cancelled_chapter(&cancelled).await.unwrap();
+    assert_eq!(fs::read(tmp).unwrap(), contents);
+    fixture.drain(&mut worker).await;
+    assert_eq!(fixture.calls.lock().unwrap().len(), 2);
+}
+
+#[tokio::test]
+async fn requeue_before_cleanup_discards_pages_with_old_urls() {
+    let fixture = Fixture::new().await;
+    sqlx::query("INSERT INTO manga (id, source_id, title, author, genre, path, cover_url, date_added) VALUES (1, 1, 'Manga', '[]', '[]', '/manga/1', '', CURRENT_TIMESTAMP)")
+        .execute(&fixture.pool).await.unwrap();
+    // Match the archive name produced by the real insertion path.
+    sqlx::query("UPDATE download_queue SET chapter_title = '1 - Chapter' WHERE chapter_id = 1")
+        .execute(&fixture.pool)
+        .await
+        .unwrap();
+    let pages = vec![
+        "https://example.test/1/new-0.jpg".to_string(),
+        "https://example.test/1/new-1.jpg".to_string(),
+    ];
+    let (mut worker, tx) = fixture.worker_with_pages(None, pages.clone()).await;
+    assert!(worker.download().await.unwrap());
+    let manga_path = fixture.dir.join("Test source").join("Manga");
+    let tmp = manga_path.join("1 - Chapter.temp.cbz");
+    let archive_path = manga_path.join("1 - Chapter.cbz");
+    assert!(tmp.exists());
+    fs::write(fixture.dir.join(".pause"), b"").unwrap();
+
+    // Delay the cleanup behind a requeue command while the old archive exists.
+    tx.send(Command::InsertIntoQueue(1)).unwrap();
+    let service = DownloadService::new(fixture.repo.clone(), tx);
+    service.remove_chapters_from_queue(vec![1]).await.unwrap();
+    let handle = tokio::spawn(worker.run());
+    let result = tokio::time::timeout(Duration::from_secs(5), async {
+        loop {
+            let queue = fixture.repo.get_download_queue(&[1]).await.unwrap();
+            if !queue.is_empty() && !tmp.exists() {
+                assert_eq!((queue[0].downloaded, queue[0].total), (0, 2));
+                break;
+            }
+            sleep(Duration::from_millis(10)).await;
+        }
+        service
+            .change_download_status(&fixture.dir, true)
+            .await
+            .unwrap();
+        while !fixture
+            .repo
+            .get_download_queue(&[])
+            .await
+            .unwrap()
+            .is_empty()
+        {
+            sleep(Duration::from_millis(10)).await;
+        }
+    })
+    .await;
+    handle.abort();
+    let _ = handle.await;
+    result.unwrap();
+
+    let mut zip = ZipArchive::new(File::open(&archive_path).unwrap()).unwrap();
+    assert_eq!(zip.len(), pages.len());
+    for (rank, page) in pages.iter().enumerate() {
+        let mut data = String::new();
+        zip.by_name(&format!("{rank:04}_new-{rank}.jpg"))
+            .unwrap()
+            .read_to_string(&mut data)
+            .unwrap();
+        assert_eq!(&data, page);
+    }
+    assert_eq!(fixture.calls.lock().unwrap().len(), 4);
 }
 
 #[tokio::test]

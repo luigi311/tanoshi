@@ -1,6 +1,10 @@
 use crate::{
     domain::{
-        entities::{chapter::Chapter, download::DownloadQueue, manga::Manga},
+        entities::{
+            chapter::Chapter,
+            download::{DownloadQueue, DownloadQueueEntry},
+            manga::Manga,
+        },
         repositories::{
             chapter::ChapterRepository, download::DownloadRepository, library::LibraryRepository,
             manga::MangaRepository,
@@ -50,6 +54,7 @@ fn sanitize_filename(name: &str) -> String {
 pub enum Command {
     InsertIntoQueue(i64),
     InsertIntoQueueBySourcePath(i64, String),
+    CleanupCancelledChapter(DownloadQueueEntry),
     Download,
 }
 
@@ -194,6 +199,32 @@ where
 
     async fn paused(&self) -> bool {
         self.download_dir.join(".pause").exists()
+    }
+
+    async fn cleanup_cancelled_chapter(&mut self, chapter: &DownloadQueueEntry) -> Result<()> {
+        // A requeue may have arrived before this cleanup command. Its archive
+        // belongs to the new download and must be preserved.
+        if !self
+            .download_repo
+            .get_download_queue(&[chapter.chapter_id])
+            .await?
+            .is_empty()
+        {
+            return Ok(());
+        }
+        if self.validated_chapter == Some(chapter.chapter_id) {
+            self.validated_chapter = None;
+        }
+        let tmp = self
+            .download_dir
+            .join(&chapter.source_name)
+            .join(&chapter.manga_title)
+            .join(format!("{}.temp.cbz", chapter.chapter_title));
+        match fs::remove_file(tmp) {
+            Ok(()) => Ok(()),
+            Err(error) if error.kind() == ErrorKind::NotFound => Ok(()),
+            Err(error) => Err(error.into()),
+        }
     }
 
     fn open_archive(path: &Path, validate: bool) -> Result<Option<ZipArchive<File>>> {
@@ -532,6 +563,13 @@ where
                                 Err(e) => {
                                     error!("chapter {source_id} {path} not found: {e}");
                                 }
+                            }
+                        }
+                        Command::CleanupCancelledChapter(chapter) => {
+                            // Commands run between page downloads, so an image
+                            // request cannot recreate the archive after cleanup.
+                            if let Err(error) = self.cleanup_cancelled_chapter(&chapter).await {
+                                error!("failed to clean up cancelled chapter {}: {error}", chapter.chapter_id);
                             }
                         }
                         Command::Download => {
