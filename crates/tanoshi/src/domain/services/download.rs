@@ -145,9 +145,19 @@ where
         chapter_ids: Vec<i64>,
     ) -> Result<(), DownloadError> {
         for chapter_id in chapter_ids {
+            // Preserve the archive's names before removing its queue rows.
+            let chapter = self.repo.get_download_queue(&[chapter_id]).await?;
             self.repo
                 .delete_download_queue_by_chapter_id(chapter_id)
                 .await?;
+            // Cleanup is best-effort; a stopped worker must not interrupt removal.
+            if let Some(chapter) = chapter.into_iter().next()
+                && let Err(error) = self
+                    .download_sender
+                    .send(DownloadCommand::CleanupCancelledChapter(chapter))
+            {
+                warn!("failed to send cleanup for cancelled chapter {chapter_id}: {error}");
+            }
         }
 
         Ok(())
