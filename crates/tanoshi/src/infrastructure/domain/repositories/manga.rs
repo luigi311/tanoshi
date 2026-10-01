@@ -7,7 +7,7 @@ use crate::{
 };
 use async_trait::async_trait;
 use chrono::Utc;
-use sqlx::{Row, SqlitePool};
+use sqlx::Row;
 
 #[derive(Clone)]
 pub struct MangaRepositoryImpl {
@@ -25,7 +25,7 @@ impl MangaRepository for MangaRepositoryImpl {
     async fn get_manga_by_id(&self, id: i64) -> Result<Manga, MangaRepositoryError> {
         let row = sqlx::query(r#"SELECT * FROM manga WHERE id = ?"#)
             .bind(id)
-            .fetch_one(&self.pool as &SqlitePool)
+            .fetch_one(self.pool.read())
             .await?;
 
         Ok(Manga {
@@ -53,7 +53,7 @@ impl MangaRepository for MangaRepositoryImpl {
             query = query.bind(id);
         }
         let manga = query
-            .fetch_all(&self.pool as &SqlitePool)
+            .fetch_all(self.pool.read())
             .await?
             .iter()
             .map(|row| Manga {
@@ -82,7 +82,7 @@ impl MangaRepository for MangaRepositoryImpl {
         let row = sqlx::query(r#"SELECT * FROM manga WHERE source_id = ? AND path = ?"#)
             .bind(source_id)
             .bind(path)
-            .fetch_one(&self.pool as &SqlitePool)
+            .fetch_one(self.pool.read())
             .await?;
 
         Ok(Manga {
@@ -134,7 +134,7 @@ impl MangaRepository for MangaRepositoryImpl {
         .bind(&manga.path)
         .bind(&manga.cover_url)
         .bind(Utc::now().naive_utc())
-        .execute(&self.pool as &SqlitePool)
+        .execute(self.pool.write())
         .await?
         .last_insert_rowid();
 

@@ -31,7 +31,7 @@ impl DownloadRepositoryImpl {
         );
 
         // Reserve IDs and priorities atomically, including simultaneous seed requests.
-        let mut tx = self.pool.begin_with("BEGIN IMMEDIATE").await?;
+        let mut tx = self.pool.write().begin_with("BEGIN IMMEDIATE").await?;
         let existing: Vec<i64> = sqlx::query_scalar(
             "SELECT chapter_id FROM download_queue \
              WHERE source_id = -1 AND source_name = ? AND manga_title = ? AND chapter_id < 0 \
@@ -101,7 +101,7 @@ impl DownloadRepositoryImpl {
 
     pub async fn clear_queue_repro(&self, run_id: &str) -> anyhow::Result<i64> {
         let title = manga_title(run_id)?;
-        let mut tx = self.pool.begin_with("BEGIN IMMEDIATE").await?;
+        let mut tx = self.pool.write().begin_with("BEGIN IMMEDIATE").await?;
         let count: i64 = sqlx::query_scalar(
             "SELECT COUNT(DISTINCT chapter_id) FROM download_queue \
              WHERE source_id = -1 AND source_name = ? AND manga_title = ? AND chapter_id < 0",

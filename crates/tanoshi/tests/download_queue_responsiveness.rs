@@ -1,5 +1,7 @@
 //! Reproduce delayed web-page data while downloads are removed from a large queue.
 //!
+//! Normal functional tests use small queues suitable for debug builds and CI.
+//!
 //! Run the performance regression explicitly in a release build:
 //! `cargo test -p tanoshi --release --test download_queue_responsiveness --locked
 //! -- --ignored --nocapture --test-threads=1`
@@ -9,8 +11,8 @@
 //! the console helper's five parallel batches cancelling 100 dummy chapters.
 //! Tests use a temporary SQLite database with the production migrations, pool,
 //! repositories, and GraphQL resolvers.
-//! The opt-in stress tests expose existing contention and are expected to fail
-//! until database writers no longer exhaust the connections used for reads.
+//! The opt-in stress tests verify that queue writers leave reader capacity
+//! available and complete without database-lock errors.
 //!
 //! Optional environment variables:
 //! - `TANOSHI_QUEUE_TEST_CHAPTERS`: queue size (at least six).
@@ -40,7 +42,6 @@ use chrono::Utc;
 use futures::future::join_all;
 use serde::Serialize;
 use serde_json::{Value, json};
-use sqlx::SqlitePool;
 use tanoshi::{
     application::worker::downloads,
     domain::{
@@ -54,7 +55,7 @@ use tanoshi::{
     infrastructure::{
         auth::Claims,
         config::Config,
-        database::establish_connection,
+        database::{Pool, establish_connection},
         domain::repositories::{
             download::DownloadRepositoryImpl, history::HistoryRepositoryImpl,
             image::ImageRepositoryImpl, image_cache::ImageCacheRepositoryImpl,
@@ -96,7 +97,7 @@ const REMOVE_QUERY: &str =
 
 struct Fixture {
     dir: PathBuf,
-    pool: SqlitePool,
+    pool: Pool,
     repo: DownloadRepositoryImpl,
     schema: TanoshiSchema,
     _download_receiver: tokio::sync::mpsc::UnboundedReceiver<downloads::Command>,
@@ -116,7 +117,7 @@ impl Fixture {
             "INSERT INTO user (id, username, password, is_admin) \
              VALUES (1, 'queue-test-admin', 'unused-test-password', true)",
         )
-        .execute(&*pool)
+        .execute(pool.write())
         .await
         .unwrap();
         sqlx::query(
@@ -125,11 +126,11 @@ impl Fixture {
         )
         .bind(SOURCE_ID)
         .bind(MANGA_TITLE)
-        .execute(&*pool)
+        .execute(pool.write())
         .await
         .unwrap();
         sqlx::query("INSERT INTO user_library (user_id, manga_id) VALUES (1, 1)")
-            .execute(&*pool)
+            .execute(pool.write())
             .await
             .unwrap();
         sqlx::query(
@@ -140,7 +141,7 @@ impl Fixture {
         )
         .bind(chapters)
         .bind(SOURCE_ID)
-        .execute(&*pool)
+        .execute(pool.write())
         .await
         .unwrap();
 
@@ -188,7 +189,7 @@ impl Fixture {
             .build();
         Self {
             dir,
-            pool: (*pool).clone(),
+            pool,
             repo,
             schema,
             _download_receiver: download_receiver,
@@ -197,7 +198,7 @@ impl Fixture {
 
     async fn seed_queue(&self, chapters: i64, pages: i64) {
         sqlx::query("DELETE FROM download_queue")
-            .execute(&self.pool)
+            .execute(self.pool.write())
             .await
             .unwrap();
         let date_added = Utc::now().naive_utc();
@@ -331,39 +332,43 @@ async fn execute_data(schema: &TanoshiSchema, request: Request) -> Value {
     response.data.into_json().unwrap()
 }
 
-async fn real_queue_snapshot(pool: &SqlitePool) -> String {
+async fn real_queue_snapshot(pool: &Pool) -> String {
     sqlx::query_scalar(
         "SELECT json_group_array(json_object('id', id, 'chapter', chapter_id, 'url', url, \
          'priority', priority, 'downloaded', downloaded)) \
          FROM (SELECT * FROM download_queue WHERE chapter_id > 0 ORDER BY id)",
     )
-    .fetch_one(pool)
+    .fetch_one(pool.read())
     .await
     .unwrap()
 }
 
 #[tokio::test]
 async fn queue_repro_seeds_and_cancels_only_dummy_entries() {
+    // Check isolation and cleanup without a stress-sized debug-build workload.
+    // The opt-in release stress test below covers 5,000 chapters with 30 pages.
+    const CHAPTERS: i64 = 25;
+    const PAGES: i64 = 3;
     let fixture = Fixture::new(3).await;
     fixture.seed_queue(3, 2).await;
     fs::write(fixture.dir.join(".pause"), b"").unwrap();
     let before = real_queue_snapshot(&fixture.pool).await;
-    let data = execute_data(&fixture.schema, seed_request(REPRO_RUN, 5_000, 30)).await;
+    let data = execute_data(&fixture.schema, seed_request(REPRO_RUN, CHAPTERS, PAGES)).await;
     let ids: Vec<i64> = data["seedDownloadQueueRepro"]
         .as_array()
         .unwrap()
         .iter()
         .map(|id| id.as_i64().unwrap())
         .collect();
-    assert_eq!(ids.len(), 5_000);
+    assert_eq!(ids.len(), CHAPTERS as usize);
     assert!(ids.iter().all(|id| *id < 0));
     assert_eq!(real_queue_snapshot(&fixture.pool).await, before);
     let queue = fixture.repo.get_download_queue(&ids).await.unwrap();
-    assert_eq!(queue.len(), 5_000);
+    assert_eq!(queue.len(), CHAPTERS as usize);
     assert!(
         queue
             .iter()
-            .all(|chapter| chapter.total == 30 && chapter.priority > 3)
+            .all(|chapter| chapter.total == PAGES && chapter.priority > 3)
     );
     // Dummy entries participate in the same worker lookup and cancellation path.
     let normal = fixture
@@ -374,11 +379,11 @@ async fn queue_repro_seeds_and_cancels_only_dummy_entries() {
         .unwrap();
     assert_eq!(normal.chapter_id, 1);
 
-    let repeated = execute_data(&fixture.schema, seed_request(REPRO_RUN, 5_000, 30)).await;
+    let repeated = execute_data(&fixture.schema, seed_request(REPRO_RUN, CHAPTERS, PAGES)).await;
     assert_eq!(repeated, data, "a retry must not seed another batch");
     assert_eq!(
         fixture.repo.get_download_queue(&[]).await.unwrap().len(),
-        5_003
+        CHAPTERS as usize + 3
     );
     let other_run = "fedcba9876543210fedcba9876543210";
     let other = execute_data(&fixture.schema, seed_request(other_run, 7, 2)).await;
@@ -390,7 +395,7 @@ async fn queue_repro_seeds_and_cancels_only_dummy_entries() {
         .collect();
     assert!(other_ids.iter().all(|id| !ids.contains(id)));
 
-    let cancellations = join_all(ids[..5].iter().map(|id| {
+    let cancellations = join_all(ids[..CONCURRENT_REMOVALS].iter().map(|id| {
         execute_data(
             &fixture.schema,
             Request::new(REMOVE_QUERY).variables(Variables::from_json(json!({"ids": [id]}))),
@@ -402,14 +407,15 @@ async fn queue_repro_seeds_and_cancels_only_dummy_entries() {
             .iter()
             .all(|data| data["removeChaptersFromQueue"] == 1)
     );
+    let remaining = CHAPTERS - CONCURRENT_REMOVALS as i64;
     assert_eq!(
         fixture.repo.get_download_queue(&ids).await.unwrap().len(),
-        4_995
+        remaining as usize
     );
     assert_eq!(real_queue_snapshot(&fixture.pool).await, before);
 
     let cleared = execute_data(&fixture.schema, clear_request(REPRO_RUN)).await;
-    assert_eq!(cleared["clearDownloadQueueRepro"], 4_995);
+    assert_eq!(cleared["clearDownloadQueueRepro"], remaining);
     assert!(
         fixture
             .repo
@@ -439,7 +445,7 @@ async fn queue_repro_seeds_and_cancels_only_dummy_entries() {
     assert_eq!(real_queue_snapshot(&fixture.pool).await, before);
     // No fabricated manga or chapter records are left in the user's collection.
     let chapters: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM chapter")
-        .fetch_one(&fixture.pool)
+        .fetch_one(fixture.pool.read())
         .await
         .unwrap();
     assert_eq!(chapters, 3);
@@ -653,7 +659,9 @@ async fn web_page_requests_stay_responsive_during_queue_removals() {
         let mut busy_since = None;
         while active.load(Ordering::SeqCst) > 0 && wait_start.elapsed() < Duration::from_millis(250)
         {
-            if fixture.pool.size() == CONCURRENT_REMOVALS as u32 && fixture.pool.num_idle() == 0 {
+            if fixture.pool.write().size() == fixture.pool.write().options().get_max_connections()
+                && fixture.pool.write().num_idle() == 0
+            {
                 let since = busy_since.get_or_insert_with(Instant::now);
                 if since.elapsed() >= Duration::from_millis(10) {
                     break;

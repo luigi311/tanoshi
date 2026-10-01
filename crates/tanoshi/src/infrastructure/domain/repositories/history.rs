@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use async_trait::async_trait;
 use chrono::Utc;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use sqlx::{Row, SqlitePool};
+use sqlx::Row;
 
 use crate::{
     domain::{
@@ -61,7 +61,7 @@ impl HistoryRepository for HistoryRepositoryImpl {
         .bind(after_timestamp)
         .bind(before_timestamp)
         .bind(first)
-        .fetch_all(&self.pool as &SqlitePool)
+        .fetch_all(self.pool.read())
         .await?
         .into_par_iter()
         .map(|row| HistoryChapter {
@@ -116,7 +116,7 @@ impl HistoryRepository for HistoryRepositoryImpl {
         .bind(after_timestamp)
         .bind(before_timestamp)
         .bind(last)
-        .fetch_all(&self.pool as &SqlitePool)
+        .fetch_all(self.pool.read())
         .await?
         .into_par_iter()
         .map(|row| HistoryChapter {
@@ -167,7 +167,7 @@ impl HistoryRepository for HistoryRepositoryImpl {
         .bind(user_id)
         .bind(after_timestamp)
         .bind(before_timestamp)
-        .fetch_all(&self.pool as &SqlitePool)
+        .fetch_all(self.pool.read())
         .await?
         .into_par_iter()
         .map(|row| HistoryChapter {
@@ -221,7 +221,7 @@ impl HistoryRepository for HistoryRepositoryImpl {
 
         let chapters = query
             .bind(user_id)
-            .fetch_all(&self.pool as &SqlitePool)
+            .fetch_all(self.pool.read())
             .await?
             .into_par_iter()
             .map(|row| HistoryChapter {
@@ -275,7 +275,7 @@ impl HistoryRepository for HistoryRepositoryImpl {
         }
 
         let chapters = query
-            .fetch_all(&self.pool as &SqlitePool)
+            .fetch_all(self.pool.read())
             .await?
             .into_par_iter()
             .map(|row| HistoryChapter {
@@ -316,7 +316,7 @@ impl HistoryRepository for HistoryRepositoryImpl {
         .bind(page)
         .bind(Utc::now().naive_utc())
         .bind(is_complete)
-        .execute(&self.pool as &SqlitePool)
+        .execute(self.pool.write())
         .await?;
 
         Ok(())
@@ -350,7 +350,7 @@ impl HistoryRepository for HistoryRepositoryImpl {
             query = query.bind(user_id).bind(chapter_id).bind(now);
         }
 
-        query.execute(&self.pool as &SqlitePool).await?;
+        query.execute(self.pool.write()).await?;
 
         Ok(())
     }
@@ -378,7 +378,7 @@ impl HistoryRepository for HistoryRepositoryImpl {
             query = query.bind(chapter_id);
         }
 
-        query.execute(&self.pool as &SqlitePool).await?;
+        query.execute(self.pool.write()).await?;
 
         Ok(())
     }
@@ -417,7 +417,7 @@ impl HistoryRepository for HistoryRepositoryImpl {
         }
 
         let data = query
-            .fetch_all(&self.pool as &SqlitePool)
+            .fetch_all(self.pool.read())
             .await?
             .iter()
             .map(|row| (row.get(0), row.get(1)))
@@ -509,7 +509,7 @@ impl HistoryRepository for HistoryRepositoryImpl {
         .bind(manga_id)
         .bind(user_id)
         .bind(manga_id)
-        .fetch_optional(&self.pool as &SqlitePool)
+        .fetch_optional(self.pool.read())
         .await?
         .map(|row| row.get(0));
 
