@@ -10,6 +10,8 @@ use crate::{
     infrastructure::database::Pool,
 };
 
+mod repro;
+
 #[derive(Clone)]
 pub struct DownloadRepositoryImpl {
     pool: Pool,
