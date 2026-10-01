@@ -128,14 +128,12 @@ where
         Ok(())
     }
 
-    pub async fn update_chapter_priority(
+    pub async fn move_chapter_in_queue(
         &self,
         chapter_id: i64,
-        priority: i64,
+        up: bool,
     ) -> Result<(), DownloadError> {
-        self.repo
-            .update_download_queue_priority(chapter_id, priority)
-            .await?;
+        self.repo.move_chapter_in_queue(chapter_id, up).await?;
 
         Ok(())
     }

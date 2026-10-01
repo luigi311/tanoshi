@@ -362,10 +362,10 @@ pub struct FetchDownloadedChapters;
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "graphql/schema.graphql",
-    query_path = "graphql/update_chapter_priority.graphql",
+    query_path = "graphql/move_chapter_in_queue.graphql",
     response_derives = "Debug"
 )]
-pub struct UpdateChapterPriority;
+pub struct MoveChapterInQueue;
 
 #[derive(GraphQLQuery)]
 #[graphql(

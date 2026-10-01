@@ -195,7 +195,7 @@ type MutationRoot {
   clearDownloadQueueRepro(runId: String!): Int!
   removeChaptersFromQueue(ids: [Int!]!): Int!
   removeDownloadedChapters(ids: [Int!]!): Int!
-  updateChapterPriority(id: Int!, priority: Int!): Boolean!
+  moveChapterInQueue(id: Int!, up: Boolean!): Boolean!
   trackManga(tracker: String!, mangaId: Int!, trackerMangaId: String!): Int!
   untrackManga(tracker: String!, mangaId: Int!): Int!
   updateTrackerStatus(
