@@ -4,8 +4,8 @@ use crate::{
     infrastructure::{config::Config, domain::repositories::download::DownloadRepositoryImpl},
 };
 use async_graphql::{
-    connection::{query, Connection, Edge, EmptyFields},
     Context, Error, Object, Result, SimpleObject,
+    connection::{Connection, Edge, EmptyFields, query},
 };
 use chrono::Utc;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
@@ -162,6 +162,33 @@ pub struct DownloadMutationRoot;
 
 #[Object]
 impl DownloadMutationRoot {
+    /// Seed bogus queue entries for a manual responsiveness test. Pause downloads first.
+    #[graphql(guard = "AdminGuard::new()")]
+    async fn seed_download_queue_repro(
+        &self,
+        ctx: &Context<'_>,
+        run_id: String,
+        #[graphql(default = 5000)] chapters: i64,
+        #[graphql(default = 30)] pages_per_chapter: i64,
+    ) -> Result<Vec<i64>> {
+        let service = ctx.data::<DownloadService<DownloadRepositoryImpl>>()?;
+        if service.get_download_status(&ctx.data::<Config>()?.download_path) {
+            return Err("Pause downloads before seeding a queue test".into());
+        }
+        Ok(service
+            .seed_queue_repro(&run_id, chapters, pages_per_chapter)
+            .await?)
+    }
+
+    /// Remove the remaining dummy entries belonging to one test run.
+    #[graphql(guard = "AdminGuard::new()")]
+    async fn clear_download_queue_repro(&self, ctx: &Context<'_>, run_id: String) -> Result<i64> {
+        Ok(ctx
+            .data::<DownloadService<DownloadRepositoryImpl>>()?
+            .clear_queue_repro(&run_id)
+            .await?)
+    }
+
     async fn pause_download(&self, ctx: &Context<'_>) -> Result<bool> {
         let download_path = &ctx.data::<Config>()?.download_path;
 

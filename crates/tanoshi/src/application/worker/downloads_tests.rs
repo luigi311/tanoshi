@@ -1,6 +1,5 @@
 use super::*;
 use bytes::Bytes;
-use sqlx::SqlitePool;
 use std::{
     io::Read,
     sync::{
@@ -13,7 +12,7 @@ use tanoshi_vm::prelude::Source;
 
 use crate::domain::services::download::DownloadService;
 use crate::infrastructure::{
-    database::establish_connection,
+    database::{Pool, establish_connection},
     domain::repositories::{
         chapter::ChapterRepositoryImpl, download::DownloadRepositoryImpl,
         library::LibraryRepositoryImpl, manga::MangaRepositoryImpl,
@@ -75,7 +74,7 @@ impl Extension for TestExtension {
 
 struct Fixture {
     dir: PathBuf,
-    pool: SqlitePool,
+    pool: Pool,
     repo: DownloadRepositoryImpl,
     calls: Arc<Mutex<Vec<String>>>,
 }
@@ -99,7 +98,7 @@ impl Fixture {
         for id in 1..=2 {
             sqlx::query("INSERT INTO chapter (id, source_id, manga_id, title, path, number, uploaded, date_added) VALUES (?, 1, 1, 'Chapter', ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)")
                 .bind(id).bind(format!("/chapter/{id}")).bind(id)
-                .execute(&*pool).await.unwrap();
+                .execute(pool.write()).await.unwrap();
         }
         let repo = DownloadRepositoryImpl::new(pool.clone());
         let date_added = Utc::now().naive_utc();
@@ -124,7 +123,7 @@ impl Fixture {
         repo.insert_download_queue(&queue).await.unwrap();
         Self {
             dir,
-            pool: (*pool).clone(),
+            pool,
             repo,
             calls: Arc::default(),
         }
@@ -226,7 +225,7 @@ impl Fixture {
         )
         .bind(chapter)
         .bind(pages)
-        .execute(&self.pool)
+        .execute(self.pool.write())
         .await
         .unwrap();
     }
@@ -345,10 +344,10 @@ async fn retry_revalidates_archive_after_failed_database_update() {
 
     // Fail after appending the next page, leaving the queue partially complete.
     sqlx::query("CREATE TRIGGER fail_download_update BEFORE UPDATE OF downloaded ON download_queue WHEN NEW.chapter_id = 1 AND NEW.rank = 1 BEGIN SELECT RAISE(ABORT, 'temporary database failure'); END")
-        .execute(&fixture.pool).await.unwrap();
+        .execute(fixture.pool.write()).await.unwrap();
     assert!(worker.download().await.is_err());
     sqlx::query("DROP TRIGGER fail_download_update")
-        .execute(&fixture.pool)
+        .execute(fixture.pool.write())
         .await
         .unwrap();
     fixture.corrupt_archive_page(1, true);
@@ -515,7 +514,7 @@ async fn cancellation_during_image_request_cleans_archive_and_continues_queue() 
         assert!(!fixture.archive_path(1, false).exists());
         let cancelled_path: Option<String> =
             sqlx::query_scalar("SELECT downloaded_path FROM chapter WHERE id = 1")
-                .fetch_one(&fixture.pool)
+                .fetch_one(fixture.pool.read())
                 .await
                 .unwrap();
         assert_eq!(cancelled_path, None);
@@ -571,10 +570,10 @@ async fn cancellation_cleanup_preserves_requeued_chapter() {
 async fn requeue_before_cleanup_discards_pages_with_old_urls() {
     let fixture = Fixture::new().await;
     sqlx::query("INSERT INTO manga (id, source_id, title, author, genre, path, cover_url, date_added) VALUES (1, 1, 'Manga', '[]', '[]', '/manga/1', '', CURRENT_TIMESTAMP)")
-        .execute(&fixture.pool).await.unwrap();
+        .execute(fixture.pool.write()).await.unwrap();
     // Match the archive name produced by the real insertion path.
     sqlx::query("UPDATE download_queue SET chapter_title = '1 - Chapter' WHERE chapter_id = 1")
-        .execute(&fixture.pool)
+        .execute(fixture.pool.write())
         .await
         .unwrap();
     let pages = vec![

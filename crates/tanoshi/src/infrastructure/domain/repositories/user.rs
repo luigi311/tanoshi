@@ -6,7 +6,7 @@ use crate::{
     infrastructure::database::Pool,
 };
 use async_trait::async_trait;
-use sqlx::{Row, SqlitePool};
+use sqlx::Row;
 use tokio_stream::StreamExt;
 
 #[derive(Clone)]
@@ -28,7 +28,7 @@ impl UserRepository for UserRepositoryImpl {
                 .bind(&user.username)
                 .bind(&user.password)
                 .bind(user.is_admin)
-                .execute(&self.pool as &SqlitePool)
+                .execute(self.pool.write())
                 .await?
                 .last_insert_rowid();
 
@@ -39,7 +39,7 @@ impl UserRepository for UserRepositoryImpl {
         let row_id = sqlx::query(r#"UPDATE user SET password = ? WHERE id = ?"#)
             .bind(&password)
             .bind(id)
-            .execute(&self.pool as &SqlitePool)
+            .execute(self.pool.write())
             .await?
             .rows_affected();
 
@@ -55,7 +55,7 @@ impl UserRepository for UserRepositoryImpl {
         let row_id = sqlx::query(r#"UPDATE user SET is_admin = ? WHERE id = ?"#)
             .bind(is_admin)
             .bind(id)
-            .execute(&self.pool as &SqlitePool)
+            .execute(self.pool.write())
             .await?
             .rows_affected();
 
@@ -64,7 +64,7 @@ impl UserRepository for UserRepositoryImpl {
 
     async fn get_users(&self) -> Result<Vec<User>, UserRepositoryError> {
         let users = sqlx::query(r#"SELECT * FROM user"#)
-            .fetch_all(&self.pool as &SqlitePool)
+            .fetch_all(self.pool.read())
             .await?
             .into_iter()
             .map(|row| User {
@@ -85,15 +85,15 @@ impl UserRepository for UserRepositoryImpl {
 
     async fn get_users_count(&self) -> Result<i64, UserRepositoryError> {
         let row = sqlx::query(r#"SELECT COUNT(1) FROM user"#)
-            .fetch_one(&self.pool as &SqlitePool)
+            .fetch_one(self.pool.read())
             .await?;
 
         Ok(row.get(0))
     }
 
     async fn get_admins(&self) -> Result<Vec<User>, UserRepositoryError> {
-        let mut stream = sqlx::query(r#"SELECT * FROM user WHERE is_admin = true"#)
-            .fetch(&self.pool as &SqlitePool);
+        let mut stream =
+            sqlx::query(r#"SELECT * FROM user WHERE is_admin = true"#).fetch(self.pool.read());
 
         let mut users = vec![];
         while let Some(row) = stream.try_next().await? {
@@ -115,7 +115,7 @@ impl UserRepository for UserRepositoryImpl {
     async fn get_user_by_id(&self, id: i64) -> Result<User, UserRepositoryError> {
         let row = sqlx::query(r#"SELECT * FROM user WHERE id = ?"#)
             .bind(id)
-            .fetch_one(&self.pool as &SqlitePool)
+            .fetch_one(self.pool.read())
             .await?;
 
         Ok(User {
@@ -134,7 +134,7 @@ impl UserRepository for UserRepositoryImpl {
     async fn get_user_by_username(&self, username: String) -> Result<User, UserRepositoryError> {
         let row = sqlx::query(r#"SELECT * FROM user WHERE username = ?"#)
             .bind(&username)
-            .fetch_one(&self.pool as &SqlitePool)
+            .fetch_one(self.pool.read())
             .await?;
 
         Ok(User {
@@ -162,7 +162,7 @@ impl UserRepository for UserRepositoryImpl {
         .bind(&user.pushover_user_key)
         .bind(&user.gotify_token)
         .bind(user.id)
-        .execute(&self.pool as &SqlitePool)
+        .execute(self.pool.write())
         .await?
         .rows_affected();
 
@@ -172,7 +172,7 @@ impl UserRepository for UserRepositoryImpl {
     async fn delete_user(&self, id: i64) -> Result<(), UserRepositoryError> {
         sqlx::query(r#"DELETE FROM user WHERE id = ?"#)
             .bind(id)
-            .execute(&self.pool as &SqlitePool)
+            .execute(self.pool.write())
             .await?;
 
         Ok(())

@@ -1,7 +1,7 @@
 use async_trait::async_trait;
-use futures::{stream::BoxStream, StreamExt};
+use futures::{StreamExt, stream::BoxStream};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use sqlx::{Row, SqlitePool};
+use sqlx::Row;
 use std::collections::HashMap;
 
 use crate::{
@@ -43,7 +43,7 @@ impl LibraryRepository for LibraryRepositoryImpl {
         ORDER BY name"#,
         )
         .bind(user_id)
-        .fetch_all(&self.pool as &SqlitePool)
+        .fetch_all(self.pool.read())
         .await?
         .into_par_iter()
         .map(|row| Category {
@@ -65,7 +65,7 @@ impl LibraryRepository for LibraryRepositoryImpl {
         WHERE id = ?"#,
         )
         .bind(id)
-        .fetch_one(&self.pool as &SqlitePool)
+        .fetch_one(self.pool.read())
         .await?;
 
         Ok(Category {
@@ -84,7 +84,7 @@ impl LibraryRepository for LibraryRepositoryImpl {
         )
         .bind(user_id)
         .bind(name)
-        .fetch_one(&self.pool as &SqlitePool)
+        .fetch_one(self.pool.write())
         .await?;
 
         Ok(Category {
@@ -101,7 +101,7 @@ impl LibraryRepository for LibraryRepositoryImpl {
         let row = sqlx::query("UPDATE user_category SET name = ? WHERE id = ? RETURNING id, name")
             .bind(name)
             .bind(id)
-            .fetch_one(&self.pool as &SqlitePool)
+            .fetch_one(self.pool.write())
             .await?;
 
         Ok(Category {
@@ -113,7 +113,7 @@ impl LibraryRepository for LibraryRepositoryImpl {
     async fn delete_category(&self, id: i64) -> Result<(), LibraryRepositoryError> {
         sqlx::query("DELETE FROM user_category WHERE id = ?")
             .bind(id)
-            .execute(&self.pool as &SqlitePool)
+            .execute(self.pool.write())
             .await?;
 
         Ok(())
@@ -139,7 +139,7 @@ impl LibraryRepository for LibraryRepositoryImpl {
         GROUP BY user_category.id"#,
         )
         .bind(user_id)
-        .fetch_all(&self.pool as &SqlitePool)
+        .fetch_all(self.pool.read())
         .await?
         .into_par_iter()
         .map(|row| (row.get(0), row.get(1)))
@@ -162,7 +162,7 @@ impl LibraryRepository for LibraryRepositoryImpl {
         WHERE user_library.manga_id = ?"#,
         )
         .bind(manga_id)
-        .fetch_all(&self.pool as &SqlitePool)
+        .fetch_all(self.pool.read())
         .await?
         .into_par_iter()
         .map(|row| User {
@@ -196,7 +196,7 @@ impl LibraryRepository for LibraryRepositoryImpl {
                 ON manga.id = chapter.manga_id
         GROUP by manga.id"#,
         )
-        .fetch(&self.pool as &SqlitePool)
+        .fetch(self.pool.read())
         .map(|row| {
             row.map(|row| Manga {
                 id: row.get(0),
@@ -234,7 +234,7 @@ impl LibraryRepository for LibraryRepositoryImpl {
         GROUP by manga.id"#,
         )
         .bind(id)
-        .fetch(&self.pool as &SqlitePool)
+        .fetch(self.pool.read())
         .map(|row| {
             row.map(|row| Manga {
                 id: row.get(0),
@@ -272,7 +272,7 @@ impl LibraryRepository for LibraryRepositoryImpl {
         GROUP by manga.id"#,
         )
         .bind(user_id)
-        .fetch(&self.pool as &SqlitePool)
+        .fetch(self.pool.read())
         .map(|row| {
             row.map(|row| Manga {
                 id: row.get(0),
@@ -310,7 +310,7 @@ impl LibraryRepository for LibraryRepositoryImpl {
         ORDER BY title"#,
         )
         .bind(user_id)
-        .fetch_all(&self.pool as &SqlitePool)
+        .fetch_all(self.pool.read())
         .await?
         .into_par_iter()
         .map(|row| Manga {
@@ -352,7 +352,7 @@ impl LibraryRepository for LibraryRepositoryImpl {
         )
         .bind(user_id)
         .bind(category_id)
-        .fetch_all(&self.pool as &SqlitePool)
+        .fetch_all(self.pool.read())
         .await?
         .into_par_iter()
         .map(|row| Manga {
@@ -379,7 +379,7 @@ impl LibraryRepository for LibraryRepositoryImpl {
         manga_id: i64,
         category_ids: &[i64],
     ) -> Result<(), LibraryRepositoryError> {
-        let mut tx = self.pool.begin().await?;
+        let mut tx = self.pool.write().begin().await?;
 
         let library_id = sqlx::query("INSERT INTO user_library(user_id, manga_id) VALUES (?, ?)")
             .bind(user_id)
@@ -414,7 +414,7 @@ impl LibraryRepository for LibraryRepositoryImpl {
         sqlx::query("DELETE FROM user_library WHERE user_id = ? AND manga_id = ?")
             .bind(user_id)
             .bind(manga_id)
-            .execute(&self.pool as &SqlitePool)
+            .execute(self.pool.write())
             .await?;
 
         Ok(())
@@ -426,17 +426,19 @@ impl LibraryRepository for LibraryRepositoryImpl {
         from_manga_id: i64,
         to_manga_id: i64,
     ) -> Result<(), LibraryRepositoryError> {
-        let mut tx = self.pool.begin().await?;
+        let mut tx = self.pool.write().begin().await?;
 
         // Move the library entry. Keeping the user_library row id carries its
         // library_category rows along. OR IGNORE skips the move when the
         // destination is already in the library (it keeps its own categories).
-        sqlx::query("UPDATE OR IGNORE user_library SET manga_id = ? WHERE user_id = ? AND manga_id = ?")
-            .bind(to_manga_id)
-            .bind(user_id)
-            .bind(from_manga_id)
-            .execute(&mut *tx)
-            .await?;
+        sqlx::query(
+            "UPDATE OR IGNORE user_library SET manga_id = ? WHERE user_id = ? AND manga_id = ?",
+        )
+        .bind(to_manga_id)
+        .bind(user_id)
+        .bind(from_manga_id)
+        .execute(&mut *tx)
+        .await?;
 
         sqlx::query("DELETE FROM user_library WHERE user_id = ? AND manga_id = ?")
             .bind(user_id)
@@ -532,12 +534,14 @@ impl LibraryRepository for LibraryRepositoryImpl {
 
         // Move trackers. OR IGNORE skips trackers already attached to the
         // destination; leftovers on the old manga are removed after.
-        sqlx::query("UPDATE OR IGNORE tracker_manga SET manga_id = ? WHERE user_id = ? AND manga_id = ?")
-            .bind(to_manga_id)
-            .bind(user_id)
-            .bind(from_manga_id)
-            .execute(&mut *tx)
-            .await?;
+        sqlx::query(
+            "UPDATE OR IGNORE tracker_manga SET manga_id = ? WHERE user_id = ? AND manga_id = ?",
+        )
+        .bind(to_manga_id)
+        .bind(user_id)
+        .bind(from_manga_id)
+        .execute(&mut *tx)
+        .await?;
 
         sqlx::query("DELETE FROM tracker_manga WHERE user_id = ? AND manga_id = ?")
             .bind(user_id)
@@ -586,7 +590,7 @@ impl LibraryRepository for LibraryRepositoryImpl {
         .bind(before_timestamp)
         .bind(before_id)
         .bind(first)
-        .fetch_all(&self.pool as &SqlitePool)
+        .fetch_all(self.pool.read())
         .await?
         .into_par_iter()
         .map(|row| LibraryUpdate {
@@ -642,7 +646,7 @@ impl LibraryRepository for LibraryRepositoryImpl {
         .bind(before_timestamp)
         .bind(before_id)
         .bind(last)
-        .fetch_all(&self.pool as &SqlitePool)
+        .fetch_all(self.pool.read())
         .await?
         .into_par_iter()
         .map(|row| LibraryUpdate {
@@ -692,7 +696,7 @@ impl LibraryRepository for LibraryRepositoryImpl {
         .bind(after_id)
         .bind(before_timestamp)
         .bind(before_id)
-        .fetch_all(&self.pool as &SqlitePool)
+        .fetch_all(self.pool.read())
         .await?
         .into_par_iter()
         .map(|row| LibraryUpdate {

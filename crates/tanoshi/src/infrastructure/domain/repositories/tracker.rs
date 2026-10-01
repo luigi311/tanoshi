@@ -1,8 +1,8 @@
 use std::{collections::HashMap, sync::Arc};
 
 use async_trait::async_trait;
-use sqlx::{Row, SqlitePool};
-use tanoshi_tracker::{anilist, myanimelist, AniList, MyAnimeList, Session, Tracker, TrackerManga};
+use sqlx::Row;
+use tanoshi_tracker::{AniList, MyAnimeList, Session, Tracker, TrackerManga, anilist, myanimelist};
 
 use crate::{
     domain::{
@@ -122,7 +122,7 @@ impl TrackerRepository for TrackerRepositoryImpl {
         .bind(token.expires_in)
         .bind(token.access_token)
         .bind(token.refresh_token)
-        .execute(&self.pool as &SqlitePool)
+        .execute(self.pool.write())
         .await?;
 
         Ok(())
@@ -138,7 +138,7 @@ impl TrackerRepository for TrackerRepositoryImpl {
         )
         .bind(user_id)
         .bind(tracker)
-        .fetch_one(&self.pool as &SqlitePool)
+        .fetch_one(self.pool.read())
         .await?;
 
         Ok(Token {
@@ -158,7 +158,7 @@ impl TrackerRepository for TrackerRepositoryImpl {
             sqlx::query("DELETE FROM tracker_credential WHERE user_id = ? AND tracker = ?")
                 .bind(user_id)
                 .bind(tracker)
-                .execute(&self.pool as &SqlitePool)
+                .execute(self.pool.write())
                 .await?
                 .rows_affected(),
         )
@@ -200,7 +200,7 @@ impl TrackerRepository for TrackerRepositoryImpl {
         let rows = query
             .bind(manga_id)
             .bind(user_id)
-            .fetch_all(&self.pool as &SqlitePool)
+            .fetch_all(self.pool.read())
             .await?
             .iter()
             .map(|row| TrackedManga {
@@ -234,7 +234,7 @@ impl TrackerRepository for TrackerRepositoryImpl {
 
         let rows = query
             .bind(user_id)
-            .fetch_all(&self.pool as &SqlitePool)
+            .fetch_all(self.pool.read())
             .await?
             .iter()
             .map(|row| TrackedManga {
@@ -314,7 +314,7 @@ impl TrackerRepository for TrackerRepositoryImpl {
         .bind(manga_id)
         .bind(tracker)
         .bind(tracker_manga_id)
-        .execute(&self.pool as &SqlitePool)
+        .execute(self.pool.write())
         .await?;
 
         Ok(())
@@ -335,7 +335,7 @@ impl TrackerRepository for TrackerRepositoryImpl {
         .bind(user_id)
         .bind(manga_id)
         .bind(tracker)
-        .execute(&self.pool as &SqlitePool)
+        .execute(self.pool.write())
         .await?;
 
         Ok(())

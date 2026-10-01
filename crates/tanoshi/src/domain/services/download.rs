@@ -182,3 +182,23 @@ where
         Ok(())
     }
 }
+
+impl
+    DownloadService<crate::infrastructure::domain::repositories::download::DownloadRepositoryImpl>
+{
+    pub async fn seed_queue_repro(
+        &self,
+        run_id: &str,
+        chapters: i64,
+        pages_per_chapter: i64,
+    ) -> Result<Vec<i64>, DownloadError> {
+        Ok(self
+            .repo
+            .seed_queue_repro(run_id, chapters, pages_per_chapter)
+            .await?)
+    }
+
+    pub async fn clear_queue_repro(&self, run_id: &str) -> Result<i64, DownloadError> {
+        Ok(self.repo.clear_queue_repro(run_id).await?)
+    }
+}

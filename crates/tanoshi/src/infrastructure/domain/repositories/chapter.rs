@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use chrono::Utc;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use sqlx::{Row, SqlitePool};
+use sqlx::Row;
 
 use crate::{
     domain::{
@@ -66,7 +66,7 @@ impl ChapterRepository for ChapterRepositoryImpl {
                 .bind(Utc::now().naive_utc());
         }
 
-        query.execute(&self.pool as &SqlitePool).await?;
+        query.execute(self.pool.write()).await?;
 
         Ok(())
     }
@@ -80,7 +80,7 @@ impl ChapterRepository for ChapterRepositoryImpl {
                     FROM chapter WHERE id = ?"#,
         )
         .bind(id)
-        .fetch_one(&self.pool as &SqlitePool)
+        .fetch_one(self.pool.read())
         .await?;
 
         Ok(Chapter {
@@ -113,7 +113,7 @@ impl ChapterRepository for ChapterRepositoryImpl {
         )
         .bind(source_id)
         .bind(path)
-        .fetch_one(&self.pool as &SqlitePool)
+        .fetch_one(self.pool.read())
         .await?;
 
         Ok(Chapter {
@@ -154,7 +154,7 @@ impl ChapterRepository for ChapterRepositoryImpl {
         );
         let chapters = sqlx::query(&query_str)
             .bind(manga_id)
-            .fetch_all(&self.pool as &SqlitePool)
+            .fetch_all(self.pool.read())
             .await?
             .into_par_iter()
             .map(|row| Chapter {
@@ -179,7 +179,7 @@ impl ChapterRepository for ChapterRepositoryImpl {
     async fn delete_chapter_by_id(&self, chapter_id: i64) -> Result<(), ChapterRepositoryError> {
         sqlx::query("DELETE FROM chapter WHERE id = ?")
             .bind(chapter_id)
-            .execute(&self.pool as &SqlitePool)
+            .execute(self.pool.write())
             .await?;
 
         Ok(())
@@ -206,7 +206,7 @@ impl ChapterRepository for ChapterRepositoryImpl {
             query = query.bind(chapter_id);
         }
 
-        query.execute(&self.pool as &SqlitePool).await?;
+        query.execute(self.pool.write()).await?;
 
         Ok(())
     }
@@ -235,7 +235,7 @@ impl ChapterRepository for ChapterRepositoryImpl {
         }
 
         let chapters = query
-            .fetch_all(&self.pool as &SqlitePool)
+            .fetch_all(self.pool.read())
             .await?
             .into_par_iter()
             .map(|row| Chapter {

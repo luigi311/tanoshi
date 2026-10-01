@@ -191,6 +191,8 @@ type MutationRoot {
   pauseDownload: Boolean!
   resumeDownload: Boolean!
   downloadChapters(ids: [Int!]!): Int!
+  seedDownloadQueueRepro(runId: String!, chapters: Int! = 5000, pagesPerChapter: Int! = 30): [Int!]!
+  clearDownloadQueueRepro(runId: String!): Int!
   removeChaptersFromQueue(ids: [Int!]!): Int!
   removeDownloadedChapters(ids: [Int!]!): Int!
   updateChapterPriority(id: Int!, priority: Int!): Boolean!

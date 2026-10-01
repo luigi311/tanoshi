@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use sqlx::{Row, SqlitePool};
+use sqlx::Row;
 
 use crate::{
     domain::{
@@ -9,6 +9,8 @@ use crate::{
     },
     infrastructure::database::Pool,
 };
+
+mod repro;
 
 #[derive(Clone)]
 pub struct DownloadRepositoryImpl {
@@ -46,7 +48,7 @@ impl DownloadRepository for DownloadRepositoryImpl {
         .bind(before_timestamp)
         .bind(before_id)
         .bind(first)
-        .fetch_all(&self.pool as &SqlitePool)
+        .fetch_all(self.pool.read())
         .await?
         .into_par_iter()
         .map(|row| DownloadedChapter {
@@ -91,7 +93,7 @@ impl DownloadRepository for DownloadRepositoryImpl {
         .bind(before_timestamp)
         .bind(before_id)
         .bind(last)
-        .fetch_all(&self.pool as &SqlitePool)
+        .fetch_all(self.pool.read())
         .await?
         .into_par_iter()
         .map(|row| DownloadedChapter {
@@ -132,7 +134,7 @@ impl DownloadRepository for DownloadRepositoryImpl {
         .bind(after_id)
         .bind(before_timestamp)
         .bind(before_id)
-        .fetch_all(&self.pool as &SqlitePool)
+        .fetch_all(self.pool.read())
         .await?
         .into_par_iter()
         .map(|row| DownloadedChapter {
@@ -161,7 +163,7 @@ impl DownloadRepository for DownloadRepositoryImpl {
             SELECT downloaded_path FROM chapter WHERE id = ?"#,
         )
         .bind(chapter_id)
-        .fetch_one(&self.pool as &SqlitePool)
+        .fetch_one(self.pool.read())
         .await?
         .try_get(0)?;
 
@@ -176,7 +178,7 @@ impl DownloadRepository for DownloadRepositoryImpl {
         sqlx::query(r#"UPDATE chapter SET downloaded_path = ? WHERE id = ?"#)
             .bind(path)
             .bind(chapter_id)
-            .execute(&self.pool as &SqlitePool)
+            .execute(self.pool.write())
             .await?;
 
         Ok(())
@@ -224,7 +226,7 @@ impl DownloadRepository for DownloadRepositoryImpl {
                 .bind(item.date_added.and_utc().timestamp());
         }
 
-        query.execute(&self.pool as &SqlitePool).await?;
+        query.execute(self.pool.write()).await?;
 
         Ok(())
     }
@@ -252,7 +254,7 @@ impl DownloadRepository for DownloadRepositoryImpl {
                     downloaded IS true ASC, rank ASC
                 LIMIT 1"#,
         )
-        .fetch_optional(&self.pool as &SqlitePool)
+        .fetch_optional(self.pool.read())
         .await?
         .map(|row| DownloadQueue {
             id: row.get(0),
@@ -281,7 +283,7 @@ impl DownloadRepository for DownloadRepositoryImpl {
                 WHERE chapter_id = ?"#,
         )
         .bind(chapter_id)
-        .fetch_one(&self.pool as &SqlitePool)
+        .fetch_one(self.pool.read())
         .await?;
 
         Ok(row.get(0))
@@ -293,7 +295,7 @@ impl DownloadRepository for DownloadRepositoryImpl {
     ) -> Result<(), DownloadRepositoryError> {
         sqlx::query(r#"UPDATE download_queue SET downloaded = true WHERE id = ?"#)
             .bind(id)
-            .execute(&self.pool as &SqlitePool)
+            .execute(self.pool.write())
             .await?;
 
         Ok(())
@@ -303,7 +305,7 @@ impl DownloadRepository for DownloadRepositoryImpl {
         &self,
     ) -> Result<Option<i64>, DownloadRepositoryError> {
         let data = sqlx::query(r#"SELECT MAX(priority) FROM download_queue"#)
-            .fetch_optional(&self.pool as &SqlitePool)
+            .fetch_optional(self.pool.read())
             .await?
             .and_then(|row| row.try_get(0).ok());
 
@@ -316,7 +318,7 @@ impl DownloadRepository for DownloadRepositoryImpl {
     ) -> Result<(), DownloadRepositoryError> {
         sqlx::query("UPDATE download_queue SET downloaded = false WHERE chapter_id = ?")
             .bind(chapter_id)
-            .execute(&self.pool as &SqlitePool)
+            .execute(self.pool.write())
             .await?;
 
         Ok(())
@@ -360,7 +362,7 @@ impl DownloadRepository for DownloadRepositoryImpl {
         }
 
         let data = query
-            .fetch_all(&self.pool as &SqlitePool)
+            .fetch_all(self.pool.read())
             .await?
             .iter()
             .map(|row| DownloadQueueEntry {
@@ -385,7 +387,7 @@ impl DownloadRepository for DownloadRepositoryImpl {
     ) -> Result<(), DownloadRepositoryError> {
         sqlx::query(r#"DELETE FROM download_queue WHERE chapter_id = ?"#)
             .bind(chapter_id)
-            .execute(&self.pool as &SqlitePool)
+            .execute(self.pool.write())
             .await?;
 
         Ok(())
@@ -395,7 +397,7 @@ impl DownloadRepository for DownloadRepositoryImpl {
         &self,
         id: i64,
     ) -> Result<(), DownloadRepositoryError> {
-        let mut tx = self.pool.begin().await?;
+        let mut tx = self.pool.write().begin().await?;
 
         sqlx::query("UPDATE download_queue SET priority = priority - 1 WHERE priority > (SELECT priority FROM download_queue WHERE chapter_id = ? LIMIT 1)").bind(id).execute(&mut *tx).await?;
 
@@ -414,7 +416,7 @@ impl DownloadRepository for DownloadRepositoryImpl {
         chapter_id: i64,
         priority: i64,
     ) -> Result<(), DownloadRepositoryError> {
-        let mut tx = self.pool.begin().await?;
+        let mut tx = self.pool.write().begin().await?;
 
         sqlx::query(r#"UPDATE download_queue SET priority = priority - 1 WHERE priority > (SELECT priority FROM download_queue WHERE chapter_id = ?)"#)
             .bind(chapter_id)
