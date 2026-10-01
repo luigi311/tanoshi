@@ -294,10 +294,6 @@ where
         self.download_repo
             .delete_single_chapter_download_queue(queue.chapter_id)
             .await?;
-        info!(
-            "chapter '{}' of '{}' downloaded successfully",
-            queue.chapter_title, queue.manga_title
-        );
         Ok(())
     }
 
