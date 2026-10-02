@@ -31,6 +31,7 @@ impl DownloadRepositoryImpl {
         );
 
         // Reserve IDs and priorities atomically, including simultaneous seed requests.
+        let mutation = self.updates.mutation().await;
         let mut tx = self.pool.write().begin_with("BEGIN IMMEDIATE").await?;
         let existing: Vec<i64> = sqlx::query_scalar(
             "SELECT chapter_id FROM download_queue \
@@ -44,6 +45,7 @@ impl DownloadRepositoryImpl {
         // Retrying after a lost response must not create another batch.
         if !existing.is_empty() {
             tx.commit().await?;
+            mutation.unchanged();
             return Ok(existing);
         }
 
@@ -96,19 +98,22 @@ impl DownloadRepositoryImpl {
         .execute(&mut *tx)
         .await?;
         tx.commit().await?;
-        Ok((0..chapters).map(|index| first_id - index).collect())
+        let ids: Vec<_> = (0..chapters).map(|index| first_id - index).collect();
+        mutation.complete(ids.iter().copied());
+        Ok(ids)
     }
 
     pub async fn clear_queue_repro(&self, run_id: &str) -> anyhow::Result<i64> {
         let title = manga_title(run_id)?;
+        let mutation = self.updates.mutation().await;
         let mut tx = self.pool.write().begin_with("BEGIN IMMEDIATE").await?;
-        let count: i64 = sqlx::query_scalar(
-            "SELECT COUNT(DISTINCT chapter_id) FROM download_queue \
+        let ids: Vec<i64> = sqlx::query_scalar(
+            "SELECT DISTINCT chapter_id FROM download_queue \
              WHERE source_id = -1 AND source_name = ? AND manga_title = ? AND chapter_id < 0",
         )
         .bind(SOURCE_NAME)
         .bind(&title)
-        .fetch_one(&mut *tx)
+        .fetch_all(&mut *tx)
         .await?;
         // Cleanup is a single bulk delete; the stress test uses ordinary removals.
         sqlx::query(
@@ -120,6 +125,12 @@ impl DownloadRepositoryImpl {
         .execute(&mut *tx)
         .await?;
         tx.commit().await?;
+        let count = ids.len() as i64;
+        if ids.is_empty() {
+            mutation.unchanged();
+        } else {
+            mutation.complete(ids);
+        }
         Ok(count)
     }
 }

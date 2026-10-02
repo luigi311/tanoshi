@@ -1,0 +1,20 @@
+subscription SubscribeDownloadQueue {
+  downloadQueueUpdates {
+    snapshot
+    fromVersion
+    version
+    removedIds
+    resyncRequired
+    downloadStatus
+    updates {
+      sourceName
+      mangaTitle
+      chapterId
+      chapterTitle
+      downloaded
+      total
+      priority
+      dateAdded
+    }
+  }
+}

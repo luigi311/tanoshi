@@ -8,7 +8,7 @@ use crate::infrastructure::domain::repositories::{
 use super::{
     catalogue::CatalogueRoot,
     categories::{CategoryMutationRoot, CategoryRoot},
-    downloads::{DownloadMutationRoot, DownloadRoot},
+    downloads::{DownloadMutationRoot, DownloadRoot, DownloadSubscriptionRoot},
     library::{LibraryMutationRoot, LibraryRoot, LibrarySubscriptionRoot},
     notification::NotificationRoot,
     source::{SourceMutationRoot, SourceRoot},
@@ -18,7 +18,7 @@ use super::{
 };
 
 use async_graphql::{
-    dataloader::DataLoader, extensions::Logger, MergedObject, MergedSubscription, Schema,
+    MergedObject, MergedSubscription, Schema, dataloader::DataLoader, extensions::Logger,
 };
 
 pub type TanoshiSchema = Schema<QueryRoot, MutationRoot, SubscriptionRoot>;
@@ -47,7 +47,7 @@ pub struct MutationRoot(
 );
 
 #[derive(MergedSubscription, Default)]
-pub struct SubscriptionRoot(LibrarySubscriptionRoot);
+pub struct SubscriptionRoot(LibrarySubscriptionRoot, DownloadSubscriptionRoot);
 
 pub type DatabaseLoader = crate::presentation::graphql::loader::DatabaseLoader<
     HistoryRepositoryImpl,

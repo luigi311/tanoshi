@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use crate::{
     application::worker::downloads::{Command as DownloadCommand, DownloadSender},
     domain::{
-        entities::download::{DownloadQueueEntry, DownloadedChapter},
+        entities::download::{DownloadQueueEntry, DownloadQueueUpdate, DownloadedChapter},
         repositories::download::{DownloadRepository, DownloadRepositoryError},
     },
 };
@@ -98,6 +98,8 @@ where
             let _ = tokio::fs::write(pause_path, b"").await;
         }
 
+        self.repo.notify_download_status_changed().await;
+
         Ok(())
     }
 
@@ -184,6 +186,13 @@ where
 impl
     DownloadService<crate::infrastructure::domain::repositories::download::DownloadRepositoryImpl>
 {
+    pub async fn subscribe_download_queue(
+        &self,
+    ) -> Result<impl futures::Stream<Item = DownloadQueueUpdate> + Send + use<>, DownloadError>
+    {
+        Ok(self.repo.subscribe_download_queue().await?)
+    }
+
     pub async fn seed_queue_repro(
         &self,
         run_id: &str,

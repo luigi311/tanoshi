@@ -4,10 +4,11 @@ use crate::{
     infrastructure::{config::Config, domain::repositories::download::DownloadRepositoryImpl},
 };
 use async_graphql::{
-    Context, Error, Object, Result, SimpleObject,
+    Context, Error, Object, Result, SimpleObject, Subscription,
     connection::{Connection, Edge, EmptyFields, query},
 };
 use chrono::Utc;
+use futures::{Stream, StreamExt};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 
 #[derive(Debug, SimpleObject)]
@@ -21,6 +22,7 @@ pub struct DownloadQueueEntry {
     pub downloaded: i64,
     pub total: i64,
     pub priority: i64,
+    pub date_added: i64,
 }
 
 impl From<crate::domain::entities::download::DownloadQueueEntry> for DownloadQueueEntry {
@@ -35,7 +37,62 @@ impl From<crate::domain::entities::download::DownloadQueueEntry> for DownloadQue
             downloaded: queue.downloaded,
             total: queue.total,
             priority: queue.priority,
+            date_added: queue.date_added.and_utc().timestamp(),
         }
+    }
+}
+
+#[derive(SimpleObject)]
+pub struct DownloadQueueUpdate {
+    pub snapshot: bool,
+    pub from_version: i64,
+    pub version: i64,
+    pub updates: Vec<DownloadQueueEntry>,
+    pub removed_ids: Vec<i64>,
+    pub resync_required: bool,
+    pub download_status: bool,
+}
+
+#[derive(Default)]
+pub struct DownloadSubscriptionRoot;
+
+#[Subscription]
+impl DownloadSubscriptionRoot {
+    #[graphql(guard = "AdminGuard::new()")]
+    async fn download_queue_updates(
+        &self,
+        ctx: &Context<'_>,
+    ) -> Result<impl Stream<Item = DownloadQueueUpdate> + use<>> {
+        let service = ctx.data::<DownloadService<DownloadRepositoryImpl>>()?;
+        let path = std::path::PathBuf::from(&ctx.data::<Config>()?.download_path).join(".pause");
+        let stream = service.subscribe_download_queue().await?;
+        Ok(stream.map(move |update| {
+            let outgoing = DownloadQueueUpdate {
+                snapshot: update.snapshot,
+                from_version: update.from_version,
+                version: update.version,
+                updates: update.updates.into_iter().map(Into::into).collect(),
+                removed_ids: update.removed_ids,
+                resync_required: update.resync_required,
+                download_status: !path.exists(),
+            };
+            // Formatting and collecting chapter summaries happen only when
+            // this log target has debug enabled.
+            debug!(
+                target: "tanoshi::download_queue",
+                "queue outgoing: snapshot={} from_version={} version={} updates={} removed={} download_status={} resync_required={} chapters(id,downloaded,total,priority)={:?} removed_ids={:?}",
+                outgoing.snapshot,
+                outgoing.from_version,
+                outgoing.version,
+                outgoing.updates.len(),
+                outgoing.removed_ids.len(),
+                outgoing.download_status,
+                outgoing.resync_required,
+                outgoing.updates.iter().map(|row| (row.chapter_id, row.downloaded, row.total, row.priority)).collect::<Vec<_>>(),
+                outgoing.removed_ids,
+            );
+            outgoing
+        }))
     }
 }
 

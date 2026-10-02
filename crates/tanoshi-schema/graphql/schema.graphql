@@ -69,6 +69,17 @@ type DownloadQueueEntry {
   downloaded: Int!
   total: Int!
   priority: Int!
+  dateAdded: Int!
+}
+
+type DownloadQueueUpdate {
+  snapshot: Boolean!
+  fromVersion: Int!
+  version: Int!
+  updates: [DownloadQueueEntry!]!
+  removedIds: [Int!]!
+  resyncRequired: Boolean!
+  downloadStatus: Boolean!
 }
 
 scalar InputList
@@ -428,6 +439,7 @@ type Status {
 }
 
 type SubscriptionRoot {
+  downloadQueueUpdates: DownloadQueueUpdate!
   recentUpdatesSubscription: RecentUpdate!
 }
 
