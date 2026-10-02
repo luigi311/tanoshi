@@ -34,7 +34,7 @@ const CALL_RUNNING: u8 = 0;
 const CALL_ABANDONED: u8 = 1;
 const CALL_COMPLETE: u8 = 2;
 static UNIQUE_PATH_COUNTER: AtomicU64 = AtomicU64::new(0);
-pub const DEFAULT_MAX_CONCURRENT_CALLS: usize = 30;
+pub const DEFAULT_MAX_CONCURRENT_CALLS: usize = 8;
 pub const DEFAULT_ADMISSION_TIMEOUT: Duration = Duration::from_secs(1);
 pub const DEFAULT_METADATA_TIMEOUT: Duration = Duration::from_secs(30);
 pub const DEFAULT_IMAGE_TIMEOUT: Duration = Duration::from_secs(120);
@@ -222,10 +222,7 @@ struct ExtensionCall {
 #[derive(Debug)]
 pub enum ExtensionError {
     MissingSource,
-    Operational {
-        kind: &'static str,
-        message: String,
-    },
+    Operational { kind: &'static str, message: String },
 }
 
 impl ExtensionError {
@@ -252,15 +249,15 @@ fn missing_source_error() -> anyhow::Error {
     anyhow::Error::new(ExtensionError::MissingSource)
 }
 
-fn operational_extension_error(
-    kind: &'static str,
-    message: impl Into<String>,
-) -> anyhow::Error {
+fn operational_extension_error(kind: &'static str, message: impl Into<String>) -> anyhow::Error {
     anyhow::Error::new(ExtensionError::operational(kind, message))
 }
 
 #[derive(Clone, Copy, Debug)]
 pub struct ExtensionManagerOptions {
+    /// Maximum simultaneous calls per source, shared by users and background
+    /// jobs. Installed extensions execute these calls in one worker process,
+    /// sharing their HTTP clients, rate limits, caches, and preferences.
     pub max_concurrent_calls: usize,
     pub admission_timeout: Duration,
     pub metadata_timeout: Duration,
@@ -690,9 +687,7 @@ impl ExtensionManager {
                     }
                     return Err(operational_extension_error(
                         "extension-panicked",
-                        format!(
-                            "source {source_id} ({source_name}) {operation} panicked"
-                        ),
+                        format!("source {source_id} ({source_name}) {operation} panicked"),
                     ));
                 }
                 bail!(
@@ -715,12 +710,12 @@ impl ExtensionManager {
                 error!(
                     "EXTENSION TIMEOUT: source_id={source_id} source={source_name:?} operation={operation} exceeded {timeout:?}; native call may still be running and its permit remains held"
                 );
-                return Err(operational_extension_error(
+                Err(operational_extension_error(
                     "extension-timeout",
                     format!(
                         "source {source_id} ({source_name}) {operation} exceeded {timeout:?}; native call may still be running"
                     ),
-                ));
+                ))
             }
         }
     }
@@ -742,9 +737,9 @@ impl ExtensionManager {
         let join_source_name = entry.source_name().to_owned();
         let join_operation = call.operation;
         // The supervisor task, rather than the caller future, owns the permit
-        // and IPC transaction. If an HTTP request or other caller is
-        // cancelled, the supervisor still drains the matching response (or
-        // terminates the worker at the deadline) before releasing either.
+        // and response subscription. If an HTTP request or other caller is
+        // cancelled, the supervisor still waits for its matching response or
+        // deadline before releasing the permit.
         Self::await_worker_supervisor(
             join_source_id,
             join_source_name,
@@ -773,9 +768,7 @@ impl ExtensionManager {
                 );
                 Err(operational_extension_error(
                     "extension-worker-supervisor",
-                    format!(
-                        "source {source_id} ({source_name}) {operation} supervisor panicked"
-                    ),
+                    format!("source {source_id} ({source_name}) {operation} supervisor panicked"),
                 ))
             }
             Err(error) => Err(operational_extension_error(
@@ -833,15 +826,15 @@ impl ExtensionManager {
                 "[extension-error] source {source_id} ({source_name}) {operation} failed: {message}"
             )),
             // The request never reached the worker, so it says nothing about
-            // the source's health; the head-of-line call reports for both.
+            // the source's health.
             Err(WorkerCallError::QueueTimeout) => {
                 warn!(
-                    "EXTENSION WORKER BUSY: source_id={source_id} source={source_name:?} operation={operation} spent {timeout:?} waiting behind earlier calls; the worker was not disturbed"
+                    "EXTENSION WORKER BUSY: source_id={source_id} source={source_name:?} operation={operation} spent {timeout:?} waiting for dispatch or worker replacement; running calls were not disturbed"
                 );
                 Err(operational_extension_error(
                     "extension-worker-busy",
                     format!(
-                        "source {source_id} ({source_name}) is busy; {operation} timed out after {timeout:?} waiting for earlier calls"
+                        "source {source_id} ({source_name}) is busy; {operation} timed out after {timeout:?} waiting for dispatch or worker replacement"
                     ),
                 ))
             }
@@ -855,26 +848,56 @@ impl ExtensionManager {
                     "[extension-stopped] source {source_id} ({source_name}) {operation} was interrupted because the source was unloaded or replaced"
                 ))
             }
-            Err(error) => {
-                let (kind, message, quarantine) = match error {
-                    WorkerCallError::Timeout => (
-                        "TIMEOUT",
-                        format!("exceeded {timeout:?}; the worker was terminated"),
-                        false,
+            Err(WorkerCallError::Admission(admission)) => {
+                let (kind, message) = match admission {
+                    SourceAdmission::Quarantined => (
+                        "extension-quarantined",
+                        "is quarantined; replace or reload the extension before retrying"
+                            .to_owned(),
                     ),
-                    WorkerCallError::Crashed(message) => ("CRASH", message, quarantine_on_panic),
-                    WorkerCallError::Remote { kind, message } => {
-                        ("PANIC", format!("{kind:?}: {message}"), quarantine_on_panic)
-                    }
-                    WorkerCallError::QueueTimeout | WorkerCallError::Stopped => {
-                        unreachable!("handled above")
+                    SourceAdmission::CircuitOpen { abandoned_calls } => (
+                        "extension-circuit-open",
+                        format!("has {abandoned_calls} timed-out native calls still running"),
+                    ),
+                    SourceAdmission::Allowed => {
+                        unreachable!("only rejected admissions return an error")
                     }
                 };
-                let quarantined = if quarantine {
-                    health.quarantine();
-                    true
-                } else {
-                    health.record_failure()
+                Err(operational_extension_error(
+                    kind,
+                    format!("source {source_id} ({source_name}) {message}"),
+                ))
+            }
+            Err(WorkerCallError::Restarted { reason, message }) => {
+                warn!(
+                    "EXTENSION WORKER RESTARTED: source_id={source_id} source={source_name:?} operation={operation} reason={reason:?} {message}"
+                );
+                Err(operational_extension_error(
+                    "extension-worker-restarted",
+                    format!(
+                        "source {source_id} ({source_name}) {operation} was interrupted by a worker restart ({reason:?}): {message}"
+                    ),
+                ))
+            }
+            Err(error) => {
+                let quarantined = Self::record_worker_failure(&health, &error, quarantine_on_panic);
+                let (kind, message) = match error {
+                    WorkerCallError::Timeout => (
+                        "TIMEOUT",
+                        format!(
+                            "exceeded {timeout:?}; the worker is restarting after a short drain of its other running calls"
+                        ),
+                    ),
+                    WorkerCallError::Crashed(message) => ("CRASH", message),
+                    WorkerCallError::Remote { kind, message } => {
+                        ("PANIC", format!("{kind:?}: {message}"))
+                    }
+                    WorkerCallError::QueueTimeout
+                    | WorkerCallError::Stopped
+                    | WorkerCallError::Admission(_)
+                    | WorkerCallError::Restarted { .. } => {
+                        unreachable!("handled above")
+                    }
                 };
                 error!(
                     "EXTENSION WORKER {kind}: source_id={source_id} source={source_name:?} operation={operation} {message}"
@@ -893,11 +916,35 @@ impl ExtensionManager {
                 };
                 Err(operational_extension_error(
                     error_kind,
-                    format!(
-                        "source {source_id} ({source_name}) {operation} failed: {message}"
-                    ),
+                    format!("source {source_id} ({source_name}) {operation} failed: {message}"),
                 ))
             }
+        }
+    }
+
+    fn record_worker_failure(
+        health: &SourceHealth,
+        error: &WorkerCallError,
+        quarantine_on_panic: bool,
+    ) -> bool {
+        match error {
+            WorkerCallError::Timeout => {
+                health.record_timeout();
+                false
+            }
+            WorkerCallError::Crashed(_)
+            | WorkerCallError::Remote {
+                kind: WorkerErrorKind::Panic | WorkerErrorKind::Protocol,
+                ..
+            } => {
+                if quarantine_on_panic {
+                    health.quarantine();
+                    true
+                } else {
+                    health.record_failure()
+                }
+            }
+            _ => false,
         }
     }
 
@@ -1082,6 +1129,7 @@ impl ExtensionManager {
             staged_path.clone(),
             self.worker_path.clone(),
             self.options.metadata_timeout,
+            self.options.max_concurrent_calls,
             Some(staged_path.clone()),
         );
         let (source_info, rustc_version, lib_version) = match worker.start().await {
@@ -1119,7 +1167,6 @@ impl ExtensionManager {
         };
 
         info!("set preferences for {source_name}");
-        let saved_preferences = preferences.clone();
         self.call_blocking_mut_entry(
             entry.clone(),
             ExtensionCall {
@@ -1134,9 +1181,6 @@ impl ExtensionManager {
             move |extension| extension.set_preferences(preferences),
         )
         .await?;
-        if let Some(worker) = entry.worker() {
-            worker.set_startup_preferences(saved_preferences);
-        }
         Ok(())
     }
 
@@ -1286,9 +1330,7 @@ impl ExtensionManager {
 
     pub fn get_version(&self, source_id: i64) -> Result<(String, String)> {
         let sources = self.read()?;
-        let source = sources
-            .get(&source_id)
-            .ok_or_else(missing_source_error)?;
+        let source = sources.get(&source_id).ok_or_else(missing_source_error)?;
         let rustc_version = source.rustc_version.clone();
         let lib_version = source.lib_version.clone();
         Ok((rustc_version, lib_version))
@@ -1380,9 +1422,6 @@ impl ExtensionManager {
             move |extension| extension.set_preferences(extension_preferences),
         )
         .await?;
-        if let Some(worker) = entry.worker() {
-            worker.set_startup_preferences(preferences.clone());
-        }
 
         tokio::fs::write(
             self.dir.join(source_name).with_extension("json"),
@@ -1545,6 +1584,34 @@ mod tests {
     use crate::prelude::Source;
 
     use super::{ExtensionManager, UNIQUE_PATH_COUNTER};
+
+    #[test]
+    fn timeout_bursts_do_not_count_toward_worker_quarantine() {
+        use super::{SourceAdmission, SourceHealth, WorkerCallError, WorkerErrorKind};
+        let health = SourceHealth::new();
+        for _ in 0..8 {
+            assert!(!ExtensionManager::record_worker_failure(
+                &health,
+                &WorkerCallError::Timeout,
+                true
+            ));
+        }
+        assert_eq!(health.admission(), SourceAdmission::Allowed);
+        let panic = WorkerCallError::Remote {
+            kind: WorkerErrorKind::Panic,
+            message: "fixture panic".into(),
+        };
+        assert!(!ExtensionManager::record_worker_failure(
+            &health, &panic, false
+        ));
+        assert!(!ExtensionManager::record_worker_failure(
+            &health, &panic, false
+        ));
+        assert!(ExtensionManager::record_worker_failure(
+            &health, &panic, false
+        ));
+        assert_eq!(health.admission(), SourceAdmission::Quarantined);
+    }
 
     struct PreferenceExtension {
         source_id: i64,
