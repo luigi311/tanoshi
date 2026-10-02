@@ -354,14 +354,6 @@ pub struct RemoveDownloadedChapters;
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "graphql/schema.graphql",
-    query_path = "graphql/fetch_download_queue.graphql",
-    response_derives = "Debug"
-)]
-pub struct FetchDownloadQueue;
-
-#[derive(GraphQLQuery)]
-#[graphql(
-    schema_path = "graphql/schema.graphql",
     query_path = "graphql/fetch_downloaded_chapters.graphql",
     response_derives = "Debug"
 )]

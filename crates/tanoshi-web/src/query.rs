@@ -514,15 +514,6 @@ pub async fn remove_downloaded_chapters(chapter_ids: &[i64]) -> Result<(), Box<d
     Ok(())
 }
 
-pub async fn fetch_download_queue(
-) -> Result<Vec<fetch_download_queue::FetchDownloadQueueDownloadQueue>, Box<dyn Error>> {
-    let var = fetch_download_queue::Variables {};
-
-    Ok(post_graphql::<FetchDownloadQueue>(var)
-        .await?
-        .download_queue)
-}
-
 /// Own the connection and its actor in the subscription future. Dropping it on
 /// navigation closes the socket, and reconnecting always starts with a snapshot.
 /// Set localStorage.downloadQueueDebug to "true" to log received queue JSON.
