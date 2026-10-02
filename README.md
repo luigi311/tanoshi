@@ -24,7 +24,7 @@ Download from [release page](https://github.com/luigi311/tanoshi/releases) or [d
 If you don't plan to host Tanoshi and use from single device you can download desktop version. Download `.msi` for windows, `.deb` or `.AppImage` for linux, `.dmg` for mac.
 
 ## Documentation
-Go to [website](https://faldez.github.io/tanoshi) for documentation.
+See [Configuration](CONFIGURATION.md) for extension concurrency and timeout settings.
 
 ### Screenshot
 Head over to [screenshots](https://luigi311.github.io/tanoshi/screenshots/) section on website to see screenshot.
