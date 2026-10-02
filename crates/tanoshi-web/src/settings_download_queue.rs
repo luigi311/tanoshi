@@ -1,9 +1,9 @@
 use crate::{
-    common::{events, snackbar, DownloadQueue},
+    common::{DownloadQueue, events, snackbar},
     query,
     utils::AsyncLoader,
 };
-use dominator::{clone, html, svg, Dom};
+use dominator::{Dom, clone, html, svg};
 
 use futures_signals::{
     signal::{Mutable, SignalExt},
@@ -140,11 +140,11 @@ impl SettingsDownloads {
         });
     }
 
-    fn update_chapter_priority(self: &Rc<Self>, chapter_id: i64, priority: i64) {
+    fn move_chapter(self: &Rc<Self>, chapter_id: i64, up: bool) {
         self.loader.load({
             let settings = self.clone();
             async move {
-                match query::update_chapter_priority(chapter_id, priority).await {
+                match query::move_chapter_in_queue(chapter_id, up).await {
                     Ok(_) => {
                         settings.fetch_download_queue();
                     }
@@ -269,9 +269,7 @@ impl SettingsDownloads {
                                                 })
                                             ])
                                             .event(clone!(settings, queue => move |_:events::Click| {
-                                                if queue.priority - 1 > 0 {
-                                                    settings.update_chapter_priority(queue.chapter_id, queue.priority - 1);
-                                                }
+                                                settings.move_chapter(queue.chapter_id, true);
                                             }))
                                         }),
                                         html!("button", {
@@ -318,7 +316,7 @@ impl SettingsDownloads {
                                                 })
                                             ])
                                             .event(clone!(settings, queue => move |_:events::Click| {
-                                                settings.update_chapter_priority(queue.chapter_id, queue.priority + 1);
+                                                settings.move_chapter(queue.chapter_id, false);
                                             }))
                                         }),
                                     ])

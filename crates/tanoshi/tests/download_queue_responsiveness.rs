@@ -94,6 +94,7 @@ const PAGE_QUERIES: [(&str, &str); 4] = [
 ];
 const REMOVE_QUERY: &str =
     include_str!("../../tanoshi-schema/graphql/remove_chapter_from_queue.graphql");
+const MOVE_QUERY: &str = include_str!("../../tanoshi-schema/graphql/move_chapter_in_queue.graphql");
 
 struct Fixture {
     dir: PathBuf,
@@ -341,6 +342,267 @@ async fn real_queue_snapshot(pool: &Pool) -> String {
     .fetch_one(pool.read())
     .await
     .unwrap()
+}
+
+#[tokio::test]
+async fn queue_cancellation_preserves_remaining_priorities_and_pages() {
+    let fixture = Fixture::new(6).await;
+    fixture.seed_queue(6, 3).await;
+    let before: Vec<Value> =
+        serde_json::from_str(&real_queue_snapshot(&fixture.pool).await).unwrap();
+    // Catch priority rewrites even if they would later restore the same values.
+    sqlx::query(
+        "CREATE TRIGGER no_cancellation_renumber BEFORE UPDATE OF priority ON download_queue \
+         BEGIN SELECT RAISE(ABORT, 'cancellation must preserve priorities'); END",
+    )
+    .execute(fixture.pool.write())
+    .await
+    .unwrap();
+
+    let result = execute_data(
+        &fixture.schema,
+        Request::new(REMOVE_QUERY).variables(Variables::from_json(json!({"ids": [2, 4, 2, 999]}))),
+    )
+    .await;
+    assert_eq!(result["removeChaptersFromQueue"], 4);
+    let after: Vec<Value> =
+        serde_json::from_str(&real_queue_snapshot(&fixture.pool).await).unwrap();
+    let expected: Vec<Value> = before
+        .into_iter()
+        .filter(|page| page["chapter"] != 2 && page["chapter"] != 4)
+        .collect();
+    assert_eq!(after, expected);
+    let queue = fixture.repo.get_download_queue(&[]).await.unwrap();
+    assert_eq!(
+        queue
+            .iter()
+            .map(|chapter| (chapter.chapter_id, chapter.priority))
+            .collect::<Vec<_>>(),
+        [(1, 1), (3, 3), (5, 5), (6, 6)],
+    );
+    assert_eq!(
+        fixture
+            .repo
+            .get_download_queue_last_priority()
+            .await
+            .unwrap(),
+        Some(6)
+    );
+    fixture.close().await;
+}
+
+#[tokio::test]
+async fn queue_reordering_swaps_only_neighbouring_chapters_across_gaps() {
+    let fixture = Fixture::new(6).await;
+    fixture.seed_queue(6, 3).await;
+    // The worker starts an empty queue at priority zero.
+    sqlx::query("UPDATE download_queue SET priority = 0 WHERE chapter_id = 1")
+        .execute(fixture.pool.write())
+        .await
+        .unwrap();
+    // Reverse insertion times so selecting by date instead of priority fails.
+    sqlx::query("UPDATE download_queue SET date_added = 1000 - chapter_id")
+        .execute(fixture.pool.write())
+        .await
+        .unwrap();
+    execute_data(
+        &fixture.schema,
+        Request::new(REMOVE_QUERY).variables(Variables::from_json(json!({"ids": [2, 4]}))),
+    )
+    .await;
+    sqlx::query("UPDATE download_queue SET downloaded = true WHERE chapter_id = 3 AND rank = 0")
+        .execute(fixture.pool.write())
+        .await
+        .unwrap();
+    sqlx::query("CREATE TABLE priority_updates (chapter_id INTEGER NOT NULL)")
+        .execute(fixture.pool.write())
+        .await
+        .unwrap();
+    sqlx::query(
+        "CREATE TRIGGER record_priority_update AFTER UPDATE OF priority ON download_queue \
+         BEGIN INSERT INTO priority_updates VALUES (NEW.chapter_id); END",
+    )
+    .execute(fixture.pool.write())
+    .await
+    .unwrap();
+
+    // Exercise both directions at the head and tail. The request supplies only
+    // a direction; the expected neighbour comes from the database's priorities.
+    for (chapter_id, up, priority, neighbour_id, order) in [
+        (3, true, 0, 1, [3, 1, 5, 6]),
+        (3, false, 3, 1, [1, 3, 5, 6]),
+        (5, false, 6, 6, [1, 3, 6, 5]),
+        (5, true, 5, 6, [1, 3, 5, 6]),
+    ] {
+        let mut expected: Vec<Value> =
+            serde_json::from_str(&real_queue_snapshot(&fixture.pool).await).unwrap();
+        let previous = expected
+            .iter()
+            .find(|page| page["chapter"] == chapter_id)
+            .unwrap()["priority"]
+            .clone();
+        for page in &mut expected {
+            if page["chapter"] == chapter_id {
+                page["priority"] = json!(priority);
+            } else if page["chapter"] == neighbour_id {
+                page["priority"] = previous.clone();
+            }
+        }
+        let result = execute_data(
+            &fixture.schema,
+            Request::new(MOVE_QUERY).variables(Variables::from_json(json!({
+                "id": chapter_id, "up": up,
+            }))),
+        )
+        .await;
+        assert_eq!(result["moveChapterInQueue"], true);
+        let after: Vec<Value> =
+            serde_json::from_str(&real_queue_snapshot(&fixture.pool).await).unwrap();
+        assert_eq!(after, expected, "page rows or unrelated priorities changed");
+        let queue = fixture.repo.get_download_queue(&[]).await.unwrap();
+        assert_eq!(
+            queue
+                .iter()
+                .map(|chapter| chapter.chapter_id)
+                .collect::<Vec<_>>(),
+            order
+        );
+        assert_eq!(
+            queue
+                .iter()
+                .find(|chapter| chapter.chapter_id == 3)
+                .unwrap()
+                .downloaded,
+            1
+        );
+        assert_eq!(
+            fixture
+                .repo
+                .get_single_download_queue()
+                .await
+                .unwrap()
+                .unwrap()
+                .chapter_id,
+            order[0]
+        );
+        let changed: Vec<i64> =
+            sqlx::query_scalar("SELECT chapter_id FROM priority_updates ORDER BY chapter_id")
+                .fetch_all(fixture.pool.read())
+                .await
+                .unwrap();
+        let mut expected_changes = vec![chapter_id; 3];
+        expected_changes.extend([neighbour_id; 3]);
+        expected_changes.sort_unstable();
+        assert_eq!(
+            changed, expected_changes,
+            "a move must update only two chapters"
+        );
+        sqlx::query("DELETE FROM priority_updates")
+            .execute(fixture.pool.write())
+            .await
+            .unwrap();
+    }
+    fixture.close().await;
+}
+
+#[tokio::test]
+async fn queue_reordering_ignores_missing_chapters_and_queue_boundaries() {
+    let fixture = Fixture::new(3).await;
+    fixture.seed_queue(3, 2).await;
+    execute_data(
+        &fixture.schema,
+        Request::new(REMOVE_QUERY).variables(Variables::from_json(json!({"ids": [2]}))),
+    )
+    .await;
+    let before = real_queue_snapshot(&fixture.pool).await;
+    for (id, up) in [(999, true), (999, false), (1, true), (3, false)] {
+        execute_data(
+            &fixture.schema,
+            Request::new(MOVE_QUERY).variables(Variables::from_json(json!({
+                "id": id, "up": up,
+            }))),
+        )
+        .await;
+        assert_eq!(real_queue_snapshot(&fixture.pool).await, before);
+    }
+    execute_data(
+        &fixture.schema,
+        Request::new(REMOVE_QUERY).variables(Variables::from_json(json!({"ids": [1, 3]}))),
+    )
+    .await;
+    for up in [true, false] {
+        execute_data(
+            &fixture.schema,
+            Request::new(MOVE_QUERY).variables(Variables::from_json(json!({"id": 1, "up": up}))),
+        )
+        .await;
+    }
+    assert!(
+        fixture
+            .repo
+            .get_download_queue(&[])
+            .await
+            .unwrap()
+            .is_empty()
+    );
+    fixture.close().await;
+}
+
+#[tokio::test]
+async fn queue_reordering_uses_current_neighbour_during_cancellation() {
+    let fixture = Fixture::new(4).await;
+    fixture.seed_queue(4, 2).await;
+    join_all([
+        execute_data(
+            &fixture.schema,
+            Request::new(REMOVE_QUERY).variables(Variables::from_json(json!({"ids": [2]}))),
+        ),
+        execute_data(
+            &fixture.schema,
+            Request::new(MOVE_QUERY).variables(Variables::from_json(json!({
+                "id": 3, "up": true,
+            }))),
+        ),
+    ])
+    .await;
+    let queue = fixture.repo.get_download_queue(&[]).await.unwrap();
+    let order = queue
+        .iter()
+        .map(|chapter| (chapter.chapter_id, chapter.priority))
+        .collect::<Vec<_>>();
+    // If cancellation wins, chapter 1 becomes the current neighbour. Otherwise
+    // chapter 3 trades priorities with chapter 2 before chapter 2 is removed.
+    assert!(
+        [vec![(3, 1), (1, 3), (4, 4)], vec![(1, 1), (3, 2), (4, 4)]].contains(&order),
+        "move did not use the current neighbour: {order:?}",
+    );
+    assert!(queue.iter().all(|chapter| chapter.total == 2));
+    fixture.close().await;
+}
+
+#[tokio::test]
+async fn queue_reordering_applies_each_move_to_the_latest_order() {
+    let fixture = Fixture::new(4).await;
+    fixture.seed_queue(4, 2).await;
+    join_all((0..2).map(|_| {
+        execute_data(
+            &fixture.schema,
+            Request::new(MOVE_QUERY).variables(Variables::from_json(json!({
+                "id": 3, "up": true,
+            }))),
+        )
+    }))
+    .await;
+    let queue = fixture.repo.get_download_queue(&[]).await.unwrap();
+    assert_eq!(
+        queue
+            .iter()
+            .map(|chapter| (chapter.chapter_id, chapter.priority))
+            .collect::<Vec<_>>(),
+        [(3, 1), (1, 2), (2, 3), (4, 4)],
+    );
+    assert!(queue.iter().all(|chapter| chapter.total == 2));
+    fixture.close().await;
 }
 
 #[tokio::test]

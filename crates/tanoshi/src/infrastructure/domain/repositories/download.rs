@@ -397,42 +397,55 @@ impl DownloadRepository for DownloadRepositoryImpl {
         &self,
         id: i64,
     ) -> Result<(), DownloadRepositoryError> {
-        let mut tx = self.pool.write().begin().await?;
-
-        sqlx::query("UPDATE download_queue SET priority = priority - 1 WHERE priority > (SELECT priority FROM download_queue WHERE chapter_id = ? LIMIT 1)").bind(id).execute(&mut *tx).await?;
-
-        sqlx::query("DELETE FROM download_queue WHERE chapter_id = ?")
-            .bind(id)
-            .execute(&mut *tx)
-            .await?;
-
-        tx.commit().await?;
-
-        Ok(())
+        // Priorities are ordering keys; gaps do not change the remaining order.
+        self.delete_single_chapter_download_queue(id).await
     }
 
-    async fn update_download_queue_priority(
+    async fn move_chapter_in_queue(
         &self,
         chapter_id: i64,
-        priority: i64,
+        up: bool,
     ) -> Result<(), DownloadRepositoryError> {
         let mut tx = self.pool.write().begin().await?;
 
-        sqlx::query(r#"UPDATE download_queue SET priority = priority - 1 WHERE priority > (SELECT priority FROM download_queue WHERE chapter_id = ?)"#)
-            .bind(chapter_id)
-            .execute(&mut *tx)
-            .await?;
+        let current_priority: Option<i64> =
+            sqlx::query_scalar("SELECT priority FROM download_queue WHERE chapter_id = ? LIMIT 1")
+                .bind(chapter_id)
+                .fetch_optional(&mut *tx)
+                .await?;
 
-        sqlx::query(r#"UPDATE download_queue SET priority = priority + 1 WHERE priority >= ?"#)
-            .bind(priority)
-            .execute(&mut *tx)
-            .await?;
+        if let Some(current_priority) = current_priority {
+            let query = if up {
+                "SELECT chapter_id, priority FROM download_queue \
+                 WHERE priority < ? \
+                 ORDER BY priority DESC, date_added DESC, chapter_id DESC LIMIT 1"
+            } else {
+                "SELECT chapter_id, priority FROM download_queue \
+                 WHERE priority > ? \
+                 ORDER BY priority ASC, date_added ASC, chapter_id ASC LIMIT 1"
+            };
+            let neighbour: Option<(i64, i64)> = sqlx::query_as(query)
+                .bind(current_priority)
+                .fetch_optional(&mut *tx)
+                .await?;
 
-        sqlx::query(r#"UPDATE download_queue SET priority = ? WHERE chapter_id = ?"#)
-            .bind(priority)
-            .bind(chapter_id)
-            .execute(&mut *tx)
-            .await?;
+            // Resolve the neighbour and swap both chapters using the same
+            // transaction, so moves follow the current queue across gaps.
+            if let Some((neighbour_id, neighbour_priority)) = neighbour {
+                sqlx::query(
+                    "UPDATE download_queue \
+                     SET priority = CASE WHEN chapter_id = ? THEN ? ELSE ? END \
+                     WHERE chapter_id IN (?, ?)",
+                )
+                .bind(chapter_id)
+                .bind(neighbour_priority)
+                .bind(current_priority)
+                .bind(chapter_id)
+                .bind(neighbour_id)
+                .execute(&mut *tx)
+                .await?;
+            }
+        }
 
         tx.commit().await?;
 

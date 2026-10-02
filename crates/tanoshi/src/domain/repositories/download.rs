@@ -92,9 +92,11 @@ pub trait DownloadRepository: Send + Sync {
         id: i64,
     ) -> Result<(), DownloadRepositoryError>;
 
-    async fn update_download_queue_priority(
+    /// Swap with the current neighbour in the requested direction. Missing
+    /// chapters and moves past either end of the queue leave it unchanged.
+    async fn move_chapter_in_queue(
         &self,
         chapter_id: i64,
-        priority: i64,
+        up: bool,
     ) -> Result<(), DownloadRepositoryError>;
 }

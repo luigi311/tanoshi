@@ -1,0 +1,3 @@
+mutation MoveChapterInQueue($id: Int!, $up: Boolean!) {
+  moveChapterInQueue(id: $id, up: $up)
+}

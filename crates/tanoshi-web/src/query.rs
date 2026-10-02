@@ -535,12 +535,9 @@ pub async fn fetch_downloaded_chapters(
     Ok(data.get_downloaded_chapters)
 }
 
-pub async fn update_chapter_priority(chapter_id: i64, priority: i64) -> Result<(), Box<dyn Error>> {
-    let var = update_chapter_priority::Variables {
-        id: Some(chapter_id),
-        priority: Some(priority),
-    };
-    let _ = post_graphql::<UpdateChapterPriority>(var).await?;
+pub async fn move_chapter_in_queue(chapter_id: i64, up: bool) -> Result<(), Box<dyn Error>> {
+    let var = move_chapter_in_queue::Variables { id: chapter_id, up };
+    let _ = post_graphql::<MoveChapterInQueue>(var).await?;
     Ok(())
 }
 

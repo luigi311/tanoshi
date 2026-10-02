@@ -1,3 +1,0 @@
-mutation UpdateChapterPriority($id: Int, $priority: Int) {
-  updateChapterPriority(id: $id, priority: $priority)
-}

@@ -240,14 +240,9 @@ impl DownloadMutationRoot {
     }
 
     #[graphql(guard = "AdminGuard::new()")]
-    async fn update_chapter_priority(
-        &self,
-        ctx: &Context<'_>,
-        id: i64,
-        priority: i64,
-    ) -> Result<bool> {
+    async fn move_chapter_in_queue(&self, ctx: &Context<'_>, id: i64, up: bool) -> Result<bool> {
         ctx.data::<DownloadService<DownloadRepositoryImpl>>()?
-            .update_chapter_priority(id, priority)
+            .move_chapter_in_queue(id, up)
             .await?;
 
         Ok(true)
