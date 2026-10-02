@@ -25,7 +25,16 @@ impl Pool {
     }
 
     pub async fn close(&self) {
-        tokio::join!(self.read.close(), self.write.close());
+        // sqlx 0.8 can return from close() after a connection finishes its
+        // return-to-pool ping and lands in the idle queue, leaving the file
+        // open (which blocks deletion on Windows). Repeat until none remain;
+        // checked-out connections make close() wait, so this does not spin.
+        loop {
+            tokio::join!(self.read.close(), self.write.close());
+            if self.read.size() == 0 && self.write.size() == 0 {
+                break;
+            }
+        }
     }
 }
 

@@ -31,7 +31,7 @@ use std::{
     collections::{BTreeMap, BTreeSet},
     fs,
     future::Future,
-    path::PathBuf,
+    path::{Path, PathBuf},
     sync::{
         Arc,
         atomic::{AtomicUsize, Ordering},
@@ -235,7 +235,9 @@ impl Fixture {
 
     async fn close(self) {
         self.pool.close().await;
-        fs::remove_dir_all(&self.dir).unwrap();
+        remove_fixture_dir(&self.dir)
+            .await
+            .unwrap_or_else(|error| panic!("failed to remove {}: {error}", self.dir.display()));
     }
 }
 
@@ -243,6 +245,52 @@ impl Drop for Fixture {
     fn drop(&mut self) {
         let _ = fs::remove_dir_all(&self.dir);
     }
+}
+
+async fn remove_fixture_dir(dir: &Path) -> std::io::Result<()> {
+    let deadline = Instant::now() + Duration::from_secs(5);
+    loop {
+        match fs::remove_dir_all(dir) {
+            Ok(()) => return Ok(()),
+            // Closing pools does not prevent transient Windows sharing locks
+            // during teardown. Yield between attempts so pending work can finish.
+            Err(error)
+                if cfg!(windows)
+                    && matches!(error.raw_os_error(), Some(32 | 33))
+                    && Instant::now() < deadline =>
+            {
+                tokio::time::sleep(Duration::from_millis(25)).await;
+            }
+            Err(error) => return Err(error),
+        }
+    }
+}
+
+#[cfg(windows)]
+#[tokio::test]
+async fn fixture_cleanup_waits_for_windows_file_handles_to_close() {
+    use std::{fs::OpenOptions, os::windows::fs::OpenOptionsExt};
+
+    let fixture = Fixture::new(1).await;
+    fixture.pool.close().await;
+    let path = fixture.dir.join("held-open.txt");
+    fs::write(&path, b"cleanup regression").unwrap();
+    let file = OpenOptions::new()
+        .read(true)
+        .share_mode(0)
+        .open(&path)
+        .unwrap();
+    assert_eq!(fs::remove_file(&path).unwrap_err().raw_os_error(), Some(32));
+
+    let mut cleanup = Box::pin(remove_fixture_dir(&fixture.dir));
+    assert!(futures::poll!(cleanup.as_mut()).is_pending());
+    assert!(path.exists(), "cleanup must wait for the file handle");
+    drop(file);
+    tokio::time::timeout(Duration::from_secs(5), cleanup)
+        .await
+        .expect("fixture cleanup did not finish after releasing the file")
+        .unwrap();
+    assert!(!fixture.dir.exists());
 }
 
 #[derive(Debug, Serialize)]
