@@ -1,5 +1,5 @@
 use crate::{
-    common::{DownloadQueue, events, snackbar},
+    common::{DownloadQueueState, events, snackbar},
     query,
     utils::AsyncLoader,
 };
@@ -7,26 +7,21 @@ use dominator::{Dom, clone, html, svg};
 
 use futures_signals::{
     signal::{Mutable, SignalExt},
-    signal_vec::MutableVec,
     signal_vec::SignalVecExt,
 };
-use gloo_timers::callback::Interval;
+use gloo_timers::future::TimeoutFuture;
 use std::rc::Rc;
 
 pub struct SettingsDownloads {
     status: Mutable<bool>,
-    queue: MutableVec<DownloadQueue>,
-    interval: Mutable<Option<Interval>>,
-    loader: AsyncLoader,
+    queue: DownloadQueueState,
 }
 
 impl SettingsDownloads {
     pub fn new() -> Rc<Self> {
         Rc::new(Self {
             status: Mutable::new(false),
-            queue: MutableVec::new(),
-            interval: Mutable::new(None),
-            loader: AsyncLoader::new(),
+            queue: DownloadQueueState::default(),
         })
     }
 
@@ -81,96 +76,47 @@ impl SettingsDownloads {
     }
 
     fn remove_chapter_from_queue(self: &Rc<Self>, id: i64) {
-        self.loader.load({
-            let settings = self.clone();
-            async move {
-                match query::remove_chapter_from_queue(&[id]).await {
-                    Ok(_) => {
-                        settings.fetch_download_queue();
-                    }
-                    Err(err) => {
-                        snackbar::show(format!("{err}"));
-                    }
-                }
+        AsyncLoader::new().load(async move {
+            if let Err(err) = query::remove_chapter_from_queue(&[id]).await {
+                snackbar::show(format!("{err}"));
             }
         });
     }
 
-    fn fetch_download_status(self: &Rc<Self>) {
-        AsyncLoader::new().load({
-            let settings = self.clone();
-            async move {
-                match query::download_status().await {
-                    Ok(status) => {
-                        settings.status.set(status);
-                    }
-                    Err(err) => {
-                        snackbar::show(format!("{err}"));
-                    }
+    async fn watch_download_queue(self: Rc<Self>) {
+        let mut retry_ms = 250;
+        loop {
+            self.queue.disconnected();
+            let result = query::subscribe_download_queue(|update| {
+                let status = update.download_status;
+                let applied = self.queue.apply(update);
+                if applied {
+                    self.status.set_neq(status);
+                    retry_ms = 250;
                 }
+                applied
+            })
+            .await;
+            if let Err(error) = result {
+                log::warn!("Download queue subscription: {error}");
             }
-        });
-    }
-
-    fn fetch_download_queue(self: &Rc<Self>) {
-        self.loader.load({
-            let settings = self.clone();
-            async move {
-                match query::fetch_download_queue().await {
-                    Ok(data) => {
-                        let queue = data
-                            .iter()
-                            .map(|queue| DownloadQueue {
-                                source_name: queue.source_name.clone(),
-                                manga_title: queue.manga_title.clone(),
-                                chapter_id: queue.chapter_id,
-                                chapter_title: queue.chapter_title.clone(),
-                                downloaded: queue.downloaded,
-                                total: queue.total,
-                                priority: queue.priority,
-                            })
-                            .collect();
-                        settings.queue.lock_mut().replace_cloned(queue);
-                    }
-                    Err(err) => {
-                        snackbar::show(format!("{err}"));
-                    }
-                }
-            }
-        });
+            TimeoutFuture::new(retry_ms).await;
+            retry_ms = (retry_ms * 2).min(10_000);
+        }
     }
 
     fn move_chapter(self: &Rc<Self>, chapter_id: i64, up: bool) {
-        self.loader.load({
-            let settings = self.clone();
-            async move {
-                match query::move_chapter_in_queue(chapter_id, up).await {
-                    Ok(_) => {
-                        settings.fetch_download_queue();
-                    }
-                    Err(err) => {
-                        snackbar::show(format!("{err}"));
-                    }
-                }
+        AsyncLoader::new().load(async move {
+            if let Err(err) = query::move_chapter_in_queue(chapter_id, up).await {
+                snackbar::show(format!("{err}"));
             }
         });
     }
 
     pub fn render(settings: Rc<Self>) -> Dom {
-        settings.fetch_download_status();
-        settings.fetch_download_queue();
         html!("div", {
             .class("content")
-            .after_inserted(clone!(settings => move |_| {
-                settings.interval.set(Some(Interval::new(1_000, clone!(settings => move || {
-                    settings.fetch_download_queue();
-                }))));
-            }))
-            .after_removed(clone!(settings => move |_| {
-                if let Some(interval) = settings.interval.replace(None) {
-                    interval.cancel();
-                }
-            }))
+            .future(settings.clone().watch_download_queue())
             .children(&mut [
                 html!("div",{
                     .style("font-size", "smaller")
@@ -238,7 +184,7 @@ impl SettingsDownloads {
                 }),
                 html!("ul", {
                     .class("list")
-                    .children_signal_vec(settings.queue.signal_vec_cloned().map(clone!(settings => move |queue|
+                    .children_signal_vec(settings.queue.rows.signal_vec_cloned().map(clone!(settings => move |queue|
                         html!("li", {
                             .class("list-item")
                             .style("display", "flex")
@@ -335,10 +281,10 @@ impl SettingsDownloads {
                                             .children(&mut [
                                                 html!("span", {
                                                     .style("font-weight", "600")
-                                                    .text(&queue.manga_title)
+                                                    .text_signal(queue.data.signal_ref(|data| data.manga_title.clone()))
                                                 }),
                                                 html!("span", {
-                                                    .text(&queue.source_name)
+                                                    .text_signal(queue.data.signal_ref(|data| data.source_name.clone()))
                                                 }),
                                             ])
                                         }),
@@ -349,10 +295,10 @@ impl SettingsDownloads {
                                             .style("margin", "0.25rem")
                                             .children(&mut [
                                                 html!("span", {
-                                                    .text(&queue.chapter_title)
+                                                    .text_signal(queue.data.signal_ref(|data| data.chapter_title.clone()))
                                                 }),
                                                 html!("span", {
-                                                    .text(&format!("{}/{}", queue.downloaded, queue.total))
+                                                    .text_signal(queue.data.signal_ref(|data| format!("{}/{}", data.downloaded, data.total)))
                                                 })
                                             ])
                                         }),
@@ -363,7 +309,7 @@ impl SettingsDownloads {
                                             .style("background-color", "var(--primary-color-300)")
                                             .children(&mut [
                                                 html!("div", {
-                                                    .style("width", &format!("{}%", (queue.downloaded as f64 / queue.total as f64) * 100.0))
+                                                    .style_signal("width", queue.data.signal_ref(|data| format!("{}%", if data.total > 0 { data.downloaded as f64 / data.total as f64 * 100.0 } else { 0.0 })))
                                                     .style("height", "100%")
                                                     .style("background-color", "var(--primary-color)")
                                                 })

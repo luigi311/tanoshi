@@ -234,6 +234,27 @@ async fn repository_writers_wait_without_consuming_reader_capacity() {
 }
 
 #[tokio::test]
+async fn close_waits_for_connections_released_by_other_tasks() {
+    let fixture = Fixture::new().await;
+    let reader = fixture.pool.read().acquire().await.unwrap();
+    let writer = fixture.pool.write().acquire().await.unwrap();
+    // Dropping in another task starts sqlx's return-to-pool ping before close()
+    // runs; the released connections must not stay open on Windows.
+    tokio::spawn(async move {
+        drop(reader);
+        drop(writer);
+    })
+    .await
+    .unwrap();
+    tokio::task::yield_now().await;
+    tokio::time::timeout(TIMEOUT, fixture.pool.close())
+        .await
+        .unwrap();
+    assert_eq!(fixture.pool.read().size(), 0);
+    assert_eq!(fixture.pool.write().size(), 0);
+}
+
+#[tokio::test]
 async fn write_transactions_preserve_visibility_and_both_pools_close() {
     let fixture = Fixture::new().await;
     let mut tx = fixture.pool.write().begin().await.unwrap();

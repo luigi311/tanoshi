@@ -7,7 +7,7 @@ use wasm_bindgen::prelude::*;
 type NaiveDateTime = String;
 
 use crate::{
-    common::{Cover, Input},
+    common::{Cover, DownloadQueue, DownloadQueueUpdate, Input},
     utils::{graphql_host, graphql_ws_host, local_storage},
 };
 
@@ -514,13 +514,112 @@ pub async fn remove_downloaded_chapters(chapter_ids: &[i64]) -> Result<(), Box<d
     Ok(())
 }
 
-pub async fn fetch_download_queue(
-) -> Result<Vec<fetch_download_queue::FetchDownloadQueueDownloadQueue>, Box<dyn Error>> {
-    let var = fetch_download_queue::Variables {};
+/// Own the connection and its actor in the subscription future. Dropping it on
+/// navigation closes the socket, and reconnecting always starts with a snapshot.
+/// Set localStorage.downloadQueueDebug to "true" to log received queue JSON.
+pub async fn subscribe_download_queue(
+    mut receive: impl FnMut(DownloadQueueUpdate) -> bool,
+) -> Result<(), Box<dyn Error>> {
+    use futures::StreamExt;
+    use graphql_ws_client::{Client, graphql::StreamingOperation};
 
-    Ok(post_graphql::<FetchDownloadQueue>(var)
-        .await?
-        .download_queue)
+    let token = local_storage()
+        .get("token")
+        .map_err(|error| format!("Cannot read sign-in token: {error:?}"))?
+        .unwrap_or_default();
+    let connect = async {
+        let socket =
+            ws_stream_wasm::WsMeta::connect(graphql_ws_host(), Some(vec!["graphql-transport-ws"]))
+                .await?;
+        let connection = graphql_ws_client::ws_stream_wasm::Connection::new(socket).await;
+        let operation = StreamingOperation::<SubscribeDownloadQueue>::new(
+            subscribe_download_queue::Variables {},
+        );
+        Ok::<_, Box<dyn Error>>(
+            Client::build(connection)
+                .payload(serde_json::json!({ "token": token }))?
+                .keep_alive_interval(std::time::Duration::from_secs(15))
+                .subscribe(operation)
+                .await?,
+        )
+    };
+    let mut stream = match select(Box::pin(connect), Box::pin(TimeoutFuture::new(10_000))).await {
+        Either::Left((result, _)) => result?,
+        Either::Right(_) => return Err("Queue subscription connection timed out".into()),
+    };
+    while let Some(response) = stream.next().await {
+        let response = response?;
+        if let Some(errors) = response.errors {
+            return Err(errors
+                .iter()
+                .map(ToString::to_string)
+                .collect::<Vec<_>>()
+                .join(", ")
+                .into());
+        }
+        let data = response
+            .data
+            .ok_or("Queue subscription returned no data")?
+            .download_queue_updates;
+        // The WASM logger enables debug by default, so payload logging also
+        // requires an explicit opt-in. Read it per message to allow toggling
+        // from the browser console without reloading or reconnecting.
+        if download_queue_debug_enabled()
+            && let Ok(payload) = serde_json::to_string(&data)
+        {
+            debug!(
+                target: "tanoshi_web::download_queue",
+                "queue received: snapshot={} from_version={} version={} updates={} removed={} resync_required={} payload_bytes={} payload={}",
+                data.snapshot,
+                data.from_version,
+                data.version,
+                data.updates.len(),
+                data.removed_ids.len(),
+                data.resync_required,
+                payload.len(),
+                payload,
+            );
+        }
+        let update = DownloadQueueUpdate {
+            snapshot: data.snapshot,
+            from_version: data.from_version,
+            version: data.version,
+            removed_ids: data.removed_ids,
+            resync_required: data.resync_required,
+            download_status: data.download_status,
+            updates: data
+                .updates
+                .into_iter()
+                .map(|entry| DownloadQueue {
+                    source_name: entry.source_name,
+                    manga_title: entry.manga_title,
+                    chapter_id: entry.chapter_id,
+                    chapter_title: entry.chapter_title,
+                    downloaded: entry.downloaded,
+                    total: entry.total,
+                    priority: entry.priority,
+                    date_added: entry.date_added,
+                })
+                .collect(),
+        };
+        if !receive(update) {
+            if download_queue_debug_enabled() {
+                debug!(target: "tanoshi_web::download_queue", "queue subscription requested a fresh snapshot");
+            }
+            return Err("Queue subscription needs a fresh snapshot".into());
+        }
+    }
+    Err("Queue subscription disconnected".into())
+}
+
+fn download_queue_debug_enabled() -> bool {
+    log::log_enabled!(target: "tanoshi_web::download_queue", log::Level::Debug)
+        && local_storage()
+            .get("downloadQueueDebug")
+            .ok()
+            .flatten()
+            .as_deref()
+            == Some("true")
 }
 
 pub async fn fetch_downloaded_chapters(

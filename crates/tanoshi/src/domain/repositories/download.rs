@@ -12,6 +12,8 @@ pub enum DownloadRepositoryError {
 
 #[async_trait]
 pub trait DownloadRepository: Send + Sync {
+    async fn notify_download_status_changed(&self) {}
+
     async fn get_first_downloaded_chapters(
         &self,
         after_timestamp: i64,

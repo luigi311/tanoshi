@@ -28,8 +28,10 @@
 //! metadata rather than the shared database.
 
 use std::{
+    collections::{BTreeMap, BTreeSet},
     fs,
-    path::PathBuf,
+    future::Future,
+    path::{Path, PathBuf},
     sync::{
         Arc,
         atomic::{AtomicUsize, Ordering},
@@ -37,9 +39,9 @@ use std::{
     time::Duration,
 };
 
-use async_graphql::{Request, Variables};
+use async_graphql::{Request, Response, Variables};
 use chrono::Utc;
-use futures::future::join_all;
+use futures::{Stream, StreamExt, future::join_all};
 use serde::Serialize;
 use serde_json::{Value, json};
 use tanoshi::{
@@ -95,6 +97,8 @@ const PAGE_QUERIES: [(&str, &str); 4] = [
 const REMOVE_QUERY: &str =
     include_str!("../../tanoshi-schema/graphql/remove_chapter_from_queue.graphql");
 const MOVE_QUERY: &str = include_str!("../../tanoshi-schema/graphql/move_chapter_in_queue.graphql");
+const SUBSCRIBE_QUERY: &str =
+    include_str!("../../tanoshi-schema/graphql/subscribe_download_queue.graphql");
 
 struct Fixture {
     dir: PathBuf,
@@ -231,7 +235,9 @@ impl Fixture {
 
     async fn close(self) {
         self.pool.close().await;
-        fs::remove_dir_all(&self.dir).unwrap();
+        remove_fixture_dir(&self.dir)
+            .await
+            .unwrap_or_else(|error| panic!("failed to remove {}: {error}", self.dir.display()));
     }
 }
 
@@ -239,6 +245,52 @@ impl Drop for Fixture {
     fn drop(&mut self) {
         let _ = fs::remove_dir_all(&self.dir);
     }
+}
+
+async fn remove_fixture_dir(dir: &Path) -> std::io::Result<()> {
+    let deadline = Instant::now() + Duration::from_secs(5);
+    loop {
+        match fs::remove_dir_all(dir) {
+            Ok(()) => return Ok(()),
+            // Closing pools does not prevent transient Windows sharing locks
+            // during teardown. Yield between attempts so pending work can finish.
+            Err(error)
+                if cfg!(windows)
+                    && matches!(error.raw_os_error(), Some(32 | 33))
+                    && Instant::now() < deadline =>
+            {
+                tokio::time::sleep(Duration::from_millis(25)).await;
+            }
+            Err(error) => return Err(error),
+        }
+    }
+}
+
+#[cfg(windows)]
+#[tokio::test]
+async fn fixture_cleanup_waits_for_windows_file_handles_to_close() {
+    use std::{fs::OpenOptions, os::windows::fs::OpenOptionsExt};
+
+    let fixture = Fixture::new(1).await;
+    fixture.pool.close().await;
+    let path = fixture.dir.join("held-open.txt");
+    fs::write(&path, b"cleanup regression").unwrap();
+    let file = OpenOptions::new()
+        .read(true)
+        .share_mode(0)
+        .open(&path)
+        .unwrap();
+    assert_eq!(fs::remove_file(&path).unwrap_err().raw_os_error(), Some(32));
+
+    let mut cleanup = Box::pin(remove_fixture_dir(&fixture.dir));
+    assert!(futures::poll!(cleanup.as_mut()).is_pending());
+    assert!(path.exists(), "cleanup must wait for the file handle");
+    drop(file);
+    tokio::time::timeout(Duration::from_secs(5), cleanup)
+        .await
+        .expect("fixture cleanup did not finish after releasing the file")
+        .unwrap();
+    assert!(!fixture.dir.exists());
 }
 
 #[derive(Debug, Serialize)]
@@ -331,6 +383,358 @@ async fn execute_data(schema: &TanoshiSchema, request: Request) -> Value {
     let response = schema.execute(request).await;
     assert!(response.errors.is_empty(), "{:?}", response.errors);
     response.data.into_json().unwrap()
+}
+
+async fn next_queue_update(stream: &mut (impl Stream<Item = Response> + Unpin)) -> Value {
+    let response = tokio::time::timeout(Duration::from_secs(10), stream.next())
+        .await
+        .expect("queue subscription timed out")
+        .expect("queue subscription ended");
+    assert!(response.errors.is_empty(), "{:?}", response.errors);
+    let data = response.data.into_json().unwrap()["downloadQueueUpdates"].clone();
+    assert_eq!(data["resyncRequired"], false);
+    data
+}
+
+async fn queue_updates_through(
+    stream: &mut (impl Stream<Item = Response> + Unpin),
+    version: i64,
+) -> Vec<Value> {
+    let mut updates = vec![];
+    loop {
+        let update = next_queue_update(stream).await;
+        assert_eq!(update["snapshot"], false);
+        let current = update["version"].as_i64().unwrap();
+        assert!(current <= version, "unexpected queue version: {update}");
+        updates.push(update);
+        if current == version {
+            return updates;
+        }
+    }
+}
+
+fn apply_queue_updates(rows: &mut BTreeMap<i64, Value>, updates: &[Value]) {
+    for update in updates {
+        if update["snapshot"] == true {
+            rows.clear();
+        }
+        for id in update["removedIds"].as_array().unwrap() {
+            rows.remove(&id.as_i64().unwrap());
+        }
+        for row in update["updates"].as_array().unwrap() {
+            rows.insert(row["chapterId"].as_i64().unwrap(), row.clone());
+        }
+    }
+}
+
+#[tokio::test]
+async fn queue_subscribers_share_batches_and_accept_snapshots_between_changes() {
+    let fixture = Fixture::new(4).await;
+    fixture.seed_queue(4, 3).await;
+    let mut first = Box::pin(fixture.schema.execute_stream(SUBSCRIBE_QUERY));
+    let initial = next_queue_update(&mut first).await;
+    assert_eq!(initial["snapshot"], true);
+    assert_eq!(initial["version"], 0);
+    assert_eq!(initial["updates"].as_array().unwrap().len(), 4);
+    assert!(initial["updates"][0]["dateAdded"].as_i64().unwrap() > 0);
+
+    let page_ids: Vec<i64> =
+        sqlx::query_scalar("SELECT id FROM download_queue WHERE chapter_id = 1 ORDER BY rank")
+            .fetch_all(fixture.pool.read())
+            .await
+            .unwrap();
+    for id in &page_ids {
+        fixture
+            .repo
+            .mark_single_download_queue_as_completed(*id)
+            .await
+            .unwrap();
+    }
+    // Retries and missing rows must not advance the version.
+    fixture
+        .repo
+        .mark_single_download_queue_as_completed(page_ids[0])
+        .await
+        .unwrap();
+    fixture
+        .repo
+        .delete_single_chapter_download_queue(999)
+        .await
+        .unwrap();
+
+    let mut second = Box::pin(fixture.schema.execute_stream(SUBSCRIBE_QUERY));
+    let later = next_queue_update(&mut second).await;
+    assert_eq!(later["snapshot"], true);
+    assert_eq!(later["version"], 3);
+    assert_eq!(later["updates"][0]["downloaded"], 3);
+
+    execute_data(
+        &fixture.schema,
+        Request::new(MOVE_QUERY).variables(Variables::from_json(json!({"id": 2, "up": true}))),
+    )
+    .await;
+    execute_data(
+        &fixture.schema,
+        Request::new(REMOVE_QUERY).variables(Variables::from_json(json!({"ids": [3]}))),
+    )
+    .await;
+    let first_batches = queue_updates_through(&mut first, 5).await;
+    let second_batches = queue_updates_through(&mut second, 5).await;
+    assert_eq!(
+        first_batches.last(),
+        second_batches.last(),
+        "viewers must share the same batch"
+    );
+    for batch in first_batches.iter().chain(&second_batches) {
+        assert!(
+            batch["updates"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .all(|row| { [1, 2].contains(&row["chapterId"].as_i64().unwrap()) }),
+            "unchanged chapters were republished: {batch}"
+        );
+    }
+    let mut first_rows = BTreeMap::new();
+    let mut second_rows = BTreeMap::new();
+    apply_queue_updates(&mut first_rows, &[initial]);
+    apply_queue_updates(&mut first_rows, &first_batches);
+    apply_queue_updates(&mut second_rows, &[later]);
+    apply_queue_updates(&mut second_rows, &second_batches);
+    assert_eq!(first_rows, second_rows);
+    assert_eq!(first_rows.keys().copied().collect::<Vec<_>>(), [1, 2, 4]);
+    assert_eq!(first_rows[&1]["downloaded"], 3);
+    assert_eq!(first_rows[&1]["priority"], 2);
+    assert_eq!(first_rows[&2]["priority"], 1);
+
+    fixture
+        .repo
+        .reset_chapter_download_progress(1)
+        .await
+        .unwrap();
+    let reset = queue_updates_through(&mut first, 6).await;
+    assert_eq!(reset.last().unwrap()["updates"][0]["downloaded"], 0);
+    // Archive completion uses this path instead of the cancellation mutation.
+    fixture
+        .repo
+        .delete_single_chapter_download_queue(1)
+        .await
+        .unwrap();
+    let completed = queue_updates_through(&mut first, 7).await;
+    assert_eq!(completed.last().unwrap()["removedIds"], json!([1]));
+    drop(first);
+    drop(second);
+    fixture.close().await;
+}
+
+#[tokio::test]
+async fn queue_version_resets_only_when_the_last_viewer_leaves() {
+    let fixture = Fixture::new(3).await;
+    fixture.seed_queue(3, 1).await;
+    let mut first = Box::pin(fixture.schema.execute_stream(SUBSCRIBE_QUERY));
+    let mut second = Box::pin(fixture.schema.execute_stream(SUBSCRIBE_QUERY));
+    assert_eq!(next_queue_update(&mut first).await["version"], 0);
+    assert_eq!(next_queue_update(&mut second).await["version"], 0);
+    fixture
+        .repo
+        .delete_single_chapter_download_queue(1)
+        .await
+        .unwrap();
+    assert_eq!(
+        queue_updates_through(&mut first, 1).await.last().unwrap()["version"],
+        1
+    );
+    assert_eq!(
+        queue_updates_through(&mut second, 1).await.last().unwrap()["version"],
+        1
+    );
+    drop(first);
+    let page = fixture
+        .repo
+        .get_single_download_queue()
+        .await
+        .unwrap()
+        .unwrap();
+    fixture
+        .repo
+        .mark_single_download_queue_as_completed(page.id)
+        .await
+        .unwrap();
+    assert_eq!(
+        queue_updates_through(&mut second, 2).await.last().unwrap()["updates"][0]["downloaded"],
+        1
+    );
+    drop(second);
+
+    // Mutations without viewers are already included in the next snapshot.
+    fixture
+        .repo
+        .delete_single_chapter_download_queue(2)
+        .await
+        .unwrap();
+    let mut fresh = Box::pin(fixture.schema.execute_stream(SUBSCRIBE_QUERY));
+    let snapshot = next_queue_update(&mut fresh).await;
+    assert_eq!(snapshot["snapshot"], true);
+    assert_eq!(snapshot["version"], 0);
+    assert_eq!(snapshot["updates"].as_array().unwrap().len(), 1);
+    assert_eq!(snapshot["updates"][0]["chapterId"], 3);
+    drop(fresh);
+    fixture.close().await;
+}
+
+#[tokio::test]
+async fn queue_subscription_includes_repro_changes_and_download_status() {
+    let fixture = Fixture::new(1).await;
+    fixture.seed_queue(1, 1).await;
+    fs::write(fixture.dir.join(".pause"), b"").unwrap();
+    let mut stream = Box::pin(fixture.schema.execute_stream(SUBSCRIBE_QUERY));
+    assert_eq!(
+        next_queue_update(&mut stream).await["downloadStatus"],
+        false
+    );
+    let seeded = execute_data(&fixture.schema, seed_request(REPRO_RUN, 3, 2)).await;
+    assert_eq!(
+        execute_data(&fixture.schema, seed_request(REPRO_RUN, 3, 2)).await,
+        seeded
+    );
+    let batches = queue_updates_through(&mut stream, 1).await;
+    let ids: BTreeSet<i64> = seeded["seedDownloadQueueRepro"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|id| id.as_i64().unwrap())
+        .collect();
+    assert_eq!(
+        batches.last().unwrap()["updates"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|row| row["chapterId"].as_i64().unwrap())
+            .collect::<BTreeSet<_>>(),
+        ids
+    );
+    assert_eq!(
+        execute_data(&fixture.schema, clear_request(REPRO_RUN)).await["clearDownloadQueueRepro"],
+        3
+    );
+    execute_data(&fixture.schema, Request::new("mutation { resumeDownload }")).await;
+    let cleared = queue_updates_through(&mut stream, 3).await;
+    let removed: BTreeSet<_> = cleared
+        .iter()
+        .flat_map(|batch| {
+            batch["removedIds"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|id| id.as_i64().unwrap())
+        })
+        .collect();
+    assert_eq!(removed, ids);
+    assert!(
+        cleared
+            .iter()
+            .all(|batch| batch["updates"].as_array().unwrap().is_empty())
+    );
+    assert_eq!(cleared.last().unwrap()["downloadStatus"], true);
+    // Pause alone publishes status without aggregating every queue chapter.
+    execute_data(&fixture.schema, Request::new("mutation { pauseDownload }")).await;
+    let paused = queue_updates_through(&mut stream, 4).await;
+    assert_eq!(paused.last().unwrap()["downloadStatus"], false);
+    assert!(
+        paused.last().unwrap()["updates"]
+            .as_array()
+            .unwrap()
+            .is_empty()
+    );
+    drop(stream);
+    fixture.close().await;
+}
+
+#[tokio::test]
+async fn queue_subscription_requires_an_administrator() {
+    let fixture = Fixture::new(1).await;
+    let mut denied = Box::pin(
+        fixture
+            .schema
+            .execute_stream(Request::new(SUBSCRIBE_QUERY).data(Claims {
+                sub: 2,
+                username: "reader".into(),
+                is_admin: false,
+                exp: usize::MAX,
+            })),
+    );
+    let response = denied.next().await.unwrap();
+    assert!(
+        response
+            .errors
+            .iter()
+            .any(|error| error.message == "Forbidden")
+    );
+    drop(denied);
+    let anonymous = SchemaBuilder::new().build();
+    assert!(
+        !anonymous
+            .execute_stream(SUBSCRIBE_QUERY)
+            .next()
+            .await
+            .unwrap()
+            .errors
+            .is_empty()
+    );
+    fixture.close().await;
+}
+
+#[tokio::test]
+async fn queue_snapshot_waiting_for_the_writer_leaves_readers_available() {
+    let fixture = Fixture::new(2).await;
+    fixture.seed_queue(2, 1).await;
+    let writer = fixture.pool.write().acquire().await.unwrap();
+    let repo = fixture.repo.clone();
+    let (started, ready) = tokio::sync::oneshot::channel();
+    let snapshot = tokio::spawn(async move {
+        let mut loading = Box::pin(repo.subscribe_download_queue());
+        let mut started = Some(started);
+        futures::future::poll_fn(|cx| {
+            let result = loading.as_mut().poll(cx);
+            if let Some(started) = started.take() {
+                assert!(result.is_pending());
+                let _ = started.send(());
+            }
+            result
+        })
+        .await
+        .unwrap()
+    });
+    ready.await.unwrap();
+    let repo = fixture.repo.clone();
+    let removal =
+        tokio::spawn(async move { repo.delete_single_chapter_download_queue(1).await.unwrap() });
+    let pages = tokio::time::timeout(Duration::from_secs(5), page_requests(&fixture.schema))
+        .await
+        .expect("queue synchronization blocked ordinary reader requests");
+    assert_page_data(&pages);
+    drop(writer);
+    let mut stream = Box::pin(snapshot.await.unwrap());
+    let initial = stream.next().await.unwrap();
+    assert!(initial.snapshot);
+    removal.await.unwrap();
+    // Either order is legal, but the snapshot's rows and version must agree.
+    if initial.version == 0 {
+        assert_eq!(initial.updates.len(), 2);
+        let batch = tokio::time::timeout(Duration::from_secs(10), stream.next())
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(batch.from_version, 0);
+        assert_eq!(batch.version, 1);
+        assert_eq!(batch.removed_ids, [1]);
+    } else {
+        assert_eq!(initial.version, 1);
+        assert_eq!(initial.updates.len(), 1);
+        assert_eq!(initial.updates[0].chapter_id, 2);
+    }
+    drop(stream);
+    fixture.close().await;
 }
 
 async fn real_queue_snapshot(pool: &Pool) -> String {
@@ -795,6 +1199,10 @@ async fn queue_repro_bulk_cancellations_complete_without_database_lock_errors() 
         .iter()
         .map(|id| id.as_i64().unwrap())
         .collect();
+    let mut viewer = Box::pin(fixture.schema.execute_stream(SUBSCRIBE_QUERY));
+    let snapshot = next_queue_update(&mut viewer).await;
+    assert_eq!(snapshot["updates"].as_array().unwrap().len(), 5_003);
+    let snapshot_bytes = serde_json::to_vec(&snapshot).unwrap().len();
     let barrier = Arc::new(Barrier::new(CONCURRENT_REMOVALS + 1));
     let active = Arc::new(AtomicUsize::new(CONCURRENT_REMOVALS));
     let mut removals = JoinSet::new();
@@ -859,6 +1267,30 @@ async fn queue_repro_bulk_cancellations_complete_without_database_lock_errors() 
             20
         );
     }
+    let batches = queue_updates_through(&mut viewer, 100).await;
+    let removed: BTreeSet<_> = batches
+        .iter()
+        .flat_map(|batch| {
+            batch["removedIds"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|id| id.as_i64().unwrap())
+        })
+        .collect();
+    assert_eq!(removed, ids[..100].iter().copied().collect());
+    assert!(
+        batches
+            .iter()
+            .all(|batch| batch["updates"].as_array().unwrap().is_empty()),
+        "cancellation republished unchanged chapters"
+    );
+    let batch_bytes = serde_json::to_vec(&batches).unwrap().len();
+    println!(
+        "queue subscription: {snapshot_bytes} snapshot bytes, {batch_bytes} bytes across {} cancellation batches",
+        batches.len()
+    );
+    drop(viewer);
     let remaining = fixture.repo.get_download_queue(&ids).await.unwrap();
     assert_eq!(remaining.len(), 4_900);
     assert!(

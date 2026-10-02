@@ -2296,6 +2296,10 @@ name = "futures-timer"
 version = "3.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "af43fadb8a98512d547e37b4e92e0ced13e205c061b87b4623eff01d918d6968"
+dependencies = [
+ "gloo-timers",
+ "send_wrapper",
+]
 
 [[package]]
 name = "futures-util"
@@ -6556,6 +6560,7 @@ dependencies = [
  "dominator",
  "futures",
  "futures-signals",
+ "futures-timer",
  "gloo-timers",
  "graphql-ws-client",
  "graphql_client",

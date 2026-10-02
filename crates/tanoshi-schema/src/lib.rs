@@ -162,6 +162,14 @@ pub struct SubscribeChapterUpdates;
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "graphql/schema.graphql",
+    query_path = "graphql/subscribe_download_queue.graphql",
+    response_derives = "Debug, Clone, Serialize"
+)]
+pub struct SubscribeDownloadQueue;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/schema.graphql",
     query_path = "graphql/fetch_histories.graphql",
     response_derives = "Debug"
 )]
@@ -342,14 +350,6 @@ pub struct DownloadChapters;
     response_derives = "Debug"
 )]
 pub struct RemoveDownloadedChapters;
-
-#[derive(GraphQLQuery)]
-#[graphql(
-    schema_path = "graphql/schema.graphql",
-    query_path = "graphql/fetch_download_queue.graphql",
-    response_derives = "Debug"
-)]
-pub struct FetchDownloadQueue;
 
 #[derive(GraphQLQuery)]
 #[graphql(

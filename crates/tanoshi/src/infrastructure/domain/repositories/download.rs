@@ -11,20 +11,29 @@ use crate::{
 };
 
 mod repro;
+mod updates;
 
 #[derive(Clone)]
 pub struct DownloadRepositoryImpl {
     pool: Pool,
+    updates: updates::QueueUpdates,
 }
 
 impl DownloadRepositoryImpl {
     pub fn new<P: Into<Pool>>(pool: P) -> Self {
-        Self { pool: pool.into() }
+        Self {
+            pool: pool.into(),
+            updates: updates::QueueUpdates::default(),
+        }
     }
 }
 
 #[async_trait]
 impl DownloadRepository for DownloadRepositoryImpl {
+    async fn notify_download_status_changed(&self) {
+        self.updates.mutation().await.complete([]);
+    }
+
     async fn get_first_downloaded_chapters(
         &self,
         after_timestamp: i64,
@@ -191,6 +200,7 @@ impl DownloadRepository for DownloadRepositoryImpl {
         if items.is_empty() {
             return Ok(());
         }
+        let mutation = self.updates.mutation().await;
 
         let mut values = vec![];
         values.resize(items.len(), "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
@@ -226,7 +236,12 @@ impl DownloadRepository for DownloadRepositoryImpl {
                 .bind(item.date_added.and_utc().timestamp());
         }
 
-        query.execute(self.pool.write()).await?;
+        let result = query.execute(self.pool.write()).await?;
+        if result.rows_affected() > 0 {
+            mutation.complete(items.iter().map(|item| item.chapter_id));
+        } else {
+            mutation.unchanged();
+        }
 
         Ok(())
     }
@@ -293,10 +308,16 @@ impl DownloadRepository for DownloadRepositoryImpl {
         &self,
         id: i64,
     ) -> Result<(), DownloadRepositoryError> {
-        sqlx::query(r#"UPDATE download_queue SET downloaded = true WHERE id = ?"#)
+        let mutation = self.updates.mutation().await;
+        let chapter: Option<i64> = sqlx::query_scalar(r#"UPDATE download_queue SET downloaded = true WHERE id = ? AND downloaded IS NOT true RETURNING chapter_id"#)
             .bind(id)
-            .execute(self.pool.write())
+            .fetch_optional(self.pool.write())
             .await?;
+        if let Some(chapter) = chapter {
+            mutation.complete([chapter]);
+        } else {
+            mutation.unchanged();
+        }
 
         Ok(())
     }
@@ -316,10 +337,16 @@ impl DownloadRepository for DownloadRepositoryImpl {
         &self,
         chapter_id: i64,
     ) -> Result<(), DownloadRepositoryError> {
-        sqlx::query("UPDATE download_queue SET downloaded = false WHERE chapter_id = ?")
+        let mutation = self.updates.mutation().await;
+        let result = sqlx::query("UPDATE download_queue SET downloaded = false WHERE chapter_id = ? AND downloaded IS NOT false")
             .bind(chapter_id)
             .execute(self.pool.write())
             .await?;
+        if result.rows_affected() > 0 {
+            mutation.complete([chapter_id]);
+        } else {
+            mutation.unchanged();
+        }
 
         Ok(())
     }
@@ -338,7 +365,8 @@ impl DownloadRepository for DownloadRepositoryImpl {
             dq.chapter_title, 
             COALESCE(SUM(dq.downloaded), 0),
             COUNT(1),
-            dq.priority
+            dq.priority,
+            dq.date_added
         FROM download_queue dq"#
             .to_string();
 
@@ -375,6 +403,7 @@ impl DownloadRepository for DownloadRepositoryImpl {
                 downloaded: row.get(6),
                 total: row.get(7),
                 priority: row.get(8),
+                date_added: row.get(9),
             })
             .collect();
 
@@ -385,10 +414,16 @@ impl DownloadRepository for DownloadRepositoryImpl {
         &self,
         chapter_id: i64,
     ) -> Result<(), DownloadRepositoryError> {
-        sqlx::query(r#"DELETE FROM download_queue WHERE chapter_id = ?"#)
+        let mutation = self.updates.mutation().await;
+        let result = sqlx::query(r#"DELETE FROM download_queue WHERE chapter_id = ?"#)
             .bind(chapter_id)
             .execute(self.pool.write())
             .await?;
+        if result.rows_affected() > 0 {
+            mutation.complete([chapter_id]);
+        } else {
+            mutation.unchanged();
+        }
 
         Ok(())
     }
@@ -406,6 +441,8 @@ impl DownloadRepository for DownloadRepositoryImpl {
         chapter_id: i64,
         up: bool,
     ) -> Result<(), DownloadRepositoryError> {
+        let mutation = self.updates.mutation().await;
+        let mut changed = vec![];
         let mut tx = self.pool.write().begin().await?;
 
         let current_priority: Option<i64> =
@@ -444,10 +481,16 @@ impl DownloadRepository for DownloadRepositoryImpl {
                 .bind(neighbour_id)
                 .execute(&mut *tx)
                 .await?;
+                changed.extend([chapter_id, neighbour_id]);
             }
         }
 
         tx.commit().await?;
+        if changed.is_empty() {
+            mutation.unchanged();
+        } else {
+            mutation.complete(changed);
+        }
 
         Ok(())
     }

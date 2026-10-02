@@ -26,6 +26,32 @@ pub struct DownloadQueueEntry {
     pub downloaded: i64,
     pub total: i64,
     pub priority: i64,
+    pub date_added: NaiveDateTime,
+}
+
+/// A snapshot or a batch of absolute queue states. Versions belong to the
+/// current group of subscribers; every new subscription starts with a snapshot.
+#[derive(Debug, Clone)]
+pub struct DownloadQueueUpdate {
+    pub snapshot: bool,
+    pub from_version: i64,
+    pub version: i64,
+    pub updates: Vec<DownloadQueueEntry>,
+    pub removed_ids: Vec<i64>,
+    pub resync_required: bool,
+}
+
+impl DownloadQueueUpdate {
+    pub fn resync_required() -> Self {
+        Self {
+            snapshot: false,
+            from_version: 0,
+            version: 0,
+            updates: vec![],
+            removed_ids: vec![],
+            resync_required: true,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]

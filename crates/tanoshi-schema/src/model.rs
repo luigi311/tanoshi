@@ -3,6 +3,9 @@ use std::sync::Arc;
 use futures_signals::{signal::Mutable, signal_vec::MutableVec};
 use serde::{Deserialize, Serialize};
 
+mod download_queue;
+pub use download_queue::{DownloadQueueRow, DownloadQueueState, DownloadQueueUpdate};
+
 #[derive(Debug, Clone)]
 pub struct Source {
     pub id: i64,
@@ -47,6 +50,7 @@ pub struct DownloadQueue {
     pub downloaded: i64,
     pub total: i64,
     pub priority: i64,
+    pub date_added: i64,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
