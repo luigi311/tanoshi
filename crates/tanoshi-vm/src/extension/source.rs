@@ -252,13 +252,14 @@ impl SourceEntry {
         lib_version: String,
     ) -> Self {
         let source_info = source_info.into_source_info();
+        let health = worker.health.clone();
         Self {
             source_id: source_info.id,
             source_info,
             extension: None,
             worker: Some(worker),
             limiter: Arc::new(Semaphore::new(max_concurrent_calls.max(1))),
-            health: SourceHealth::new(),
+            health,
             library: None,
             plugin_path: Some(plugin_path),
             rustc_version,

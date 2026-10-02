@@ -1,13 +1,19 @@
 use std::{
     fs,
     path::PathBuf,
-    process::{Command, Output},
-    sync::atomic::{AtomicU64, Ordering},
+    process::{Command, Output, Stdio},
+    sync::{
+        Mutex,
+        atomic::{AtomicU64, Ordering},
+    },
 };
 
 use tanoshi_vm::PLUGIN_EXTENSION;
 
 static NEXT_DIRECTORY: AtomicU64 = AtomicU64::new(0);
+// A fork can inherit another test's writable copy handle until exec closes it.
+// Keep copying and spawning mutually exclusive to avoid Linux ETXTBSY errors.
+static EXECUTABLE_LOCK: Mutex<()> = Mutex::new(());
 
 fn executable_name() -> String {
     format!("tanoshi-cli{}", std::env::consts::EXE_SUFFIX)
@@ -24,11 +30,14 @@ impl Workspace {
         ));
         fs::create_dir_all(path.join("plugins")).unwrap();
         // Exercise the shipped, single-binary layout without a sibling worker.
-        fs::copy(
-            env!("CARGO_BIN_EXE_tanoshi-cli"),
-            path.join(executable_name()),
-        )
-        .unwrap();
+        {
+            let _guard = EXECUTABLE_LOCK.lock().unwrap();
+            fs::copy(
+                env!("CARGO_BIN_EXE_tanoshi-cli"),
+                path.join(executable_name()),
+            )
+            .unwrap();
+        }
         Self(path)
     }
 
@@ -66,6 +75,21 @@ impl Drop for Workspace {
     }
 }
 
+fn command_output(command: &mut Command) -> Output {
+    let child = {
+        let _guard = EXECUTABLE_LOCK.lock().unwrap();
+        command
+            .stdin(Stdio::null())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .unwrap()
+    };
+    // Once spawn completes, inherited copy handles are closed. Waiting for
+    // children and checking their output can still happen concurrently.
+    child.wait_with_output().unwrap()
+}
+
 fn failure_stderr(output: Output) -> String {
     assert!(
         !output.status.success(),
@@ -77,7 +101,7 @@ fn failure_stderr(output: Output) -> String {
 #[test]
 fn empty_input_does_not_publish_an_empty_index() {
     let workspace = Workspace::new();
-    let stderr = failure_stderr(workspace.command().output().unwrap());
+    let stderr = failure_stderr(command_output(&mut workspace.command()));
     assert!(stderr.contains("no extensions found"), "{stderr}");
     assert!(!workspace.index_path().exists());
 }
@@ -99,7 +123,7 @@ fn bundled_worker_load_failure_preserves_previous_repository() {
     fs::create_dir(&unrelated).unwrap();
     fs::write(unrelated.join("plugin"), b"another platform").unwrap();
 
-    let stderr = failure_stderr(workspace.command().output().unwrap());
+    let stderr = failure_stderr(command_output(&mut workspace.command()));
     assert!(stderr.contains("failed to load broken"), "{stderr}");
     // The child started and attempted loading the library, then closed its pipe.
     // A missing standalone worker would instead fail at process creation.
@@ -121,16 +145,10 @@ fn bundled_worker_load_failure_preserves_previous_repository() {
 fn explicit_worker_override_is_respected_and_failure_is_fatal() {
     let workspace = Workspace::new();
     workspace.broken_plugin();
-    let stderr = failure_stderr(
-        workspace
-            .command()
-            .env(
-                "TANOSHI_EXTENSION_WORKER",
-                workspace.0.join("missing-worker"),
-            )
-            .output()
-            .unwrap(),
-    );
+    let stderr = failure_stderr(command_output(workspace.command().env(
+        "TANOSHI_EXTENSION_WORKER",
+        workspace.0.join("missing-worker"),
+    )));
     assert!(stderr.contains("missing-worker"), "{stderr}");
     assert!(stderr.contains("source index was not written"), "{stderr}");
     assert!(!workspace.index_path().exists());

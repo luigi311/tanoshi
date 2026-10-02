@@ -1,8 +1,11 @@
 use std::{
+    collections::{BTreeMap, VecDeque},
     io::{self, BufReader, BufWriter, Read, Write},
     path::{Path, PathBuf},
+    pin::Pin,
     process::Stdio,
     sync::{Arc, Mutex as StdMutex},
+    task::{Context as TaskContext, Poll},
     time::Duration,
 };
 
@@ -13,18 +16,30 @@ use tanoshi_lib::prelude::{ChapterInfo, Input, MangaInfo, PluginDeclaration, Sou
 use tokio::{
     io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt, BufReader as AsyncBufReader},
     process::{Child, ChildStdin, ChildStdout, Command},
-    sync::{Mutex, Notify},
+    sync::{Mutex, Notify, RwLock, RwLockReadGuard, RwLockWriteGuard, mpsc, oneshot, watch},
+    task::JoinHandle,
     time::Instant,
 };
 
-use super::{Source, SourceEntry, source::panic_payload_message};
+use super::{
+    Source, SourceEntry,
+    source::{SourceAdmission, SourceHealth, panic_payload_message},
+};
 
-const PROTOCOL_VERSION: u32 = 1;
+const PROTOCOL_VERSION: u32 = 2;
 const MAX_FRAME_SIZE: usize = 128 * 1024 * 1024;
+const INLINE_RESPONSE_LIMIT: usize = 64 * 1024;
+const TIMEOUT_DRAIN_GRACE: Duration = Duration::from_secs(1);
 const WORKER_BINARY_NAME: &str = "tanoshi-extension-worker";
 pub const WORKER_MODE_FLAG: &str = "--tanoshi-extension-worker";
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Serialize, Deserialize)]
+struct WorkerInitialization {
+    protocol_version: u32,
+    max_concurrent_calls: usize,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub(crate) enum WorkerRequest {
     FilterList,
     GetPreferences,
@@ -141,16 +156,32 @@ impl WorkerSourceInfo {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum WorkerRestartReason {
+    TimeoutRecovery,
+    NotDispatched,
+    Crash,
+}
+
+#[derive(Clone, Debug)]
 pub(crate) enum WorkerCallError {
-    /// The worker held the request past the deadline and was terminated.
+    /// The request exceeded its deadline. The worker gives its other calls a
+    /// short grace period before termination; no further calls enter it.
     Timeout,
-    /// The deadline expired while earlier calls still occupied the worker
-    /// stream; the worker itself was left untouched.
+    /// The deadline expired before dispatch, including while waiting for a
+    /// retiring worker to finish. Its running calls are left untouched.
     QueueTimeout,
     /// The client was explicitly shut down because its source was unloaded
     /// or replaced.
     Stopped,
+    /// Health changed after admission, including during automatic retries.
+    Admission(SourceAdmission),
+    /// Another call or a transport failure caused the process to exit. This
+    /// is not an additional source-health failure for each affected caller.
+    Restarted {
+        reason: WorkerRestartReason,
+        message: String,
+    },
     Crashed(String),
     Remote {
         kind: WorkerErrorKind,
@@ -166,6 +197,13 @@ impl std::fmt::Display for WorkerCallError {
                 formatter.write_str("extension worker is busy with earlier calls")
             }
             Self::Stopped => formatter.write_str("extension worker was shut down"),
+            Self::Admission(admission) => {
+                write!(formatter, "extension source is unavailable: {admission:?}")
+            }
+            Self::Restarted { reason, message } => write!(
+                formatter,
+                "extension worker restarted ({reason:?}): {message}"
+            ),
             Self::Crashed(message) => write!(formatter, "extension worker exited: {message}"),
             Self::Remote { kind, message } => {
                 write!(formatter, "extension worker returned {kind:?}: {message}")
@@ -176,54 +214,236 @@ impl std::fmt::Display for WorkerCallError {
 
 impl std::error::Error for WorkerCallError {}
 
+type WorkerResult = std::result::Result<WorkerValue, WorkerCallError>;
+type SavedPreferences = Arc<StdMutex<Option<Vec<Input>>>>;
+
+#[derive(Debug)]
+enum WorkerReply {
+    Finished(WorkerResult),
+    /// Calls still in the supervisor queue can return their original payload.
+    Retry(WorkerRequest),
+}
+
+struct WorkerCall {
+    request: WorkerRequest,
+    deadline: Instant,
+    reply: oneshot::Sender<WorkerReply>,
+}
+
+struct PendingCall {
+    deadline: Instant,
+    reply: Option<oneshot::Sender<WorkerReply>>,
+    preferences: Option<Vec<Input>>,
+    write_progress: Arc<StdMutex<WriteProgress>>,
+}
+
+#[derive(Default)]
+struct WriteProgress {
+    bytes_written: usize,
+    complete: bool,
+    cancelled: bool,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum WritePhase {
+    Unwritten,
+    Partial,
+    Complete,
+}
+
+impl WriteProgress {
+    fn phase(&self) -> WritePhase {
+        if self.complete {
+            WritePhase::Complete
+        } else if self.bytes_written == 0 {
+            WritePhase::Unwritten
+        } else {
+            WritePhase::Partial
+        }
+    }
+}
+
+struct OutgoingCall {
+    envelope: WorkerRequestEnvelope,
+    deadline: Instant,
+    progress: Arc<StdMutex<WriteProgress>>,
+}
+
+#[derive(Debug)]
+enum WriteQueueError {
+    Full,
+    Closed,
+}
+
+#[derive(Default)]
+struct WriteQueueState {
+    calls: VecDeque<OutgoingCall>,
+    closed: bool,
+}
+
+/// The supervisor can remove expired entries while the writer is blocked on
+/// another frame. A bounded channel cannot release those occupied slots.
+struct WriteQueue {
+    state: StdMutex<WriteQueueState>,
+    changed: Notify,
+    capacity: usize,
+}
+
+impl WriteQueue {
+    fn new(capacity: usize) -> Arc<Self> {
+        Arc::new(Self {
+            state: StdMutex::new(WriteQueueState::default()),
+            changed: Notify::new(),
+            capacity,
+        })
+    }
+
+    fn push(&self, call: OutgoingCall) -> std::result::Result<(), WriteQueueError> {
+        let mut state = self
+            .state
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        if state.closed {
+            return Err(WriteQueueError::Closed);
+        }
+        let now = Instant::now();
+        state.calls.retain(|queued| {
+            let mut progress = queued
+                .progress
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner());
+            if queued.deadline <= now {
+                progress.cancelled = true;
+            }
+            !progress.cancelled
+        });
+        if state.calls.len() >= self.capacity {
+            return Err(WriteQueueError::Full);
+        }
+        state.calls.push_back(call);
+        drop(state);
+        self.changed.notify_one();
+        Ok(())
+    }
+
+    async fn next(&self) -> Option<OutgoingCall> {
+        loop {
+            let changed = self.changed.notified();
+            tokio::pin!(changed);
+            changed.as_mut().enable();
+            {
+                let mut state = self
+                    .state
+                    .lock()
+                    .unwrap_or_else(|poisoned| poisoned.into_inner());
+                if state.closed {
+                    return None;
+                }
+                if let Some(call) = state.calls.pop_front() {
+                    return Some(call);
+                }
+            }
+            changed.await;
+        }
+    }
+
+    fn close(&self) {
+        let mut state = self
+            .state
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        state.closed = true;
+        state.calls.clear();
+        drop(state);
+        self.changed.notify_waiters();
+    }
+}
+
+struct CloseWriteQueue(Arc<WriteQueue>);
+
+impl Drop for CloseWriteQueue {
+    fn drop(&mut self) {
+        self.0.close();
+    }
+}
+
 struct WorkerProcess {
-    child: Child,
-    stdin: ChildStdin,
-    stdout: AsyncBufReader<ChildStdout>,
-    next_request_id: u64,
+    requests: mpsc::Sender<WorkerCall>,
+    shutdown: watch::Sender<bool>,
+    task: Option<JoinHandle<()>>,
     source_info: WorkerSourceInfo,
     rustc_version: String,
     lib_version: String,
+}
+
+impl WorkerProcess {
+    async fn shutdown(&mut self) {
+        self.shutdown.send_replace(true);
+        if let Some(task) = self.task.take() {
+            let _ = task.await;
+        }
+    }
+}
+
+impl Drop for WorkerProcess {
+    fn drop(&mut self) {
+        self.shutdown.send_replace(true);
+        if let Some(task) = self.task.take() {
+            task.abort();
+        }
+    }
 }
 
 pub(crate) struct WorkerClient {
     plugin_path: PathBuf,
     worker_path: PathBuf,
     startup_timeout: Duration,
+    max_concurrent_calls: usize,
     cleanup_path: Option<PathBuf>,
     stopped: AtomicBool,
+    // This lock protects process startup and replacement, not request execution.
     process: Mutex<Option<WorkerProcess>>,
+    // Fair host-side admission keeps preference writers out of the native
+    // RwLock until every read has completed, including response handling.
+    preference_gate: RwLock<()>,
     shutdown: Notify,
-    // Saved preferences to re-apply whenever a replacement worker spawns, so
-    // a respawned worker never serves requests with default preferences.
-    startup_preferences: StdMutex<Option<Vec<Input>>>,
+    startup_preferences: SavedPreferences,
+    pub(crate) health: Arc<SourceHealth>,
+}
+
+struct CallGateGuard<'a> {
+    _read: Option<RwLockReadGuard<'a, ()>>,
+    _write: Option<RwLockWriteGuard<'a, ()>>,
 }
 
 impl WorkerClient {
+    fn ensure_available(&self) -> std::result::Result<(), WorkerCallError> {
+        match self.health.admission() {
+            SourceAdmission::Allowed => Ok(()),
+            admission => Err(WorkerCallError::Admission(admission)),
+        }
+    }
+
     pub(crate) fn new(
         plugin_path: PathBuf,
         worker_path: PathBuf,
         startup_timeout: Duration,
+        max_concurrent_calls: usize,
         cleanup_path: Option<PathBuf>,
     ) -> Arc<Self> {
         Arc::new(Self {
             plugin_path,
             worker_path,
             startup_timeout,
+            max_concurrent_calls,
             cleanup_path,
             stopped: AtomicBool::new(false),
             process: Mutex::new(None),
+            preference_gate: RwLock::new(()),
             shutdown: Notify::new(),
-            startup_preferences: StdMutex::new(None),
+            startup_preferences: Arc::new(StdMutex::new(None)),
+            health: SourceHealth::new(),
         })
-    }
-
-    pub(crate) fn set_startup_preferences(&self, preferences: Vec<Input>) {
-        let mut guard = match self.startup_preferences.lock() {
-            Ok(guard) => guard,
-            Err(poisoned) => poisoned.into_inner(),
-        };
-        *guard = Some(preferences);
     }
 
     pub(crate) async fn start(&self) -> Result<(WorkerSourceInfo, String, String)> {
@@ -231,18 +451,15 @@ impl WorkerClient {
         if self.stopped.load(Ordering::Acquire) {
             bail!("extension worker is shut down");
         }
+        self.ensure_available()?;
         if process.is_none() {
-            let (worker, source_info, rustc_version, lib_version) =
+            *process = Some(
                 tokio::time::timeout(self.startup_timeout, self.spawn_process())
                     .await
-                    .context("extension worker startup timed out")??;
-            *process = Some(worker);
-            return Ok((source_info, rustc_version, lib_version));
+                    .context("extension worker startup timed out")??,
+            );
         }
-
-        let Some(process) = process.as_mut() else {
-            unreachable!("worker process was inserted above");
-        };
+        let process = process.as_ref().expect("worker process was initialized");
         Ok((
             process.source_info.clone(),
             process.rustc_version.clone(),
@@ -252,113 +469,130 @@ impl WorkerClient {
 
     pub(crate) async fn request(
         &self,
-        request: WorkerRequest,
+        mut request: WorkerRequest,
         timeout: Duration,
-    ) -> std::result::Result<WorkerValue, WorkerCallError> {
-        // The deadline covers the wait for the per-source stream as well as
-        // the request itself, so a caller never waits longer than its own
-        // timeout behind earlier calls.
+    ) -> WorkerResult {
         let deadline = Instant::now() + timeout;
-        // Register interest in shutdown before checking `stopped` so a
-        // shutdown between the check and the select cannot be missed.
+        let mut retried_crash = false;
         let shutdown = self.shutdown.notified();
         tokio::pin!(shutdown);
         shutdown.as_mut().enable();
         if self.stopped.load(Ordering::Acquire) {
             return Err(WorkerCallError::Stopped);
         }
-
-        let mut process_guard = tokio::select! {
-            guard = tokio::time::timeout_at(deadline, self.process.lock()) => match guard {
-                Ok(guard) => guard,
-                Err(_) => return Err(WorkerCallError::QueueTimeout),
-            },
+        self.ensure_available()?;
+        let _gate = tokio::select! {
+            guard = tokio::time::timeout_at(deadline, async {
+                if matches!(&request, WorkerRequest::SetPreferences { .. }) {
+                    CallGateGuard { _read: None, _write: Some(self.preference_gate.write().await) }
+                } else {
+                    CallGateGuard { _read: Some(self.preference_gate.read().await), _write: None }
+                }
+            }) => guard.map_err(|_| WorkerCallError::QueueTimeout)?,
             _ = &mut shutdown => return Err(WorkerCallError::Stopped),
         };
-        if self.stopped.load(Ordering::Acquire) {
-            return Err(WorkerCallError::Stopped);
-        }
-        if process_guard.is_none() {
-            // Respawn after an earlier failure. Repeated failures are bounded
-            // by the source's health policy: once the entry is quarantined,
-            // admission stops before another spawn is attempted.
-            let spawn = tokio::time::timeout_at(deadline, self.spawn_process());
-            tokio::pin!(spawn);
-            let result = tokio::select! {
-                result = &mut spawn => result,
-                _ = &mut shutdown => return Err(WorkerCallError::Stopped),
-            };
-            match result {
-                Ok(Ok((worker, _, _, _))) => *process_guard = Some(worker),
-                Ok(Err(error)) => return Err(WorkerCallError::Crashed(error.to_string())),
-                Err(_) => return Err(WorkerCallError::QueueTimeout),
-            }
-        }
-        if Instant::now() >= deadline {
-            // The spawned or running worker stays usable for later callers.
-            return Err(WorkerCallError::QueueTimeout);
-        }
 
-        let process = process_guard
-            .as_mut()
-            .expect("worker process was initialized above");
-        let id = process.next_request_id;
-        process.next_request_id = process.next_request_id.wrapping_add(1);
-        let envelope = WorkerRequestEnvelope { id, request };
-
-        let response = tokio::select! {
-            response = tokio::time::timeout_at(deadline, async {
-                write_frame_async(&mut process.stdin, &envelope).await?;
-                read_frame_async::<_, WorkerResponse>(&mut process.stdout).await
-            }) => match response {
-            Ok(Ok(response)) => response,
-            Ok(Err(error)) => {
-                terminate_process(process).await;
-                *process_guard = None;
-                return Err(WorkerCallError::Crashed(error.to_string()));
-            }
-            Err(_) => {
-                terminate_process(process).await;
-                *process_guard = None;
-                return Err(WorkerCallError::Timeout);
-            }
-            },
-            _ = &mut shutdown => {
-                terminate_process(process).await;
-                *process_guard = None;
+        loop {
+            if self.stopped.load(Ordering::Acquire) {
                 return Err(WorkerCallError::Stopped);
             }
-        };
+            self.ensure_available()?;
+            let mut process = tokio::select! {
+                guard = tokio::time::timeout_at(deadline, self.process.lock()) =>
+                    guard.map_err(|_| WorkerCallError::QueueTimeout)?,
+                _ = &mut shutdown => return Err(WorkerCallError::Stopped),
+            };
+            if self.stopped.load(Ordering::Acquire) {
+                return Err(WorkerCallError::Stopped);
+            }
+            self.ensure_available()?;
 
-        match response {
-            WorkerResponse::Result {
-                id: response_id,
-                value,
-            } if response_id == id => Ok(value),
-            WorkerResponse::Error {
-                id: response_id,
-                kind,
-                message,
-            } if response_id == id => Err(WorkerCallError::Remote { kind, message }),
-            WorkerResponse::Result {
-                id: response_id, ..
+            if let Some(worker) = process.as_mut()
+                && worker.requests.is_closed()
+            {
+                // Wait for the bounded drain and process termination before
+                // another instance uses the source's HTTP/session state.
+                if let Some(task) = worker.task.as_mut() {
+                    tokio::select! {
+                        result = tokio::time::timeout_at(deadline, task) => {
+                            let _ = result.map_err(|_| WorkerCallError::QueueTimeout)?;
+                        }
+                        _ = &mut shutdown => return Err(WorkerCallError::Stopped),
+                    }
+                    worker.task.take();
+                }
+                process.take();
             }
-            | WorkerResponse::Error {
-                id: response_id, ..
-            } => {
-                terminate_process(process).await;
-                *process_guard = None;
-                Err(WorkerCallError::Crashed(format!(
-                    "response id {response_id} did not match request id {id}"
-                )))
+            if process.is_none() {
+                // The retiring process may have quarantined this source while
+                // we waited for its task. Never spawn through that quarantine.
+                self.ensure_available()?;
+                let result = tokio::select! {
+                    result = tokio::time::timeout_at(deadline, self.spawn_process()) => result,
+                    _ = &mut shutdown => return Err(WorkerCallError::Stopped),
+                };
+                *process = Some(match result {
+                    Ok(Ok(worker)) => worker,
+                    Ok(Err(error)) => return Err(WorkerCallError::Crashed(error.to_string())),
+                    Err(_) => return Err(WorkerCallError::QueueTimeout),
+                });
             }
-            WorkerResponse::Ready { .. } => {
-                terminate_process(process).await;
-                *process_guard = None;
-                Err(WorkerCallError::Crashed(
-                    "worker sent an unexpected readiness response".to_string(),
-                ))
+            if Instant::now() >= deadline {
+                return Err(WorkerCallError::QueueTimeout);
             }
+            self.ensure_available()?;
+            let requests = process
+                .as_ref()
+                .expect("worker process was initialized")
+                .requests
+                .clone();
+            drop(process);
+
+            // Reads and setting the same preferences again are safe to retry
+            // after an interrupted process, within the original time budget.
+            let retry_request = request.clone();
+            let (reply, response) = oneshot::channel();
+            let call = WorkerCall {
+                request,
+                deadline,
+                reply,
+            };
+            let sent = tokio::select! {
+                sent = tokio::time::timeout_at(deadline, requests.send(call)) =>
+                    sent.map_err(|_| WorkerCallError::QueueTimeout)?,
+                _ = &mut shutdown => return Err(WorkerCallError::Stopped),
+            };
+            if let Err(error) = sent {
+                // The process retired between cloning its channel and sending.
+                // This request was never dispatched, so retry the replacement.
+                request = error.0.request;
+                continue;
+            }
+            match tokio::select! {
+                result = response => result.unwrap_or_else(|_| WorkerReply::Finished(Err(WorkerCallError::Crashed(
+                    "extension worker supervisor exited without a response".to_string(),
+                )))),
+                _ = &mut shutdown => WorkerReply::Finished(Err(WorkerCallError::Stopped)),
+            } {
+                WorkerReply::Finished(Err(WorkerCallError::Restarted { reason, message })) => {
+                    self.ensure_available()?;
+                    if Instant::now() >= deadline {
+                        return Err(WorkerCallError::Timeout);
+                    }
+                    if matches!(reason, WorkerRestartReason::Crash) {
+                        if retried_crash {
+                            return Err(WorkerCallError::Restarted { reason, message });
+                        }
+                        // This budget belongs to the request, not source health:
+                        // successful peers must not enable an endless crash loop.
+                        retried_crash = true;
+                    }
+                    log::debug!("retrying interrupted extension call ({reason:?}): {message}");
+                    request = retry_request;
+                }
+                WorkerReply::Finished(result) => return result,
+                WorkerReply::Retry(unsent) => request = unsent,
+            };
         }
     }
 
@@ -366,10 +600,10 @@ impl WorkerClient {
         self.stopped.store(true, Ordering::Release);
         self.shutdown.notify_waiters();
         let mut process = self.process.lock().await;
-        if let Some(process) = process.as_mut() {
-            terminate_process(process).await;
+        if let Some(worker) = process.as_mut() {
+            worker.shutdown().await;
         }
-        *process = None;
+        process.take();
     }
 
     pub(crate) fn resume(&self) {
@@ -389,13 +623,13 @@ impl WorkerClient {
             && error.kind() != io::ErrorKind::NotFound
         {
             log::warn!(
-                "failed to remove extension worker staging file {}: {error}",
+                "failed to remove extension worker staging file {}: {error}; retrying at startup",
                 path.display()
             );
         }
     }
 
-    async fn spawn_process(&self) -> Result<(WorkerProcess, WorkerSourceInfo, String, String)> {
+    async fn spawn_process(&self) -> Result<WorkerProcess> {
         let mut child = Command::new(&self.worker_path)
             .arg(WORKER_MODE_FLAG)
             .arg("--plugin")
@@ -412,33 +646,25 @@ impl WorkerClient {
                     self.plugin_path.display()
                 )
             })?;
-        let stdin = child
+        let mut stdin = child
             .stdin
             .take()
             .ok_or_else(|| anyhow!("extension worker stdin was not piped"))?;
-        let stdout = child
-            .stdout
-            .take()
-            .ok_or_else(|| anyhow!("extension worker stdout was not piped"))?;
-        let mut worker = WorkerProcess {
-            child,
-            stdin,
-            stdout: AsyncBufReader::new(stdout),
-            next_request_id: 1,
-            source_info: WorkerSourceInfo {
-                id: 0,
-                name: String::new(),
-                url: String::new(),
-                version: String::new(),
-                icon: String::new(),
-                languages: tanoshi_lib::prelude::Lang::All,
-                nsfw: false,
+        let mut stdout = AsyncBufReader::new(
+            child
+                .stdout
+                .take()
+                .ok_or_else(|| anyhow!("extension worker stdout was not piped"))?,
+        );
+        write_frame_async(
+            &mut stdin,
+            &WorkerInitialization {
+                protocol_version: PROTOCOL_VERSION,
+                max_concurrent_calls: self.max_concurrent_calls,
             },
-            rustc_version: String::new(),
-            lib_version: String::new(),
-        };
-
-        let response = read_frame_async::<_, WorkerResponse>(&mut worker.stdout)
+        )
+        .await?;
+        let response = read_frame_async::<_, WorkerResponse>(&mut stdout)
             .await
             .context("failed to read extension worker readiness")?;
         let (source_info, rustc_version, lib_version) = match response {
@@ -451,65 +677,79 @@ impl WorkerClient {
             WorkerResponse::Ready {
                 protocol_version, ..
             } => {
-                terminate_process(&mut worker).await;
                 bail!(
                     "extension worker protocol mismatch: worker={protocol_version} host={PROTOCOL_VERSION}"
                 );
             }
-            other => {
-                terminate_process(&mut worker).await;
-                bail!("extension worker did not send readiness: {other:?}");
-            }
+            other => bail!("extension worker did not send readiness: {other:?}"),
         };
-        worker.source_info = source_info.clone();
-        worker.rustc_version = rustc_version.clone();
-        worker.lib_version = lib_version.clone();
-
-        if let Err(error) = self.apply_startup_preferences(&mut worker).await {
-            terminate_process(&mut worker).await;
-            return Err(error);
-        }
-
-        Ok((worker, source_info, rustc_version, lib_version))
+        let next_request_id = self
+            .apply_startup_preferences(&mut stdin, &mut stdout)
+            .await?;
+        let (requests, incoming) = mpsc::channel(self.max_concurrent_calls);
+        let (shutdown, stopped) = watch::channel(false);
+        let preferences = self.startup_preferences.clone();
+        let health = self.health.clone();
+        let max_concurrent_calls = self.max_concurrent_calls;
+        let task = tokio::spawn(async move {
+            dispatch_requests(
+                stdin,
+                stdout,
+                DispatcherState {
+                    requests: incoming,
+                    shutdown: stopped,
+                    preferences,
+                    health,
+                    next_request_id,
+                    max_concurrent_calls,
+                },
+            )
+            .await;
+            terminate_process(&mut child).await;
+        });
+        Ok(WorkerProcess {
+            requests,
+            shutdown,
+            task: Some(task),
+            source_info,
+            rustc_version,
+            lib_version,
+        })
     }
 
-    /// Re-applies the saved preferences to a freshly spawned worker before it
-    /// serves any request.
-    async fn apply_startup_preferences(&self, worker: &mut WorkerProcess) -> Result<()> {
-        let preferences = match self.startup_preferences.lock() {
-            Ok(guard) => guard.clone(),
-            Err(poisoned) => poisoned.into_inner().clone(),
-        };
+    /// Replay preferences before making the process available to callers.
+    async fn apply_startup_preferences(
+        &self,
+        stdin: &mut ChildStdin,
+        stdout: &mut AsyncBufReader<ChildStdout>,
+    ) -> Result<u64> {
+        let preferences = self
+            .startup_preferences
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .clone();
         let Some(preferences) = preferences else {
-            return Ok(());
+            return Ok(1);
         };
-
-        let id = worker.next_request_id;
-        worker.next_request_id = worker.next_request_id.wrapping_add(1);
         let envelope = WorkerRequestEnvelope {
-            id,
+            id: 1,
             request: WorkerRequest::SetPreferences { preferences },
         };
-        let response = async {
-            write_frame_async(&mut worker.stdin, &envelope).await?;
-            read_frame_async::<_, WorkerResponse>(&mut worker.stdout).await
-        }
-        .await
-        .context("failed to apply saved preferences to the extension worker")?;
-
+        write_frame_async(stdin, &envelope).await?;
+        let response = read_frame_async::<_, WorkerResponse>(stdout)
+            .await
+            .context("failed to apply saved preferences to the extension worker")?;
         match response {
             WorkerResponse::Result {
-                id: response_id,
+                id: 1,
                 value: WorkerValue::Unit,
-            } if response_id == id => Ok(()),
+            } => Ok(2),
             WorkerResponse::Error { kind, message, .. } => {
                 bail!("extension worker rejected saved preferences ({kind:?}): {message}")
             }
-            other => {
-                bail!(
-                    "extension worker sent an unexpected response to saved preferences: {other:?}"
-                )
-            }
+            other => bail!(
+                "extension worker sent an unexpected response to saved preferences: {other:?}"
+            ),
         }
     }
 }
@@ -520,6 +760,458 @@ impl Drop for WorkerClient {
             process.take();
         }
         self.cleanup_path();
+    }
+}
+
+enum TransportEvent {
+    Response(WorkerResponse),
+    Failed { message: String },
+    WriteExpired { id: u64, phase: WritePhase },
+    Rejected { id: u64, admission: SourceAdmission },
+}
+
+struct TransportTasks {
+    reader: JoinHandle<()>,
+    writer: JoinHandle<()>,
+}
+
+impl Drop for TransportTasks {
+    fn drop(&mut self) {
+        self.reader.abort();
+        self.writer.abort();
+    }
+}
+
+struct DispatcherState {
+    requests: mpsc::Receiver<WorkerCall>,
+    shutdown: watch::Receiver<bool>,
+    preferences: SavedPreferences,
+    health: Arc<SourceHealth>,
+    next_request_id: u64,
+    max_concurrent_calls: usize,
+}
+
+async fn dispatch_requests<R, W>(stdin: W, stdout: R, state: DispatcherState)
+where
+    R: AsyncRead + Unpin + Send + 'static,
+    W: AsyncWrite + Unpin + Send + 'static,
+{
+    let DispatcherState {
+        mut requests,
+        mut shutdown,
+        preferences,
+        health,
+        mut next_request_id,
+        max_concurrent_calls,
+    } = state;
+    let outgoing = WriteQueue::new(max_concurrent_calls);
+    let (events_tx, mut events) = mpsc::channel(max_concurrent_calls);
+    let _transport = TransportTasks {
+        reader: tokio::spawn(read_responses(stdout, events_tx.clone())),
+        writer: tokio::spawn(write_requests(
+            stdin,
+            outgoing.clone(),
+            events_tx,
+            health.clone(),
+        )),
+    };
+    let mut pending = BTreeMap::<u64, PendingCall>::new();
+    let mut retirement_deadline = None;
+    let failure = loop {
+        if *shutdown.borrow() {
+            break Some(WorkerCallError::Stopped);
+        }
+        if retirement_deadline.is_some() && pending.values().all(|call| call.reply.is_none()) {
+            break None;
+        }
+        let next_deadline = pending
+            .values()
+            .filter(|call| call.reply.is_some())
+            .map(|call| call.deadline)
+            .chain(retirement_deadline)
+            .min();
+        tokio::select! {
+            biased;
+            _ = shutdown.changed() => break Some(WorkerCallError::Stopped),
+            _ = wait_until(next_deadline) => {
+                let now = Instant::now();
+                if retirement_deadline.is_some_and(|deadline| deadline <= now) {
+                    break Some(WorkerCallError::Restarted {
+                        reason: WorkerRestartReason::TimeoutRecovery,
+                        message: "the timeout recovery grace period elapsed".to_string(),
+                    });
+                }
+                let mut expired_unwritten = Vec::new();
+                let mut executing_timeout = false;
+                let mut partial_timeout = false;
+                for (id, call) in pending.iter_mut().filter(|(_, call)| call.reply.is_some() && call.deadline <= now) {
+                    // Hold the same lock that covers poll_write's deadline
+                    // check and first bytes. Cancellation cannot race a write
+                    // that still appears to be queued.
+                    let mut progress = call.write_progress.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+                    let error = if progress.complete {
+                        executing_timeout = true;
+                        WorkerCallError::Timeout
+                    } else {
+                        progress.cancelled = true;
+                        if progress.bytes_written == 0 {
+                            expired_unwritten.push(*id);
+                            WorkerCallError::QueueTimeout
+                        } else {
+                            partial_timeout = true;
+                            WorkerCallError::Timeout
+                        }
+                    };
+                    if let Some(reply) = call.reply.take() {
+                        let _ = reply.send(WorkerReply::Finished(Err(error)));
+                    }
+                }
+                for id in expired_unwritten {
+                    pending.remove(&id);
+                }
+                if partial_timeout {
+                    // A truncated frame cannot share its stream with later
+                    // requests. Stop the writer and process without draining.
+                    break Some(WorkerCallError::Restarted {
+                        reason: WorkerRestartReason::TimeoutRecovery,
+                        message: "a request timed out during a partial write".to_string(),
+                    });
+                }
+                if executing_timeout {
+                    retirement_deadline.get_or_insert(now + TIMEOUT_DRAIN_GRACE);
+                    requests.close();
+                    while let Ok(call) = requests.try_recv() {
+                        let _ = call.reply.send(WorkerReply::Retry(call.request));
+                    }
+                }
+            },
+            event = events.recv() => match event {
+                Some(TransportEvent::Response(response)) => {
+                    let (id, result) = match response {
+                        WorkerResponse::Result { id, value } => (id, Ok(value)),
+                        WorkerResponse::Error { id, kind, message } =>
+                            (id, Err(WorkerCallError::Remote { kind, message })),
+                        WorkerResponse::Ready { .. } => break Some(WorkerCallError::Crashed(
+                            "worker sent an unexpected readiness response".to_string(),
+                        )),
+                    };
+                    let Some(mut call) = pending.remove(&id) else {
+                        break Some(WorkerCallError::Crashed(format!(
+                            "worker sent a response for unknown request id {id}",
+                        )));
+                    };
+                    if let Some(reply) = call.reply.take() {
+                        if matches!(&result, Ok(WorkerValue::Unit))
+                            && let Some(updated) = call.preferences
+                        {
+                            // Record an acknowledged change before the reply
+                            // reaches its caller or a replacement process starts.
+                            *preferences.lock().unwrap_or_else(|poisoned| poisoned.into_inner()) = Some(updated);
+                        }
+                        let _ = reply.send(WorkerReply::Finished(result));
+                    }
+                }
+                Some(TransportEvent::Failed { message }) =>
+                    break Some(WorkerCallError::Crashed(message)),
+                Some(TransportEvent::WriteExpired { id, phase }) => {
+                    if phase == WritePhase::Complete {
+                        // Keep the id to recognize a late reply, and give
+                        // already executing peers the usual drain period.
+                        if let Some(call) = pending.get_mut(&id) {
+                            if let Some(reply) = call.reply.take() {
+                                let _ = reply.send(WorkerReply::Finished(Err(WorkerCallError::Timeout)));
+                            }
+                            retirement_deadline.get_or_insert(Instant::now() + TIMEOUT_DRAIN_GRACE);
+                            requests.close();
+                            while let Ok(call) = requests.try_recv() {
+                                let _ = call.reply.send(WorkerReply::Retry(call.request));
+                            }
+                        }
+                    } else {
+                        if let Some(mut call) = pending.remove(&id)
+                            && let Some(reply) = call.reply.take()
+                        {
+                            let error = if phase == WritePhase::Partial { WorkerCallError::Timeout } else { WorkerCallError::QueueTimeout };
+                            let _ = reply.send(WorkerReply::Finished(Err(error)));
+                        }
+                        if phase == WritePhase::Partial {
+                            break Some(WorkerCallError::Restarted {
+                                reason: WorkerRestartReason::TimeoutRecovery,
+                                message: "a request timed out during a partial write".to_string(),
+                            });
+                        }
+                    }
+                }
+                Some(TransportEvent::Rejected { id, admission }) => {
+                    if let Some(mut call) = pending.remove(&id)
+                        && let Some(reply) = call.reply.take()
+                    {
+                        let _ = reply.send(WorkerReply::Finished(Err(WorkerCallError::Admission(admission))));
+                    }
+                }
+                None => break Some(WorkerCallError::Crashed(
+                    "extension worker transport stopped".to_string(),
+                )),
+            },
+            call = requests.recv(), if retirement_deadline.is_none() => match call {
+                Some(call) if call.deadline <= Instant::now() => {
+                    let _ = call.reply.send(WorkerReply::Finished(Err(WorkerCallError::QueueTimeout)));
+                }
+                Some(call) => {
+                    let admission = health.admission();
+                    if admission != SourceAdmission::Allowed {
+                        let _ = call.reply.send(WorkerReply::Finished(Err(WorkerCallError::Admission(admission))));
+                        continue;
+                    }
+                    let id = next_request_id;
+                    next_request_id = next_request_id.wrapping_add(1);
+                    let updated = match &call.request {
+                        WorkerRequest::SetPreferences { preferences } => Some(preferences.clone()),
+                        _ => None,
+                    };
+                    let progress = Arc::new(StdMutex::new(WriteProgress::default()));
+                    pending.insert(id, PendingCall {
+                        deadline: call.deadline,
+                        reply: Some(call.reply),
+                        preferences: updated,
+                        write_progress: progress.clone(),
+                    });
+                    match outgoing.push(OutgoingCall {
+                        envelope: WorkerRequestEnvelope { id, request: call.request },
+                        deadline: call.deadline,
+                        progress,
+                    }) {
+                        Ok(()) => {},
+                        Err(WriteQueueError::Full) => {
+                            // Capacity pressure is an admission failure, never
+                            // evidence that the extension process crashed.
+                            if let Some(mut call) = pending.remove(&id)
+                                && let Some(reply) = call.reply.take()
+                            {
+                                let _ = reply.send(WorkerReply::Finished(Err(WorkerCallError::QueueTimeout)));
+                            }
+                        }
+                        Err(WriteQueueError::Closed) => break Some(WorkerCallError::Crashed(
+                            "extension worker request writer stopped".to_string(),
+                        )),
+                    }
+                }
+                None => break Some(WorkerCallError::Stopped),
+            },
+        }
+    };
+    requests.close();
+    outgoing.close();
+    if let Some(error) = failure {
+        // EOF, a broken pipe, or a protocol failure cannot identify which
+        // concurrently executing extension call caused the process to fail.
+        // Count the event once and do not blame a preference writer by age.
+        if matches!(error, WorkerCallError::Crashed(_)) {
+            if pending.is_empty() {
+                log::warn!("idle extension worker exited without an active call: {error}");
+            } else {
+                let quarantined = health.record_failure();
+                log::error!("EXTENSION WORKER CRASH: {error}; quarantined={quarantined}");
+            }
+        }
+        for (_, mut call) in pending {
+            if let Some(reply) = call.reply.take() {
+                let error = if matches!(error, WorkerCallError::Crashed(_)) {
+                    let mut progress = call
+                        .write_progress
+                        .lock()
+                        .unwrap_or_else(|poisoned| poisoned.into_inner());
+                    let reason = if progress.bytes_written == 0 {
+                        // Prevent a first byte from racing this classification.
+                        progress.cancelled = true;
+                        WorkerRestartReason::NotDispatched
+                    } else {
+                        WorkerRestartReason::Crash
+                    };
+                    WorkerCallError::Restarted {
+                        reason,
+                        message: error.to_string(),
+                    }
+                } else {
+                    error.clone()
+                };
+                let _ = reply.send(WorkerReply::Finished(Err(error)));
+            }
+        }
+    }
+    // These calls never reached the writer. Retry them on the replacement
+    // under their original deadlines, including calls already in this queue.
+    // A sender that reserved capacity before close can still enqueue a call.
+    // Receive until the closed channel is fully drained, including reservations.
+    while let Some(call) = requests.recv().await {
+        let _ = call.reply.send(WorkerReply::Retry(call.request));
+    }
+}
+
+async fn wait_until(deadline: Option<Instant>) {
+    match deadline {
+        Some(deadline) => tokio::time::sleep_until(deadline).await,
+        None => std::future::pending().await,
+    }
+}
+
+async fn read_responses<R>(mut stdout: R, events: mpsc::Sender<TransportEvent>)
+where
+    R: AsyncRead + Unpin,
+{
+    loop {
+        let response = match read_frame_async_bytes(&mut stdout).await {
+            Ok(bytes) if bytes.len() <= INLINE_RESPONSE_LIMIT => {
+                serde_json::from_slice::<WorkerResponse>(&bytes).map_err(io::Error::other)
+            }
+            Ok(bytes) => tokio::task::spawn_blocking(move || {
+                serde_json::from_slice::<WorkerResponse>(&bytes)
+            })
+            .await
+            .map_err(io::Error::other)
+            .and_then(|result| result.map_err(io::Error::other)),
+            Err(error) => Err(error),
+        };
+        let event = match response {
+            Ok(response) => TransportEvent::Response(response),
+            Err(error) => TransportEvent::Failed {
+                message: error.to_string(),
+            },
+        };
+        let failed = matches!(event, TransportEvent::Failed { .. });
+        if events.send(event).await.is_err() || failed {
+            break;
+        }
+    }
+}
+
+async fn write_requests<W>(
+    mut stdin: W,
+    requests: Arc<WriteQueue>,
+    events: mpsc::Sender<TransportEvent>,
+    health: Arc<SourceHealth>,
+) where
+    W: AsyncWrite + Unpin,
+{
+    let _close = CloseWriteQueue(requests.clone());
+    while let Some(request) = requests.next().await {
+        let id = request.envelope.id;
+        let result = match serialize_frame(&request.envelope).map_err(io::Error::other) {
+            Ok(frame) => {
+                let mut writer = DeadlineWriter {
+                    writer: &mut stdin,
+                    progress: &request.progress,
+                    deadline: request.deadline,
+                    health: &health,
+                    frame_len: frame.len(),
+                };
+                tokio::time::timeout_at(request.deadline, async {
+                    writer.write_all(&frame).await?;
+                    writer.flush().await
+                })
+                .await
+                .unwrap_or_else(|_| {
+                    Err(io::Error::new(
+                        io::ErrorKind::TimedOut,
+                        "request write deadline expired",
+                    ))
+                })
+            }
+            Err(error) => Err(error),
+        };
+        if let Err(error) = result {
+            let phase = request
+                .progress
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner())
+                .phase();
+            let admission = health.admission();
+            let (event, stop) = if error.kind() == io::ErrorKind::TimedOut {
+                (
+                    TransportEvent::WriteExpired { id, phase },
+                    phase == WritePhase::Partial,
+                )
+            } else if phase == WritePhase::Unwritten && admission != SourceAdmission::Allowed {
+                (TransportEvent::Rejected { id, admission }, false)
+            } else {
+                (
+                    TransportEvent::Failed {
+                        message: error.to_string(),
+                    },
+                    true,
+                )
+            };
+            if events.send(event).await.is_err() || stop {
+                break;
+            }
+        }
+    }
+}
+
+/// A write that is still waiting for its first byte can be cancelled without
+/// retiring the process. Lock progress across poll_write so the supervisor's
+/// cancellation and the first bytes have a single ordering, even across threads.
+struct DeadlineWriter<'a, W> {
+    writer: &'a mut W,
+    progress: &'a StdMutex<WriteProgress>,
+    deadline: Instant,
+    health: &'a SourceHealth,
+    frame_len: usize,
+}
+
+impl<W: AsyncWrite + Unpin> AsyncWrite for DeadlineWriter<'_, W> {
+    fn poll_write(
+        self: Pin<&mut Self>,
+        context: &mut TaskContext<'_>,
+        bytes: &[u8],
+    ) -> Poll<io::Result<usize>> {
+        let this = self.get_mut();
+        let mut progress = this
+            .progress
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        if progress.cancelled || Instant::now() >= this.deadline {
+            progress.cancelled = true;
+            return Poll::Ready(Err(io::Error::new(
+                io::ErrorKind::TimedOut,
+                "request write deadline expired",
+            )));
+        }
+        if progress.bytes_written == 0 && this.health.admission() != SourceAdmission::Allowed {
+            return Poll::Ready(Err(io::Error::new(
+                io::ErrorKind::PermissionDenied,
+                "source admission was revoked",
+            )));
+        }
+        let result = Pin::new(&mut *this.writer).poll_write(context, bytes);
+        if let Poll::Ready(Ok(written)) = &result {
+            progress.bytes_written += written;
+            // All frame bytes were accepted by ChildStdin: written to the pipe
+            // on Unix, or buffered for a blocking write on Windows. Keep the
+            // drain period even if flush misses the deadline.
+            progress.complete = progress.bytes_written == this.frame_len;
+        }
+        result
+    }
+
+    fn poll_flush(self: Pin<&mut Self>, context: &mut TaskContext<'_>) -> Poll<io::Result<()>> {
+        let this = self.get_mut();
+        let mut progress = this
+            .progress
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        if progress.cancelled || Instant::now() >= this.deadline {
+            progress.cancelled = true;
+            return Poll::Ready(Err(io::Error::new(
+                io::ErrorKind::TimedOut,
+                "request write deadline expired",
+            )));
+        }
+        Pin::new(&mut *this.writer).poll_flush(context)
+    }
+
+    fn poll_shutdown(self: Pin<&mut Self>, context: &mut TaskContext<'_>) -> Poll<io::Result<()>> {
+        Pin::new(&mut *self.get_mut().writer).poll_shutdown(context)
     }
 }
 
@@ -552,9 +1244,39 @@ pub fn run_worker(plugin_path: PathBuf) -> Result<()> {
     let _ = env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info"))
         .try_init();
 
-    let entry = load_worker_entry(&plugin_path)?;
     let mut input = BufReader::new(io::stdin().lock());
-    let mut output = BufWriter::new(io::stdout().lock());
+    let initialization = read_frame_sync::<_, WorkerInitialization>(&mut input)?
+        .ok_or_else(|| anyhow!("missing extension worker initialization"))?;
+    if initialization.protocol_version != PROTOCOL_VERSION {
+        bail!(
+            "extension worker protocol mismatch: host={} worker={PROTOCOL_VERSION}",
+            initialization.protocol_version
+        );
+    }
+    if initialization.max_concurrent_calls == 0
+        || initialization.max_concurrent_calls > tokio::sync::Semaphore::MAX_PERMITS
+    {
+        bail!("invalid extension worker concurrency");
+    }
+    let entry = load_worker_entry(&plugin_path, initialization.max_concurrent_calls)?;
+    serve_requests(
+        entry,
+        input,
+        BufWriter::new(io::stdout()),
+        initialization.max_concurrent_calls,
+    )
+}
+
+fn serve_requests<R, W>(
+    entry: Arc<SourceEntry>,
+    mut input: R,
+    mut output: W,
+    max_concurrent_calls: usize,
+) -> Result<()>
+where
+    R: Read,
+    W: Write + Send + 'static,
+{
     write_frame_sync(
         &mut output,
         &WorkerResponse::Ready {
@@ -565,32 +1287,85 @@ pub fn run_worker(plugin_path: PathBuf) -> Result<()> {
         },
     )?;
 
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .max_blocking_threads(max_concurrent_calls)
+        .thread_name("tanoshi-extension")
+        .build()?;
+    let output = Arc::new(StdMutex::new(output));
     while let Some(request) = read_frame_sync::<_, WorkerRequestEnvelope>(&mut input)? {
-        let response = match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            execute_request(&entry, request.request)
-        })) {
-            Ok(Ok(value)) => WorkerResponse::Result {
-                id: request.id,
-                value,
-            },
-            Ok(Err(error)) => WorkerResponse::Error {
-                id: request.id,
-                kind: WorkerErrorKind::Operation,
-                message: error.to_string(),
-            },
-            Err(payload) => WorkerResponse::Error {
-                id: request.id,
-                kind: WorkerErrorKind::Panic,
-                message: panic_payload_message(&*payload),
-            },
-        };
-        write_frame_sync(&mut output, &response)?;
+        let permit = runtime.block_on(entry.limiter.clone().acquire_owned())?;
+        let entry = entry.clone();
+        let output = output.clone();
+        runtime.spawn_blocking(move || {
+            if let Err(error) = catch_worker_job(move || {
+                // Keep the permit through serialization and output to bound
+                // completed image buffers even when the pipe is slow.
+                let _permit = permit;
+                write_response(&output, execute_envelope(&entry, request))
+            }) {
+                log::error!("extension worker response task failed: {error}");
+                // spawn_blocking otherwise swallows panics. A broken or
+                // missing response must make the host restart immediately.
+                std::process::exit(1);
+            }
+        });
     }
 
     Ok(())
 }
 
-fn load_worker_entry(plugin_path: &Path) -> Result<Arc<SourceEntry>> {
+fn catch_worker_job(job: impl FnOnce() -> Result<()>) -> Result<()> {
+    std::panic::catch_unwind(std::panic::AssertUnwindSafe(job))
+        .map_err(|panic| anyhow!("response task panicked: {}", panic_payload_message(&*panic)))?
+}
+
+fn write_response<W: Write>(output: &StdMutex<W>, response: WorkerResponse) -> Result<()> {
+    let frame = match serialize_frame(&response) {
+        Ok(frame) => Ok(frame),
+        Err(error) => {
+            let id = match response {
+                WorkerResponse::Result { id, .. } | WorkerResponse::Error { id, .. } => id,
+                WorkerResponse::Ready { .. } => unreachable!(),
+            };
+            serialize_frame(&WorkerResponse::Error {
+                id,
+                kind: WorkerErrorKind::Protocol,
+                message: error.to_string(),
+            })
+        }
+    }?;
+    // Release image buffers before waiting for other responses to write.
+    drop(response);
+    let mut output = output
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    output.write_all(&frame)?;
+    output.flush()?;
+    Ok(())
+}
+
+fn execute_envelope(entry: &Arc<SourceEntry>, request: WorkerRequestEnvelope) -> WorkerResponse {
+    match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        execute_request(entry, request.request)
+    })) {
+        Ok(Ok(value)) => WorkerResponse::Result {
+            id: request.id,
+            value,
+        },
+        Ok(Err(error)) => WorkerResponse::Error {
+            id: request.id,
+            kind: WorkerErrorKind::Operation,
+            message: error.to_string(),
+        },
+        Err(payload) => WorkerResponse::Error {
+            id: request.id,
+            kind: WorkerErrorKind::Panic,
+            message: panic_payload_message(&*payload),
+        },
+    }
+}
+
+fn load_worker_entry(plugin_path: &Path, max_concurrent_calls: usize) -> Result<Arc<SourceEntry>> {
     let library = unsafe { libloading::Library::new(plugin_path) }?;
     let declaration = unsafe {
         library
@@ -624,7 +1399,7 @@ fn load_worker_entry(plugin_path: &Path) -> Result<Arc<SourceEntry>> {
         )
     })?;
 
-    Ok(Arc::new(source.into_entry(1)?))
+    Ok(Arc::new(source.into_entry(max_concurrent_calls)?))
 }
 
 fn execute_request(entry: &Arc<SourceEntry>, request: WorkerRequest) -> Result<WorkerValue> {
@@ -668,9 +1443,9 @@ fn execute_request(entry: &Arc<SourceEntry>, request: WorkerRequest) -> Result<W
     }
 }
 
-async fn terminate_process(process: &mut WorkerProcess) {
-    let _ = process.child.kill().await;
-    let _ = process.child.wait().await;
+async fn terminate_process(child: &mut Child) {
+    let _ = child.kill().await;
+    let _ = child.wait().await;
 }
 
 async fn write_frame_async<W, T>(writer: &mut W, value: &T) -> io::Result<()>
@@ -775,3 +1550,6 @@ mod base64_bytes {
         STANDARD.decode(encoded).map_err(D::Error::custom)
     }
 }
+
+#[cfg(test)]
+mod tests;
