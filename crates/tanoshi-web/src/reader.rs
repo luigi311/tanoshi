@@ -46,6 +46,21 @@ struct ZoomAnchor {
     center_ratio: f64,
 }
 
+#[derive(Clone, Copy)]
+struct ImageDimensions {
+    width: u32,
+    height: u32,
+}
+
+#[derive(Clone, Copy, Default, PartialEq, Eq)]
+struct DoublePageLayout {
+    current_page: usize,
+    current_is_landscape: bool,
+    show_second: bool,
+    prev_page: Option<usize>,
+    next_page: Option<usize>,
+}
+
 pub struct Reader {
     chapter_id: Mutable<i64>,
     manga_id: Mutable<i64>,
@@ -57,6 +72,8 @@ pub struct Reader {
     current_page: Mutable<usize>,
     next_page: Mutable<Option<usize>>,
     pages: MutableVec<(String, PageStatus)>,
+    page_dimensions: RefCell<Vec<Option<ImageDimensions>>>,
+    double_page_layout: Mutable<DoublePageLayout>,
     pages_loaded: Mutable<ContinousLoaded>,
     reader_settings: Rc<ReaderSettings>,
     zoom: Mutable<f64>,
@@ -68,6 +85,8 @@ pub struct Reader {
     end_observer: RefCell<Option<IntersectionObserver>>,
     end_observer_callback: RefCell<Option<Closure<dyn FnMut(js_sys::Array, IntersectionObserver)>>>,
     is_zooming: Mutable<bool>,
+    viewport_update_pending: Mutable<bool>,
+    visible_pages: Mutable<Option<(usize, usize)>>,
     source_id: Mutable<i64>,
 }
 
@@ -89,6 +108,8 @@ impl Reader {
             current_page: Mutable::new(page as usize),
             next_page: Mutable::new(None),
             pages: MutableVec::new(),
+            page_dimensions: RefCell::new(Vec::new()),
+            double_page_layout: Mutable::new(DoublePageLayout::default()),
             pages_loaded: Mutable::new(ContinousLoaded::Initial),
             reader_settings: ReaderSettings::new(false, true),
             zoom: Mutable::new(1.0),
@@ -100,6 +121,8 @@ impl Reader {
             end_observer: RefCell::new(None),
             end_observer_callback: RefCell::new(None),
             is_zooming: Mutable::new(false),
+            viewport_update_pending: Mutable::new(false),
+            visible_pages: Mutable::new(None),
             source_id: Mutable::new(0),
         })
     }
@@ -157,6 +180,68 @@ impl Reader {
         // cb is moved into JS; no drop needed
     }
 
+    fn update_continuous_page(this: Rc<Self>) {
+        if this.is_zooming.get()
+            || !matches!(this.reader_settings.reader_mode.get(), ReaderMode::Continous)
+        {
+            return;
+        }
+        // Let the first image load restore a bookmarked page before probing the viewport.
+        if matches!(this.pages_loaded.get(), ContinousLoaded::Initial)
+            && this.current_page.get() > 0
+        {
+            return;
+        }
+
+        let pages_len = this.pages.lock_ref().len();
+        if pages_len == 0 {
+            return;
+        }
+
+        // Loading an image changes page heights even when the user has stopped scrolling.
+        // Page tops are ordered, so avoid scanning the whole chapter after every load.
+        let document = document();
+        let viewport_h = Self::viewport_h();
+        let page_at_y = |y: f64| {
+            let mut start = 0;
+            let mut end = pages_len;
+            while start < end {
+                let index = start + (end - start) / 2;
+                let above_probe = document
+                    .get_element_by_id(&index.to_string())
+                    .is_some_and(|el| el.get_bounding_client_rect().top() <= y);
+                if above_probe {
+                    start = index + 1;
+                } else {
+                    end = index;
+                }
+            }
+            start.saturating_sub(1)
+        };
+        let page_no = page_at_y(viewport_h / 2.0);
+        // Several short panels may be visible at once, beyond the usual preload count.
+        this.visible_pages.set_neq(Some((page_at_y(0.0), page_at_y(viewport_h))));
+
+        Self::maybe_complete_chapter(this.clone());
+
+        let is_last_page = pages_len == this.current_page.get() + 1;
+        if !(is_last_page && page_no == 0) {
+            this.current_page.set_neq(page_no);
+        }
+    }
+
+    fn schedule_continuous_page_update(this: Rc<Self>) {
+        if this.viewport_update_pending.get() {
+            return;
+        }
+        this.viewport_update_pending.set(true);
+        Self::request_animation_frame(move || {
+            if this.viewport_update_pending.replace(false) {
+                Self::update_continuous_page(this);
+            }
+        });
+    }
+
     fn apply_zoom_anchor(anchor: ZoomAnchor) {
         let el = match document().get_element_by_id(&anchor.page_index.to_string()) {
             Some(el) => el,
@@ -193,6 +278,7 @@ impl Reader {
                 Self::apply_zoom_anchor(anchor);
             }
             this.is_zooming.set_neq(false);
+            Self::schedule_continuous_page_update(this);
         }));
     }
 
@@ -202,6 +288,8 @@ impl Reader {
         this.timeout.set(None);
         this.completion_sent.set(false);
         this.pages.lock_mut().clear();
+        this.page_dimensions.borrow_mut().clear();
+        this.visible_pages.set(None);
         this.pages_loaded.set(ContinousLoaded::Initial);
         this.spinner.set_active(true);
         this.loader.load(clone!(this => async move {
@@ -215,6 +303,7 @@ impl Reader {
                     this.prev_chapter.set_neq(result.prev);
 
                     // Update the number of pages so the correct page can be loaded
+                    *this.page_dimensions.borrow_mut() = vec![None; result.pages.len()];
                     let pages = result.pages.iter().map(|page| (page.to_string(), PageStatus::Initial)).collect();
                     this.pages.lock_mut().replace_cloned(pages);
 
@@ -264,6 +353,7 @@ impl Reader {
 
                     debug!("set current_page to {page} nav: {nav:?}");
                     this.current_page.set_neq(page);
+                    Self::update_double_page_layout(this.clone());
 
                     this.pages_loaded.set(ContinousLoaded::Initial);
 
@@ -904,23 +994,34 @@ impl Reader {
     }
 
     fn pages_signal(&self) -> impl SignalVec<Item = (usize, String, PageStatus)> + use<> {
+        // Keep per-page status changes as vector diffs so only that page's DOM is replaced.
         self.pages
             .signal_vec_cloned()
             .enumerate()
             .filter_map(move |(index, (page, status))| index.get().map(|index| (index, page, status)))
-            .to_signal_cloned()
-            .to_signal_vec()
     }
 
     fn image_src_signal(&self, index: usize, preload_prev: usize, preload_next: usize, page: String, status: PageStatus)-> impl Signal<Item = Option<String>> + use<> {
         let source_id = self.source_id.get();
-        self.current_page.signal_cloned().map(move |current_page| {
-            if (index >= current_page.saturating_sub(preload_prev) && index <= current_page + preload_next) || matches!(status, PageStatus::Loaded) {
-                Some(proxied_image_url(&page, source_id))
-            } else {
-                None
+        let continuous = matches!(self.reader_settings.reader_mode.get(), ReaderMode::Continous);
+        map_ref! {
+            let current_page = self.current_page.signal(),
+            let visible_pages = self.visible_pages.signal() => {
+                let (first, last) = if continuous {
+                    (*visible_pages).unwrap_or((*current_page, *current_page))
+                } else {
+                    (*current_page, *current_page)
+                };
+                if (index >= first.saturating_sub(preload_prev)
+                    && index <= last.saturating_add(preload_next))
+                    || matches!(status, PageStatus::Loaded)
+                {
+                    Some(proxied_image_url(&page, source_id))
+                } else {
+                    None
+                }
             }
-        })
+        }.dedupe_cloned()
     }
 
     fn fit_signal(&self)-> impl Signal<Item = (Fit, f64)> + use<> {
@@ -934,10 +1035,17 @@ impl Reader {
     }
 
     fn render_vertical(this: Rc<Self>) -> Dom {
+        this.visible_pages.set(None);
         html!("div", {
             .attr("id", "page-list")
             .style("display", "flex")
             .style("flex-direction", "column")
+            .after_inserted(clone!(this => move |_| Self::schedule_continuous_page_update(this)))
+            .after_removed(clone!(this => move |_| this.viewport_update_pending.set(false)))
+            .future(this.fit_signal().for_each(clone!(this => move |_| {
+                Self::schedule_continuous_page_update(this.clone());
+                async {}
+            })))
             .future(this.pages_loaded.signal_cloned().for_each(clone!(this => move |loaded| {
                 let page = this.current_page.get();
                 trace!("page: {page} loaded: {loaded:?}");
@@ -1001,8 +1109,8 @@ impl Reader {
                         }))
                         .event(clone!(this, page => move |_: events::Error| {
                             log::error!("error loading image for page {}", index);
-                            let mut lock = this.pages.lock_mut();
-                            lock.set_cloned(index, (page.clone(), PageStatus::Error));
+                            this.pages.lock_mut().set_cloned(index, (page.clone(), PageStatus::Error));
+                            Self::schedule_continuous_page_update(this.clone());
                         }))
                         .event(clone!(this, page => move |_: events::Load| {
                             this.pages_loaded.set_if(ContinousLoaded::Loaded, |a, _| {
@@ -1012,7 +1120,7 @@ impl Reader {
                                 let mut lock = this.pages.lock_mut();
                                 lock.set_cloned(index, (page.clone(), PageStatus::Loaded));
                             }
-                            Self::maybe_complete_chapter(this.clone());
+                            Self::schedule_continuous_page_update(this.clone());
                         }))
                         .event(clone!(this => move |_: events::Click| {
                             this.is_bar_visible.set_neq(!this.is_bar_visible.get());
@@ -1028,8 +1136,8 @@ impl Reader {
                                 .style("margin", "auto")
                                 .text("Retry")
                                 .event(clone!(this, page => move |_: events::Click| {
-                                    let mut lock = this.pages.lock_mut();
-                                    lock.set_cloned(index, (page.clone(), PageStatus::Initial));
+                                    this.pages.lock_mut().set_cloned(index, (page.clone(), PageStatus::Initial));
+                                    Self::schedule_continuous_page_update(this.clone());
                                 }))
                             })
                         ])
@@ -1072,34 +1180,16 @@ impl Reader {
                 }
             }))
             .global_event(clone!(this => move |_: events::Scroll| {
-                if this.is_zooming.get() {
-                    return;
+                if !this.pages.lock_ref().is_empty() {
+                    // A real scroll supersedes the pending initial position restoration.
+                    this.pages_loaded.set_if(ContinousLoaded::Scrolled, |loaded, _| {
+                        matches!(loaded, ContinousLoaded::Initial)
+                    });
                 }
-
-                let pages_len = this.pages.lock_ref().len();
-                if pages_len == 0 { return; }
-
-                let probe_y = Reader::scroll_y() + (Reader::viewport_h() / 2.0);
-
-                let mut page_no = 0usize;
-
-                for i in 0..pages_len {
-                    if let Some(el) = document().get_element_by_id(&i.to_string()) {
-                        let top = Reader::element_abs_top(&el);
-                        if top <= probe_y {
-                            page_no = i;
-                        } else {
-                            break; // tops increase as you go down
-                        }
-                    }
-                }
-
-                Self::maybe_complete_chapter(this.clone());
-
-                let is_last_page = pages_len == this.current_page.get() + 1;
-                if !(is_last_page && page_no == 0) {
-                    this.current_page.set_neq(page_no);
-                }
+                Self::schedule_continuous_page_update(this.clone());
+            }))
+            .global_event(clone!(this => move |_: events::Resize| {
+                Self::schedule_continuous_page_update(this.clone());
             }))
         })
     }
@@ -1185,7 +1275,47 @@ impl Reader {
         })
     }
 
+    fn update_double_page_layout(this: Rc<Self>) {
+        if !matches!(this.reader_settings.reader_mode.get(), ReaderMode::Paged)
+            || !matches!(this.reader_settings.display_mode.get().get(), DisplayMode::Double)
+        {
+            return;
+        }
+
+        let current_page = this.current_page.get();
+        let dimensions = this.page_dimensions.borrow();
+        let pages = this.pages.lock_ref();
+        let is_landscape = |index: usize| {
+            dimensions.get(index).copied().flatten()
+                .is_some_and(|image| image.width > image.height)
+        };
+        let current_is_landscape = is_landscape(current_page);
+        let second_page = current_page.saturating_add(1);
+        let second_is_portrait = dimensions.get(second_page).copied().flatten()
+            .is_some_and(|image| image.width < image.height);
+        let second_has_error = pages.get(second_page)
+            .is_some_and(|(_, status)| matches!(status, PageStatus::Error));
+        let show_second = !current_is_landscape && (second_is_portrait || second_has_error);
+        let next_page = current_page.saturating_add(if show_second { 2 } else { 1 });
+        let prev_step = if current_page == 1 || is_landscape(current_page.saturating_sub(1)) {
+            1
+        } else {
+            2
+        };
+        let layout = DoublePageLayout {
+            current_page,
+            current_is_landscape,
+            show_second,
+            prev_page: current_page.checked_sub(prev_step),
+            next_page: (next_page < pages.len()).then_some(next_page),
+        };
+        this.prev_page.set_neq(layout.prev_page);
+        this.next_page.set_neq(layout.next_page);
+        this.double_page_layout.set_neq(layout);
+    }
+
     fn render_double(this: Rc<Self>) -> Dom {
+        Self::update_double_page_layout(this.clone());
         html!("div", {
             .attr("id", "page-list")
             .style("display", "flex")
@@ -1193,6 +1323,10 @@ impl Reader {
             .style_signal("width", this.zoom.signal().map(|zoom| format!("{}vw", 100.0 * zoom)))
             .style_signal("height", this.zoom.signal().map(|zoom| format!("{}vh", 100.0 * zoom)))
             .style("align-items", "center")
+            .future(this.current_page.signal().for_each(clone!(this => move |_| {
+                Self::update_double_page_layout(this.clone());
+                async {}
+            })))
             .style_signal("flex-direction", this.reader_settings.direction.signal_cloned().map(|x| match x {
                 Direction::LeftToRight => "row",
                 Direction::RightToLeft => "row-reverse",
@@ -1216,70 +1350,42 @@ impl Reader {
                             _ => "100%"
                         }))
                         .attr_signal("src", this.image_src_signal(index, 2, 4, page.clone(), status))
-                        .event(clone!(this, page => move |_: events::Error| {
-                            log::error!("error loading image for page {}", index);
-                            let mut lock = this.pages.lock_mut();
-                            lock.set_cloned(index, (page.clone(), PageStatus::Error));
-                        }))
-                        .event(clone!(this, page => move |_: events::Load| {
-                            if !matches!(status, PageStatus::Loaded) {
-                                let mut lock = this.pages.lock_mut();
-                                lock.set_cloned(index, (page.clone(), PageStatus::Loaded));
-                            }
-                        }))
-                        .with_node!(img => {
-                            .style_signal("width", this.current_page.signal_cloned().map(clone!(this, index, img => move |current_page|
-                                if (index == current_page && img.natural_width() > img.natural_height())
-                                    || matches!(this.reader_settings.fit.get(), crate::common::Fit::Height) {
+                        .style_signal("width", map_ref! {
+                            let layout = this.double_page_layout.signal(),
+                            let fit = this.reader_settings.fit.signal() => {
+                                if (index == layout.current_page && layout.current_is_landscape)
+                                    || matches!(fit, Fit::Height) {
                                     "initial"
                                 } else {
                                     "50%"
                                 }
-                            )))
-                            .visible_signal(this.current_page.signal_cloned().map(clone!(this, index, img => move |current_page| {
-                                let mut hidden = true;
-                                if index == current_page {
-                                    hidden = false;
-                                    if current_page > 0 {
-                                        let is_prev_img_landscape = document()
-                                            .get_element_by_id(format!("{}", current_page - 1).as_str())
-                                            .and_then(|el| el.dyn_into::<web_sys::HtmlImageElement>().ok())
-                                            .is_some_and(|prev_img| prev_img.natural_width() > prev_img.natural_height());
-                                        let sub = if is_prev_img_landscape || current_page == 1 {
-                                            1
-                                        } else {
-                                            2
-                                        };
-                                        this.prev_page.set_neq(current_page.checked_sub(sub));
-                                    }
-                                } else if index == current_page + 1 {
-                                    let is_prev_img_portrait = document()
-                                        .get_element_by_id(format!("{current_page}").as_str())
-                                        .and_then(|el| el.dyn_into::<web_sys::HtmlImageElement>().ok())
-                                        .is_none_or(|prev_img| prev_img.natural_width() <= prev_img.natural_height());
-
-                                    let pages_len = this.pages.lock_ref().len();
-                                    if img.natural_width() < img.natural_height() && is_prev_img_portrait {
-                                        hidden = false;
-                                        if current_page + 2 < pages_len {
-                                            this.next_page.set_neq(Some(current_page + 2));
-                                        } else {
-                                            this.next_page.set_neq(None);
-                                        }
-                                    } else if current_page + 1 < pages_len {
-                                        this.next_page.set_neq(Some(current_page + 1));
-                                    } else {
-                                        this.next_page.set_neq(None);
-                                    }
+                            }
+                        }.dedupe())
+                        .visible_signal(this.double_page_layout.signal().map(move |layout| {
+                            index == layout.current_page
+                                || (layout.show_second && index == layout.current_page + 1)
+                        }).dedupe())
+                        .event(clone!(this, page => move |_: events::Error| {
+                            log::error!("error loading image for page {}", index);
+                            this.pages.lock_mut().set_cloned(index, (page.clone(), PageStatus::Error));
+                            if let Some(dimensions) = this.page_dimensions.borrow_mut().get_mut(index) {
+                                *dimensions = None;
+                            }
+                            Self::update_double_page_layout(this.clone());
+                        }))
+                        .with_node!(img => {
+                            .event(clone!(this, page, img => move |_: events::Load| {
+                                // Keep dimensions when the loaded image's status replaces its DOM node.
+                                if let Some(dimensions) = this.page_dimensions.borrow_mut().get_mut(index) {
+                                    *dimensions = Some(ImageDimensions {
+                                        width: img.natural_width(),
+                                        height: img.natural_height(),
+                                    });
                                 }
-
-                                !hidden
-                            })))
-                            .event(clone!(this, index => move |_: events::Load| {
-                                let current_page = this.current_page.get();
-                                if index == current_page || index == current_page + 1 {
-                                    this.current_page.set_neq(current_page);
+                                if !matches!(status, PageStatus::Loaded) {
+                                    this.pages.lock_mut().set_cloned(index, (page.clone(), PageStatus::Loaded));
                                 }
+                                Self::update_double_page_layout(this.clone());
                             }))
                         })
                     })
@@ -1295,37 +1401,18 @@ impl Reader {
                             crate::common::Fit::Width => "initial",
                             _ => "100%"
                         }))
-                        .visible_signal(this.current_page.signal_cloned().map(clone!(this, index => move |current_page| {
-                            let mut hidden = true;
-                            if index == current_page {
-                                hidden = false;
-                                if current_page > 0 {
-                                    let sub = if current_page == 1 {
-                                        1
-                                    } else {
-                                        2
-                                    };
-                                    this.prev_page.set_neq(current_page.checked_sub(sub));
-                                }
-                            } else if index == current_page + 1 {
-                                hidden = false;
-                                if current_page + 2 < this.pages.lock_ref().len() {
-                                    this.next_page.set_neq(Some(current_page + 2));
-                                } else {
-                                    this.next_page.set_neq(None);
-                                }
-                            }
-
-                            !hidden
-                        })))
+                        .visible_signal(this.double_page_layout.signal().map(move |layout| {
+                            index == layout.current_page
+                                || (layout.show_second && index == layout.current_page + 1)
+                        }).dedupe())
                         .children(&mut [
                             html!("button", {
                                 .style("margin", "auto")
                                 .style("z-index", "20")
                                 .text("Retry")
                                 .event(clone!(this, page => move |_: events::Click| {
-                                    let mut lock = this.pages.lock_mut();
-                                    lock.set_cloned(index, (page.clone(), PageStatus::Initial));
+                                    this.pages.lock_mut().set_cloned(index, (page.clone(), PageStatus::Initial));
+                                    Self::update_double_page_layout(this.clone());
                                 }))
                             })
                         ])
