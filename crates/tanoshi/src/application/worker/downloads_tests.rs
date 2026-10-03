@@ -308,8 +308,11 @@ async fn archive_writes_keep_timers_responsive() {
     let mut zip = ZipArchive::new(File::open(&tmp).unwrap()).unwrap();
     assert_eq!(zip.len(), 2);
     for index in 0..2 {
+        let mut entry = zip.by_index(index).unwrap();
+        assert_eq!(entry.compression(), zip::CompressionMethod::Stored);
+        assert_eq!(entry.compressed_size(), entry.size());
         let mut page = Vec::new();
-        zip.by_index(index).unwrap().read_to_end(&mut page).unwrap();
+        entry.read_to_end(&mut page).unwrap();
         assert_eq!(page, data.as_ref());
     }
 }
@@ -433,7 +436,12 @@ async fn retry_revalidates_archive_after_failed_database_update() {
 #[tokio::test]
 async fn restart_resumes_valid_partial_archive_during_image_request() {
     let fixture = Fixture::new().await;
-    fixture.write_archive(1, 1, true);
+    fixture.write_archive_with_options(
+        1,
+        1,
+        true,
+        SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated),
+    );
     fixture.mark_pages(1, 1).await;
     let tmp = fixture.archive_path(1, true);
     let (mut worker, _) = fixture
@@ -450,6 +458,15 @@ async fn restart_resumes_valid_partial_archive_during_image_request() {
         .await;
     fixture.drain(&mut worker).await;
     assert_eq!(fixture.calls.lock().unwrap().len(), 2);
+    let mut zip = ZipArchive::new(File::open(fixture.archive_path(1, false)).unwrap()).unwrap();
+    assert_eq!(
+        zip.by_index(0).unwrap().compression(),
+        zip::CompressionMethod::Deflated
+    );
+    assert_eq!(
+        zip.by_index(1).unwrap().compression(),
+        zip::CompressionMethod::Stored
+    );
 }
 
 #[tokio::test]

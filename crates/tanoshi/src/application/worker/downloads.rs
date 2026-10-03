@@ -360,7 +360,10 @@ where
             } else {
                 ZipWriter::new(File::create(tmp)?)
             };
-            zip.start_file(filename, SimpleFileOptions::default())?;
+            zip.start_file(
+                filename,
+                SimpleFileOptions::default().compression_method(zip::CompressionMethod::Stored),
+            )?;
             zip.write_all(&data)?;
             zip.finish()?.sync_all()?;
             Ok(())
