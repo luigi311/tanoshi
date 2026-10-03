@@ -11,11 +11,14 @@ use anyhow::{Result, anyhow};
 use libloading::Library;
 use once_cell::sync::OnceCell;
 use tanoshi_lib::prelude::{Extension, SourceInfo};
-use tokio::sync::Semaphore;
+use tokio::sync::{Notify, Semaphore};
 
 use std::panic::{AssertUnwindSafe, catch_unwind};
 
-use super::worker::{WorkerClient, WorkerSourceInfo};
+use super::{
+    queue::RequestQueue,
+    worker::{WorkerClient, WorkerSourceInfo},
+};
 
 pub(crate) const SOURCE_HEALTH_FAILURE_THRESHOLD: u32 = 3;
 pub(crate) const SOURCE_MAX_ABANDONED_CALLS: usize = 3;
@@ -35,14 +38,24 @@ pub(crate) struct SourceHealth {
     state: AtomicU8,
     read_panics: AtomicU32,
     abandoned_calls: AtomicUsize,
+    max_abandoned_calls: usize,
+    pub(crate) admission_changed: Notify,
 }
 
 impl SourceHealth {
     pub(crate) fn new() -> Arc<Self> {
+        Self::with_concurrency_limit(SOURCE_MAX_ABANDONED_CALLS)
+    }
+
+    fn with_concurrency_limit(max_concurrent_calls: usize) -> Arc<Self> {
         Arc::new(Self {
             state: AtomicU8::new(HEALTHY),
             read_panics: AtomicU32::new(0),
             abandoned_calls: AtomicUsize::new(0),
+            // Open the circuit even with a one- or two-slot configuration when
+            // abandoned native calls could otherwise hold every slot forever.
+            max_abandoned_calls: SOURCE_MAX_ABANDONED_CALLS.min(max_concurrent_calls.max(1)),
+            admission_changed: Notify::new(),
         })
     }
 
@@ -52,7 +65,7 @@ impl SourceHealth {
         }
 
         let abandoned_calls = self.abandoned_calls.load(Ordering::Acquire);
-        if abandoned_calls >= SOURCE_MAX_ABANDONED_CALLS {
+        if abandoned_calls >= self.max_abandoned_calls {
             SourceAdmission::CircuitOpen { abandoned_calls }
         } else {
             SourceAdmission::Allowed
@@ -61,6 +74,7 @@ impl SourceHealth {
 
     pub(crate) fn quarantine(&self) {
         self.state.store(QUARANTINED, Ordering::Release);
+        self.admission_changed.notify_waiters();
     }
 
     pub(crate) fn record_read_panic(&self) -> bool {
@@ -87,9 +101,14 @@ impl SourceHealth {
 
     pub(crate) fn start_abandoned_call(&self) -> usize {
         self.mark_degraded();
-        self.abandoned_calls
+        let count = self
+            .abandoned_calls
             .fetch_add(1, Ordering::AcqRel)
-            .saturating_add(1)
+            .saturating_add(1);
+        if count >= self.max_abandoned_calls {
+            self.admission_changed.notify_waiters();
+        }
+        count
     }
 
     pub(crate) fn complete_abandoned_call(&self) {
@@ -193,7 +212,9 @@ pub struct SourceEntry {
     // library.
     pub(crate) extension: Option<RwLock<Box<dyn Extension>>>,
     pub(crate) worker: Option<Arc<WorkerClient>>,
+    // The worker bounds its blocking threads separately from the host queue.
     pub(crate) limiter: Arc<Semaphore>,
+    pub(crate) queue: Arc<RequestQueue>,
     pub(crate) health: Arc<SourceHealth>,
     #[allow(dead_code)]
     pub(crate) library: Option<LoadedLibrary>,
@@ -259,6 +280,7 @@ impl SourceEntry {
             extension: None,
             worker: Some(worker),
             limiter: Arc::new(Semaphore::new(max_concurrent_calls.max(1))),
+            queue: RequestQueue::new(max_concurrent_calls),
             health,
             library: None,
             plugin_path: Some(plugin_path),
@@ -338,7 +360,8 @@ impl Source {
             extension: Some(RwLock::new(extension)),
             worker: None,
             limiter: Arc::new(Semaphore::new(max_concurrent_calls)),
-            health: SourceHealth::new(),
+            queue: RequestQueue::new(max_concurrent_calls),
+            health: SourceHealth::with_concurrency_limit(max_concurrent_calls),
             library,
             plugin_path,
             rustc_version,

@@ -5,20 +5,32 @@
 Installed sources share one extension process per source. Read requests from all
 users and background jobs can run concurrently, with a default limit of 8 calls
 per source. Each extension's own rate limiter still controls request pacing.
-Metadata and image deadlines include time spent waiting in that rate limiter.
-Preference changes wait in the host until running reads finish and hold back new
-reads while the update completes. A timeout in that host queue does not retire
-the worker or count as a source failure.
+
+Each source has an independent queue in the VM. User activity, including manual
+refreshes, has high priority; downloads and scheduled updates have low priority.
+When a slot becomes available, queued high-priority requests run first. Requests
+with the same priority run in arrival order. Running calls finish normally.
+
+Requests wait for a slot without an admission timeout. Metadata and image
+deadlines start after a slot is acquired and include time spent waiting in the
+extension's rate limiter. After admission, preference changes wait in the host
+until running reads finish and hold back new reads while the update completes.
+That wait uses the metadata deadline; a timeout while waiting for reads to finish
+does not retire the worker or count as a source failure.
 
 Configure the limits in `config.yml`:
 
 ```yaml
 extension:
   max_concurrent_calls_per_source: 8
-  admission_timeout_ms: 1000
   metadata_timeout_secs: 30
   image_timeout_secs: 120
 ```
+
+The global `max_concurrent_calls_per_source` setting currently applies the same
+limit to every source independently. The planned design will remove this global
+concurrency setting and dynamically determine each source's concurrency from the
+rate limits defined by its extension.
 
 An executing call that times out retires its worker. Other running calls get up
 to one second to finish before the process is terminated. Reads and preference

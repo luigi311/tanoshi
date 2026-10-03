@@ -20,11 +20,12 @@ use bytes::Bytes;
 use chrono::Utc;
 use reqwest::Url;
 use std::{
+    collections::VecDeque,
     fs::{self, File},
     io::{ErrorKind, Write},
     path::{Path, PathBuf},
 };
-use tanoshi_vm::extension::ExtensionManager;
+use tanoshi_vm::extension::{ExtensionManager, RequestPriority};
 use zip::{ZipArchive, ZipWriter, result::ZipError, write::SimpleFileOptions};
 
 use tokio::{
@@ -75,6 +76,7 @@ where
     ext: ExtensionManager,
     _notifier: Notification<UserRepositoryImpl>,
     rx: DownloadReceiver,
+    pending_commands: VecDeque<Command>,
     chapter_update_receiver: ChapterUpdateReceiver,
     auto_download_chapter: bool,
     validated_chapter: Option<i64>,
@@ -106,9 +108,10 @@ where
             manga_repo,
             download_repo,
             library_repo,
-            ext,
+            ext: ext.with_priority(RequestPriority::Low),
             _notifier: notifier,
             rx: download_receiver,
+            pending_commands: VecDeque::new(),
             chapter_update_receiver,
             auto_download_chapter,
             validated_chapter: None,
@@ -354,6 +357,8 @@ where
         let tmp = tmp.to_owned();
         let filename = filename.to_owned();
         spawn_blocking(move || {
+            #[cfg(test)]
+            tests::before_archive_write(&tmp);
             fs::create_dir_all(manga_path)?;
             let mut zip = if append {
                 ZipWriter::new_append(fs::OpenOptions::new().read(true).write(true).open(tmp)?)?
@@ -369,6 +374,77 @@ where
             Ok(())
         })
         .await?
+    }
+
+    async fn fetch_image(&mut self, queue: &DownloadQueue, url: &Url) -> Result<Option<Bytes>> {
+        let ext = self.ext.clone();
+        let cancelled = {
+            let request = async {
+                let mut attempts = 0;
+                loop {
+                    match ext.get_image_bytes(queue.source_id, url.to_string()).await {
+                        Ok(bytes) => return Ok(bytes),
+                        Err(error) => {
+                            error!(
+                                "failed to download {} (attempt {}/{MAX_RETRIES}), reason: {error}",
+                                queue.url,
+                                attempts + 1
+                            );
+                        }
+                    }
+                    attempts += 1;
+                    if attempts >= MAX_RETRIES {
+                        return Err(anyhow!(
+                            "failed to download {url} after {MAX_RETRIES} attempts"
+                        ));
+                    }
+                    sleep(Duration::from_secs(RETRY_DELAY_SECS)).await;
+                }
+            };
+            tokio::pin!(request);
+            let mut commands_open = true;
+            loop {
+                tokio::select! {
+                    biased;
+                    command = self.rx.recv(), if commands_open => {
+                        match command {
+                            Some(Command::CleanupCancelledChapter(chapter)) => {
+                                if chapter.chapter_id == queue.chapter_id {
+                                    // A requeue makes the old cleanup stale. Check
+                                    // before dropping the current image request.
+                                    match self.download_repo.get_download_queue(&[chapter.chapter_id]).await {
+                                        Ok(queued) if queued.is_empty() => break chapter,
+                                        Ok(_) => continue,
+                                        Err(error) => {
+                                            error!("failed to check cancellation for chapter {}: {error}", chapter.chapter_id);
+                                            continue;
+                                        }
+                                    }
+                                }
+                                // No archive write is running while fetching an
+                                // image, so other chapters can be cleaned up too.
+                                if let Err(error) = self.cleanup_cancelled_chapter(&chapter).await {
+                                    error!("failed to clean up cancelled chapter {}: {error}", chapter.chapter_id);
+                                }
+                            }
+                            Some(command) => self.pending_commands.push_back(command),
+                            None => commands_open = false,
+                        }
+                    }
+                    result = &mut request => return result.map(Some),
+                }
+            }
+        };
+        // Drop the request before cleanup. Pending admission is withdrawn;
+        // an already dispatched call remains supervised by the VM and cannot
+        // write an archive after this download returns.
+        if let Err(error) = self.cleanup_cancelled_chapter(&cancelled).await {
+            error!(
+                "failed to clean up cancelled chapter {}: {error}",
+                cancelled.chapter_id
+            );
+        }
+        Ok(None)
     }
 
     // Returns whether there was work, including recovery or finalization.
@@ -442,29 +518,8 @@ where
         let append = archive.is_some();
         drop(archive);
         if !already_written {
-            let mut attempts = 0;
-            let data = loop {
-                match self
-                    .ext
-                    .get_image_bytes(queue.source_id, url.to_string())
-                    .await
-                {
-                    Ok(bytes) => break bytes,
-                    Err(error) => {
-                        error!(
-                            "failed to download {} (attempt {}/{MAX_RETRIES}), reason: {error}",
-                            queue.url,
-                            attempts + 1
-                        );
-                    }
-                }
-                attempts += 1;
-                if attempts >= MAX_RETRIES {
-                    return Err(anyhow!(
-                        "failed to download {url} after {MAX_RETRIES} attempts"
-                    ));
-                }
-                sleep(Duration::from_secs(RETRY_DELAY_SECS)).await;
+            let Some(data) = self.fetch_image(&queue, &url).await? else {
+                return Ok(true);
             };
 
             // Finish and flush in one blocking task, awaiting it before progress
@@ -491,13 +546,14 @@ where
     pub async fn run(mut self) {
         let mut next_download = Some(Instant::now());
         loop {
+            // Drain commands received during the fetch before starting more work.
             tokio::select! {
                 _ = async {
                     match next_download {
                         Some(deadline) => sleep_until(deadline).await,
                         None => std::future::pending().await,
                     }
-                } => {
+                }, if self.pending_commands.is_empty() => {
                     next_download = if self.paused().await {
                         None
                     } else {
@@ -511,7 +567,7 @@ where
                         }
                     };
                 }
-                Ok(chapter) = self.chapter_update_receiver.recv() => {
+                Ok(chapter) = self.chapter_update_receiver.recv(), if self.pending_commands.is_empty() => {
                     if self.auto_download_chapter {
                         let manga = self.manga_repo.get_manga_by_id(chapter.chapter.manga_id).await;
                         let manga_title = manga.map(|m| m.title).unwrap_or_default();
@@ -551,7 +607,12 @@ where
                         }
                     }
                 }
-                Some(cmd) = self.rx.recv() => {
+                Some(cmd) = async {
+                    match self.pending_commands.pop_front() {
+                        Some(command) => Some(command),
+                        None => self.rx.recv().await,
+                    }
+                } => {
                     match cmd {
                         Command::InsertIntoQueue(chapter_id) => {
                             let chapter_result = self
