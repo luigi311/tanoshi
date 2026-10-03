@@ -19,6 +19,7 @@ const doubleCases = new Map([
   ["double landscape before portrait", { dimensions: [[800, 400], [400, 800]], order: [0, 1], paired: false }],
   ["double portraits second first", { dimensions: [[400, 800], [400, 800]], order: [1, 0], paired: true }],
   ["double portraits first first", { dimensions: [[400, 800], [400, 800]], order: [0, 1], paired: true }],
+  ["double current error and retry", { dimensions: [null, [400, 800]], order: [1], currentError: true }],
   ["double late previous landscape", { dimensions: [null, [800, 400], [400, 800]], order: [2, 1], startPage: 3, latePrevious: true }],
   ["double landscape two pages back", { dimensions: [[800, 400], [400, 800], [800, 400]], order: [2, 1, 0], startPage: 3, latePrevious: true }],
   ["single to double portraits", { dimensions: [[400, 800], [400, 800]], order: [0, 1], paired: true, switchMode: true }],
@@ -170,7 +171,8 @@ test("image updates preserve unrelated reader pages", { timeout: 60000 }, async 
       `);
 
       if (doubleCases.has(mode)) {
-        const { dimensions, order, paired, latePrevious, switchMode } = doubleCases.get(mode);
+        const { dimensions, order, paired, latePrevious, switchMode, currentError } = doubleCases.get(mode);
+        const visiblePages = () => evaluate('[...document.getElementById("page-list").children].filter(node => getComputedStyle(node).display !== "none").map(node => node.id)');
         for (const index of order) {
           const pathname = `/image/page-${index}.png`;
           for (let attempt = 0; !pendingImages.has(pathname) && attempt < 100; attempt++) await delay(50);
@@ -183,6 +185,36 @@ test("image updates preserve unrelated reader pages", { timeout: 60000 }, async 
           await delay(50);
           if (index === 1) await evaluate('window.secondPage = document.getElementById("1")');
           if (index === 2) await evaluate('window.thirdPage = document.getElementById("2")');
+          if (index === 1 && order[0] === 1) {
+            assert.deepEqual(await visiblePages(), ["0"], "wait for the current page's dimensions before pairing");
+            await evaluate('document.getElementById("next").click()');
+            await until('location.hash === "#2"');
+            await evaluate('document.getElementById("prev").click()');
+            await until('location.hash === "#1"');
+          }
+        }
+        if (currentError) {
+          // Error placeholders remain eligible for pairing, including when both pages fail.
+          for (const index of [0, 1]) {
+            await evaluate(`document.getElementById("${index}").dispatchEvent(new Event("error"))`);
+            await until(`document.getElementById("${index}")?.querySelector("button")`);
+            assert.deepEqual(await visiblePages(), ["0", "1"]);
+            await evaluate('document.getElementById("next").click()');
+            await until('location.hash === "#3"');
+            await evaluate('document.getElementById("prev").click()');
+            await until('location.hash === "#1"');
+          }
+          // Retrying restores an unresolved current page while the next page still has an error.
+          await evaluate('document.getElementById("0").querySelector("button").click()');
+          await until('document.getElementById("0")?.tagName === "IMG"');
+          assert.deepEqual(await visiblePages(), ["0"]);
+          await evaluate('document.getElementById("next").click()');
+          await until('location.hash === "#2"');
+          await evaluate('document.getElementById("prev").click()');
+          await until('location.hash === "#1"');
+          assert.deepEqual(await evaluate("changes"), { added: 2, removed: 3 });
+          assert.equal(await evaluate("originalPages.slice(2).every(node => node.isConnected)"), true);
+          return;
         }
         if (switchMode) {
           // Delay the new nodes' load handlers so the initial spread must use existing dimensions.

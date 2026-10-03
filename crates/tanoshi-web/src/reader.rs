@@ -1310,12 +1310,16 @@ impl Reader {
                 .is_some_and(|image| image.width > image.height)
         };
         let current_is_landscape = is_landscape(current_page);
+        let current_has_dimensions = dimensions.get(current_page).copied().flatten().is_some();
+        let current_has_error = pages.get(current_page)
+            .is_some_and(|(_, status)| matches!(status, PageStatus::Error));
         let second_page = current_page.saturating_add(1);
         let second_is_portrait = dimensions.get(second_page).copied().flatten()
             .is_some_and(|image| image.width < image.height);
         let second_has_error = pages.get(second_page)
             .is_some_and(|(_, status)| matches!(status, PageStatus::Error));
-        let show_second = !current_is_landscape && (second_is_portrait || second_has_error);
+        let show_second = (current_has_dimensions || current_has_error)
+            && !current_is_landscape && (second_is_portrait || second_has_error);
         let next_page = current_page.saturating_add(if show_second { 2 } else { 1 });
         let prev_step = if current_page == 1
             || is_landscape(current_page.saturating_sub(1))
