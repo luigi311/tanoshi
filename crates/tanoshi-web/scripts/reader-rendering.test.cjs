@@ -20,6 +20,9 @@ const doubleCases = new Map([
   ["double portraits second first", { dimensions: [[400, 800], [400, 800]], order: [1, 0], paired: true }],
   ["double portraits first first", { dimensions: [[400, 800], [400, 800]], order: [0, 1], paired: true }],
   ["double late previous landscape", { dimensions: [null, [800, 400], [400, 800]], order: [2, 1], startPage: 3, latePrevious: true }],
+  ["single to double portraits", { dimensions: [[400, 800], [400, 800]], order: [0, 1], paired: true, switchMode: true }],
+  ["single to double landscape", { dimensions: [[800, 400], [400, 800]], order: [0, 1], paired: false, switchMode: true }],
+  ["continuous to double portraits", { dimensions: [[400, 800], [400, 800]], order: [0, 1], paired: true, switchMode: true }],
 ]);
 
 test("image updates preserve unrelated reader pages", { timeout: 60000 }, async (t) => {
@@ -166,7 +169,7 @@ test("image updates preserve unrelated reader pages", { timeout: 60000 }, async 
       `);
 
       if (doubleCases.has(mode)) {
-        const { dimensions, order, paired, latePrevious } = doubleCases.get(mode);
+        const { dimensions, order, paired, latePrevious, switchMode } = doubleCases.get(mode);
         for (const index of order) {
           const pathname = `/image/page-${index}.png`;
           for (let attempt = 0; !pendingImages.has(pathname) && attempt < 100; attempt++) await delay(50);
@@ -175,10 +178,33 @@ test("image updates preserve unrelated reader pages", { timeout: 60000 }, async 
           const [width, height] = dimensions[index];
           response.writeHead(200, { "Content-Type": "image/svg+xml", "Cache-Control": "max-age=3600" });
           response.end(`<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"><rect width="${width}" height="${height}" fill="red"/></svg>`);
-          await until(`document.getElementById("${index}").naturalWidth === ${width} && document.getElementById("${index}").naturalHeight === ${height}`);
+          await until(`document.querySelectorAll("#page-list img")[${index}].naturalWidth === ${width} && document.querySelectorAll("#page-list img")[${index}].naturalHeight === ${height}`);
           await delay(50);
           if (index === 1) await evaluate('window.secondPage = document.getElementById("1")');
           if (index === 2) await evaluate('window.thirdPage = document.getElementById("2")');
+        }
+        if (switchMode) {
+          // Delay the new nodes' load handlers so the initial spread must use existing dimensions.
+          await evaluate(`
+            window.oldPageList = document.getElementById("page-list");
+            window.blockedLoads = 0;
+            document.addEventListener("load", event => {
+              if (event.target.matches?.("#page-list img")) {
+                blockedLoads++;
+                event.stopImmediatePropagation();
+              }
+            }, true);
+            const buttons = [...document.querySelectorAll(".reader-settings button")];
+            buttons.find(button => button.textContent === "Paged").click();
+            buttons.find(button => button.textContent === "Double").click();
+          `);
+          await until('document.getElementById("page-list") !== oldPageList && blockedLoads >= 2');
+          assert.deepEqual(await evaluate('[...document.querySelectorAll("#page-list img")].filter(img => getComputedStyle(img).display !== "none").map(img => img.id)'), paired ? ["0", "1"] : ["0"],
+            "the spread must be correct before new image load handlers run");
+          assert.equal(await evaluate('document.getElementById("0").style.width'), paired ? "50%" : "initial");
+          await evaluate('document.getElementById("next").click()');
+          await until(`location.hash === "#${paired ? 3 : 2}"`);
+          return;
         }
         if (latePrevious) {
           assert.equal(await evaluate('document.getElementById("2") === thirdPage'), true);

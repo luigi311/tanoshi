@@ -993,6 +993,19 @@ impl Reader {
         })
     }
 
+    fn set_page_dimensions(&self, index: usize, dimensions: Option<ImageDimensions>) {
+        if let Some(page) = self.page_dimensions.borrow_mut().get_mut(index) {
+            *page = dimensions;
+        }
+    }
+
+    fn record_page_dimensions(&self, index: usize, image: &HtmlImageElement) {
+        self.set_page_dimensions(index, Some(ImageDimensions {
+            width: image.natural_width(),
+            height: image.natural_height(),
+        }));
+    }
+
     fn pages_signal(&self) -> impl SignalVec<Item = (usize, String, PageStatus)> + use<> {
         // Keep per-page status changes as vector diffs so only that page's DOM is replaced.
         self.pages
@@ -1110,18 +1123,22 @@ impl Reader {
                         .event(clone!(this, page => move |_: events::Error| {
                             log::error!("error loading image for page {}", index);
                             this.pages.lock_mut().set_cloned(index, (page.clone(), PageStatus::Error));
+                            this.set_page_dimensions(index, None);
                             Self::schedule_continuous_page_update(this.clone());
                         }))
-                        .event(clone!(this, page => move |_: events::Load| {
-                            this.pages_loaded.set_if(ContinousLoaded::Loaded, |a, _| {
-                                matches!(a, ContinousLoaded::Initial)
-                            });
-                            if !matches!(status, PageStatus::Loaded) {
-                                let mut lock = this.pages.lock_mut();
-                                lock.set_cloned(index, (page.clone(), PageStatus::Loaded));
-                            }
-                            Self::schedule_continuous_page_update(this.clone());
-                        }))
+                        .with_node!(img => {
+                            .event(clone!(this, page, img => move |_: events::Load| {
+                                this.record_page_dimensions(index, &img);
+                                this.pages_loaded.set_if(ContinousLoaded::Loaded, |a, _| {
+                                    matches!(a, ContinousLoaded::Initial)
+                                });
+                                if !matches!(status, PageStatus::Loaded) {
+                                    let mut lock = this.pages.lock_mut();
+                                    lock.set_cloned(index, (page.clone(), PageStatus::Loaded));
+                                }
+                                Self::schedule_continuous_page_update(this.clone());
+                            }))
+                        })
                         .event(clone!(this => move |_: events::Click| {
                             this.is_bar_visible.set_neq(!this.is_bar_visible.get());
                         }))
@@ -1204,7 +1221,7 @@ impl Reader {
             .style_signal("height", this.zoom.signal().map(|zoom| format!("{}vh", 100.0 * zoom)))
             .children_signal_vec(this.pages_signal().map(clone!(this => move |(index, page, status)|
                 if !matches!(status, PageStatus::Error) {
-                    html!("img", {
+                    html!("img" => HtmlImageElement, {
                         .style("margin-left", "auto")
                         .style("margin-right", "auto")
                         .style_signal("max-width", this.fit_signal().map(|(fit, zoom)| match fit {
@@ -1234,15 +1251,18 @@ impl Reader {
                         .attr_signal("src", this.image_src_signal(index, 2, 3, page.clone(), status))
                         .event(clone!(this, page => move |_: events::Error| {
                             log::error!("error loading image for page {}", index);
-                            let mut lock = this.pages.lock_mut();
-                            lock.set_cloned(index, (page.clone(), PageStatus::Error));
+                            this.pages.lock_mut().set_cloned(index, (page.clone(), PageStatus::Error));
+                            this.set_page_dimensions(index, None);
                         }))
-                        .event(clone!(this, page => move |_: events::Load| {
-                            if !matches!(status, PageStatus::Loaded) {
-                                let mut lock = this.pages.lock_mut();
-                                lock.set_cloned(index, (page.clone(), PageStatus::Loaded));
-                            }
-                        }))
+                        .with_node!(img => {
+                            .event(clone!(this, page, img => move |_: events::Load| {
+                                this.record_page_dimensions(index, &img);
+                                if !matches!(status, PageStatus::Loaded) {
+                                    let mut lock = this.pages.lock_mut();
+                                    lock.set_cloned(index, (page.clone(), PageStatus::Loaded));
+                                }
+                            }))
+                        })
                     })
                 } else {
                     html!("div", {
@@ -1368,20 +1388,13 @@ impl Reader {
                         .event(clone!(this, page => move |_: events::Error| {
                             log::error!("error loading image for page {}", index);
                             this.pages.lock_mut().set_cloned(index, (page.clone(), PageStatus::Error));
-                            if let Some(dimensions) = this.page_dimensions.borrow_mut().get_mut(index) {
-                                *dimensions = None;
-                            }
+                            this.set_page_dimensions(index, None);
                             Self::update_double_page_layout(this.clone());
                         }))
                         .with_node!(img => {
                             .event(clone!(this, page, img => move |_: events::Load| {
                                 // Keep dimensions when the loaded image's status replaces its DOM node.
-                                if let Some(dimensions) = this.page_dimensions.borrow_mut().get_mut(index) {
-                                    *dimensions = Some(ImageDimensions {
-                                        width: img.natural_width(),
-                                        height: img.natural_height(),
-                                    });
-                                }
+                                this.record_page_dimensions(index, &img);
                                 if !matches!(status, PageStatus::Loaded) {
                                     this.pages.lock_mut().set_cloned(index, (page.clone(), PageStatus::Loaded));
                                 }
