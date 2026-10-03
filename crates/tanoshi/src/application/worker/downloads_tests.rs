@@ -1,6 +1,8 @@
 use super::*;
 use bytes::Bytes;
 use std::{
+    cell::Cell,
+    future::Future,
     io::Read,
     sync::{
         Arc, Mutex,
@@ -263,6 +265,73 @@ impl Fixture {
         }
         panic!("queue failed to drain");
     }
+}
+
+// Run on a current-thread runtime so synchronous archive work would starve the timer.
+async fn assert_timers_run_during<T>(work: impl Future<Output = T>) -> T {
+    let finished = Cell::new(false);
+    let (timer_ran_during_work, result) = tokio::join!(
+        biased;
+        async {
+            sleep(Duration::from_millis(1)).await;
+            !finished.get()
+        },
+        async {
+            let result = work.await;
+            finished.set(true);
+            result
+        }
+    );
+    assert!(
+        timer_ran_during_work,
+        "archive work starved the Tokio timer"
+    );
+    result
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn archive_writes_keep_timers_responsive() {
+    let fixture = Fixture::new().await;
+    let tmp = fixture.archive_path(1, true);
+    let data = Bytes::from(vec![0x5a; 32 * 1024 * 1024]);
+    for (filename, append) in [("0000_0.jpg", false), ("0001_1.jpg", true)] {
+        assert_timers_run_during(Worker::write_page(
+            tmp.parent().unwrap(),
+            &tmp,
+            filename,
+            data.clone(),
+            append,
+        ))
+        .await
+        .unwrap();
+    }
+    let mut zip = ZipArchive::new(File::open(&tmp).unwrap()).unwrap();
+    assert_eq!(zip.len(), 2);
+    for index in 0..2 {
+        let mut page = Vec::new();
+        zip.by_index(index).unwrap().read_to_end(&mut page).unwrap();
+        assert_eq!(page, data.as_ref());
+    }
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn archive_validation_keeps_timers_responsive() {
+    let fixture = Fixture::new().await;
+    let tmp = fixture.archive_path(1, true);
+    Worker::write_page(
+        tmp.parent().unwrap(),
+        &tmp,
+        "0000_0.jpg",
+        Bytes::from(vec![0x5a; 32 * 1024 * 1024]),
+        false,
+    )
+    .await
+    .unwrap();
+    let archive = assert_timers_run_during(Worker::open_archive(&tmp, true))
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(archive.len(), 1);
 }
 
 #[tokio::test]
