@@ -16,6 +16,7 @@ use crate::{
     },
 };
 use anyhow::{Result, anyhow};
+use bytes::Bytes;
 use chrono::Utc;
 use reqwest::Url;
 use std::{
@@ -27,8 +28,9 @@ use tanoshi_vm::extension::ExtensionManager;
 use zip::{ZipArchive, ZipWriter, result::ZipError, write::SimpleFileOptions};
 
 use tokio::{
+    fs as async_fs,
     sync::mpsc::{UnboundedReceiver, UnboundedSender},
-    task::JoinHandle,
+    task::{JoinHandle, spawn_blocking},
     time::{Duration, Instant, sleep, sleep_until},
 };
 
@@ -130,8 +132,8 @@ where
         if !existing_path.is_empty() {
             // Remove the old archive file
             let old_archive = Path::new(&existing_path);
-            if old_archive.exists() {
-                fs::remove_file(old_archive)?;
+            if async_fs::try_exists(old_archive).await.unwrap_or(false) {
+                async_fs::remove_file(old_archive).await?;
             }
 
             // Clear the downloaded path in the DB
@@ -165,13 +167,14 @@ where
 
         let manga_path = self.download_dir.join(&source_name).join(&manga_title);
 
-        self.save_manga_info_if_not_exists(&manga_path, &manga)?;
+        self.save_manga_info_if_not_exists(&manga_path, &manga)
+            .await?;
 
         // Remove any leftover temp file from a previous interrupted download
         let temp_archive = manga_path.join(format!("{}.temp.cbz", chapter_title));
-        if temp_archive.exists() {
+        if async_fs::try_exists(&temp_archive).await.unwrap_or(false) {
             debug!("removing leftover temp archive {}", temp_archive.display());
-            fs::remove_file(temp_archive)?;
+            async_fs::remove_file(temp_archive).await?;
         }
 
         let mut queue = vec![];
@@ -198,7 +201,9 @@ where
     }
 
     async fn paused(&self) -> bool {
-        self.download_dir.join(".pause").exists()
+        async_fs::try_exists(self.download_dir.join(".pause"))
+            .await
+            .unwrap_or(false)
     }
 
     async fn cleanup_cancelled_chapter(&mut self, chapter: &DownloadQueueEntry) -> Result<()> {
@@ -220,43 +225,47 @@ where
             .join(&chapter.source_name)
             .join(&chapter.manga_title)
             .join(format!("{}.temp.cbz", chapter.chapter_title));
-        match fs::remove_file(tmp) {
+        match async_fs::remove_file(tmp).await {
             Ok(()) => Ok(()),
             Err(error) if error.kind() == ErrorKind::NotFound => Ok(()),
             Err(error) => Err(error.into()),
         }
     }
 
-    fn open_archive(path: &Path, validate: bool) -> Result<Option<ZipArchive<File>>> {
-        match File::open(path) {
-            Ok(file) => {
-                let mut archive = ZipArchive::new(file)?;
-                if validate {
-                    // Reading through EOF checks both decompression and CRC; a
-                    // readable directory alone does not guarantee intact pages.
-                    for index in 0..archive.len() {
-                        let mut page = archive.by_index(index)?;
-                        if let Err(error) = std::io::copy(&mut page, &mut std::io::sink()) {
-                            if matches!(
-                                error.kind(),
-                                ErrorKind::InvalidData
-                                    | ErrorKind::InvalidInput
-                                    | ErrorKind::UnexpectedEof
-                            ) {
-                                return Err(ZipError::InvalidArchive(
-                                    format!("damaged page {}: {error}", page.name()).into(),
-                                )
-                                .into());
+    async fn open_archive(path: &Path, validate: bool) -> Result<Option<ZipArchive<File>>> {
+        let path = path.to_owned();
+        spawn_blocking(move || {
+            match File::open(path) {
+                Ok(file) => {
+                    let mut archive = ZipArchive::new(file)?;
+                    if validate {
+                        // Reading through EOF checks both decompression and CRC; a
+                        // readable directory alone does not guarantee intact pages.
+                        for index in 0..archive.len() {
+                            let mut page = archive.by_index(index)?;
+                            if let Err(error) = std::io::copy(&mut page, &mut std::io::sink()) {
+                                if matches!(
+                                    error.kind(),
+                                    ErrorKind::InvalidData
+                                        | ErrorKind::InvalidInput
+                                        | ErrorKind::UnexpectedEof
+                                ) {
+                                    return Err(ZipError::InvalidArchive(
+                                        format!("damaged page {}: {error}", page.name()).into(),
+                                    )
+                                    .into());
+                                }
+                                return Err(error.into());
                             }
-                            return Err(error.into());
                         }
                     }
+                    Ok(Some(archive))
                 }
-                Ok(Some(archive))
+                Err(error) if error.kind() == ErrorKind::NotFound => Ok(None),
+                Err(error) => Err(error.into()),
             }
-            Err(error) if error.kind() == ErrorKind::NotFound => Ok(None),
-            Err(error) => Err(error.into()),
-        }
+        })
+        .await?
     }
 
     async fn restart_chapter(&self, queue: &DownloadQueue, tmp: &Path) -> Result<()> {
@@ -269,7 +278,7 @@ where
         self.download_repo
             .reset_chapter_download_progress(queue.chapter_id)
             .await?;
-        match fs::remove_file(tmp) {
+        match async_fs::remove_file(tmp).await {
             Ok(()) => Ok(()),
             Err(error) if error.kind() == ErrorKind::NotFound => Ok(()),
             Err(error) => Err(error.into()),
@@ -282,8 +291,8 @@ where
         tmp: &Path,
         archive_path: &Path,
     ) -> Result<()> {
-        if tmp.exists() {
-            fs::rename(tmp, archive_path)?;
+        if async_fs::try_exists(tmp).await.unwrap_or(false) {
+            async_fs::rename(tmp, archive_path).await?;
         }
         self.download_repo
             .update_chapter_downloaded_path(
@@ -297,32 +306,69 @@ where
         Ok(())
     }
 
-    fn save_manga_info_if_not_exists(&self, manga_path: &PathBuf, manga: &Manga) -> Result<()> {
-        let path = manga_path.join("details.json");
-        if path.exists() {
-            return Ok(());
-        }
+    async fn save_manga_info_if_not_exists(
+        &self,
+        manga_path: &PathBuf,
+        manga: &Manga,
+    ) -> Result<()> {
+        let manga_path = manga_path.clone();
+        let manga = manga.clone();
+        spawn_blocking(move || {
+            let path = manga_path.join("details.json");
+            if path.exists() {
+                return Ok(());
+            }
 
-        debug!("creating directory: {}", path.display());
-        std::fs::create_dir_all(manga_path)?;
+            debug!("creating directory: {}", path.display());
+            fs::create_dir_all(manga_path)?;
 
-        let manga_info = LocalMangaInfo {
-            title: Some(manga.title.clone()),
-            author: if manga.author.is_empty() {
-                None
+            let manga_info = LocalMangaInfo {
+                title: Some(manga.title),
+                author: if manga.author.is_empty() {
+                    None
+                } else {
+                    Some(manga.author)
+                },
+                genre: Some(manga.genre),
+                status: manga.status,
+                description: manga.description,
+                cover_path: None,
+            };
+
+            let mut file = File::create(&path)?;
+            serde_json::to_writer_pretty(&mut file, &manga_info)?;
+
+            Ok(())
+        })
+        .await?
+    }
+
+    async fn write_page(
+        manga_path: &Path,
+        tmp: &Path,
+        filename: &str,
+        data: Bytes,
+        append: bool,
+    ) -> Result<()> {
+        let manga_path = manga_path.to_owned();
+        let tmp = tmp.to_owned();
+        let filename = filename.to_owned();
+        spawn_blocking(move || {
+            fs::create_dir_all(manga_path)?;
+            let mut zip = if append {
+                ZipWriter::new_append(fs::OpenOptions::new().read(true).write(true).open(tmp)?)?
             } else {
-                Some(manga.author.clone())
-            },
-            genre: Some(manga.genre.clone()),
-            status: manga.status.clone(),
-            description: manga.description.clone(),
-            cover_path: None,
-        };
-
-        let mut file = std::fs::File::create(&path)?;
-        serde_json::to_writer_pretty(&mut file, &manga_info)?;
-
-        Ok(())
+                ZipWriter::new(File::create(tmp)?)
+            };
+            zip.start_file(
+                filename,
+                SimpleFileOptions::default().compression_method(zip::CompressionMethod::Stored),
+            )?;
+            zip.write_all(&data)?;
+            zip.finish()?.sync_all()?;
+            Ok(())
+        })
+        .await?
     }
 
     // Returns whether there was work, including recovery or finalization.
@@ -351,14 +397,12 @@ where
 
         // A completed queue may have been interrupted before or after the rename.
         // Never use an older final archive to resume a partially downloaded chapter.
-        let archive = match Self::open_archive(&tmp, validated_chapter != Some(queue.chapter_id))
-            .and_then(|archive| {
-                if archive.is_none() && complete {
-                    Self::open_archive(&archive_path, true)
-                } else {
-                    Ok(archive)
-                }
-            }) {
+        let archive =
+            match Self::open_archive(&tmp, validated_chapter != Some(queue.chapter_id)).await {
+                Ok(None) if complete => Self::open_archive(&archive_path, true).await,
+                result => result,
+            };
+        let archive = match archive {
             Ok(archive) => archive,
             Err(error)
                 if matches!(
@@ -423,18 +467,10 @@ where
                 sleep(Duration::from_secs(RETRY_DELAY_SECS)).await;
             };
 
-            // Append and finish together, without holding the writer across a
-            // network await or task cancellation. A hard exit during this write
+            // Finish and flush in one blocking task, awaiting it before progress
+            // updates or cleanup commands can run. A hard exit during this write
             // is handled by archive recovery on the next run.
-            fs::create_dir_all(&manga_path)?;
-            let mut zip = if append {
-                ZipWriter::new_append(fs::OpenOptions::new().read(true).write(true).open(&tmp)?)?
-            } else {
-                ZipWriter::new(File::create(&tmp)?)
-            };
-            zip.start_file(&filename, SimpleFileOptions::default())?;
-            zip.write_all(&data)?;
-            zip.finish()?.sync_all()?;
+            Self::write_page(&manga_path, &tmp, &filename, data, append).await?;
         }
 
         self.download_repo
