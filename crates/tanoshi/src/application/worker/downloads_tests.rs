@@ -140,7 +140,17 @@ impl Fixture {
         handler: Option<ImageHandler>,
         pages: Vec<String>,
     ) -> (Worker, DownloadSender) {
-        let ext = ExtensionManager::new(self.dir.join("plugins"));
+        self.worker_with_options(handler, pages, Default::default())
+            .await
+    }
+
+    async fn worker_with_options(
+        &self,
+        handler: Option<ImageHandler>,
+        pages: Vec<String>,
+        options: tanoshi_vm::extension::ExtensionManagerOptions,
+    ) -> (Worker, DownloadSender) {
+        let ext = ExtensionManager::new_with_options(self.dir.join("plugins"), options);
         let calls = self.calls.clone();
         ext.insert(Source::from(Box::new(TestExtension(
             Arc::new(move |url| {
@@ -265,6 +275,68 @@ impl Fixture {
         }
         panic!("queue failed to drain");
     }
+}
+
+#[tokio::test]
+async fn download_worker_yields_the_next_source_slot_to_browsing() {
+    use std::task::{Context, Waker};
+    use tanoshi_vm::extension::ExtensionManagerOptions;
+
+    let fixture = Fixture::new().await;
+    let (started_tx, mut started_rx) = tokio::sync::mpsc::unbounded_channel();
+    let (release, receiver) = std::sync::mpsc::channel();
+    let receiver = Mutex::new(receiver);
+    let handler: ImageHandler = Arc::new(move |url| {
+        if url == "hold" {
+            let _ = started_tx.send(());
+            // A dropped sender unblocks the native call if the test fails.
+            let _ = receiver.lock().unwrap().recv();
+        }
+        Ok(Bytes::from(url))
+    });
+    let (worker, _commands) = fixture
+        .worker_with_options(
+            Some(handler),
+            vec![],
+            ExtensionManagerOptions {
+                max_concurrent_calls: 1,
+                ..Default::default()
+            },
+        )
+        .await;
+    let browsing = worker.ext.clone().with_priority(RequestPriority::High);
+    let active = tokio::spawn({
+        let browsing = browsing.clone();
+        async move { browsing.get_image_bytes(1, "hold".into()).await }
+    });
+    started_rx.recv().await.unwrap();
+    let mut download = Box::pin(worker.ext.get_image_bytes(1, "download.jpg".into()));
+    let mut thumbnail = Box::pin(browsing.get_image_bytes(1, "thumbnail.jpg".into()));
+    assert!(
+        download
+            .as_mut()
+            .poll(&mut Context::from_waker(Waker::noop()))
+            .is_pending()
+    );
+    assert!(
+        thumbnail
+            .as_mut()
+            .poll(&mut Context::from_waker(Waker::noop()))
+            .is_pending()
+    );
+    release.send(()).unwrap();
+    active.await.unwrap().unwrap();
+    let (download_result, thumbnail_result) = tokio::time::timeout(Duration::from_secs(1), async {
+        tokio::join!(download, thumbnail)
+    })
+    .await
+    .unwrap();
+    download_result.unwrap();
+    thumbnail_result.unwrap();
+    assert_eq!(
+        *fixture.calls.lock().unwrap(),
+        ["hold", "thumbnail.jpg", "download.jpg"]
+    );
 }
 
 // Run on a current-thread runtime so synchronous archive work would starve the timer.

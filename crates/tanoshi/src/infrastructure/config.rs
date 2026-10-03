@@ -5,8 +5,7 @@ use std::path::Path;
 use std::path::PathBuf;
 use directories::ProjectDirs;
 use tanoshi_vm::extension::manager::{
-    DEFAULT_ADMISSION_TIMEOUT, DEFAULT_IMAGE_TIMEOUT, DEFAULT_MAX_CONCURRENT_CALLS,
-    DEFAULT_METADATA_TIMEOUT,
+    DEFAULT_IMAGE_TIMEOUT, DEFAULT_MAX_CONCURRENT_CALLS, DEFAULT_METADATA_TIMEOUT,
 };
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -54,8 +53,6 @@ pub enum LocalFolders {
 pub struct ExtensionConfig {
     #[serde(default = "default_extension_max_concurrent_calls")]
     pub max_concurrent_calls_per_source: usize,
-    #[serde(default = "default_extension_admission_timeout_ms")]
-    pub admission_timeout_ms: u64,
     #[serde(default = "default_extension_metadata_timeout_secs")]
     pub metadata_timeout_secs: u64,
     #[serde(default = "default_extension_image_timeout_secs")]
@@ -66,7 +63,6 @@ impl Default for ExtensionConfig {
     fn default() -> Self {
         Self {
             max_concurrent_calls_per_source: default_extension_max_concurrent_calls(),
-            admission_timeout_ms: default_extension_admission_timeout_ms(),
             metadata_timeout_secs: default_extension_metadata_timeout_secs(),
             image_timeout_secs: default_extension_image_timeout_secs(),
         }
@@ -183,10 +179,6 @@ fn default_max_concurrent_update_sources() -> usize {
 
 fn default_extension_max_concurrent_calls() -> usize {
     DEFAULT_MAX_CONCURRENT_CALLS
-}
-
-fn default_extension_admission_timeout_ms() -> u64 {
-    DEFAULT_ADMISSION_TIMEOUT.as_millis() as u64
 }
 
 fn default_extension_metadata_timeout_secs() -> u64 {

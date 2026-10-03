@@ -24,7 +24,7 @@ use std::{
     io::{ErrorKind, Write},
     path::{Path, PathBuf},
 };
-use tanoshi_vm::extension::ExtensionManager;
+use tanoshi_vm::extension::{ExtensionManager, RequestPriority};
 use zip::{ZipArchive, ZipWriter, result::ZipError, write::SimpleFileOptions};
 
 use tokio::{
@@ -106,7 +106,7 @@ where
             manga_repo,
             download_repo,
             library_repo,
-            ext,
+            ext: ext.with_priority(RequestPriority::Low),
             _notifier: notifier,
             rx: download_receiver,
             chapter_update_receiver,

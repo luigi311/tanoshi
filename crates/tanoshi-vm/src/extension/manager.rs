@@ -13,16 +13,15 @@ use anyhow::{Result, anyhow, bail};
 use bytes::Bytes;
 use fnv::FnvHashMap;
 use tanoshi_lib::prelude::{ChapterInfo, Input, Lang, MangaInfo, SourceInfo};
-use tokio::sync::{Mutex as AsyncMutex, OwnedSemaphorePermit};
+use tokio::sync::Mutex as AsyncMutex;
 
 use crate::{
     PLUGIN_EXTENSION,
     prelude::{Source, SourceEntry},
 };
 
-use super::source::{
-    SOURCE_MAX_ABANDONED_CALLS, SourceAdmission, SourceHealth, panic_payload_message,
-};
+use super::queue::{RequestPermit, RequestPriority};
+use super::source::{SourceAdmission, SourceHealth, panic_payload_message};
 use super::worker::{
     WorkerCallError, WorkerClient, WorkerErrorKind, WorkerRequest, WorkerValue, resolve_worker_path,
 };
@@ -35,7 +34,6 @@ const CALL_ABANDONED: u8 = 1;
 const CALL_COMPLETE: u8 = 2;
 static UNIQUE_PATH_COUNTER: AtomicU64 = AtomicU64::new(0);
 pub const DEFAULT_MAX_CONCURRENT_CALLS: usize = 8;
-pub const DEFAULT_ADMISSION_TIMEOUT: Duration = Duration::from_secs(1);
 pub const DEFAULT_METADATA_TIMEOUT: Duration = Duration::from_secs(30);
 pub const DEFAULT_IMAGE_TIMEOUT: Duration = Duration::from_secs(120);
 const MIN_EXTENSION_TIMEOUT: Duration = Duration::from_millis(1);
@@ -259,7 +257,7 @@ pub struct ExtensionManagerOptions {
     /// jobs. Installed extensions execute these calls in one worker process,
     /// sharing their HTTP clients, rate limits, caches, and preferences.
     pub max_concurrent_calls: usize,
-    pub admission_timeout: Duration,
+    /// Execution deadlines start after a request gets a slot in its source queue.
     pub metadata_timeout: Duration,
     pub image_timeout: Duration,
 }
@@ -268,7 +266,6 @@ impl Default for ExtensionManagerOptions {
     fn default() -> Self {
         Self {
             max_concurrent_calls: DEFAULT_MAX_CONCURRENT_CALLS,
-            admission_timeout: DEFAULT_ADMISSION_TIMEOUT,
             metadata_timeout: DEFAULT_METADATA_TIMEOUT,
             image_timeout: DEFAULT_IMAGE_TIMEOUT,
         }
@@ -282,6 +279,7 @@ pub struct ExtensionManager {
     lifecycle_locks: Arc<StdMutex<FnvHashMap<String, Arc<AsyncMutex<()>>>>>,
     options: ExtensionManagerOptions,
     worker_path: PathBuf,
+    priority: RequestPriority,
 }
 
 pub fn dummy_source_info(id: i64) -> SourceInfo {
@@ -318,13 +316,6 @@ impl ExtensionManager {
                 tokio::sync::Semaphore::MAX_PERMITS
             );
         }
-        if options.admission_timeout.is_zero() {
-            warn!(
-                "configured extension admission timeout is zero; using {:?} instead",
-                MIN_EXTENSION_TIMEOUT
-            );
-            options.admission_timeout = MIN_EXTENSION_TIMEOUT;
-        }
         if options.metadata_timeout.is_zero() {
             warn!(
                 "configured extension metadata timeout is zero; using {:?} instead",
@@ -347,7 +338,15 @@ impl ExtensionManager {
             lifecycle_locks: Arc::new(StdMutex::new(FnvHashMap::default())),
             options,
             worker_path: resolve_worker_path(),
+            priority: RequestPriority::High,
         }
+    }
+
+    /// Change the priority of calls made through this handle. Clones share the
+    /// same per-source queues; waiting high-priority calls run before low ones.
+    pub fn with_priority(mut self, priority: RequestPriority) -> Self {
+        self.priority = priority;
+        self
     }
 
     fn lifecycle_lock(&self, name: &str) -> Result<Arc<AsyncMutex<()>>> {
@@ -468,43 +467,27 @@ impl ExtensionManager {
         &self,
         entry: &Arc<SourceEntry>,
         operation: &'static str,
-    ) -> Result<OwnedSemaphorePermit> {
-        self.ensure_source_available(entry, operation)?;
-        let source_id = entry.source_id;
-        let source_name = entry.source_name().to_owned();
-        match tokio::time::timeout(
-            self.options.admission_timeout,
-            entry.limiter.clone().acquire_owned(),
-        )
-        .await
-        {
-            Ok(Ok(permit)) => {
-                self.ensure_source_available(entry, operation)?;
-                Ok(permit)
-            }
-            Ok(Err(error)) => {
-                error!(
-                    "EXTENSION ADMISSION ERROR: source_id={source_id} source={source_name:?} operation={operation} limiter unavailable: {error}"
-                );
-                Err(operational_extension_error(
-                    "extension-admission",
-                    format!(
-                        "source {source_id} ({source_name}) cannot accept {operation}: {error}"
-                    ),
-                ))
-            }
-            Err(_) => {
-                error!(
-                    "EXTENSION SATURATION: source_id={source_id} source={source_name:?} operation={operation} exceeded the {}-call limit; request rejected after {:?}",
-                    self.options.max_concurrent_calls, self.options.admission_timeout
-                );
-                Err(operational_extension_error(
-                    "extension-saturated",
-                    format!(
-                        "source {source_id} ({source_name}) is busy; {operation} admission timed out after {:?}",
-                        self.options.admission_timeout
-                    ),
-                ))
+    ) -> Result<RequestPermit> {
+        let pending = entry.queue.acquire(self.priority);
+        tokio::pin!(pending);
+        loop {
+            let changed = entry.health.admission_changed.notified();
+            tokio::pin!(changed);
+            // Register before checking health so quarantine or a circuit opening
+            // cannot leave a request asleep behind permanently occupied slots.
+            changed.as_mut().enable();
+            self.ensure_source_available(entry, operation)?;
+            tokio::select! {
+                result = &mut pending => {
+                    let permit = result.map_err(|_| operational_extension_error(
+                        "extension-admission",
+                        format!("source {} ({}) was stopped while waiting for {operation}",
+                            entry.source_id, entry.source_name()),
+                    ))?;
+                    self.ensure_source_available(entry, operation)?;
+                    return Ok(permit);
+                }
+                _ = &mut changed => {}
             }
         }
     }
@@ -611,12 +594,7 @@ impl ExtensionManager {
         F: FnOnce(&SourceEntry) -> Result<T> + Send + 'static,
         D: FnOnce(WorkerValue) -> Result<T> + Send + 'static,
     {
-        let ExtensionCall {
-            operation,
-            timeout,
-            quarantine_on_panic,
-        } = call;
-        let permit = self.acquire_permit(&entry, operation).await?;
+        let permit = self.acquire_permit(&entry, call.operation).await?;
         if let Some(worker) = entry.worker() {
             return self
                 .call_worker(entry, call, worker, permit, request, decode)
@@ -625,6 +603,30 @@ impl ExtensionManager {
 
         drop(request);
         drop(decode);
+        Self::await_call_supervisor(
+            entry.source_id,
+            entry.source_name().to_owned(),
+            call.operation,
+            Self::call_native_inner(entry, call, permit, invoke),
+        )
+        .await
+    }
+
+    async fn call_native_inner<T, F>(
+        entry: Arc<SourceEntry>,
+        call: ExtensionCall,
+        permit: RequestPermit,
+        invoke: F,
+    ) -> Result<T>
+    where
+        T: Send + 'static,
+        F: FnOnce(&SourceEntry) -> Result<T> + Send + 'static,
+    {
+        let ExtensionCall {
+            operation,
+            timeout,
+            quarantine_on_panic,
+        } = call;
         let source_id = entry.source_id;
         let source_name = entry.source_name().to_owned();
         let health = entry.health.clone();
@@ -701,7 +703,7 @@ impl ExtensionManager {
                     error!(
                         "EXTENSION ABANDONED CALL: source_id={source_id} source={source_name:?} operation={operation} remains active after timeout; abandoned_calls={abandoned_calls}"
                     );
-                    if abandoned_calls >= SOURCE_MAX_ABANDONED_CALLS {
+                    if matches!(health.admission(), SourceAdmission::CircuitOpen { .. }) {
                         error!(
                             "EXTENSION CIRCUIT OPEN: source_id={source_id} source={source_name:?} operation={operation}; {abandoned_calls} timed-out native calls remain active and future calls are rejected"
                         );
@@ -725,7 +727,7 @@ impl ExtensionManager {
         entry: Arc<SourceEntry>,
         call: ExtensionCall,
         worker: Arc<WorkerClient>,
-        permit: OwnedSemaphorePermit,
+        permit: RequestPermit,
         request: WorkerRequest,
         decode: D,
     ) -> Result<T>
@@ -740,7 +742,7 @@ impl ExtensionManager {
         // and response subscription. If an HTTP request or other caller is
         // cancelled, the supervisor still waits for its matching response or
         // deadline before releasing the permit.
-        Self::await_worker_supervisor(
+        Self::await_call_supervisor(
             join_source_id,
             join_source_name,
             join_operation,
@@ -749,7 +751,7 @@ impl ExtensionManager {
         .await
     }
 
-    async fn await_worker_supervisor<T, F>(
+    async fn await_call_supervisor<T, F>(
         source_id: i64,
         source_name: String,
         operation: &'static str,
@@ -764,15 +766,15 @@ impl ExtensionManager {
             Ok(result) => result,
             Err(error) if error.is_panic() => {
                 error!(
-                    "EXTENSION WORKER SUPERVISOR PANIC: source_id={source_id} source={source_name:?} operation={operation}"
+                    "EXTENSION CALL SUPERVISOR PANIC: source_id={source_id} source={source_name:?} operation={operation}"
                 );
                 Err(operational_extension_error(
-                    "extension-worker-supervisor",
+                    "extension-supervisor",
                     format!("source {source_id} ({source_name}) {operation} supervisor panicked"),
                 ))
             }
             Err(error) => Err(operational_extension_error(
-                "extension-worker-supervisor",
+                "extension-supervisor",
                 format!(
                     "source {source_id} ({source_name}) {operation} supervisor was cancelled: {error}"
                 ),
@@ -784,7 +786,7 @@ impl ExtensionManager {
         entry: Arc<SourceEntry>,
         call: ExtensionCall,
         worker: Arc<WorkerClient>,
-        permit: OwnedSemaphorePermit,
+        permit: RequestPermit,
         request: WorkerRequest,
         decode: D,
     ) -> Result<T>
@@ -1219,10 +1221,14 @@ impl ExtensionManager {
 
     fn insert_entry(&self, entry: Arc<SourceEntry>) -> Result<Option<Arc<SourceEntry>>> {
         let source_id = entry.source_id;
-        Ok({
+        let replaced = {
             let mut sources = self.write()?;
             sources.insert(source_id, entry)
-        })
+        };
+        if let Some(replaced) = &replaced {
+            replaced.queue.close();
+        }
+        Ok(replaced)
     }
 
     fn entry_for_plugin(&self, plugin_name: &str) -> Result<Option<Arc<SourceEntry>>> {
@@ -1256,6 +1262,9 @@ impl ExtensionManager {
             retired.push(replaced);
         }
 
+        for entry in &retired {
+            entry.queue.close();
+        }
         Ok(retired)
     }
 
@@ -1313,6 +1322,7 @@ impl ExtensionManager {
                 }
                 continue;
             }
+            entry.queue.close();
             if let Some(worker) = worker {
                 worker.shutdown().await;
             }
@@ -1565,6 +1575,10 @@ impl ExtensionManager {
 }
 
 #[cfg(test)]
+#[path = "manager/queue_tests.rs"]
+mod queue_tests;
+
+#[cfg(test)]
 mod tests {
     use std::{
         future::Future,
@@ -1690,7 +1704,7 @@ mod tests {
         let (started_tx, started_rx) = oneshot::channel();
         let (release_tx, release_rx) = oneshot::channel();
 
-        let caller = tokio::spawn(ExtensionManager::await_worker_supervisor(
+        let caller = tokio::spawn(ExtensionManager::await_call_supervisor(
             1,
             "test source".to_string(),
             "test_operation",
