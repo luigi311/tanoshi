@@ -1317,7 +1317,10 @@ impl Reader {
             .is_some_and(|(_, status)| matches!(status, PageStatus::Error));
         let show_second = !current_is_landscape && (second_is_portrait || second_has_error);
         let next_page = current_page.saturating_add(if show_second { 2 } else { 1 });
-        let prev_step = if current_page == 1 || is_landscape(current_page.saturating_sub(1)) {
+        let prev_step = if current_page == 1
+            || is_landscape(current_page.saturating_sub(1))
+            || is_landscape(current_page.saturating_sub(2))
+        {
             1
         } else {
             2

@@ -20,6 +20,7 @@ const doubleCases = new Map([
   ["double portraits second first", { dimensions: [[400, 800], [400, 800]], order: [1, 0], paired: true }],
   ["double portraits first first", { dimensions: [[400, 800], [400, 800]], order: [0, 1], paired: true }],
   ["double late previous landscape", { dimensions: [null, [800, 400], [400, 800]], order: [2, 1], startPage: 3, latePrevious: true }],
+  ["double landscape two pages back", { dimensions: [[800, 400], [400, 800], [800, 400]], order: [2, 1, 0], startPage: 3, latePrevious: true }],
   ["single to double portraits", { dimensions: [[400, 800], [400, 800]], order: [0, 1], paired: true, switchMode: true }],
   ["single to double landscape", { dimensions: [[800, 400], [400, 800]], order: [0, 1], paired: false, switchMode: true }],
   ["continuous to double portraits", { dimensions: [[400, 800], [400, 800]], order: [0, 1], paired: true, switchMode: true }],
@@ -213,7 +214,7 @@ test("image updates preserve unrelated reader pages", { timeout: 60000 }, async 
           assert.deepEqual(await evaluate('[...document.querySelectorAll("#page-list img")].filter(img => getComputedStyle(img).display !== "none").map(img => img.id)'), ["1"]);
           await evaluate('document.getElementById("next").click()');
           await until('location.hash === "#3"');
-          assert.deepEqual(await evaluate("changes"), { added: 2, removed: 2 });
+          assert.deepEqual(await evaluate("changes"), { added: order.length, removed: order.length });
           return;
         }
         const spread = await evaluate(`({
