@@ -31,12 +31,34 @@ type Worker = DownloadWorker<
 
 type ImageHandler = Arc<dyn Fn(String) -> Result<Bytes> + Send + Sync>;
 
-struct TestExtension(ImageHandler, Vec<String>);
+struct PausedWrite {
+    path: PathBuf,
+    started: tokio::sync::mpsc::UnboundedSender<()>,
+    release: std::sync::mpsc::Receiver<()>,
+}
+
+static PAUSED_WRITES: Mutex<Vec<PausedWrite>> = Mutex::new(Vec::new());
+
+pub(super) fn before_archive_write(path: &Path) {
+    let pause = {
+        let mut writes = PAUSED_WRITES.lock().unwrap();
+        writes
+            .iter()
+            .position(|write| write.path == path)
+            .map(|index| writes.swap_remove(index))
+    };
+    if let Some(pause) = pause {
+        let _ = pause.started.send(());
+        let _ = pause.release.recv();
+    }
+}
+
+struct TestExtension(ImageHandler, Vec<String>, i64);
 
 impl Extension for TestExtension {
     fn get_source_info(&self) -> SourceInfo {
         SourceInfo {
-            id: 1,
+            id: self.2,
             name: "Test source".into(),
             url: "https://example.test".into(),
             version: "test",
@@ -140,7 +162,17 @@ impl Fixture {
         handler: Option<ImageHandler>,
         pages: Vec<String>,
     ) -> (Worker, DownloadSender) {
-        let ext = ExtensionManager::new(self.dir.join("plugins"));
+        self.worker_with_options(handler, pages, Default::default())
+            .await
+    }
+
+    async fn worker_with_options(
+        &self,
+        handler: Option<ImageHandler>,
+        pages: Vec<String>,
+        options: tanoshi_vm::extension::ExtensionManagerOptions,
+    ) -> (Worker, DownloadSender) {
+        let ext = ExtensionManager::new_with_options(self.dir.join("plugins"), options);
         let calls = self.calls.clone();
         ext.insert(Source::from(Box::new(TestExtension(
             Arc::new(move |url| {
@@ -152,6 +184,7 @@ impl Fixture {
                 }
             }),
             pages,
+            1,
         ))))
         .await
         .unwrap();
@@ -265,6 +298,68 @@ impl Fixture {
         }
         panic!("queue failed to drain");
     }
+}
+
+#[tokio::test]
+async fn download_worker_yields_the_next_source_slot_to_browsing() {
+    use std::task::{Context, Waker};
+    use tanoshi_vm::extension::ExtensionManagerOptions;
+
+    let fixture = Fixture::new().await;
+    let (started_tx, mut started_rx) = tokio::sync::mpsc::unbounded_channel();
+    let (release, receiver) = std::sync::mpsc::channel();
+    let receiver = Mutex::new(receiver);
+    let handler: ImageHandler = Arc::new(move |url| {
+        if url == "hold" {
+            let _ = started_tx.send(());
+            // A dropped sender unblocks the native call if the test fails.
+            let _ = receiver.lock().unwrap().recv();
+        }
+        Ok(Bytes::from(url))
+    });
+    let (worker, _commands) = fixture
+        .worker_with_options(
+            Some(handler),
+            vec![],
+            ExtensionManagerOptions {
+                max_concurrent_calls: 1,
+                ..Default::default()
+            },
+        )
+        .await;
+    let browsing = worker.ext.clone().with_priority(RequestPriority::High);
+    let active = tokio::spawn({
+        let browsing = browsing.clone();
+        async move { browsing.get_image_bytes(1, "hold".into()).await }
+    });
+    started_rx.recv().await.unwrap();
+    let mut download = Box::pin(worker.ext.get_image_bytes(1, "download.jpg".into()));
+    let mut thumbnail = Box::pin(browsing.get_image_bytes(1, "thumbnail.jpg".into()));
+    assert!(
+        download
+            .as_mut()
+            .poll(&mut Context::from_waker(Waker::noop()))
+            .is_pending()
+    );
+    assert!(
+        thumbnail
+            .as_mut()
+            .poll(&mut Context::from_waker(Waker::noop()))
+            .is_pending()
+    );
+    release.send(()).unwrap();
+    active.await.unwrap().unwrap();
+    let (download_result, thumbnail_result) = tokio::time::timeout(Duration::from_secs(1), async {
+        tokio::join!(download, thumbnail)
+    })
+    .await
+    .unwrap();
+    download_result.unwrap();
+    thumbnail_result.unwrap();
+    assert_eq!(
+        *fixture.calls.lock().unwrap(),
+        ["hold", "thumbnail.jpg", "download.jpg"]
+    );
 }
 
 // Run on a current-thread runtime so synchronous archive work would starve the timer.
@@ -553,6 +648,162 @@ async fn cancellation_cleans_partial_archives_while_paused() {
 }
 
 #[tokio::test]
+async fn cancelling_an_image_waiting_for_a_source_slot_unblocks_cleanup_and_other_sources() {
+    use tanoshi_vm::extension::ExtensionManagerOptions;
+
+    let fixture = Fixture::new().await;
+    fixture.write_archive(1, 1, true);
+    fixture.mark_pages(1, 1).await;
+    let tmp = fixture.archive_path(1, true);
+    let (started, mut starts) = tokio::sync::mpsc::unbounded_channel();
+    let (release, receiver) = std::sync::mpsc::channel();
+    let receiver = Mutex::new(receiver);
+    let (worker, tx) = fixture
+        .worker_with_options(
+            Some(Arc::new(move |url| {
+                if url == "hold" {
+                    let _ = started.send(());
+                    // A dropped sender releases the slot if an assertion fails.
+                    let _ = receiver.lock().unwrap().recv();
+                }
+                Ok(Bytes::from(url))
+            })),
+            vec![],
+            ExtensionManagerOptions {
+                max_concurrent_calls: 1,
+                ..Default::default()
+            },
+        )
+        .await;
+    let calls = fixture.calls.clone();
+    worker
+        .ext
+        .insert(Source::from(Box::new(TestExtension(
+            Arc::new(move |url| {
+                calls.lock().unwrap().push(url.clone());
+                Ok(Bytes::from(url))
+            }),
+            vec![],
+            2,
+        ))))
+        .await
+        .unwrap();
+    sqlx::query("UPDATE download_queue SET source_id = 2 WHERE chapter_id = 2")
+        .execute(fixture.pool.write())
+        .await
+        .unwrap();
+    let browsing = worker.ext.clone().with_priority(RequestPriority::High);
+    let occupied_slot = tokio::spawn({
+        let browsing = browsing.clone();
+        async move { browsing.get_image_bytes(1, "hold".into()).await }
+    });
+    starts.recv().await.unwrap();
+    let handle = tokio::spawn(worker.run());
+    // Let the worker reach admission while the source's only slot is held.
+    sleep(Duration::from_millis(100)).await;
+    tx.send(Command::Download).unwrap();
+    DownloadService::new(fixture.repo.clone(), tx)
+        .remove_chapters_from_queue(vec![1])
+        .await
+        .unwrap();
+    let result = tokio::time::timeout(Duration::from_secs(2), async {
+        while tmp.exists()
+            || !fixture
+                .repo
+                .get_download_queue(&[])
+                .await
+                .unwrap()
+                .is_empty()
+        {
+            sleep(Duration::from_millis(10)).await;
+        }
+        assert!(
+            !occupied_slot.is_finished(),
+            "test released the occupied slot too early"
+        );
+        assert_eq!(
+            fixture.repo.get_chapter_downloaded_path(2).await.unwrap(),
+            fixture.archive_path(2, false).to_str().unwrap()
+        );
+    })
+    .await;
+    release.send(()).unwrap();
+    occupied_slot.await.unwrap().unwrap();
+    handle.abort();
+    let _ = handle.await;
+    result.expect("cancellation waited for the source slot instead of unblocking the worker");
+    assert_eq!(
+        *fixture.calls.lock().unwrap(),
+        ["hold", "https://example.test/2/0.jpg"]
+    );
+    assert!(!tmp.exists());
+    assert!(!fixture.archive_path(1, false).exists());
+}
+
+#[tokio::test]
+async fn cancellation_waits_for_archive_write_completion_before_cleanup() {
+    let fixture = Fixture::new().await;
+    fixture.write_archive(1, 1, true);
+    fixture.mark_pages(1, 1).await;
+    let tmp = fixture.archive_path(1, true);
+    let (started, mut starts) = tokio::sync::mpsc::unbounded_channel();
+    let (release, receiver) = std::sync::mpsc::channel();
+    PAUSED_WRITES.lock().unwrap().push(PausedWrite {
+        path: tmp.clone(),
+        started,
+        release: receiver,
+    });
+    let (worker, tx) = fixture.worker(None).await;
+    let handle = tokio::spawn(worker.run());
+    tokio::time::timeout(Duration::from_secs(2), starts.recv())
+        .await
+        .unwrap()
+        .unwrap();
+    // The blocking write has started, so cancellation must wait for it before
+    // deleting the archive or allowing another page to be written.
+    DownloadService::new(fixture.repo.clone(), tx)
+        .remove_chapters_from_queue(vec![1])
+        .await
+        .unwrap();
+    sleep(Duration::from_millis(100)).await;
+    assert!(
+        tmp.exists(),
+        "cleanup ran before the blocking write completed"
+    );
+    assert!(
+        fixture
+            .repo
+            .get_chapter_downloaded_path(2)
+            .await
+            .unwrap()
+            .is_empty()
+    );
+    release.send(()).unwrap();
+    let result = tokio::time::timeout(Duration::from_secs(2), async {
+        while tmp.exists()
+            || !fixture
+                .repo
+                .get_download_queue(&[])
+                .await
+                .unwrap()
+                .is_empty()
+        {
+            sleep(Duration::from_millis(10)).await;
+        }
+    })
+    .await;
+    handle.abort();
+    let _ = handle.await;
+    result.unwrap();
+    assert!(!tmp.exists());
+    assert!(!fixture.archive_path(1, false).exists());
+    assert_eq!(
+        fixture.repo.get_chapter_downloaded_path(2).await.unwrap(),
+        fixture.archive_path(2, false).to_str().unwrap()
+    );
+}
+
+#[tokio::test]
 async fn cancellation_during_image_request_cleans_archive_and_continues_queue() {
     for completed_pages in [0, 1] {
         let fixture = Fixture::new().await;
@@ -561,7 +812,6 @@ async fn cancellation_during_image_request_cleans_archive_and_continues_queue() 
             fixture.mark_pages(1, completed_pages as i64).await;
         }
         let tmp = fixture.archive_path(1, true);
-        let request_tmp = tmp.clone();
         let sender = Arc::new(Mutex::new(None::<DownloadSender>));
         let request_sender = sender.clone();
         let repo = fixture.repo.clone();
@@ -572,8 +822,6 @@ async fn cancellation_during_image_request_cleans_archive_and_continues_queue() 
                     let tx = request_sender.lock().unwrap().as_ref().unwrap().clone();
                     let service = DownloadService::new(repo.clone(), tx);
                     runtime.block_on(service.remove_chapters_from_queue(vec![1]))?;
-                    // The worker waits until the request finishes before cleanup.
-                    assert_eq!(request_tmp.exists(), completed_pages > 0);
                 }
                 Ok(Bytes::from(url))
             })))
@@ -610,6 +858,82 @@ async fn cancellation_during_image_request_cleans_archive_and_continues_queue() 
         );
         assert_eq!(fixture.calls.lock().unwrap().len(), 2);
     }
+}
+
+#[tokio::test]
+async fn stale_cleanup_keeps_the_requeued_chapters_image_request() {
+    let fixture = Fixture::new().await;
+    let cancelled = fixture
+        .repo
+        .get_download_queue(&[1])
+        .await
+        .unwrap()
+        .remove(0);
+    let mut first = fixture
+        .repo
+        .get_single_download_queue()
+        .await
+        .unwrap()
+        .unwrap();
+    fixture
+        .repo
+        .delete_download_queue_by_chapter_id(1)
+        .await
+        .unwrap();
+    first.url = "https://example.test/1/requeued.jpg".into();
+    let mut second = first.clone();
+    second.rank = 1;
+    second.url = "https://example.test/1/next.jpg".into();
+    fixture
+        .repo
+        .insert_download_queue(&[first, second])
+        .await
+        .unwrap();
+
+    let (started, mut starts) = tokio::sync::mpsc::unbounded_channel();
+    let (release, receiver) = std::sync::mpsc::channel();
+    let receiver = Mutex::new(receiver);
+    let (mut worker, tx) = fixture
+        .worker(Some(Arc::new(move |url| {
+            if url.ends_with("/requeued.jpg") {
+                let _ = started.send(());
+                // Dropping the sender unblocks the request if the test fails.
+                let _ = receiver.lock().unwrap().recv();
+            }
+            Ok(Bytes::from(url))
+        })))
+        .await;
+    let fetch = tokio::spawn(async move {
+        let result = worker.download().await;
+        (worker, result)
+    });
+    starts.recv().await.unwrap();
+    tx.send(Command::CleanupCancelledChapter(cancelled))
+        .unwrap();
+    sleep(Duration::from_millis(100)).await;
+    let stopped_early = fetch.is_finished();
+    release.send(()).unwrap();
+    let (_worker, result) = fetch.await.unwrap();
+    assert!(result.unwrap());
+    assert!(
+        !stopped_early,
+        "stale cleanup discarded the active request for the requeued chapter"
+    );
+    assert_eq!(
+        *fixture.calls.lock().unwrap(),
+        ["https://example.test/1/requeued.jpg"]
+    );
+    let mut zip = ZipArchive::new(File::open(fixture.archive_path(1, true)).unwrap()).unwrap();
+    let mut data = String::new();
+    zip.by_name("0000_requeued.jpg")
+        .unwrap()
+        .read_to_string(&mut data)
+        .unwrap();
+    assert_eq!(data, "https://example.test/1/requeued.jpg");
+    assert_eq!(
+        fixture.repo.get_download_queue(&[1]).await.unwrap()[0].downloaded,
+        1
+    );
 }
 
 #[tokio::test]

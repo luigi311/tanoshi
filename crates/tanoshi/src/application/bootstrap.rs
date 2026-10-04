@@ -64,7 +64,6 @@ pub async fn bootstrap(config: Config) -> Result<App> {
         &config.plugin_path,
         ExtensionManagerOptions {
             max_concurrent_calls: config.extension.max_concurrent_calls_per_source,
-            admission_timeout: Duration::from_millis(config.extension.admission_timeout_ms),
             metadata_timeout: Duration::from_secs(config.extension.metadata_timeout_secs),
             image_timeout: Duration::from_secs(config.extension.image_timeout_secs),
         },

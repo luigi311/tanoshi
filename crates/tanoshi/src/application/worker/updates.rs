@@ -11,7 +11,7 @@ use rayon::prelude::*;
 use serde::Deserialize;
 
 use tanoshi_lib::prelude::Version;
-use tanoshi_vm::extension::{ExtensionError, ExtensionManager};
+use tanoshi_vm::extension::{ExtensionError, ExtensionManager, RequestPriority};
 
 use crate::{
     domain::{
@@ -266,6 +266,7 @@ where
         &self,
         mut rx: tokio::sync::mpsc::Receiver<Manga>,
         run_kind: &str,
+        priority: RequestPriority,
     ) -> Result<(), anyhow::Error> {
         let mut mangas_by_source: HashMap<i64, Vec<Manga>> = HashMap::new();
         while let Some(manga) = rx.recv().await {
@@ -277,7 +278,7 @@ where
 
         let mut source_updates = futures::stream::iter(mangas_by_source)
             .map(|(source_id, mangas)| async move {
-                let result = self.check_source_updates(source_id, mangas).await;
+                let result = self.check_source_updates(source_id, mangas, priority).await;
                 (source_id, result)
             })
             .buffer_unordered(self.max_concurrent_sources);
@@ -325,6 +326,7 @@ where
         &self,
         source_id: i64,
         mangas: Vec<Manga>,
+        priority: RequestPriority,
     ) -> SourceUpdateResult {
         let manga_count = mangas.len();
         let mut consecutive_failures = 0;
@@ -332,7 +334,7 @@ where
 
         for (index, manga) in mangas.into_iter().enumerate() {
             summary.checked += 1;
-            let outcome = match self.check_manga_update(manga).await {
+            let outcome = match self.check_manga_update(manga, priority).await {
                 Ok(outcome) => outcome,
                 Err(error) => {
                     summary.failed += 1;
@@ -365,8 +367,6 @@ where
                     }
                 }
             }
-
-            tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
         }
 
         SourceUpdateResult {
@@ -375,11 +375,17 @@ where
         }
     }
 
-    async fn check_manga_update(&self, manga: Manga) -> Result<MangaUpdateOutcome, anyhow::Error> {
+    async fn check_manga_update(
+        &self,
+        manga: Manga,
+        priority: RequestPriority,
+    ) -> Result<MangaUpdateOutcome, anyhow::Error> {
         debug!("Checking updates: {}", manga.title);
 
         let chapters: Vec<Chapter> = match self
             .extensions
+            .clone()
+            .with_priority(priority)
             .get_chapters(manga.source_id, manga.path.clone())
             .await
         {
@@ -620,7 +626,7 @@ where
                     match cmd {
                         ChapterUpdateCommand::All(tx) => {
                             self.start_chapter_update_queue_all(manga_tx);
-                            let res = self.check_chapter_update(manga_rx, "manual-all").await;
+                            let res = self.check_chapter_update(manga_rx, "manual-all", RequestPriority::High).await;
                             if tx.send(res).is_err() {
                                 debug!("chapter update result receiver dropped (All)");
                             }
@@ -633,7 +639,7 @@ where
                             let res = match queue_result {
                                 Ok(()) => {
                                     let run_kind = format!("manual-manga:{manga_id}");
-                                    self.check_chapter_update(manga_rx, &run_kind).await
+                                    self.check_chapter_update(manga_rx, &run_kind, RequestPriority::High).await
                                 }
                                 Err(error) => Err(error),
                             };
@@ -644,7 +650,7 @@ where
                         ChapterUpdateCommand::Library(user_id, tx) => {
                             self.start_chapter_update_queue_by_user_id(manga_tx, user_id);
                             let run_kind = format!("manual-library:{user_id}");
-                            let res = self.check_chapter_update(manga_rx, &run_kind).await;
+                            let res = self.check_chapter_update(manga_rx, &run_kind, RequestPriority::High).await;
                             if tx.send(res).is_err() {
                                 debug!("chapter update result receiver dropped (Library user {user_id})");
                             }
@@ -660,9 +666,9 @@ where
 
                     let (manga_tx, manga_rx) = tokio::sync::mpsc::channel(1);
                     self.start_chapter_update_queue_all(manga_tx);
-                    
+
                     let check_chapter_result =
-                        self.check_chapter_update(manga_rx, "periodic").await;
+                        self.check_chapter_update(manga_rx, "periodic", RequestPriority::Low).await;
                     if let Err(e) = check_chapter_result {
                         error!("failed check chapter update: {e}");
                     }
