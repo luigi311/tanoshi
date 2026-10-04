@@ -21,7 +21,7 @@ use crate::{
     },
     presentation::graphql::schema::DatabaseLoader,
 };
-use async_graphql::{dataloader::DataLoader, Context, Object, Result, SimpleObject};
+use async_graphql::{Context, Object, Result, SimpleObject, dataloader::DataLoader};
 use chrono::NaiveDateTime;
 use rayon::prelude::*;
 use tanoshi_vm::extension::ExtensionManager;
@@ -33,8 +33,7 @@ pub struct Tracker {
 }
 
 /// A type represent manga details, normalized across source
-#[derive(Debug, Clone)]
-#[derive(Default)]
+#[derive(Debug, Clone, Default)]
 pub struct Manga {
     pub id: i64,
     pub source_id: i64,
@@ -47,7 +46,6 @@ pub struct Manga {
     pub cover_url: String,
     pub date_added: chrono::NaiveDateTime,
 }
-
 
 impl From<tanoshi_lib::models::MangaInfo> for Manga {
     fn from(m: tanoshi_lib::models::MangaInfo) -> Self {
@@ -136,7 +134,11 @@ impl Manga {
         let loader = ctx.data::<DataLoader<DatabaseLoader>>()?;
         let is_favorite: Option<bool> = if self.id == 0 {
             loader
-                .load_one(UserFavoritePath(user.sub, self.path.clone()))
+                .load_one(UserFavoritePath(
+                    user.sub,
+                    self.source_id,
+                    self.path.clone(),
+                ))
                 .await?
         } else {
             loader.load_one(UserFavoriteId(user.sub, self.id)).await?

@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use async_trait::async_trait;
 
@@ -70,10 +70,18 @@ pub trait LibraryRepository: Clone + Send + Sync {
         category_id: Option<i64>,
     ) -> Result<Vec<Manga>, LibraryRepositoryError>;
 
-    async fn get_manga_from_library(
+    async fn get_favorite_manga_ids(
         &self,
         user_id: i64,
-    ) -> Result<Vec<Manga>, LibraryRepositoryError>;
+        manga_ids: &[i64],
+    ) -> Result<HashSet<i64>, LibraryRepositoryError>;
+
+    async fn get_favorite_manga_paths(
+        &self,
+        user_id: i64,
+        source_id: i64,
+        paths: &[String],
+    ) -> Result<HashSet<String>, LibraryRepositoryError>;
 
     async fn insert_manga_to_library(
         &self,
