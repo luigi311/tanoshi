@@ -11,6 +11,9 @@ use crate::{
     infrastructure::database::Pool,
 };
 
+// Eight bindings per chapter; leave headroom below SQLite's variable limit.
+const CHAPTER_INSERT_CHUNK_SIZE: usize = 1_000;
+
 #[derive(Clone)]
 pub struct ChapterRepositoryImpl {
     pool: Pool,
@@ -29,45 +32,51 @@ impl ChapterRepository for ChapterRepositoryImpl {
             return Ok(());
         }
 
-        let mut values = vec![];
-        values.resize(chapters.len(), "(?, ?, ?, ?, ?, ?, ?, ?)");
+        let date_added = Utc::now().naive_utc();
 
-        let query_str = format!(
-            r#"INSERT INTO chapter(
-            source_id,
-            manga_id,
-            title,
-            path,
-            number,
-            scanlator,
-            uploaded,
-            date_added
-        ) VALUES {} ON CONFLICT(source_id, path) DO UPDATE SET
-            manga_id=excluded.manga_id,
-            title=excluded.title,
-            number=excluded.number,
-            scanlator=excluded.scanlator,
-            uploaded=excluded.uploaded
-        WHERE (chapter.title, chapter.number, chapter.scanlator, chapter.uploaded, chapter.manga_id)
-            IS NOT (excluded.title, excluded.number, excluded.scanlator, excluded.uploaded, excluded.manga_id)
-        "#,
-            values.join(",")
-        );
+        // Keep the whole refresh atomic even if a later chunk fails.
+        let mut tx = self.pool.write().begin().await?;
+        for chunk in chapters.chunks(CHAPTER_INSERT_CHUNK_SIZE) {
+            let values = vec!["(?, ?, ?, ?, ?, ?, ?, ?)"; chunk.len()];
 
-        let mut query = sqlx::query(&query_str);
-        for chapter in chapters {
-            query = query
-                .bind(chapter.source_id)
-                .bind(chapter.manga_id)
-                .bind(&chapter.title)
-                .bind(&chapter.path)
-                .bind(chapter.number)
-                .bind(&chapter.scanlator)
-                .bind(chapter.uploaded)
-                .bind(Utc::now().naive_utc());
+            let query_str = format!(
+                r#"INSERT INTO chapter(
+                    source_id,
+                    manga_id,
+                    title,
+                    path,
+                    number,
+                    scanlator,
+                    uploaded,
+                    date_added
+                ) VALUES {} ON CONFLICT(source_id, path) DO UPDATE SET
+                    manga_id=excluded.manga_id,
+                    title=excluded.title,
+                    number=excluded.number,
+                    scanlator=excluded.scanlator,
+                    uploaded=excluded.uploaded
+                WHERE (chapter.title, chapter.number, chapter.scanlator, chapter.uploaded, chapter.manga_id)
+                    IS NOT (excluded.title, excluded.number, excluded.scanlator, excluded.uploaded, excluded.manga_id)
+                "#,
+                values.join(",")
+            );
+
+            let mut query = sqlx::query(&query_str);
+            for chapter in chunk {
+                query = query
+                    .bind(chapter.source_id)
+                    .bind(chapter.manga_id)
+                    .bind(&chapter.title)
+                    .bind(&chapter.path)
+                    .bind(chapter.number)
+                    .bind(&chapter.scanlator)
+                    .bind(chapter.uploaded)
+                    .bind(date_added);
+            }
+
+            query.execute(&mut *tx).await?;
         }
-
-        query.execute(self.pool.write()).await?;
+        tx.commit().await?;
 
         Ok(())
     }

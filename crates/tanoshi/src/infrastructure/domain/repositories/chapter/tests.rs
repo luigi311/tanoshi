@@ -1,6 +1,6 @@
 use std::{fs, path::PathBuf};
 
-use chrono::Utc;
+use chrono::{NaiveDateTime, Utc};
 
 use super::ChapterRepositoryImpl;
 use crate::{
@@ -96,6 +96,27 @@ impl Fixture {
 
     async fn updated_ids(&self) -> Vec<i64> {
         sqlx::query_scalar("SELECT chapter_id FROM chapter_updates ORDER BY rowid")
+            .fetch_all(self.pool.read())
+            .await
+            .unwrap()
+    }
+
+    fn new_chapters(&self, count: usize) -> Vec<Chapter> {
+        (0..count)
+            .map(|index| {
+                let mut chapter = self.chapters[0].clone();
+                chapter.id = 0;
+                chapter.title = format!("New chapter {index}");
+                chapter.path = format!("/chapter/new/{index}");
+                chapter.number = index as f64 + 3.0;
+                chapter.downloaded_path = None;
+                chapter
+            })
+            .collect()
+    }
+
+    async fn chapter_dates(&self) -> Vec<(String, NaiveDateTime)> {
+        sqlx::query_as("SELECT path, date_added FROM chapter ORDER BY path")
             .fetch_all(self.pool.read())
             .await
             .unwrap()
@@ -244,6 +265,91 @@ async fn nullable_metadata_is_replaced_on_refresh() {
     assert_eq!(stored.title, original.title);
     assert_eq!(stored.scanlator, original.scanlator);
     assert_eq!(stored.date_added, original.date_added);
+    assert_eq!(fixture.updated_ids().await, vec![original.id]);
+    fixture.pool.close().await;
+}
+
+#[tokio::test]
+async fn large_chapter_lists_are_inserted_and_refreshed_across_chunks() {
+    let fixture = Fixture::new().await;
+    let downloaded_ids = fixture.downloaded_ids().await;
+    let mut chapters = fixture.chapters.clone();
+    // Exceeds the 32,766-variable limit for one statement and leaves a partial chunk.
+    chapters.extend(fixture.new_chapters(5_001));
+
+    fixture.repo.insert_chapters(&chapters).await.unwrap();
+
+    let stored_dates = fixture.chapter_dates().await;
+    let mut expected_paths: Vec<_> = chapters
+        .iter()
+        .map(|chapter| chapter.path.as_str())
+        .collect();
+    expected_paths.sort_unstable();
+    assert_eq!(
+        stored_dates
+            .iter()
+            .map(|(path, _)| path.as_str())
+            .collect::<Vec<_>>(),
+        expected_paths
+    );
+    let mut new_dates = stored_dates
+        .iter()
+        .filter(|(path, _)| path.starts_with("/chapter/new/"))
+        .map(|(_, date_added)| date_added);
+    let date_added = new_dates.next().unwrap();
+    assert!(new_dates.all(|date| date == date_added));
+    assert!(fixture.updated_ids().await.is_empty());
+    assert_eq!(fixture.downloaded_ids().await, downloaded_ids);
+
+    fixture.repo.insert_chapters(&chapters).await.unwrap();
+
+    assert!(fixture.updated_ids().await.is_empty());
+    assert_eq!(fixture.chapter_dates().await, stored_dates);
+    assert_eq!(fixture.downloaded_ids().await, downloaded_ids);
+    fixture.pool.close().await;
+}
+
+#[tokio::test]
+async fn later_chunk_failure_rolls_back_inserts_and_metadata_updates() {
+    let fixture = Fixture::new().await;
+    let original = &fixture.chapters[0];
+    let original_dates = fixture.chapter_dates().await;
+    let downloaded_ids = fixture.downloaded_ids().await;
+    let mut chapters = fixture.chapters.clone();
+    chapters[0].title = "Changed in the first chunk".into();
+    chapters.extend(fixture.new_chapters(2_001));
+    chapters.last_mut().unwrap().path = "/chapter/failing".into();
+    sqlx::query(
+        "CREATE TRIGGER reject_chapter_insert BEFORE INSERT ON chapter \
+         WHEN new.path = '/chapter/failing' \
+         BEGIN SELECT RAISE(ABORT, 'injected later chunk failure'); END",
+    )
+    .execute(fixture.pool.write())
+    .await
+    .unwrap();
+
+    let error = fixture.repo.insert_chapters(&chapters).await.unwrap_err();
+    assert!(error.to_string().contains("injected later chunk failure"));
+    assert_eq!(fixture.chapter_dates().await, original_dates);
+    assert!(fixture.updated_ids().await.is_empty());
+    assert_eq!(
+        fixture
+            .repo
+            .get_chapter_by_id(original.id)
+            .await
+            .unwrap()
+            .title,
+        original.title
+    );
+    assert_eq!(fixture.downloaded_ids().await, downloaded_ids);
+
+    // The writer remains usable and a retry commits the whole list.
+    sqlx::query("DROP TRIGGER reject_chapter_insert")
+        .execute(fixture.pool.write())
+        .await
+        .unwrap();
+    fixture.repo.insert_chapters(&chapters).await.unwrap();
+    assert_eq!(fixture.chapter_dates().await.len(), chapters.len());
     assert_eq!(fixture.updated_ids().await, vec![original.id]);
     fixture.pool.close().await;
 }
