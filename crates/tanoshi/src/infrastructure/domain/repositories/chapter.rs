@@ -47,8 +47,9 @@ impl ChapterRepository for ChapterRepositoryImpl {
             title=excluded.title,
             number=excluded.number,
             scanlator=excluded.scanlator,
-            uploaded=excluded.uploaded,
-            date_added=excluded.date_added
+            uploaded=excluded.uploaded
+        WHERE (chapter.title, chapter.number, chapter.scanlator, chapter.uploaded, chapter.manga_id)
+            IS NOT (excluded.title, excluded.number, excluded.scanlator, excluded.uploaded, excluded.manga_id)
         "#,
             values.join(",")
         );
@@ -257,3 +258,6 @@ impl ChapterRepository for ChapterRepositoryImpl {
         Ok(chapters)
     }
 }
+
+#[cfg(test)]
+mod tests;
