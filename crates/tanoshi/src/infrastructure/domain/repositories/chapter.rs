@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use async_trait::async_trait;
 use chrono::Utc;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
@@ -10,6 +12,9 @@ use crate::{
     },
     infrastructure::database::Pool,
 };
+
+// Leave headroom below SQLite's variable limit, including eight bindings per insert.
+const CHAPTER_CHUNK_SIZE: usize = 1_000;
 
 #[derive(Clone)]
 pub struct ChapterRepositoryImpl {
@@ -29,44 +34,51 @@ impl ChapterRepository for ChapterRepositoryImpl {
             return Ok(());
         }
 
-        let mut values = vec![];
-        values.resize(chapters.len(), "(?, ?, ?, ?, ?, ?, ?, ?)");
+        let date_added = Utc::now().naive_utc();
 
-        let query_str = format!(
-            r#"INSERT INTO chapter(
-            source_id,
-            manga_id,
-            title,
-            path,
-            number,
-            scanlator,
-            uploaded,
-            date_added
-        ) VALUES {} ON CONFLICT(source_id, path) DO UPDATE SET
-            manga_id=excluded.manga_id,
-            title=excluded.title,
-            number=excluded.number,
-            scanlator=excluded.scanlator,
-            uploaded=excluded.uploaded,
-            date_added=excluded.date_added
-        "#,
-            values.join(",")
-        );
+        // Keep the whole refresh atomic even if a later chunk fails.
+        let mut tx = self.pool.write().begin().await?;
+        for chunk in chapters.chunks(CHAPTER_CHUNK_SIZE) {
+            let values = vec!["(?, ?, ?, ?, ?, ?, ?, ?)"; chunk.len()];
 
-        let mut query = sqlx::query(&query_str);
-        for chapter in chapters {
-            query = query
-                .bind(chapter.source_id)
-                .bind(chapter.manga_id)
-                .bind(&chapter.title)
-                .bind(&chapter.path)
-                .bind(chapter.number)
-                .bind(&chapter.scanlator)
-                .bind(chapter.uploaded)
-                .bind(Utc::now().naive_utc());
+            let query_str = format!(
+                r#"INSERT INTO chapter(
+                    source_id,
+                    manga_id,
+                    title,
+                    path,
+                    number,
+                    scanlator,
+                    uploaded,
+                    date_added
+                ) VALUES {} ON CONFLICT(source_id, path) DO UPDATE SET
+                    manga_id=excluded.manga_id,
+                    title=excluded.title,
+                    number=excluded.number,
+                    scanlator=excluded.scanlator,
+                    uploaded=excluded.uploaded
+                WHERE (chapter.title, chapter.number, chapter.scanlator, chapter.uploaded, chapter.manga_id)
+                    IS NOT (excluded.title, excluded.number, excluded.scanlator, excluded.uploaded, excluded.manga_id)
+                "#,
+                values.join(",")
+            );
+
+            let mut query = sqlx::query(&query_str);
+            for chapter in chunk {
+                query = query
+                    .bind(chapter.source_id)
+                    .bind(chapter.manga_id)
+                    .bind(&chapter.title)
+                    .bind(&chapter.path)
+                    .bind(chapter.number)
+                    .bind(&chapter.scanlator)
+                    .bind(chapter.uploaded)
+                    .bind(date_added);
+            }
+
+            query.execute(&mut *tx).await?;
         }
-
-        query.execute(self.pool.write()).await?;
+        tx.commit().await?;
 
         Ok(())
     }
@@ -195,18 +207,22 @@ impl ChapterRepository for ChapterRepositoryImpl {
             ));
         }
 
-        let query_str = format!(
-            "DELETE FROM chapter WHERE id IN ({})",
-            vec!["?"; chapter_ids.len()].join(",")
-        );
+        let mut tx = self.pool.write().begin().await?;
+        for chunk in chapter_ids.chunks(CHAPTER_CHUNK_SIZE) {
+            let query_str = format!(
+                "DELETE FROM chapter WHERE id IN ({})",
+                vec!["?"; chunk.len()].join(",")
+            );
 
-        let mut query = sqlx::query(&query_str);
+            let mut query = sqlx::query(&query_str);
 
-        for chapter_id in chapter_ids {
-            query = query.bind(chapter_id);
+            for chapter_id in chunk {
+                query = query.bind(chapter_id);
+            }
+
+            query.execute(&mut *tx).await?;
         }
-
-        query.execute(self.pool.write()).await?;
+        tx.commit().await?;
 
         Ok(())
     }
@@ -223,37 +239,59 @@ impl ChapterRepository for ChapterRepositoryImpl {
             ));
         }
 
-        let query_str = format!(
-            "SELECT * FROM chapter WHERE source_id = ? AND manga_id = ? AND path NOT IN ({})",
-            vec!["?"; paths.len()].join(",")
-        );
+        // Compare against the complete path set: separate NOT IN queries would
+        // include chapters whose paths occur in a different chunk.
+        let paths: HashSet<&str> = paths.iter().map(String::as_str).collect();
+        // Both reads use one snapshot so chapters cannot change between them.
+        let mut tx = self.pool.read().begin().await?;
+        let chapter_ids: Vec<i64> =
+            sqlx::query("SELECT id, path FROM chapter WHERE source_id = ? AND manga_id = ?")
+                .bind(source_id)
+                .bind(manga_id)
+                .fetch_all(&mut *tx)
+                .await?
+                .into_iter()
+                .filter(|row| !paths.contains(row.get::<&str, _>("path")))
+                .map(|row| row.get("id"))
+                .collect();
 
-        let mut query = sqlx::query(&query_str).bind(source_id).bind(manga_id);
-
-        for path in paths {
-            query = query.bind(path);
+        let mut chapters = Vec::new();
+        for chunk in chapter_ids.chunks(CHAPTER_CHUNK_SIZE) {
+            let query_str = format!(
+                "SELECT * FROM chapter WHERE id IN ({})",
+                vec!["?"; chunk.len()].join(",")
+            );
+            let mut query = sqlx::query(&query_str);
+            for chapter_id in chunk {
+                query = query.bind(chapter_id);
+            }
+            chapters.extend(
+                query
+                    .fetch_all(&mut *tx)
+                    .await?
+                    .into_par_iter()
+                    .map(|row| Chapter {
+                        id: row.get(0),
+                        source_id: row.get(1),
+                        manga_id: row.get(2),
+                        title: row.get(3),
+                        path: row.get(4),
+                        number: row.get(5),
+                        scanlator: row.get(6),
+                        uploaded: row.get(7),
+                        date_added: row.get(8),
+                        downloaded_path: row.get(9),
+                        next: None,
+                        prev: None,
+                    })
+                    .collect::<Vec<_>>(),
+            );
         }
-
-        let chapters = query
-            .fetch_all(self.pool.read())
-            .await?
-            .into_par_iter()
-            .map(|row| Chapter {
-                id: row.get(0),
-                source_id: row.get(1),
-                manga_id: row.get(2),
-                title: row.get(3),
-                path: row.get(4),
-                number: row.get(5),
-                scanlator: row.get(6),
-                uploaded: row.get(7),
-                date_added: row.get(8),
-                downloaded_path: row.get(9),
-                next: None,
-                prev: None,
-            })
-            .collect();
+        tx.commit().await?;
 
         Ok(chapters)
     }
 }
+
+#[cfg(test)]
+mod tests;
