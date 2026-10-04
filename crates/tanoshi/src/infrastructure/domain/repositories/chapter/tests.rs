@@ -6,7 +6,10 @@ use super::ChapterRepositoryImpl;
 use crate::{
     domain::{
         entities::chapter::Chapter,
-        repositories::{chapter::ChapterRepository, download::DownloadRepository},
+        repositories::{
+            chapter::{ChapterRepository, ChapterRepositoryError},
+            download::DownloadRepository,
+        },
     },
     infrastructure::{
         database::{Pool, establish_connection},
@@ -351,5 +354,161 @@ async fn later_chunk_failure_rolls_back_inserts_and_metadata_updates() {
     fixture.repo.insert_chapters(&chapters).await.unwrap();
     assert_eq!(fixture.chapter_dates().await.len(), chapters.len());
     assert_eq!(fixture.updated_ids().await, vec![original.id]);
+    fixture.pool.close().await;
+}
+
+#[tokio::test]
+async fn empty_path_and_id_lists_are_rejected() {
+    let fixture = Fixture::new().await;
+    assert!(matches!(
+        fixture.repo.get_chapters_not_in_source(1, 1, &[]).await,
+        Err(ChapterRepositoryError::BadArgsError(_))
+    ));
+    assert!(matches!(
+        fixture.repo.delete_chapter_by_ids(&[]).await,
+        Err(ChapterRepositoryError::BadArgsError(_))
+    ));
+    fixture.pool.close().await;
+}
+
+#[tokio::test]
+async fn missing_chapters_respect_the_complete_path_set_and_scope() {
+    let fixture = Fixture::new().await;
+    let mut paths: Vec<_> = (0..33_001)
+        .map(|index| format!("/source/chapter/{index}"))
+        .collect();
+    paths[0] = fixture.chapters[0].path.clone();
+    paths[1_000] = "/source/quoted's/第千章".into();
+    paths[20_000] = paths[1_000].clone();
+
+    let mut chapters = fixture.new_chapters(2_001);
+    let mut expected_paths: Vec<_> = chapters
+        .iter()
+        .map(|chapter| chapter.path.clone())
+        .collect();
+    expected_paths.sort_unstable();
+    // Keep chapters whose paths occur at widely separated positions in the input.
+    for index in [1_000, 33_000] {
+        let mut chapter = fixture.chapters[0].clone();
+        chapter.path = paths[index].clone();
+        chapters.push(chapter);
+    }
+    let mut other_source = fixture.chapters[0].clone();
+    other_source.source_id = 2;
+    other_source.path = "/chapter/other-source".into();
+    chapters.push(other_source);
+    fixture.repo.insert_chapters(&chapters).await.unwrap();
+
+    let missing = fixture
+        .repo
+        .get_chapters_not_in_source(1, 1, &paths)
+        .await
+        .unwrap();
+    let mut missing_paths: Vec<_> = missing.iter().map(|chapter| chapter.path.clone()).collect();
+    missing_paths.sort_unstable();
+    assert_eq!(missing_paths, expected_paths);
+    assert!(missing.iter().all(|chapter| chapter.source_id == 1
+        && chapter.manga_id == 1
+        && chapter.next.is_none()
+        && chapter.prev.is_none()));
+
+    paths.extend(missing_paths);
+    assert!(
+        fixture
+            .repo
+            .get_chapters_not_in_source(1, 1, &paths)
+            .await
+            .unwrap()
+            .is_empty()
+    );
+    fixture.pool.close().await;
+}
+
+#[tokio::test]
+async fn large_id_lists_delete_only_requested_chapters() {
+    let fixture = Fixture::new().await;
+    let original_dates = fixture.chapter_dates().await;
+    let downloaded_ids = fixture.downloaded_ids().await;
+    fixture
+        .repo
+        .insert_chapters(&fixture.new_chapters(33_001))
+        .await
+        .unwrap();
+    let mut ids: Vec<i64> =
+        sqlx::query_scalar("SELECT id FROM chapter WHERE path LIKE '/chapter/new/%' ORDER BY id")
+            .fetch_all(fixture.pool.read())
+            .await
+            .unwrap();
+    assert_eq!(ids.len(), 33_001);
+    // Duplicate and nonexistent IDs must remain harmless across batches.
+    ids.push(ids[0]);
+    ids.push(i64::MAX);
+
+    fixture.repo.delete_chapter_by_ids(&ids).await.unwrap();
+
+    assert_eq!(fixture.chapter_dates().await, original_dates);
+    assert_eq!(fixture.downloaded_ids().await, downloaded_ids);
+    fixture.pool.close().await;
+}
+
+#[tokio::test]
+async fn later_delete_chunk_failure_rolls_back_chapters_and_read_history() {
+    let fixture = Fixture::new().await;
+    fixture
+        .repo
+        .insert_chapters(&fixture.new_chapters(2_001))
+        .await
+        .unwrap();
+    let original_dates = fixture.chapter_dates().await;
+    let downloaded_ids = fixture.downloaded_ids().await;
+    let ids: Vec<i64> = sqlx::query_scalar("SELECT id FROM chapter WHERE manga_id = 1 ORDER BY id")
+        .fetch_all(fixture.pool.read())
+        .await
+        .unwrap();
+    sqlx::query("INSERT INTO user (id, username, password) VALUES (1, 'chapter-test', 'unused')")
+        .execute(fixture.pool.write())
+        .await
+        .unwrap();
+    sqlx::query("INSERT INTO user_history (user_id, chapter_id, last_page) VALUES (1, ?, 3)")
+        .bind(fixture.chapters[0].id)
+        .execute(fixture.pool.write())
+        .await
+        .unwrap();
+    sqlx::query(
+        "CREATE TRIGGER reject_chapter_delete BEFORE DELETE ON chapter \
+         WHEN old.path = '/chapter/new/2000' \
+         BEGIN SELECT RAISE(ABORT, 'injected later delete failure'); END",
+    )
+    .execute(fixture.pool.write())
+    .await
+    .unwrap();
+
+    let error = fixture.repo.delete_chapter_by_ids(&ids).await.unwrap_err();
+    assert!(error.to_string().contains("injected later delete failure"));
+    assert_eq!(fixture.chapter_dates().await, original_dates);
+    assert_eq!(fixture.downloaded_ids().await, downloaded_ids);
+    let last_page: i64 = sqlx::query_scalar("SELECT last_page FROM user_history WHERE user_id = 1")
+        .fetch_one(fixture.pool.read())
+        .await
+        .unwrap();
+    assert_eq!(last_page, 3);
+
+    sqlx::query("DROP TRIGGER reject_chapter_delete")
+        .execute(fixture.pool.write())
+        .await
+        .unwrap();
+    fixture.repo.delete_chapter_by_ids(&ids).await.unwrap();
+    assert_eq!(
+        fixture.chapter_dates().await,
+        vec![(
+            fixture.chapters[1].path.clone(),
+            fixture.chapters[1].date_added
+        )]
+    );
+    let history_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM user_history")
+        .fetch_one(fixture.pool.read())
+        .await
+        .unwrap();
+    assert_eq!(history_count, 0);
     fixture.pool.close().await;
 }
