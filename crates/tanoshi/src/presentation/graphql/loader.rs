@@ -6,7 +6,7 @@ use crate::domain::{
         manga::MangaRepository, tracker::TrackerRepository,
     },
 };
-use async_graphql::{dataloader::Loader, Result};
+use async_graphql::{Result, dataloader::Loader};
 use chrono::NaiveDateTime;
 use itertools::Itertools;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
@@ -172,11 +172,11 @@ where
 
         let res = self
             .history_repo
-            .get_history_chapters_by_manga_ids(user_id, &manga_ids)
+            .get_last_read_at_by_manga_ids(user_id, &manga_ids)
             .await
             .map_err(|e| Arc::new(anyhow::anyhow!("{e}")))?
-            .into_par_iter()
-            .map(|chapter| (UserLastReadId(user_id, chapter.manga_id), chapter.read_at))
+            .into_iter()
+            .map(|(manga_id, read_at)| (UserLastReadId(user_id, manga_id), read_at))
             .collect();
 
         Ok(res)

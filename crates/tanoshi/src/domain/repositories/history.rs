@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use async_trait::async_trait;
+use chrono::NaiveDateTime;
 
 use thiserror::Error;
 
@@ -37,11 +38,11 @@ pub trait HistoryRepository: Send + Sync {
         before_timestamp: i64,
     ) -> Result<Vec<HistoryChapter>, HistoryRepositoryError>;
 
-    async fn get_history_chapters_by_manga_ids(
+    async fn get_last_read_at_by_manga_ids(
         &self,
         user_id: i64,
         manga_ids: &[i64],
-    ) -> Result<Vec<HistoryChapter>, HistoryRepositoryError>;
+    ) -> Result<HashMap<i64, NaiveDateTime>, HistoryRepositoryError>;
 
     async fn get_history_chapters_by_chapter_ids(
         &self,

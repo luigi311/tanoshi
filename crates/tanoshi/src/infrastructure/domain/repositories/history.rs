@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use async_trait::async_trait;
-use chrono::Utc;
+use chrono::{NaiveDateTime, Utc};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use sqlx::Row;
 
@@ -186,58 +186,41 @@ impl HistoryRepository for HistoryRepositoryImpl {
         Ok(chapters)
     }
 
-    async fn get_history_chapters_by_manga_ids(
+    async fn get_last_read_at_by_manga_ids(
         &self,
         user_id: i64,
         manga_ids: &[i64],
-    ) -> Result<Vec<HistoryChapter>, HistoryRepositoryError> {
+    ) -> Result<HashMap<i64, NaiveDateTime>, HistoryRepositoryError> {
+        if manga_ids.is_empty() {
+            return Ok(HashMap::new());
+        }
+
         let query_str = format!(
             r#"
         SELECT
-            manga.id,
-            chapter.id,
-            manga.title,
-            manga.cover_url,
-            chapter.title,
-            user_history.read_at,
-            user_history.last_page,
-            user_history.is_complete,
-            manga.source_id
+            chapter.manga_id,
+            MAX(user_history.read_at)
         FROM user_history
-        JOIN chapter ON 
-            chapter.id = user_history.chapter_id AND
-            chapter.manga_id IN ({})
-        JOIN manga ON 
-            manga.id = chapter.manga_id
-        WHERE user_history.user_id = ?"#,
+        JOIN chapter ON chapter.id = user_history.chapter_id
+        WHERE user_history.user_id = ?
+            AND chapter.manga_id IN ({})
+        GROUP BY chapter.manga_id"#,
             vec!["?"; manga_ids.len()].join(",")
         );
 
-        let mut query = sqlx::query(&query_str);
+        let mut query = sqlx::query_as::<_, (i64, NaiveDateTime)>(&query_str).bind(user_id);
 
         for manga_id in manga_ids {
             query = query.bind(manga_id);
         }
 
-        let chapters = query
-            .bind(user_id)
+        let last_read_at = query
             .fetch_all(self.pool.read())
             .await?
-            .into_par_iter()
-            .map(|row| HistoryChapter {
-                manga_id: row.get(0),
-                chapter_id: row.get(1),
-                manga_title: row.get(2),
-                cover_url: row.get(3),
-                chapter_title: row.get(4),
-                read_at: row.get(5),
-                last_page_read: row.get(6),
-                is_complete: row.get(7),
-                source_id: row.get(8),
-            })
+            .into_iter()
             .collect();
 
-        Ok(chapters)
+        Ok(last_read_at)
     }
 
     async fn get_history_chapters_by_chapter_ids(
