@@ -169,28 +169,28 @@ async fn concurrent_favorite_path_requests_keep_users_separate() {
     let loader = fixture.loader();
     let (user_1, user_2) = tokio::join!(
         loader.load_many([
-            UserFavoritePath(1, "/manga/1".into()),
-            UserFavoritePath(1, "/manga/2".into()),
-            UserFavoritePath(1, "/manga/3".into()),
+            UserFavoritePath(1, 1, "/manga/1".into()),
+            UserFavoritePath(1, 1, "/manga/2".into()),
+            UserFavoritePath(1, 1, "/manga/3".into()),
         ]),
         loader.load_many([
-            UserFavoritePath(2, "/manga/1".into()),
-            UserFavoritePath(2, "/manga/2".into()),
-            UserFavoritePath(2, "/manga/3".into()),
+            UserFavoritePath(2, 1, "/manga/1".into()),
+            UserFavoritePath(2, 1, "/manga/2".into()),
+            UserFavoritePath(2, 1, "/manga/3".into()),
         ]),
     );
     assert_eq!(
         user_1.unwrap(),
         HashMap::from([
-            (UserFavoritePath(1, "/manga/1".into()), true),
-            (UserFavoritePath(1, "/manga/2".into()), true),
+            (UserFavoritePath(1, 1, "/manga/1".into()), true),
+            (UserFavoritePath(1, 1, "/manga/2".into()), true),
         ])
     );
     assert_eq!(
         user_2.unwrap(),
         HashMap::from([
-            (UserFavoritePath(2, "/manga/1".into()), true),
-            (UserFavoritePath(2, "/manga/3".into()), true),
+            (UserFavoritePath(2, 1, "/manga/1".into()), true),
+            (UserFavoritePath(2, 1, "/manga/3".into()), true),
         ])
     );
     fixture.pool.close().await;

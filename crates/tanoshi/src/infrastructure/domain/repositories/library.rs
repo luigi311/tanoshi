@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use futures::{StreamExt, stream::BoxStream};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use sqlx::Row;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use crate::{
     domain::{
@@ -292,43 +292,65 @@ impl LibraryRepository for LibraryRepositoryImpl {
         .boxed()
     }
 
-    async fn get_manga_from_library(
+    async fn get_favorite_manga_ids(
         &self,
         user_id: i64,
-    ) -> Result<Vec<Manga>, LibraryRepositoryError> {
-        let manga = sqlx::query(
-            r#"
-        SELECT
-            manga.*,
-            library_category.category_id
-        FROM manga
-            INNER JOIN user_library
-                ON user_library.user_id = ?
-                AND manga.id = user_library.manga_id
-            LEFT JOIN library_category
-                ON user_library.id = library_category.library_id
-        ORDER BY title"#,
-        )
-        .bind(user_id)
-        .fetch_all(self.pool.read())
-        .await?
-        .into_par_iter()
-        .map(|row| Manga {
-            id: row.get(0),
-            source_id: row.get(1),
-            title: row.get(2),
-            author: serde_json::from_str(row.get::<String, _>(3).as_str()).unwrap_or_default(),
-            genre: serde_json::from_str(row.get::<String, _>(4).as_str()).unwrap_or_default(),
-            status: row.get(5),
-            description: row.get(6),
-            path: row.get(7),
-            cover_url: row.get(8),
-            date_added: row.get(9),
-            last_uploaded_at: None,
-        })
-        .collect();
+        manga_ids: &[i64],
+    ) -> Result<HashSet<i64>, LibraryRepositoryError> {
+        if manga_ids.is_empty() {
+            return Ok(HashSet::new());
+        }
 
-        Ok(manga)
+        let query_str = format!(
+            "SELECT manga_id FROM user_library WHERE user_id = ? AND manga_id IN ({})",
+            vec!["?"; manga_ids.len()].join(",")
+        );
+        let mut query = sqlx::query_scalar::<_, i64>(&query_str).bind(user_id);
+        for manga_id in manga_ids {
+            query = query.bind(manga_id);
+        }
+
+        Ok(query
+            .fetch_all(self.pool.read())
+            .await?
+            .into_iter()
+            .collect())
+    }
+
+    async fn get_favorite_manga_paths(
+        &self,
+        user_id: i64,
+        source_id: i64,
+        paths: &[String],
+    ) -> Result<HashSet<String>, LibraryRepositoryError> {
+        if paths.is_empty() {
+            return Ok(HashSet::new());
+        }
+
+        let query_str = format!(
+            r#"
+        SELECT manga.path
+        FROM manga
+        WHERE manga.source_id = ?
+            AND manga.path IN ({})
+            AND EXISTS (
+                SELECT 1 FROM user_library
+                WHERE user_library.user_id = ?
+                    AND user_library.manga_id = manga.id
+            )"#,
+            vec!["?"; paths.len()].join(",")
+        );
+        let mut query = sqlx::query_scalar::<_, String>(&query_str).bind(source_id);
+        for path in paths {
+            query = query.bind(path);
+        }
+
+        Ok(query
+            .bind(user_id)
+            .fetch_all(self.pool.read())
+            .await?
+            .into_iter()
+            .collect())
     }
 
     async fn get_manga_from_library_by_category_id(

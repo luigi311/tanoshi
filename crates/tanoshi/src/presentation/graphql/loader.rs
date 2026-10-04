@@ -9,10 +9,7 @@ use crate::domain::{
 use async_graphql::{Result, dataloader::Loader};
 use chrono::NaiveDateTime;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use std::{
-    collections::{HashMap, HashSet},
-    sync::Arc,
-};
+use std::{collections::HashMap, sync::Arc};
 
 fn group_keys_by_user<K>(keys: &[K], user_id: impl Fn(&K) -> i64) -> HashMap<i64, Vec<&K>> {
     let mut groups = HashMap::<i64, Vec<&K>>::new();
@@ -84,18 +81,17 @@ where
         let mut res = HashMap::new();
         // The schema shares this loader, so one batch can contain multiple users.
         for (user_id, keys) in group_keys_by_user(keys, |key| key.0) {
-            let manga_id_set: HashSet<i64> = keys.iter().map(|key| key.1).collect();
-            let manga = self
+            let manga_ids: Vec<i64> = keys.iter().map(|key| key.1).collect();
+            let favorites = self
                 .library_repo
-                .get_manga_from_library(user_id)
+                .get_favorite_manga_ids(user_id, &manga_ids)
                 .await
                 .map_err(|e| Arc::new(anyhow::anyhow!("{e}")))?;
-            res.extend(manga.into_iter().map(|manga| {
-                (
-                    UserFavoriteId(user_id, manga.id),
-                    manga_id_set.contains(&manga.id),
-                )
-            }));
+            res.extend(
+                favorites
+                    .into_iter()
+                    .map(|id| (UserFavoriteId(user_id, id), true)),
+            );
         }
 
         Ok(res)
@@ -103,7 +99,7 @@ where
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct UserFavoritePath(pub i64, pub String);
+pub struct UserFavoritePath(pub i64, pub i64, pub String);
 
 impl<H, L, M, T, D> Loader<UserFavoritePath> for DatabaseLoader<H, L, M, T, D>
 where
@@ -122,17 +118,24 @@ where
         keys: &[UserFavoritePath],
     ) -> Result<HashMap<UserFavoritePath, Self::Value>, Self::Error> {
         let mut res = HashMap::new();
-        for (user_id, keys) in group_keys_by_user(keys, |key| key.0) {
-            let manga_path_set: HashSet<String> = keys.iter().map(|key| key.1.clone()).collect();
-            let manga = self
+        let mut paths_by_user_source = HashMap::<_, Vec<String>>::new();
+        for key in keys {
+            paths_by_user_source
+                .entry((key.0, key.1))
+                .or_default()
+                .push(key.2.clone());
+        }
+        for ((user_id, source_id), paths) in paths_by_user_source {
+            let favorites = self
                 .library_repo
-                .get_manga_from_library(user_id)
+                .get_favorite_manga_paths(user_id, source_id, &paths)
                 .await
                 .map_err(|e| Arc::new(anyhow::anyhow!("{e}")))?;
-            res.extend(manga.into_iter().map(|manga| {
-                let is_library = manga_path_set.contains(&manga.path);
-                (UserFavoritePath(user_id, manga.path), is_library)
-            }));
+            res.extend(
+                favorites
+                    .into_iter()
+                    .map(|path| (UserFavoritePath(user_id, source_id, path), true)),
+            );
         }
 
         Ok(res)
