@@ -193,6 +193,7 @@ impl TrackerRepository for TrackerRepositoryImpl {
         SELECT m.id as manga_id, tc.tracker, tm.tracker_manga_id FROM tracker_credential tc 
         LEFT JOIN manga m ON m.id = ?
         LEFT JOIN tracker_manga tm ON tc.tracker = tm.tracker AND tm.manga_id = m.id
+            AND tm.user_id = tc.user_id
         WHERE tc.user_id = ?;
         "#,
         );
@@ -222,6 +223,7 @@ impl TrackerRepository for TrackerRepositoryImpl {
             r#"SELECT m.id as manga_id, tc.tracker, tm.tracker_manga_id FROM tracker_credential tc 
                 LEFT JOIN manga m ON m.id IN ({})
                 LEFT JOIN tracker_manga tm ON tc.tracker = tm.tracker AND tm.manga_id = m.id
+                    AND tm.user_id = tc.user_id
                 WHERE tc.user_id = ?"#,
             vec!["?"; manga_ids.len()].join(",")
         );
