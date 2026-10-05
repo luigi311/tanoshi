@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use crate::{
     catalogue,
-    common::{snackbar, Route},
+    common::{Route, snackbar},
     query,
     utils::{is_tauri_signal, local_storage},
 };
@@ -10,7 +10,8 @@ use crate::{
     common::{Cover, Spinner},
     utils::AsyncLoader,
 };
-use dominator::{clone, events, html, link, routing, svg, with_node, Dom, EventOptions};
+use dominator::{Dom, EventOptions, clone, events, html, link, routing, svg, with_node};
+use futures::{StreamExt, stream};
 use futures_signals::signal::{Mutable, SignalExt};
 use futures_signals::signal_map::MutableBTreeMap;
 use futures_signals::signal_vec::{self, MutableVec, SignalVecExt};
@@ -19,6 +20,7 @@ use wasm_bindgen::prelude::*;
 use web_sys::HtmlInputElement;
 
 pub const STORAGE_KEY: &str = "catalogue_list";
+const MAX_CONCURRENT_SOURCE_SEARCHES: usize = 4;
 
 #[derive(Debug, Clone, Default, Deserialize, Serialize)]
 struct Source {
@@ -80,8 +82,18 @@ impl CatalogueList {
         let sources: Vec<Source> = catalogue.sources.lock_ref().iter().cloned().collect();
         let keyword = catalogue.keyword.get_cloned();
         catalogue.loader.load(clone!(catalogue => async move {
-            for source in sources {
-                match query::fetch_manga_from_source(source.id, 1, Some(keyword.clone()), None).await {
+            let mut searches = stream::iter(sources)
+                .map(|source| {
+                    let keyword = keyword.clone();
+                    async move {
+                        let result = query::fetch_manga_from_source(source.id, 1, Some(keyword), None).await;
+                        (source, result)
+                    }
+                })
+                .buffer_unordered(MAX_CONCURRENT_SOURCE_SEARCHES);
+
+            while let Some((source, result)) = searches.next().await {
+                match result {
                     Ok(data) => {
                         let covers = data
                             .browse_source
