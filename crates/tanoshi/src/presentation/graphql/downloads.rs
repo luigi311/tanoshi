@@ -152,8 +152,7 @@ impl DownloadRoot {
                         first,
                         last,
                     )
-                    .await
-                    .unwrap_or_default();
+                    .await?;
 
                 let mut has_previous_page = false;
                 if let Some(e) = edges.first() {
