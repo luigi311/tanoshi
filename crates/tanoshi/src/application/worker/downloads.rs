@@ -124,7 +124,9 @@ where
             anyhow::bail!("local source can't be downloaded");
         }
 
-        self.validated_chapter = None;
+        if self.validated_chapter == Some(chapter.id) {
+            self.validated_chapter = None;
+        }
 
         let existing_path = self
             .download_repo
