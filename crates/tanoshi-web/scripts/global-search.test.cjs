@@ -35,8 +35,7 @@ test("global search bounds requests, shows completed sources, and cancels replac
           respond(response, { data: { installedSources: sources } });
         } else if (operationName === "BrowseSource") {
           const { sourceId: id, query: keyword, page } = variables;
-          assert.equal(page, 1);
-          const record = { id, keyword, settled: false };
+          const record = { id, keyword, page, settled: false };
           const settle = () => {
             record.settled = true;
           };
@@ -231,5 +230,6 @@ test("global search bounds requests, shows completed sources, and cancels replac
   assert.deepEqual(Object.values(saved.cover_list_map).map(({ covers }) => covers[0].title).sort(),
     sources.map(({ id }) => `replacement source ${id}`).sort());
   assert.deepEqual(await evaluate("window.__errors"), []);
+  for (const { page } of requests) assert.equal(page, 1);
   await rpc("Page.navigate", { url: "about:blank" });
 });
