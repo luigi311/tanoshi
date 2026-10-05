@@ -1,7 +1,10 @@
 use thiserror::Error;
 
 use crate::domain::{
-    entities::{chapter::Chapter, history::HistoryChapter},
+    entities::{
+        chapter::Chapter,
+        history::{HistoryBounds, HistoryChapter, HistoryCursor, HistoryPageInfo},
+    },
     repositories::{
         chapter::{ChapterRepository, ChapterRepositoryError},
         history::{HistoryRepository, HistoryRepositoryError},
@@ -37,31 +40,35 @@ where
     pub async fn get_history_chapters(
         &self,
         user_id: i64,
-        after_timestamp: i64,
-        before_timestamp: i64,
+        bounds: HistoryBounds,
         first: Option<usize>,
         last: Option<usize>,
     ) -> Result<Vec<HistoryChapter>, HistoryError> {
         let histories = if let Some(first) = first {
             self.repo
-                .get_first_history_chapters(
-                    user_id,
-                    after_timestamp,
-                    before_timestamp,
-                    first as i32,
-                )
+                .get_first_history_chapters(user_id, bounds, first as i32)
                 .await?
         } else if let Some(last) = last {
             self.repo
-                .get_last_history_chapters(user_id, after_timestamp, before_timestamp, last as i32)
+                .get_last_history_chapters(user_id, bounds, last as i32)
                 .await?
         } else {
-            self.repo
-                .get_history_chapters(user_id, after_timestamp, before_timestamp)
-                .await?
+            self.repo.get_history_chapters(user_id, bounds).await?
         };
 
         Ok(histories)
+    }
+
+    pub async fn get_history_page_info(
+        &self,
+        user_id: i64,
+        first: HistoryCursor,
+        last: HistoryCursor,
+    ) -> Result<HistoryPageInfo, HistoryError> {
+        Ok(self
+            .repo
+            .get_history_page_info(user_id, first, last)
+            .await?)
     }
 
     pub async fn insert_chapter_to_history(
