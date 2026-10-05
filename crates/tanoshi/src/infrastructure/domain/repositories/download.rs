@@ -136,8 +136,7 @@ impl DownloadRepository for DownloadRepositoryImpl {
                 (date_added, id) < (datetime(?, 'unixepoch'), ?) AND
                 (date_added, id) > (datetime(?, 'unixepoch'), ?) AND
                 downloaded_path IS NOT NULL
-            ORDER BY date_added DESC, id DESC
-            LIMIT ?"#,
+            ORDER BY date_added DESC, id DESC"#,
         )
         .bind(after_timestamp)
         .bind(after_id)

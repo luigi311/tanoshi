@@ -201,6 +201,18 @@ impl Fixture {
         }
     }
 
+    async fn seed_downloaded_chapters(&self, chapters: i64) {
+        sqlx::query(
+            "UPDATE chapter SET uploaded = '2000-01-01 00:00:00', \
+             date_added = '2000-01-01 00:00:00', \
+             downloaded_path = CASE WHEN id <= ? THEN '/downloads/' || id || '.cbz' END",
+        )
+        .bind(chapters)
+        .execute(self.pool.write())
+        .await
+        .unwrap();
+    }
+
     async fn seed_queue(&self, chapters: i64, pages: i64) {
         sqlx::query("DELETE FROM download_queue")
             .execute(self.pool.write())
@@ -360,6 +372,115 @@ async fn web_page_queries_return_existing_data() {
     let fixture = Fixture::new(10).await;
     fixture.seed_queue(10, 2).await;
     assert_page_data(&page_requests(&fixture.schema).await);
+    fixture.close().await;
+}
+
+#[tokio::test]
+async fn downloaded_chapters_without_limits_respect_cursor_bounds() {
+    let fixture = Fixture::new(27).await;
+    fixture.seed_downloaded_chapters(25).await;
+    let chapters = fixture
+        .repo
+        .get_downloaded_chapters(Utc::now().timestamp(), 1, 0, 0)
+        .await
+        .unwrap();
+    assert_eq!(
+        chapters
+            .iter()
+            .map(|chapter| chapter.id)
+            .collect::<Vec<_>>(),
+        (1..=25).rev().collect::<Vec<_>>()
+    );
+
+    let timestamp = chapters[0].date_added.and_utc().timestamp();
+    let window = fixture
+        .repo
+        .get_downloaded_chapters(timestamp, 21, timestamp, 5)
+        .await
+        .unwrap();
+    assert_eq!(
+        window.iter().map(|chapter| chapter.id).collect::<Vec<_>>(),
+        (6..=20).rev().collect::<Vec<_>>()
+    );
+    assert!(
+        fixture
+            .repo
+            .get_downloaded_chapters(timestamp, 5, timestamp, 4)
+            .await
+            .unwrap()
+            .is_empty()
+    );
+    fixture.close().await;
+}
+
+#[tokio::test]
+async fn downloaded_chapters_graphql_supports_omitted_and_explicit_limits() {
+    let fixture = Fixture::new(27).await;
+    fixture.seed_downloaded_chapters(25).await;
+    for (arguments, ids, previous, next) in [
+        (
+            "(first: 20)",
+            (6..=25).rev().collect::<Vec<_>>(),
+            false,
+            true,
+        ),
+        (
+            "(last: 20)",
+            (1..=20).rev().collect::<Vec<_>>(),
+            true,
+            false,
+        ),
+        ("", (1..=25).rev().collect::<Vec<_>>(), false, false),
+    ] {
+        let data = execute_data(
+            &fixture.schema,
+            Request::new(format!(
+                "{{ getDownloadedChapters{arguments} {{ edges {{ node {{ id }} }} \
+                 pageInfo {{ hasPreviousPage hasNextPage }} }} }}"
+            )),
+        )
+        .await;
+        let connection = &data["getDownloadedChapters"];
+        assert_eq!(
+            connection["edges"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|edge| edge["node"]["id"].as_i64().unwrap())
+                .collect::<Vec<_>>(),
+            ids
+        );
+        assert_eq!(connection["pageInfo"]["hasPreviousPage"], previous);
+        assert_eq!(connection["pageInfo"]["hasNextPage"], next);
+    }
+
+    fixture.seed_downloaded_chapters(0).await;
+    let data = execute_data(
+        &fixture.schema,
+        Request::new("{ getDownloadedChapters { edges { node { id } } } }"),
+    )
+    .await;
+    assert_eq!(data["getDownloadedChapters"]["edges"], json!([]));
+    fixture.close().await;
+}
+
+#[tokio::test]
+async fn downloaded_chapters_graphql_reports_database_errors() {
+    let fixture = Fixture::new(1).await;
+    sqlx::query("DROP TABLE chapter")
+        .execute(fixture.pool.write())
+        .await
+        .unwrap();
+    let response = fixture
+        .schema
+        .execute("{ getDownloadedChapters { edges { node { id } } } }")
+        .await;
+    assert_eq!(response.errors.len(), 1, "{response:?}");
+    assert!(
+        response.errors[0]
+            .message
+            .contains("no such table: chapter")
+    );
     fixture.close().await;
 }
 
