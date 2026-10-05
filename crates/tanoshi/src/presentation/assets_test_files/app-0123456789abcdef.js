@@ -1,0 +1,1 @@
+export const message = "Static asset caching fixture. Static asset caching fixture. Static asset caching fixture. Static asset caching fixture. Static asset caching fixture. Static asset caching fixture.";

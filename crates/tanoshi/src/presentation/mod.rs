@@ -287,7 +287,7 @@ impl ServerBuilder {
 
         #[cfg(feature = "embed")]
         {
-            router = router.fallback(get(assets::static_handler));
+            router = router.fallback(get(assets::static_handler).layer(CompressionLayer::new()));
         }
 
         let _ = axum_server::bind(addr.into())
