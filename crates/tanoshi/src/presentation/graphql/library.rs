@@ -8,7 +8,10 @@ use crate::{
         ChapterUpdateCommand, ChapterUpdateCommandSender, ChapterUpdateReceiver,
     },
     domain::{
-        entities::tracker::TrackerStatusUpdate,
+        entities::{
+            history::{HistoryBounds, HistoryCursor, HistoryPageInfo},
+            tracker::TrackerStatusUpdate,
+        },
         services::{
             chapter::ChapterService,
             history::HistoryService,
@@ -26,11 +29,11 @@ use crate::{
         },
     },
 };
-use async_graphql::{
-    connection::{query, Connection, Edge, EmptyFields},
-    Error, Subscription,
-};
 use async_graphql::{Context, Object, Result};
+use async_graphql::{
+    Error, Subscription,
+    connection::{Connection, Edge, EmptyFields, query},
+};
 use chrono::Utc;
 
 use flume::TrySendError;
@@ -136,11 +139,12 @@ impl LibraryRoot {
                 }
 
                 let mut connection = Connection::new(has_previous_page, has_next_page);
-                connection.edges.extend(
-                    edges
-                        .into_iter()
-                        .map(|e| Edge::new(Cursor(e.uploaded.and_utc().timestamp(), e.chapter_id), e.into())),
-                );
+                connection.edges.extend(edges.into_iter().map(|e| {
+                    Edge::new(
+                        Cursor(e.uploaded.and_utc().timestamp(), e.chapter_id),
+                        e.into(),
+                    )
+                }));
 
                 Ok::<_, Error>(connection)
             },
@@ -155,7 +159,7 @@ impl LibraryRoot {
         before: Option<String>,
         first: Option<i32>,
         last: Option<i32>,
-    ) -> Result<Connection<Cursor, RecentChapter, EmptyFields, EmptyFields>> {
+    ) -> Result<Connection<HistoryCursor, RecentChapter, EmptyFields, EmptyFields>> {
         let claims = ctx
             .data::<Claims>()
             .map_err(|_| "token not exists, please login")?;
@@ -168,43 +172,40 @@ impl LibraryRoot {
             before,
             first,
             last,
-            |after: Option<Cursor>, before: Option<Cursor>, first, last| async move {
-                let after_cursor = after.unwrap_or_else(|| Cursor(Utc::now().timestamp(), 1));
-                let before_cursor = before.unwrap_or(Cursor(0, 0));
-
+            |after: Option<HistoryCursor>, before: Option<HistoryCursor>, first, last| async move {
                 let edges = history_svc
-                    .get_history_chapters(claims.sub, after_cursor.0, before_cursor.0, first, last)
+                    .get_history_chapters(claims.sub, HistoryBounds { after, before }, first, last)
                     .await?;
 
-                let mut has_previous_page = false;
-                if let Some(e) = edges.first() {
-                    has_previous_page = !history_svc
-                        .get_history_chapters(
+                let page_info = if let (Some(first), Some(last)) = (edges.first(), edges.last()) {
+                    history_svc
+                        .get_history_page_info(
                             claims.sub,
-                            Utc::now().timestamp(),
-                            e.read_at.and_utc().timestamp(),
-                            None,
-                            Some(1),
+                            HistoryCursor {
+                                read_at: first.read_at,
+                                manga_id: first.manga_id,
+                            },
+                            HistoryCursor {
+                                read_at: last.read_at,
+                                manga_id: last.manga_id,
+                            },
                         )
                         .await?
-                        .len()
-                        > 0;
-                }
+                } else {
+                    HistoryPageInfo::default()
+                };
 
-                let mut has_next_page = false;
-                if let Some(e) = edges.last() {
-                    has_next_page = !history_svc
-                        .get_history_chapters(claims.sub, e.read_at.and_utc().timestamp(), 0, Some(1), None)
-                        .await?
-                        .is_empty();
-                }
-
-                let mut connection = Connection::new(has_previous_page, has_next_page);
-                connection.edges.extend(
-                    edges
-                        .into_iter()
-                        .map(|e| Edge::new(Cursor(e.read_at.and_utc().timestamp(), e.manga_id), e.into())),
-                );
+                let mut connection =
+                    Connection::new(page_info.has_previous_page, page_info.has_next_page);
+                connection.edges.extend(edges.into_iter().map(|e| {
+                    Edge::new(
+                        HistoryCursor {
+                            read_at: e.read_at,
+                            manga_id: e.manga_id,
+                        },
+                        e.into(),
+                    )
+                }));
 
                 Ok::<_, Error>(connection)
             },

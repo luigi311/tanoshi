@@ -3,15 +3,23 @@ use std::collections::HashMap;
 use async_trait::async_trait;
 use chrono::{NaiveDateTime, Utc};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use sqlx::Row;
+use sqlx::{QueryBuilder, Row, Sqlite};
 
 use crate::{
     domain::{
-        entities::history::HistoryChapter,
+        entities::history::{HistoryBounds, HistoryChapter, HistoryCursor, HistoryPageInfo},
         repositories::history::{HistoryRepository, HistoryRepositoryError},
     },
     infrastructure::database::Pool,
 };
+
+const HISTORY_PAGE_INFO_SQL: &str = r#"
+    SELECT
+        EXISTS(SELECT 1 FROM user_manga_history
+            WHERE user_id = ? AND (read_at, manga_id) > (?, ?)),
+        EXISTS(SELECT 1 FROM user_manga_history
+            WHERE user_id = ? AND (read_at, manga_id) < (?, ?))
+"#;
 
 #[derive(Clone)]
 pub struct HistoryRepositoryImpl {
@@ -22,6 +30,37 @@ impl HistoryRepositoryImpl {
     pub fn new<P: Into<Pool>>(pool: P) -> Self {
         Self { pool: pool.into() }
     }
+
+    async fn history_chapters(
+        &self,
+        user_id: i64,
+        bounds: HistoryBounds,
+        limit: Option<i32>,
+        reverse: bool,
+    ) -> Result<Vec<HistoryChapter>, HistoryRepositoryError> {
+        let mut query = history_query(user_id, bounds, limit, reverse);
+        let mut chapters: Vec<_> = query
+            .build()
+            .fetch_all(self.pool.read())
+            .await?
+            .into_iter()
+            .map(|row| HistoryChapter {
+                manga_id: row.get(0),
+                chapter_id: row.get(1),
+                manga_title: row.get(2),
+                cover_url: row.get(3),
+                chapter_title: row.get(4),
+                read_at: row.get(5),
+                last_page_read: row.get(6),
+                is_complete: row.get(7),
+                source_id: row.get(8),
+            })
+            .collect();
+        if reverse {
+            chapters.reverse();
+        }
+        Ok(chapters)
+    }
 }
 
 #[async_trait]
@@ -29,161 +68,51 @@ impl HistoryRepository for HistoryRepositoryImpl {
     async fn get_first_history_chapters(
         &self,
         user_id: i64,
-        after_timestamp: i64,
-        before_timestamp: i64,
+        bounds: HistoryBounds,
         first: i32,
     ) -> Result<Vec<HistoryChapter>, HistoryRepositoryError> {
-        let chapters = sqlx::query(
-            r#"
-        SELECT
-            manga.id,
-            chapter.id,
-            manga.title,
-            manga.cover_url,
-            chapter.title,
-            MAX(user_history.read_at) AS read_at,
-            user_history.last_page,
-            user_history.is_complete,
-            manga.source_id
-        FROM user_history
-        JOIN chapter ON 
-            user_history.user_id = ? AND
-            chapter.id = user_history.chapter_id
-        JOIN manga ON manga.id = chapter.manga_id
-        GROUP BY manga.id
-        HAVING
-            read_at < datetime(?, 'unixepoch') AND
-            read_at > datetime(?, 'unixepoch')
-        ORDER BY user_history.read_at DESC, manga.id DESC
-        LIMIT ?"#,
-        )
-        .bind(user_id)
-        .bind(after_timestamp)
-        .bind(before_timestamp)
-        .bind(first)
-        .fetch_all(self.pool.read())
-        .await?
-        .into_par_iter()
-        .map(|row| HistoryChapter {
-            manga_id: row.get(0),
-            chapter_id: row.get(1),
-            manga_title: row.get(2),
-            cover_url: row.get(3),
-            chapter_title: row.get(4),
-            read_at: row.get(5),
-            last_page_read: row.get(6),
-            is_complete: row.get(7),
-            source_id: row.get(8),
-        })
-        .collect();
-
-        Ok(chapters)
+        self.history_chapters(user_id, bounds, Some(first), false)
+            .await
     }
 
     async fn get_last_history_chapters(
         &self,
         user_id: i64,
-        after_timestamp: i64,
-        before_timestamp: i64,
+        bounds: HistoryBounds,
         last: i32,
     ) -> Result<Vec<HistoryChapter>, HistoryRepositoryError> {
-        let chapters = sqlx::query(
-            r#"
-        SELECT * FROM (
-            SELECT
-                manga.id,
-                chapter.id,
-                manga.title,
-                manga.cover_url,
-                chapter.title,
-                MAX(user_history.read_at) AS read_at,
-                user_history.last_page,
-                user_history.is_complete,
-                manga.source_id
-            FROM user_history
-            JOIN chapter ON 
-                user_history.user_id = ? AND
-                chapter.id = user_history.chapter_id
-            JOIN manga ON manga.id = chapter.manga_id
-            GROUP BY manga.id
-            HAVING
-                read_at < datetime(?, 'unixepoch') AND
-                read_at > datetime(?, 'unixepoch')
-            ORDER BY user_history.read_at ASC, manga.id ASC
-            LIMIT ?) c ORDER BY c.read_at DESC, c.id DESC"#,
-        )
-        .bind(user_id)
-        .bind(after_timestamp)
-        .bind(before_timestamp)
-        .bind(last)
-        .fetch_all(self.pool.read())
-        .await?
-        .into_par_iter()
-        .map(|row| HistoryChapter {
-            manga_id: row.get(0),
-            chapter_id: row.get(1),
-            manga_title: row.get(2),
-            cover_url: row.get(3),
-            chapter_title: row.get(4),
-            read_at: row.get(5),
-            last_page_read: row.get(6),
-            is_complete: row.get(7),
-            source_id: row.get(8),
-        })
-        .collect();
-
-        Ok(chapters)
+        self.history_chapters(user_id, bounds, Some(last), true)
+            .await
     }
 
     async fn get_history_chapters(
         &self,
         user_id: i64,
-        after_timestamp: i64,
-        before_timestamp: i64,
+        bounds: HistoryBounds,
     ) -> Result<Vec<HistoryChapter>, HistoryRepositoryError> {
-        let chapters = sqlx::query(
-            r#"
-        SELECT
-            manga.id,
-            chapter.id,
-            manga.title,
-            manga.cover_url,
-            chapter.title,
-            MAX(user_history.read_at) AS read_at,
-            user_history.last_page,
-            user_history.is_complete,
-            manga.source_id
-        FROM user_history
-        JOIN chapter ON 
-            user_history.user_id = ? AND
-            chapter.id = user_history.chapter_id
-        JOIN manga ON manga.id = chapter.manga_id
-        GROUP BY manga.id
-        HAVING
-            read_at < datetime(?, 'unixepoch') AND
-            read_at > datetime(?, 'unixepoch')
-        ORDER BY user_history.read_at DESC, manga.id DESC"#,
-        )
-        .bind(user_id)
-        .bind(after_timestamp)
-        .bind(before_timestamp)
-        .fetch_all(self.pool.read())
-        .await?
-        .into_par_iter()
-        .map(|row| HistoryChapter {
-            manga_id: row.get(0),
-            chapter_id: row.get(1),
-            manga_title: row.get(2),
-            cover_url: row.get(3),
-            chapter_title: row.get(4),
-            read_at: row.get(5),
-            last_page_read: row.get(6),
-            is_complete: row.get(7),
-            source_id: row.get(8),
-        })
-        .collect();
+        self.history_chapters(user_id, bounds, None, false).await
+    }
 
-        Ok(chapters)
+    async fn get_history_page_info(
+        &self,
+        user_id: i64,
+        first: HistoryCursor,
+        last: HistoryCursor,
+    ) -> Result<HistoryPageInfo, HistoryRepositoryError> {
+        let (has_previous_page, has_next_page): (bool, bool) =
+            sqlx::query_as(HISTORY_PAGE_INFO_SQL)
+                .bind(user_id)
+                .bind(history_timestamp(first.read_at))
+                .bind(first.manga_id)
+                .bind(user_id)
+                .bind(history_timestamp(last.read_at))
+                .bind(last.manga_id)
+                .fetch_one(self.pool.read())
+                .await?;
+        Ok(HistoryPageInfo {
+            has_previous_page,
+            has_next_page,
+        })
     }
 
     async fn get_last_read_at_by_manga_ids(
@@ -196,15 +125,8 @@ impl HistoryRepository for HistoryRepositoryImpl {
         }
 
         let query_str = format!(
-            r#"
-        SELECT
-            chapter.manga_id,
-            MAX(user_history.read_at)
-        FROM user_history
-        JOIN chapter ON chapter.id = user_history.chapter_id
-        WHERE user_history.user_id = ?
-            AND chapter.manga_id IN ({})
-        GROUP BY chapter.manga_id"#,
+            "SELECT manga_id, read_at FROM user_manga_history \
+             WHERE user_id = ? AND manga_id IN ({})",
             vec!["?"; manga_ids.len()].join(",")
         );
 
@@ -381,7 +303,7 @@ impl HistoryRepository for HistoryRepositoryImpl {
                 COUNT(1)
             FROM (
                 SELECT
-                    manga_id,
+                    c.manga_id,
                     IFNULL(user_history.is_complete, false) AS is_complete 
                 FROM chapter c 
                     LEFT JOIN user_history
@@ -424,7 +346,7 @@ impl HistoryRepository for HistoryRepositoryImpl {
                 FROM
                     user_history
                     INNER JOIN chapter on chapter.id = user_history.chapter_id
-                    AND manga_id = ?
+                    AND chapter.manga_id = ?
                 WHERE
                     user_history.user_id = ?
                 ORDER BY
@@ -439,7 +361,7 @@ impl HistoryRepository for HistoryRepositoryImpl {
                     LEFT JOIN user_history ON user_history.chapter_id = chapter.id
                     AND user_history.user_id = ?
                 WHERE
-                    manga_id = ?
+                    chapter.manga_id = ?
                     AND user_history.is_complete IS NOT true
                 ORDER BY
                     chapter.number ASC
@@ -458,7 +380,7 @@ impl HistoryRepository for HistoryRepositoryImpl {
                                     AND user_history.user_id = ?
                                 WHERE
                                     chapter.number > chapter_number
-                                    AND manga_id = ?
+                                    AND chapter.manga_id = ?
                                     AND user_history.is_complete IS NOT true
                                 ORDER BY
                                     number ASC
@@ -499,3 +421,57 @@ impl HistoryRepository for HistoryRepositoryImpl {
         Ok(chapter_id)
     }
 }
+
+// Always bind the fixed-width representation maintained by the migration's
+// triggers, including all nine fractional digits. This keeps tuple comparisons
+// exact for timestamps SQLite's date functions would round to milliseconds.
+fn history_timestamp(value: NaiveDateTime) -> String {
+    value.format("%Y-%m-%d %H:%M:%S%.9f").to_string()
+}
+
+fn history_query(
+    user_id: i64,
+    bounds: HistoryBounds,
+    limit: Option<i32>,
+    reverse: bool,
+) -> QueryBuilder<'static, Sqlite> {
+    let mut query = QueryBuilder::new(
+        "SELECT latest.manga_id, latest.chapter_id, manga.title, manga.cover_url, \
+         chapter.title, latest.read_at, history.last_page, history.is_complete, manga.source_id \
+         FROM user_manga_history latest \
+         JOIN chapter ON chapter.id = latest.chapter_id \
+         JOIN manga ON manga.id = latest.manga_id \
+         JOIN user_history history ON history.user_id = latest.user_id \
+             AND history.chapter_id = latest.chapter_id \
+         WHERE latest.user_id = ",
+    );
+    query.push_bind(user_id);
+    if let Some(after) = bounds.after {
+        query
+            .push(" AND (latest.read_at, latest.manga_id) < (")
+            .push_bind(history_timestamp(after.read_at))
+            .push(", ")
+            .push_bind(after.manga_id)
+            .push(")");
+    }
+    if let Some(before) = bounds.before {
+        query
+            .push(" AND (latest.read_at, latest.manga_id) > (")
+            .push_bind(history_timestamp(before.read_at))
+            .push(", ")
+            .push_bind(before.manga_id)
+            .push(")");
+    }
+    query.push(if reverse {
+        " ORDER BY latest.read_at ASC, latest.manga_id ASC"
+    } else {
+        " ORDER BY latest.read_at DESC, latest.manga_id DESC"
+    });
+    if let Some(limit) = limit {
+        query.push(" LIMIT ").push_bind(limit);
+    }
+    query
+}
+
+#[cfg(test)]
+mod tests;

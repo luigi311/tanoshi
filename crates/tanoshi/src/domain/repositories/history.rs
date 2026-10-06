@@ -5,7 +5,9 @@ use chrono::NaiveDateTime;
 
 use thiserror::Error;
 
-use crate::domain::entities::history::HistoryChapter;
+use crate::domain::entities::history::{
+    HistoryBounds, HistoryChapter, HistoryCursor, HistoryPageInfo,
+};
 
 #[derive(Debug, Error)]
 pub enum HistoryRepositoryError {
@@ -18,25 +20,29 @@ pub trait HistoryRepository: Send + Sync {
     async fn get_first_history_chapters(
         &self,
         user_id: i64,
-        after_timestamp: i64,
-        before_timestamp: i64,
+        bounds: HistoryBounds,
         first: i32,
     ) -> Result<Vec<HistoryChapter>, HistoryRepositoryError>;
 
     async fn get_last_history_chapters(
         &self,
         user_id: i64,
-        after_timestamp: i64,
-        before_timestamp: i64,
+        bounds: HistoryBounds,
         last: i32,
     ) -> Result<Vec<HistoryChapter>, HistoryRepositoryError>;
 
     async fn get_history_chapters(
         &self,
         user_id: i64,
-        after_timestamp: i64,
-        before_timestamp: i64,
+        bounds: HistoryBounds,
     ) -> Result<Vec<HistoryChapter>, HistoryRepositoryError>;
+
+    async fn get_history_page_info(
+        &self,
+        user_id: i64,
+        first: HistoryCursor,
+        last: HistoryCursor,
+    ) -> Result<HistoryPageInfo, HistoryRepositoryError>;
 
     async fn get_last_read_at_by_manga_ids(
         &self,
