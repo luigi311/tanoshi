@@ -5,6 +5,41 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.40.0]
+
+- [all] Update dependencies to address known security vulnerabilities
+- [all] Upgrade to Rust 1.99.1
+- [tanoshi] Improve responsiveness while adding, cancelling, or reordering large download queues and while saving or checking downloaded archives
+- [tanoshi-web] Update download progress, queue ordering, and pause/resume status live across open sessions, with automatic reconnection after connection interruptions
+- [tanoshi-vm] Allow multiple requests at once, with a default limit of eight per source, while respecting each source's rate limits
+- [tanoshi-vm] Prioritize browsing, reading, and manual refreshes over downloads and scheduled updates, with requests waiting their turn when a source is busy
+- [tanoshi-web] Search several sources at once and show results as each source finishes, so a slow source does not hold up the rest
+- [tanoshi] Speed up reading history, downloaded chapter lists, and favorite checks, especially with large collections
+- [tanoshi] Speed up chapter refreshes by skipping unchanged chapters and processing large chapter lists more efficiently
+- [tanoshi] Reduce download CPU usage by storing images in CBZ archives without recompressing them
+- [tanoshi] Improve web app loading speed and reduce bandwidth use through browser caching and compression
+- [tanoshi] Reduce routine server log noise from successful downloads
+- [tanoshi] Fix moving chapters up or down in the download queue after cancellations, at the start of the queue, or while other queue changes are happening
+- [tanoshi] Keep cancellation responsive while a page is waiting for a busy source, being fetched, or waiting to retry
+- [tanoshi] Fix delayed cancellation cleanup interrupting or deleting a chapter that has already been queued again
+- [tanoshi] Prevent adding unrelated chapters to the queue from repeatedly rechecking completed pages of the active download
+- [tanoshi-vm] Improve recovery after source crashes or timeouts, including retries of interrupted requests and restoration of saved preferences, and prevent temporary timeouts from incorrectly disabling a source
+- [tanoshi] Fix incorrect favorites, reading progress, unread counts, category totals, and last-read dates when multiple users access the server at the same time
+- [tanoshi] Fix manga being marked as favorites when only a matching entry from a different source is in the library
+- [tanoshi] Fix missing links when a manga is connected to multiple trackers and prevent tracker matches from using another user's mapping
+- [tanoshi] Show the most recent reading activity as the last-read date for each manga
+- [tanoshi] Fix reading history pagination when multiple manga were read at the same time and correct the ordering of older history entries recorded with time-zone offsets
+- [tanoshi] Preserve the original date each chapter was added when refreshing chapters
+- [tanoshi] Fix failures when refreshing or deleting very large chapter lists and prevent partial changes if a bulk operation fails
+- [tanoshi] Fix downloaded chapter listings returning empty results without a page limit and report errors instead of displaying an empty list
+- [tanoshi-web] Reduce reader flicker and unnecessary image reloads when individual pages load, fail, or are retried
+- [tanoshi-web] Fix continuous-reader page tracking and preloading after scrolling, resizing, zooming, or loading short panels so visible panels load correctly
+- [tanoshi-web] Fix delayed image loading resetting the saved reading position when resuming a chapter
+- [tanoshi-web] Fix double-page pairing, sizing, and previous/next navigation with mixed portrait and landscape pages, including after switching reader modes or retrying images
+- [tanoshi] Add optional download queue debug logging and an [administrator troubleshooting script](crates/tanoshi-web/scripts/queue-repro.js) for testing slow queues with dummy entries
+- [tanoshi] Remove `extension.admission_timeout_ms`; requests now wait for source capacity before their execution timeout starts
+- [tanoshi] Replace `updateChapterPriority(id, priority)` with `moveChapterInQueue(id, up)` for custom integrations that reorder downloads
+
 ## [0.39.4]
 - [tanoshi] Fix issues with downloads getting stuck
 
