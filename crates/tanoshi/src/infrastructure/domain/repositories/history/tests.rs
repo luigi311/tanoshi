@@ -101,9 +101,9 @@ async fn history_pages_and_existence_checks_seek_the_summary_index() {
         for reverse in [false, true] {
             let mut builder = history_query(1, bounds, Some(2), reverse);
             let mut query = builder.build();
-            let sql = format!("EXPLAIN QUERY PLAN {}", query.sql());
             let arguments = query.take_arguments().unwrap().unwrap();
-            let plan: Vec<String> = sqlx::query_with(&sql, arguments)
+            let sql = format!("EXPLAIN QUERY PLAN {}", query.sql().as_str());
+            let plan: Vec<String> = sqlx::query_with(AssertSqlSafe(sql), arguments)
                 .fetch_all(f.pool.read())
                 .await
                 .unwrap()
@@ -123,7 +123,8 @@ async fn history_pages_and_existence_checks_seek_the_summary_index() {
             );
         }
     }
-    let plan: Vec<String> = sqlx::query(&format!("EXPLAIN QUERY PLAN {HISTORY_PAGE_INFO_SQL}"))
+    let sql = format!("EXPLAIN QUERY PLAN {HISTORY_PAGE_INFO_SQL}");
+    let plan: Vec<String> = sqlx::query(AssertSqlSafe(sql))
         .bind(1)
         .bind(history_timestamp(cursor(3).read_at))
         .bind(cursor(3).manga_id)

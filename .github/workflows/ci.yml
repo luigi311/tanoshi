@@ -16,7 +16,7 @@ on:
       - ".github/screenshots/**"
 
 env:
-  LLVM_VERSION: 15
+  LLVM_VERSION: 21
   UBUNTU_DEPS:
     libssl-dev libarchive-dev build-essential cmake llvm clang libicu-dev
     nettle-dev libacl1-dev liblzma-dev libzstd-dev liblz4-dev libbz2-dev
@@ -91,7 +91,7 @@ jobs:
     permissions:
       contents: write
     container:
-      image: ghcr.io/luigi311/tanoshi-builder:sha-6e8cc9c
+      image: ghcr.io/luigi311/tanoshi-builder:sha-d949faa
       # The image defaults to the non-root 'ubuntu' user for devcontainer use;
       # CI needs root so checkout can write to the runner-owned workspace mount.
       options: --user root
@@ -126,7 +126,7 @@ jobs:
   build-web:
     runs-on: ubuntu-26.04
     container:
-      image: ghcr.io/luigi311/tanoshi-builder:sha-6e8cc9c
+      image: ghcr.io/luigi311/tanoshi-builder:sha-d949faa
       # The image defaults to the non-root 'ubuntu' user for devcontainer use;
       # CI needs root so checkout can write to the runner-owned workspace mount.
       options: --user root
@@ -320,7 +320,7 @@ jobs:
     needs:
       - build-web
     container:
-      image: ghcr.io/luigi311/tanoshi-builder:sha-6e8cc9c
+      image: ghcr.io/luigi311/tanoshi-builder:sha-d949faa
       # The image defaults to the non-root 'ubuntu' user for devcontainer use;
       # CI needs root so checkout can write to the runner-owned workspace mount.
       options: --user root

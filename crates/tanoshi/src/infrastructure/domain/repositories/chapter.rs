@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use async_trait::async_trait;
 use chrono::Utc;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use sqlx::Row;
+use sqlx::{AssertSqlSafe, Row};
 
 use crate::{
     domain::{
@@ -63,7 +63,7 @@ impl ChapterRepository for ChapterRepositoryImpl {
                 values.join(",")
             );
 
-            let mut query = sqlx::query(&query_str);
+            let mut query = sqlx::query(AssertSqlSafe(query_str));
             for chapter in chunk {
                 query = query
                     .bind(chapter.source_id)
@@ -164,7 +164,8 @@ impl ChapterRepository for ChapterRepositoryImpl {
                         (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number < chapter.number ORDER BY c.number DESC LIMIT 1) prev
                     FROM chapter WHERE manga_id = ? ORDER BY {order_by} {order} {limit}"#,
         );
-        let chapters = sqlx::query(&query_str)
+        // The column name is static, the direction is fixed, and the limit is an integer.
+        let chapters = sqlx::query(AssertSqlSafe(query_str))
             .bind(manga_id)
             .fetch_all(self.pool.read())
             .await?
@@ -214,7 +215,7 @@ impl ChapterRepository for ChapterRepositoryImpl {
                 vec!["?"; chunk.len()].join(",")
             );
 
-            let mut query = sqlx::query(&query_str);
+            let mut query = sqlx::query(AssertSqlSafe(query_str));
 
             for chapter_id in chunk {
                 query = query.bind(chapter_id);
@@ -261,7 +262,7 @@ impl ChapterRepository for ChapterRepositoryImpl {
                 "SELECT * FROM chapter WHERE id IN ({})",
                 vec!["?"; chunk.len()].join(",")
             );
-            let mut query = sqlx::query(&query_str);
+            let mut query = sqlx::query(AssertSqlSafe(query_str));
             for chapter_id in chunk {
                 query = query.bind(chapter_id);
             }

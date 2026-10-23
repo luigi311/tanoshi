@@ -256,7 +256,7 @@ where
                                         | ErrorKind::UnexpectedEof
                                 ) {
                                     return Err(ZipError::InvalidArchive(
-                                        format!("damaged page {}: {error}", page.name()).into(),
+                                        format!("damaged page {}: {error}", page.name()?).into(),
                                     )
                                     .into());
                                 }
@@ -516,7 +516,7 @@ where
         // keep the existing entry instead of appending a duplicate.
         let already_written = archive
             .as_ref()
-            .is_some_and(|archive| archive.file_names().any(|name| name == filename));
+            .is_some_and(|archive| archive.index_for_name(&filename).is_some());
         let append = archive.is_some();
         drop(archive);
         if !already_written {

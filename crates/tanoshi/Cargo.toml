@@ -2,7 +2,7 @@
 name = "tanoshi"
 version = "0.39.4"
 edition = "2024"
-rust-version = "1.93.1"
+rust-version = "1.99.1"
 description = "Tanoshi"
 repository = "https://github.com/luigi311/tanoshi"
 license = "MIT"
@@ -63,7 +63,7 @@ tower-http = { version = "0.7", features = [
 rand = { version = "0.10", default-features = false, features = ["thread_rng"] }
 log = { version = "0.4" }
 env_logger = { version = "0.11", default-features = false }
-jsonwebtoken = { version = "10", features = ["rust_crypto"] }
+jsonwebtoken = { version = "11", features = ["rust_crypto"] }
 chrono = { version = "0.4", default-features = false }
 anyhow = { version = "1", default-features = false }
 thiserror = "2"
@@ -73,10 +73,10 @@ rust-embed = { version = "8", optional = true, features = [
 mime_guess = { version = "2", default-features = false }
 clap = { version = "4", features = ["derive"] }
 bytes = { version = "1", default-features = false }
-dirs = "6"
+dirs = "7"
 directories = "6"
-base64 = { version = "0.22", default-features = false }
-sqlx = { version = "0.8", features = [
+base64 = { version = "0.23", default-features = false }
+sqlx = { version = "0.9", features = [
     "runtime-tokio",
     "tls-rustls-ring",
     "sqlite",
@@ -91,10 +91,10 @@ reqwest = { version = "0.13", default-features = false, features = [
 ] }
 futures = { version = "0.3", default-features = false }
 rust-argon2 = "3"
-fancy-regex = { version = "0.18", features = ["std"], default-features = false }
+fancy-regex = { version = "0.19", features = ["std"], default-features = false }
 compress-tools = { version = "0.16", features = ["static"] }
-zip = { version = "8", features = ["deflate-flate2-zlib-rs"], default-features = false }
-sevenz-rust2 = { version = "0.21", features = ["ppmd"], default-features = false }
+zip = { version = "9", features = ["deflate-flate2-zlib-rs"], default-features = false }
+sevenz-rust2 = { version = "0.24", features = ["ppmd"], default-features = false }
 phf = { version = "0.14", features = ["macros"], default-features = false }
 human-sort = "0.2"
 aes = "0.9"

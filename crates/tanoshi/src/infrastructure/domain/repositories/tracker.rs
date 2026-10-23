@@ -1,7 +1,7 @@
 use std::{collections::HashMap, sync::Arc};
 
 use async_trait::async_trait;
-use sqlx::Row;
+use sqlx::{AssertSqlSafe, Row};
 use tanoshi_tracker::{AniList, MyAnimeList, Session, Tracker, TrackerManga, anilist, myanimelist};
 
 use crate::{
@@ -190,7 +190,7 @@ impl TrackerRepository for TrackerRepositoryImpl {
     ) -> Result<Vec<TrackedManga>, TrackerRepositoryError> {
         let query = sqlx::query(
             r#"
-        SELECT m.id as manga_id, tc.tracker, tm.tracker_manga_id FROM tracker_credential tc 
+        SELECT m.id as manga_id, tc.tracker, tm.tracker_manga_id FROM tracker_credential tc
         LEFT JOIN manga m ON m.id = ?
         LEFT JOIN tracker_manga tm ON tc.tracker = tm.tracker AND tm.manga_id = m.id
             AND tm.user_id = tc.user_id
@@ -220,7 +220,7 @@ impl TrackerRepository for TrackerRepositoryImpl {
         manga_ids: &[i64],
     ) -> Result<Vec<TrackedManga>, TrackerRepositoryError> {
         let query_str = format!(
-            r#"SELECT m.id as manga_id, tc.tracker, tm.tracker_manga_id FROM tracker_credential tc 
+            r#"SELECT m.id as manga_id, tc.tracker, tm.tracker_manga_id FROM tracker_credential tc
                 LEFT JOIN manga m ON m.id IN ({})
                 LEFT JOIN tracker_manga tm ON tc.tracker = tm.tracker AND tm.manga_id = m.id
                     AND tm.user_id = tc.user_id
@@ -228,7 +228,7 @@ impl TrackerRepository for TrackerRepositoryImpl {
             vec!["?"; manga_ids.len()].join(",")
         );
 
-        let mut query = sqlx::query(&query_str);
+        let mut query = sqlx::query(AssertSqlSafe(query_str));
 
         for manga_id in manga_ids {
             query = query.bind(manga_id);

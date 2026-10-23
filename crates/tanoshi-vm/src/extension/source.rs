@@ -114,7 +114,7 @@ impl SourceHealth {
     pub(crate) fn complete_abandoned_call(&self) {
         let previous = self
             .abandoned_calls
-            .fetch_update(Ordering::AcqRel, Ordering::Acquire, |count| {
+            .try_update(Ordering::AcqRel, Ordering::Acquire, |count| {
                 count.checked_sub(1)
             })
             .unwrap_or(0);

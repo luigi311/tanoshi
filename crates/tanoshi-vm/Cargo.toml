@@ -2,7 +2,7 @@
 name = "tanoshi-vm"
 version = "0.8.0"
 edition = "2024"
-rust-version = "1.93.1"
+rust-version = "1.99.1"
 description = "Tanoshi VM"
 repository = "https://github.com/luigi311/tanoshi"
 license = "MIT"
@@ -14,7 +14,7 @@ serde_json = "1.0"
 bytes = "1"
 log = { version = "0.4" }
 anyhow = "1"
-base64 = { version = "0.22", default-features = false, features = ["alloc"] }
+base64 = { version = "0.23", default-features = false, features = ["alloc"] }
 tokio = { version = "1", features = ["full"] }
 reqwest = { version = "0.13", default-features = false, features = [
     "brotli",

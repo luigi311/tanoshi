@@ -483,10 +483,11 @@ async fn direct_history_updates_and_chapter_refreshes_move_summaries() {
 async fn latest_history_triggers_work_with_and_without_recursion() {
     for recursive in [false, true] {
         let f = Fixture::new().await;
-        sqlx::query(&format!(
-            "PRAGMA recursive_triggers = {}",
-            i32::from(recursive)
-        ))
+        sqlx::query(if recursive {
+            "PRAGMA recursive_triggers = ON"
+        } else {
+            "PRAGMA recursive_triggers = OFF"
+        })
         .execute(f.pool.write())
         .await
         .unwrap();
@@ -590,10 +591,11 @@ async fn manga_migration_and_rollback_preserve_latest_reads_and_users() {
 async fn legacy_history_writes_normalize_offsets_without_rounding() {
     for recursive in [false, true] {
         let f = Fixture::new().await;
-        sqlx::query(&format!(
-            "PRAGMA recursive_triggers = {}",
-            i32::from(recursive)
-        ))
+        sqlx::query(if recursive {
+            "PRAGMA recursive_triggers = ON"
+        } else {
+            "PRAGMA recursive_triggers = OFF"
+        })
         .execute(f.pool.write())
         .await
         .unwrap();

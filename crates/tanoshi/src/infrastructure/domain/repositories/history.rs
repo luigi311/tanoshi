@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use async_trait::async_trait;
 use chrono::{NaiveDateTime, Utc};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use sqlx::{QueryBuilder, Row, Sqlite};
+use sqlx::{AssertSqlSafe, QueryBuilder, Row, Sqlite};
 
 use crate::{
     domain::{
@@ -130,7 +130,8 @@ impl HistoryRepository for HistoryRepositoryImpl {
             vec!["?"; manga_ids.len()].join(",")
         );
 
-        let mut query = sqlx::query_as::<_, (i64, NaiveDateTime)>(&query_str).bind(user_id);
+        let mut query =
+            sqlx::query_as::<_, (i64, NaiveDateTime)>(AssertSqlSafe(query_str)).bind(user_id);
 
         for manga_id in manga_ids {
             query = query.bind(manga_id);
@@ -173,7 +174,7 @@ impl HistoryRepository for HistoryRepositoryImpl {
             vec!["?"; chapter_ids.len()].join(",")
         );
 
-        let mut query = sqlx::query(&query_str).bind(user_id);
+        let mut query = sqlx::query(AssertSqlSafe(query_str)).bind(user_id);
 
         for chapter_id in chapter_ids {
             query = query.bind(chapter_id);
@@ -248,7 +249,7 @@ impl HistoryRepository for HistoryRepositoryImpl {
             vec!["(?, ?, 0, ?, true)"; chapter_ids.len()].join(",")
         );
 
-        let mut query = sqlx::query(&query_str);
+        let mut query = sqlx::query(AssertSqlSafe(query_str));
 
         let now = Utc::now().naive_utc();
         for chapter_id in chapter_ids {
@@ -277,7 +278,7 @@ impl HistoryRepository for HistoryRepositoryImpl {
             values.join(",")
         );
 
-        let mut query = sqlx::query(&query_str).bind(user_id);
+        let mut query = sqlx::query(AssertSqlSafe(query_str)).bind(user_id);
 
         for chapter_id in chapter_ids {
             query = query.bind(chapter_id);
@@ -316,7 +317,7 @@ impl HistoryRepository for HistoryRepositoryImpl {
             values.join(",")
         );
 
-        let mut query = sqlx::query(&query_str).bind(user_id);
+        let mut query = sqlx::query(AssertSqlSafe(query_str)).bind(user_id);
         for manga_id in manga_ids {
             query = query.bind(manga_id);
         }
@@ -434,7 +435,7 @@ fn history_query(
     bounds: HistoryBounds,
     limit: Option<i32>,
     reverse: bool,
-) -> QueryBuilder<'static, Sqlite> {
+) -> QueryBuilder<Sqlite> {
     let mut query = QueryBuilder::new(
         "SELECT latest.manga_id, latest.chapter_id, manga.title, manga.cover_url, \
          chapter.title, latest.read_at, history.last_page, history.is_complete, manga.source_id \

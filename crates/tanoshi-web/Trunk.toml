@@ -9,10 +9,11 @@ ws = true
 backend = "http://localhost:3030/image"
 
 [tools]
-sass = "1.93.2"
+# match tanoshi-builder DART_SASS_VERSION
+sass = "1.106.1"
 # must match the wasm-bindgen crate version in Cargo.lock
-wasm_bindgen = "0.2.126"
-wasm_opt = "version_130"
+wasm_bindgen = "0.2.129"
+wasm_opt = "version_133"
 
 [serve]
 addresses = ["0.0.0.0"]

@@ -55,17 +55,22 @@ impl ArchiveReader {
         match &mut self.backend {
             ArchiveBackend::Zip(archive) => (0..archive.len())
                 .filter_map(|index| {
-                    let result = archive
-                        .by_index(index)
-                        .with_context(|| {
-                            format!(
-                                "failed to read entry {index} from ZIP archive {}",
-                                self.path.display()
-                            )
-                        });
+                    let result = archive.by_index(index).with_context(|| {
+                        format!(
+                            "failed to read entry {index} from ZIP archive {}",
+                            self.path.display()
+                        )
+                    });
                     match result {
                         Ok(file) if file.is_dir() => None,
-                        Ok(file) => Some(Ok(file.name().to_owned())),
+                        Ok(file) => {
+                            Some(file.name().map(|name| name.into_owned()).with_context(|| {
+                                format!(
+                                    "failed to decode entry {index} name in ZIP archive {}",
+                                    self.path.display()
+                                )
+                            }))
+                        }
                         Err(err) => Some(Err(err)),
                     }
                 })
@@ -115,13 +120,14 @@ impl ArchiveReader {
                     format!("failed to reopen RAR archive {}", self.path.display())
                 })?;
                 let mut data = Vec::new();
-                compress_tools::uncompress_archive_file(source, &mut data, filename)
-                    .with_context(|| {
+                compress_tools::uncompress_archive_file(source, &mut data, filename).with_context(
+                    || {
                         format!(
                             "failed to read {filename} from RAR archive {}",
                             self.path.display()
                         )
-                    })?;
+                    },
+                )?;
                 Ok(data)
             }
         }

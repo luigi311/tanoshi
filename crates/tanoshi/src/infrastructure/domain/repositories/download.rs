@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use sqlx::Row;
+use sqlx::{AssertSqlSafe, Row};
 
 use crate::{
     domain::{
@@ -220,7 +220,7 @@ impl DownloadRepository for DownloadRepositoryImpl {
             values.join(",")
         );
 
-        let mut query = sqlx::query(&query_str);
+        let mut query = sqlx::query(AssertSqlSafe(query_str));
         for item in items {
             query = query
                 .bind(item.source_id)
@@ -383,7 +383,7 @@ impl DownloadRepository for DownloadRepositoryImpl {
             ORDER BY dq.priority ASC, dq.date_added ASC, dq.chapter_id ASC"#
         );
 
-        let mut query = sqlx::query(&query);
+        let mut query = sqlx::query(AssertSqlSafe(query));
         for chapter_id in chapter_ids {
             query = query.bind(chapter_id);
         }

@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use futures::{StreamExt, stream::BoxStream};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use sqlx::Row;
+use sqlx::{AssertSqlSafe, Row};
 use std::collections::{HashMap, HashSet};
 
 use crate::{
@@ -305,7 +305,7 @@ impl LibraryRepository for LibraryRepositoryImpl {
             "SELECT manga_id FROM user_library WHERE user_id = ? AND manga_id IN ({})",
             vec!["?"; manga_ids.len()].join(",")
         );
-        let mut query = sqlx::query_scalar::<_, i64>(&query_str).bind(user_id);
+        let mut query = sqlx::query_scalar::<_, i64>(AssertSqlSafe(query_str)).bind(user_id);
         for manga_id in manga_ids {
             query = query.bind(manga_id);
         }
@@ -340,7 +340,7 @@ impl LibraryRepository for LibraryRepositoryImpl {
             )"#,
             vec!["?"; paths.len()].join(",")
         );
-        let mut query = sqlx::query_scalar::<_, String>(&query_str).bind(source_id);
+        let mut query = sqlx::query_scalar::<_, String>(AssertSqlSafe(query_str)).bind(source_id);
         for path in paths {
             query = query.bind(path);
         }
@@ -416,7 +416,7 @@ impl LibraryRepository for LibraryRepositoryImpl {
                 vec!["(?,?)".to_string(); category_ids.len()].join(",")
             );
 
-            let mut query = sqlx::query(&query_str);
+            let mut query = sqlx::query(AssertSqlSafe(query_str));
             for category_id in category_ids {
                 query = query.bind(library_id).bind(category_id);
             }

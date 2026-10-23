@@ -7,7 +7,7 @@ use crate::{
 };
 use async_trait::async_trait;
 use chrono::Utc;
-use sqlx::Row;
+use sqlx::{AssertSqlSafe, Row};
 
 #[derive(Clone)]
 pub struct MangaRepositoryImpl {
@@ -48,7 +48,7 @@ impl MangaRepository for MangaRepositoryImpl {
             r#"SELECT * FROM manga WHERE id IN ({})"#,
             vec!["?"; ids.len()].join(",")
         );
-        let mut query = sqlx::query(&query_str);
+        let mut query = sqlx::query(AssertSqlSafe(query_str));
         for id in ids {
             query = query.bind(id);
         }
